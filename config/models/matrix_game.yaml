@@ -1,0 +1,57 @@
+model:
+  name: matrix-game
+  family: matrix_game_3
+  python_bin: python
+  repo_root: /bench-workspace/yesliu/hjd/model/tmp/Matrix-Game/Matrix-Game-3
+  checkpoint_dir: /bench-workspace/yesliu/hjd/model/WorldEvals/cache/hfd/Matrix-Game-3.0
+  entrypoint: generate.py
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  metric_overrides:
+    video_static:
+      - style_consistency
+      - subjective_quality
+      - rollout_quality
+    video_dynamic:
+      - style_consistency
+      - subjective_quality
+      - motion_magnitude
+      - motion_smoothness
+      - rollout_quality
+  generation:
+    size: 704*1280
+    fps: 17
+    seed: 42
+    num_inference_steps: 3
+    sample_guide_scale: 5.0
+    vae_type: mg_lightvae_v2
+    compile_vae: true
+    use_int8: true
+    visualize_ops: false
+    action_plan:
+      default:
+        - forward
+        - camera_r
+        - forward_right
+        - camera_l
+        - forward
+      by_suite:
+        video_static:
+          - forward
+          - camera_r
+          - forward
+          - camera_l
+        video_dynamic:
+          - forward
+          - camera_r
+          - forward_right
+          - camera_l
+          - forward
+      frames_per_action: 12
+      first_clip_frames: 57
+      clip_overlap_frames: 16
+      num_iterations: 2

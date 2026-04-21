@@ -1,0 +1,47 @@
+site_name: WorldArena
+site_description: World model benchmark dataset analytics
+site_dir: .cache/site
+theme:
+  name: material
+  language: en
+  icon:
+    logo: material/chart-arc
+  palette:
+    - scheme: default
+      primary: teal
+      accent: amber
+  font:
+    text: IBM Plex Sans
+    code: IBM Plex Mono
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+extra_css:
+  - assets/stylesheets/extra.css
+nav:
+  - Home: index.md
+  - Benchmark: benchmark.md
+  - Dataset Analytics:
+      - Overview: overview.md
+      - Images: images.md
+      - Videos: videos.md
+      - Captions: captions.md
+      - Collections: collections.md
+  - Development: development.md

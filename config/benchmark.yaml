@@ -1,0 +1,89 @@
+paths:
+  image_root: /bench-workspace/yesliu/hjd/data/image
+  video_root: /bench-workspace/yesliu/hjd/data/videos
+  inventory_dir: artifacts/benchmark/inventory
+  manifest_dir: artifacts/benchmark/manifest
+  reports_dir: artifacts/benchmark/reports
+  cache_dir: .cache/worldarena/benchmark
+
+benchmark:
+  snapshot_name: worldarena_freeze_candidate
+  target_fps: 24
+  anchor_positions: [0.0, 0.3333, 0.6667, 1.0]
+  motion_frame_count: 12
+  split_ratios:
+    dev_public: 0.2
+    dev_private: 0.1
+    test_hidden: 0.7
+  aggregate_weights:
+    image_static: 0.15
+    image_dynamic: 0.15
+    video_static: 0.30
+    video_dynamic: 0.40
+  planned_counts: {}
+  metrics_by_suite:
+    image_static:
+      - scene_alignment
+      - style_consistency
+      - subjective_quality
+    image_dynamic:
+      - dynamic_alignment
+      - style_consistency
+      - subjective_quality
+    video_static:
+      - scene_alignment
+      - style_consistency
+      - subjective_quality
+      - rollout_quality
+    video_dynamic:
+      - dynamic_alignment
+      - style_consistency
+      - subjective_quality
+      - motion_magnitude
+      - motion_smoothness
+      - rollout_quality
+    auxiliary:
+      - dynamic_alignment
+      - subjective_quality
+    experimental:
+      - dynamic_alignment
+      - subjective_quality
+      - motion_magnitude
+      - motion_smoothness
+  metric_backends:
+    scene_alignment: auto
+    dynamic_alignment: auto
+    style_consistency: auto
+    subjective_quality: auto
+    motion_magnitude: farneback
+    motion_smoothness: farneback
+    rollout_quality: auto
+  normalization:
+    scene_alignment:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    dynamic_alignment:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    style_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    subjective_quality:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    motion_magnitude:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    motion_smoothness:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    rollout_quality:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true

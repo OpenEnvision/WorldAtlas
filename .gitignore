@@ -1,0 +1,15 @@
+.venv/
+.cache/
+.pytest_cache/
+.ruff_cache/
+artifacts/benchmark/
+artifacts/dataset_stats/
+artifacts/predictions/
+artifacts/v1/
+docs/generated/
+site/
+build/
+dist/
+*.egg-info/
+__pycache__/
+*.py[cod]

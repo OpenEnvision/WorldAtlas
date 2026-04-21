@@ -1,0 +1,50 @@
+:root {
+  --wa-card-bg: linear-gradient(180deg, rgba(14, 116, 144, 0.08), rgba(245, 158, 11, 0.08));
+  --wa-card-border: rgba(14, 116, 144, 0.2);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.9rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.metric-card {
+  border: 1px solid var(--wa-card-border);
+  border-radius: 16px;
+  padding: 1rem 1rem 0.9rem;
+  background: var(--wa-card-bg);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.metric-label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #0f766e;
+  font-weight: 700;
+}
+
+.metric-value {
+  font-size: 1.8rem;
+  line-height: 1.1;
+  margin-top: 0.35rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.metric-note {
+  margin-top: 0.45rem;
+  color: #475569;
+  font-size: 0.88rem;
+}
+
+.chart-frame {
+  width: 100%;
+  min-height: 620px;
+  border: 1px solid rgba(14, 116, 144, 0.14);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}

@@ -1,0 +1,33 @@
+model:
+  name: lingbot-world
+  family: lingbot_world
+  python_bin: python
+  repo_root: /bench-workspace/yesliu/hjd/model/tmp/lingbot-world
+  checkpoint_dir: /bench-workspace/yesliu/hjd/model/WorldEvals/cache/hfd/robbyant--lingbot-world-base-cam
+  entrypoint: generate.py
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  metric_overrides:
+    video_static:
+      - scene_alignment
+      - style_consistency
+      - subjective_quality
+      - rollout_quality
+    video_dynamic:
+      - dynamic_alignment
+      - style_consistency
+      - subjective_quality
+      - motion_magnitude
+      - motion_smoothness
+      - rollout_quality
+  generation:
+    task: i2v-A14B
+    size: 832*480
+    frame_num: 81
+    base_seed: 42
+    sample_solver: unipc
+    offload_model: true

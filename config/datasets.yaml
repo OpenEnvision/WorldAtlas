@@ -1,0 +1,54 @@
+paths:
+  artifacts_dir: artifacts/dataset_stats
+  docs_generated_dir: docs/generated
+  docs_data_dir: docs/generated/data
+  cache_path: .cache/worldarena/media_probe_cache.json
+
+collections:
+  - name: static_images
+    scanner: static_image
+    modality: image
+    group: benchmark
+    root: /bench-workspace/yesliu/hjd/data/image/static
+    description: Static image benchmark set grouped by style, environment, and scene.
+    exclude_dir_prefixes: [".", "_backup"]
+
+  - name: dynamic_images
+    scanner: dynamic_image
+    modality: image
+    group: benchmark
+    root: /bench-workspace/yesliu/hjd/data/image/dynamic
+    description: Dynamic image benchmark set with motion-type masks.
+    exclude_dir_prefixes: [".", "_backup"]
+
+  - name: static_videos
+    scanner: static_video
+    modality: video
+    group: benchmark
+    root: /bench-workspace/yesliu/hjd/data/videos/static
+    description: Static video benchmark grouped by style, environment, scene, and duration bucket.
+    exclude_dir_prefixes: [".", "_backup"]
+
+  - name: dynamic_videos
+    scanner: dynamic_video
+    modality: video
+    group: benchmark
+    root: /bench-workspace/yesliu/hjd/data/videos/dynamic
+    description: Dynamic video benchmark with motion classes, annotations, and optional masks.
+    exclude_dir_prefixes: [".", "_backup"]
+
+  - name: aaa_games
+    scanner: aaa_games
+    modality: video
+    group: benchmark
+    root: /bench-workspace/yesliu/hjd/data/videos/AAA_Games
+    description: AAA game footage subset with SpatialVID-style annotations.
+    exclude_dir_prefixes: [".", "_backup"]
+
+  - name: review_assets
+    scanner: review_video
+    modality: video
+    group: auxiliary
+    root: /bench-workspace/yesliu/hjd/data/videos/_review
+    description: Review and curation assets that should not be mixed into benchmark totals.
+    exclude_dir_prefixes: [".", "_backup"]
