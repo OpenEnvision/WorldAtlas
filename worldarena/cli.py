@@ -15,8 +15,10 @@ from worldarena.benchmark import (
     write_manifest_artifacts,
 )
 from worldarena.benchmark.config import apply_model_metric_overrides
-from worldarena.benchmark_core.physics_manifest import build_worldarena_physics_manifest
+from worldarena.benchmark.physics_manifest import build_worldarena_physics_manifest
 from worldarena.common.cleanup import clean_project
+from worldarena.common.environment import inspect_environment
+from worldarena.common.runtime_layout import prepare_runtime_layout
 from worldarena.generation import generate_predictions
 from worldarena.models import load_model_config
 
@@ -103,6 +105,27 @@ def build_parser() -> argparse.ArgumentParser:
     run_model.add_argument("--limit", type=int, default=None)
     run_model.add_argument("--overwrite", action="store_true")
 
+    prepare_layout = subparsers.add_parser(
+        "prepare-layout",
+        help="Create the cache/ and third_party/ layout used by adapters and metric backends.",
+    )
+    prepare_layout.add_argument("--project-root", default=".")
+    prepare_layout.add_argument("--shared-hf-cache", default=None)
+    prepare_layout.add_argument(
+        "--repo-link",
+        action="append",
+        default=[],
+        metavar="NAME=PATH",
+        help="Symlink PATH into third_party/NAME. Repeat as needed.",
+    )
+    prepare_layout.add_argument("--force", action="store_true")
+
+    check_env = subparsers.add_parser(
+        "check-env",
+        help="Inspect the local runtime layout, dependency profiles, and metric backend readiness.",
+    )
+    check_env.add_argument("--project-root", default=".")
+
     clean = subparsers.add_parser(
         "clean",
         help="Remove transient caches and build outputs to keep the repo tidy.",
@@ -115,6 +138,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
 
 
 def _ensure_manifest(config, manifest_arg: str | None) -> Path:
@@ -136,9 +160,48 @@ def _ensure_manifest(config, manifest_arg: str | None) -> Path:
     )
 
 
+
+def _parse_repo_links(raw_values: Sequence[str]) -> dict[str, str]:
+    links: dict[str, str] = {}
+    for raw in raw_values:
+        if "=" not in raw:
+            raise ValueError(
+                f"Invalid --repo-link value {raw!r}. Expected NAME=PATH, for example lingbot-world=/path/to/repo."
+            )
+        name, source = raw.split("=", 1)
+        name = name.strip()
+        source = source.strip()
+        if not name or not source:
+            raise ValueError(
+                f"Invalid --repo-link value {raw!r}. Expected NAME=PATH, for example lingbot-world=/path/to/repo."
+            )
+        links[name] = source
+    return links
+
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "prepare-layout":
+        try:
+            repo_links = _parse_repo_links(args.repo_link)
+        except ValueError as exc:
+            parser.error(str(exc))
+        result = prepare_runtime_layout(
+            project_root=Path(args.project_root),
+            shared_hf_cache=args.shared_hf_cache,
+            repo_links=repo_links,
+            force=args.force,
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "check-env":
+        result = inspect_environment(Path(args.project_root).resolve())
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0
 
     if args.command == "clean":
         removed = clean_project(

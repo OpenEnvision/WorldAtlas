@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-import worldarena.benchmark_core.reference_runtime as reference_runtime
+import worldarena.benchmark.reference_runtime as reference_runtime
 
 
 class _DummyReferenceClipScore:

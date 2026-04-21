@@ -6,9 +6,9 @@ from pathlib import Path
 
 from PIL import Image
 
-import worldarena.benchmark_core.metrics.alignment as alignment_metrics
-import worldarena.benchmark_core.metrics.quality as quality_metrics
-import worldarena.benchmark_core.metrics.style as style_metrics
+import worldarena.benchmark.metrics.alignment as alignment_metrics
+import worldarena.benchmark.metrics.quality as quality_metrics
+import worldarena.benchmark.metrics.style as style_metrics
 from worldarena.benchmark import run_benchmark
 from worldarena.benchmark.config import BenchmarkConfig, BenchmarkPaths
 from worldarena.benchmark.schemas import BenchmarkSample

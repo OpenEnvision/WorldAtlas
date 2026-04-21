@@ -67,7 +67,7 @@
 基于现有数据，默认划分如下：
 
 - `official`：四个 formal suite，即 `image_static`、`image_dynamic`、`video_static`、`video_dynamic`
-- `experimental`：subset-level `camera_control/object_control/geom`、`long_delayed_effect`、`basic physics`
+- `experimental`：subset-level `camera_control/object_control/geometry_consistency`、`long_delayed_effect`、`physics_consistency`
 - `future-expansion`：`long_revisit`、完整 `interactive`、更强 supervision 的 control / geometry / physics 主榜
 
 当前 benchmark 的分数命名建议区分三层：
@@ -985,7 +985,7 @@ benchmark 最容易出问题的不是 metric，而是数据泄漏。
 1. subset-level `camera_control`
 2. subset-level `object_control`
 3. `long_delayed_effect`
-4. `basic physics`
+4. `physics_consistency`
 5. `video_nonformal` auxiliary
 
 这一步依赖的是**当前数据内部的进一步整理**，而不是新增外部来源。

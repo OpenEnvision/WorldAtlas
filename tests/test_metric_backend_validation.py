@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from worldarena.benchmark.config import BenchmarkConfig, BenchmarkPaths
-from worldarena.benchmark_core.metrics.registry import build_metrics
+from worldarena.benchmark.metrics.registry import build_metrics
 
 
 def _make_config(tmp_path: Path, metric_backends: dict[str, str]) -> BenchmarkConfig:

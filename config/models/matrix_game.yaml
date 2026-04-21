@@ -2,8 +2,10 @@ model:
   name: matrix-game
   family: matrix_game_3
   python_bin: auto
-  repo_root: /bench-workspace/yesliu/hjd/model/tmp/Matrix-Game/Matrix-Game-3
-  checkpoint_dir: /bench-workspace/yesliu/hjd/model/WorldEvals/cache/hfd/Matrix-Game-3.0
+  # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
+  repo_root: third_party/Matrix-Game-3.0
+  # Keep checkpoints under cache/hfd or point this at a shared cache mount through `worldarena prepare-layout --shared-hf-cache`.
+  checkpoint_dir: cache/hfd/Matrix-Game-3.0
   entrypoint: generate.py
   output_ext: .mp4
   supported_suites:
@@ -11,17 +13,6 @@ model:
     - video_dynamic
   prompt_mode: prompt_target
   reference_mode: first_frame
-  metric_overrides:
-    video_static:
-      - prompt_alignment
-      - style_consistency
-      - perceptual_quality
-    video_dynamic:
-      - prompt_alignment
-      - style_consistency
-      - perceptual_quality
-      - motion_magnitude
-      - motion_smoothness
   generation:
     size: 704*1280
     fps: 17

@@ -1,10 +1,14 @@
 # WorldArena
 
-WorldArena is an extensible benchmark workspace for world model evaluation. This documentation site focuses on one immediate need: turning the current image and video corpora into a continuously regenerable analytics surface that can evolve with the dataset.
+WorldArena is a benchmark and dataset analytics workspace for world models. The repository is organized so that benchmark logic, adapter contracts, third-party repos, and cached checkpoints can evolve independently.
 
-Use the pages under **Dataset Analytics** for collection counts, annotation coverage, mask coverage, caption distributions, hierarchy views, and downloadable CSV/JSON summaries.
+Use the documentation in this order if you are getting started:
 
-The repository now also includes a benchmark stack for raw asset inventory, manifest building, suite-aware aggregation, model adapter based generation, and a compact reference-style metric surface for the four formal suites.
+- **Benchmark**: evaluation scope, metric surface, reporting contract, and output artifacts.
+- **Environment**: install profiles, `uv` commands, self-check workflow, and runtime layering.
+- **Runtime Setup**: how `cache/`, `third_party/`, checkpoints, and adapter repos are expected to be wired together.
+- **Dataset Analytics**: collection counts, annotation coverage, mask coverage, caption distributions, hierarchy views, and downloadable summaries.
+- **Development**: maintainer workflow, validation commands, and release hygiene.
 
-!!! tip "Regenerate after data changes"
-    Run `worldarena build-docs --config config/datasets.yaml` whenever files are added, removed, or moved in the configured dataset roots.
+!!! tip "Recommended first step"
+    Run `worldarena prepare-layout`, then `worldarena check-env`, before integrating upstream model repos or large checkpoint caches. This keeps the checkout publishable while still making dependency gaps obvious early.

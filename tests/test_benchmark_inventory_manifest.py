@@ -99,6 +99,10 @@ def test_benchmark_inventory_and_manifest_cover_formal_and_nonformal_assets(tmp_
     _write_video(static_video, [(0, 0, 0), (32, 32, 32), (64, 64, 64)])
     _write_video(dynamic_video, [(0, 40, 90), (20, 60, 120), (40, 80, 150)])
     _write_video(aaa_video, [(90, 0, 0), (120, 20, 20), (150, 40, 40)])
+    _write_image(
+        video_root / "dynamic" / "photorealistic" / "masks" / "fluid" / "0001" / "masks" / "000000.png",
+        (255, 255, 255),
+    )
     _touch_video_sidecar(static_video.parent / "annotations" / "0001_SpatialVID_ann")
     _touch_video_sidecar(video_root / "dynamic" / "annotations" / "fluid" / "0001_ann")
     _touch_video_sidecar(video_root / "AAA_Games" / "annotations" / "001", include_pose=False)
@@ -122,6 +126,11 @@ def test_benchmark_inventory_and_manifest_cover_formal_and_nonformal_assets(tmp_
     assert any(sample.suite == "experimental" for sample in manifest)
     assert any(sample.suite == "image_static" for sample in manifest)
     assert any(sample.suite == "video_dynamic" for sample in manifest)
+    static_video_sample = next(sample for sample in manifest if sample.asset_level == "video_static")
+    dynamic_video_sample = next(sample for sample in manifest if sample.asset_level == "video_dynamic")
+    assert static_video_sample.annotation_path is not None
+    assert dynamic_video_sample.annotation_path is not None
+    assert dynamic_video_sample.mask_path is not None
 
     summary_path = config.paths.manifest_dir / "worldarena_manifest_summary.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8"))

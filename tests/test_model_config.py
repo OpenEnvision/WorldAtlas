@@ -110,3 +110,17 @@ def test_load_model_config_parses_optional_env_overrides(tmp_path: Path) -> None
         "CUDA_VISIBLE_DEVICES": "2",
         "HF_HOME": "/tmp/hf-cache",
     }
+
+
+def test_repository_model_configs_use_project_relative_layout() -> None:
+    project_root = Path(__file__).resolve().parents[1]
+
+    lingbot = load_model_config(project_root / "config" / "models" / "lingbot_world.yaml")
+    matrix_game = load_model_config(project_root / "config" / "models" / "matrix_game.yaml")
+
+    assert lingbot.repo_root == (project_root / "third_party" / "lingbot-world").resolve()
+    assert lingbot.checkpoint_dir == (
+        project_root / "cache" / "hfd" / "robbyant--lingbot-world-base-cam"
+    ).resolve()
+    assert matrix_game.repo_root == (project_root / "third_party" / "Matrix-Game-3.0").resolve()
+    assert matrix_game.checkpoint_dir == (project_root / "cache" / "hfd" / "Matrix-Game-3.0").resolve()

@@ -1,5 +1,5 @@
 site_name: WorldArena
-site_description: World model benchmark dataset analytics
+site_description: World model benchmark and dataset analytics toolkit
 site_dir: .cache/site
 theme:
   name: material
@@ -37,7 +37,26 @@ extra_css:
   - assets/stylesheets/extra.css
 nav:
   - Home: index.md
-  - Benchmark: benchmark.md
+  - Benchmark:
+      - Overview: benchmark/index.md
+      - Protocol & Eligibility: benchmark/protocol.md
+      - Workflow & Outputs: benchmark/workflow.md
+      - Metrics:
+          - Overview: benchmark/metrics/index.md
+          - Prompt Alignment: benchmark/metrics/prompt_alignment.md
+          - Style Consistency: benchmark/metrics/style_consistency.md
+          - Perceptual Quality: benchmark/metrics/perceptual_quality.md
+          - Reference Appearance Alignment: benchmark/metrics/reference_appearance_alignment.md
+          - Anchor Consistency: benchmark/metrics/anchor_consistency.md
+          - Camera Error: benchmark/metrics/camera_error.md
+          - Object Detection: benchmark/metrics/object_detection.md
+          - Reprojection Error: benchmark/metrics/reprojection_error.md
+          - Optical Flow AEPE: benchmark/metrics/optical_flow_aepe.md
+          - Motion Accuracy: benchmark/metrics/motion_accuracy.md
+          - Motion Magnitude: benchmark/metrics/motion_magnitude.md
+          - Motion Smoothness: benchmark/metrics/motion_smoothness.md
+  - Environment: environment.md
+  - Runtime Setup: third_party.md
   - Dataset Analytics:
       - Overview: overview.md
       - Images: images.md

@@ -14,3 +14,9 @@ dist/
 *.egg-info/
 __pycache__/
 *.py[cod]
+.ps__*
+cache/*
+!cache/README.md
+third_party/*
+!third_party/README.md
+tmp/
