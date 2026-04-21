@@ -13,6 +13,10 @@ DEFAULT_MODEL_LAYOUT = {
         "repo_root": "third_party/Matrix-Game-3.0",
         "checkpoint_dir": "cache/hfd/Matrix-Game-3.0",
     },
+    "worldcam": {
+        "repo_root": "third_party/WorldCam",
+        "checkpoint_dir": "cache/hfd/worldcam--worldcam",
+    },
 }
 DEFAULT_RUNTIME_PYTHONS = {
     "managed": ".venv/bin/python",

@@ -3,6 +3,36 @@ from __future__ import annotations
 import hashlib
 
 
+def artifact_type_for_modality(modality: str) -> str:
+    return "video" if modality == "video" else "image"
+
+
+def task_family_for_suite(suite: str, *, track: str | None = None) -> str:
+    if track and track.startswith("physics"):
+        return "world_model"
+    return "video_generation"
+
+
+def control_signals_for_sample(
+    *,
+    modality: str,
+    conditioning_strategy: str,
+    has_pose: bool,
+) -> list[str]:
+    control_signals = ["text"]
+    if conditioning_strategy in {"first_frame", "reference_image", "external_image"}:
+        control_signals.append("image")
+    elif conditioning_strategy in {"reference_video", "external_video"}:
+        control_signals.append("video")
+    elif modality == "video":
+        control_signals.append("image")
+
+    if has_pose and "camera_pose" not in control_signals:
+        control_signals.append("camera_pose")
+
+    return control_signals
+
+
 def humanize_label(value: str | None) -> str:
     if not value:
         return "scene"
@@ -72,3 +102,16 @@ def build_sample_id(asset_level: str, style: str | None, fine_class: str | None,
     style_token = (style or "unknown").replace("-", "_")
     class_token = (fine_class or "unknown").replace("-", "_")
     return f"{asset_level}_{style_token}_{class_token}_{index:04d}"
+
+
+__all__ = [
+    "artifact_type_for_modality",
+    "assign_split",
+    "build_prompts",
+    "build_sample_id",
+    "control_signals_for_sample",
+    "humanize_label",
+    "prediction_extensions",
+    "suite_for_asset",
+    "task_family_for_suite",
+]

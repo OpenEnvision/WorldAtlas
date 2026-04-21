@@ -9,7 +9,15 @@ import pandas as pd
 from worldarena.common.serialization import ensure_dir, write_json
 from worldarena.benchmark.config import BenchmarkConfig
 from worldarena.benchmark.schemas import BenchmarkSample, DiscoveredAsset
-from worldarena.benchmark.taxonomy import assign_split, build_prompts, build_sample_id, suite_for_asset
+from worldarena.benchmark.taxonomy import (
+    artifact_type_for_modality,
+    assign_split,
+    build_prompts,
+    build_sample_id,
+    control_signals_for_sample,
+    suite_for_asset,
+    task_family_for_suite,
+)
 
 
 def build_manifest(assets: list[DiscoveredAsset], config: BenchmarkConfig) -> list[BenchmarkSample]:
@@ -76,6 +84,14 @@ def build_manifest(assets: list[DiscoveredAsset], config: BenchmarkConfig) -> li
                 source_type=asset.source_type,
                 source_group_id=asset.source_group_id,
                 license_bucket=asset.license_bucket,
+                benchmark_family="worldarena",
+                task_family=task_family_for_suite(suite),
+                artifact_type=artifact_type_for_modality(asset.modality),
+                control_signals=control_signals_for_sample(
+                    modality=asset.modality,
+                    conditioning_strategy=conditioning_strategy,
+                    has_pose=asset.has_pose,
+                ),
                 annotation_path=asset.annotation_path,
                 mask_path=asset.mask_path,
                 has_annotation=asset.has_annotation,

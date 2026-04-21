@@ -9,6 +9,7 @@ from worldarena.benchmark.annotations import (
     derive_object_prompts,
     flatten_instruction_labels,
     load_camera_matrices,
+    load_intrinsics_sequence,
 )
 
 
@@ -108,3 +109,45 @@ def test_flatten_instruction_labels_preserves_unique_labels(tmp_path: Path) -> N
     labels = flatten_instruction_labels(str(annotation_dir))
 
     assert labels == ["dolly in", "pan left"]
+
+
+def test_load_intrinsics_sequence_supports_matrix_inputs(tmp_path: Path) -> None:
+    annotation_dir = _write_annotation_dir(tmp_path)
+    intrinsics = np.asarray(
+        [
+            [20.0, 0.0, 8.0],
+            [0.0, 24.0, 6.0],
+            [0.0, 0.0, 1.0],
+        ],
+        dtype=np.float32,
+    )
+    np.save(annotation_dir / "intrinsics.npy", intrinsics)
+
+    sequence = load_intrinsics_sequence(str(annotation_dir))
+
+    assert sequence is not None
+    assert sequence.shape == (1, 4)
+    np.testing.assert_allclose(sequence[0], np.array([20.0, 24.0, 8.0, 6.0], dtype=np.float32))
+
+
+def test_load_intrinsics_sequence_interpolates_to_target_frames(tmp_path: Path) -> None:
+    annotation_dir = _write_annotation_dir(tmp_path)
+    intrinsics = np.asarray(
+        [
+            [20.0, 22.0, 8.0, 6.0],
+            [30.0, 32.0, 18.0, 16.0],
+        ],
+        dtype=np.float32,
+    )
+    np.save(annotation_dir / "intrinsics.npy", intrinsics)
+    (annotation_dir / "indexes.txt").write_text("0 0\n1 10\n", encoding="utf-8")
+
+    sequence = load_intrinsics_sequence(str(annotation_dir), target_frames=6)
+
+    assert sequence is not None
+    assert sequence.shape == (6, 4)
+    np.testing.assert_allclose(
+        sequence[:, 0],
+        np.array([20.0, 22.0, 24.0, 26.0, 28.0, 30.0], dtype=np.float32),
+        atol=1e-4,
+    )

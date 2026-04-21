@@ -50,6 +50,7 @@ If you already have a shared cache or local upstream clones:
 uv run worldarena prepare-layout \
   --shared-hf-cache /path/to/shared/hf-cache \
   --repo-link lingbot-world=/path/to/lingbot-world \
+  --repo-link WorldCam=/path/to/WorldCam \
   --repo-link Matrix-Game-3.0=/path/to/Matrix-Game-3.0 \
   --repo-link metric-source=/path/to/compatible-metric-checkout
 ```

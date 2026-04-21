@@ -1,0 +1,37 @@
+model:
+  name: worldcam
+  family: worldcam
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, video, camera_pose]
+  roles: [candidate]
+  python_bin: auto
+  # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
+  repo_root: third_party/WorldCam
+  # Download the fine-tuned WorldCam DiT here as `finetuned_dit.safetensors`.
+  checkpoint_dir: cache/hfd/worldcam--worldcam
+  entrypoint: inference.py
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_current
+  reference_mode: first_frame
+  generation:
+    height: 480
+    width: 832
+    cond_frames: 65
+    camera_frames: 233
+    output_fps: 30
+    output_quality: 4
+    cfg_scale: 4.0
+    seed: 0
+    num_ar_steps: 50
+    attention_sink_inference: false
+    long_term_memory_start: 30
+    long_term_memory_num_clips: 4
+    long_term_memory_ref_indices: [48, 52, 56, 60]
+    device: cuda
+    torch_dtype: bfloat16
+    weights_filename: finetuned_dit.safetensors

@@ -1,6 +1,11 @@
 model:
   name: lingbot-world
   family: lingbot_world
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
   python_bin: auto
   # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
   repo_root: third_party/lingbot-world
@@ -14,6 +19,9 @@ model:
   prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
+    # The adapter forwards the common upstream CLI controls directly from this block,
+    # including sample_steps/sample_shift/sample_guide_scale, ulysses_size, t5_cpu,
+    # t5_fsdp, dit_fsdp, use_prompt_extend, prompt_extend_*, and action_string_by_suite.
     task: i2v-A14B
     size: 832*480
     frame_num: 81

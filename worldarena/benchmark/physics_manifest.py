@@ -10,7 +10,12 @@ import cv2
 from PIL import Image
 
 from worldarena.benchmark.schemas import BenchmarkSample
-from worldarena.benchmark.taxonomy import assign_split
+from worldarena.benchmark.taxonomy import (
+    artifact_type_for_modality,
+    assign_split,
+    control_signals_for_sample,
+    task_family_for_suite,
+)
 from worldarena.common.serialization import ensure_dir, write_json
 
 
@@ -218,6 +223,14 @@ def _build_sample(
         source_type="simulator_video",
         source_group_id=source_group_id,
         license_bucket="internal",
+        benchmark_family="worldarena_physics",
+        task_family=task_family_for_suite("experimental", track="physics_i2v"),
+        artifact_type=artifact_type_for_modality("video"),
+        control_signals=control_signals_for_sample(
+            modality="video",
+            conditioning_strategy="external_image",
+            has_pose=False,
+        ),
         has_annotation=True,
         has_instruction=True,
         has_pose=False,

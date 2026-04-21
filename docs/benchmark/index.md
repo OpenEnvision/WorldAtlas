@@ -2,6 +2,8 @@
 
 WorldArena reports a suite-specific metric vector for controllable world generation. The benchmark contract is intentionally narrow: fixed manifest, fixed evaluation protocol, fixed eligibility rules, and no benchmark-wide total score.
 
+The repo-level architecture is broader than the current formal benchmark surface. Model configs and manifests now carry explicit task metadata so the same framework can later host 3D, 4D, reconstruction, and world-model evaluation without introducing a second config system. See [Architecture](../architecture.md).
+
 !!! note "Dataset stats live elsewhere"
     Collection counts, annotation coverage, caption distributions, and media statistics belong to [Dataset Analytics](../overview.md). They are intentionally not duplicated in the Benchmark section.
 

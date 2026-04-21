@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable, Mapping
 
 import cv2
 from PIL import Image
@@ -23,6 +23,28 @@ def build_env(
     if overrides:
         env.update({key: str(value) for key, value in overrides.items()})
     return env
+
+
+def extend_command_with_options(
+    command: list[str],
+    *,
+    payload: Mapping[str, object],
+    value_options: Mapping[str, Callable[[object], object]] | None = None,
+    bool_value_options: Iterable[str] = (),
+    flag_options: Iterable[str] = (),
+) -> None:
+    for name, cast in (value_options or {}).items():
+        value = payload.get(name)
+        if value is None:
+            continue
+        command.extend([f"--{name}", str(cast(value))])
+    for name in bool_value_options:
+        if name not in payload or payload[name] is None:
+            continue
+        command.extend([f"--{name}", "true" if bool(payload[name]) else "false"])
+    for name in flag_options:
+        if payload.get(name, False):
+            command.append(f"--{name}")
 
 
 def first_frame_to_image(video_path: Path, output_path: Path) -> Path:

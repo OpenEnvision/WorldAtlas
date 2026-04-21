@@ -6,9 +6,21 @@ This repo does not vendor upstream model repositories or redistribute model weig
 
 - the benchmark inventory, manifest, and reporting contract
 - official metric execution for the formal suites
-- adapter configs for selected world models under `config/models/`
+- a unified model config contract for local repos and API models under `config/models/`
 - a documented runtime layout for `cache/` and `third_party/`
 - a runtime self-check command for open-source users
+
+## Repo Shape
+
+WorldArena should stay benchmark-first, not pipeline-first:
+
+- `worldarena/benchmark/`: manifests, metrics, normalization, evaluation runner, reporting
+- `worldarena/models/`: evaluated model adapters plus optional API-provider clients
+- `worldarena/datasets/`: dataset discovery and inventory logic
+- `worldarena/common/`: shared taxonomy, runtime layout, environment inspection, serialization
+- `config/models/`: one YAML schema for local-repo models and API-backed models
+
+The current code now carries explicit `backend_type`, `task_families`, `artifact_types`, `control_signals`, and `roles` metadata. That is the mechanism for scaling from today's video benchmark into 3D, 4D, reconstruction, and world-model coverage without creating a second framework inside the repo.
 
 ## Install Profiles
 
@@ -55,6 +67,7 @@ Reuse an existing checkpoint cache and link local model repos into the expected 
 uv run worldarena prepare-layout \
   --shared-hf-cache /path/to/shared/hf-cache \
   --repo-link lingbot-world=/path/to/lingbot-world \
+  --repo-link WorldCam=/path/to/WorldCam \
   --repo-link Matrix-Game-3.0=/path/to/Matrix-Game-3.0 \
   --repo-link metric-source=/path/to/compatible-metric-checkout
 ```
@@ -66,6 +79,7 @@ cache/
   hfd/
 third_party/
   lingbot-world/
+  WorldCam/
   Matrix-Game-3.0/
 ```
 
@@ -176,9 +190,22 @@ Bundled model configs now use project-relative defaults so the repository can be
 - `config/models/lingbot_world.yaml`
   - `repo_root: third_party/lingbot-world`
   - `checkpoint_dir: cache/hfd/robbyant--lingbot-world-base-cam`
+- `config/models/worldcam.yaml`
+  - `repo_root: third_party/WorldCam`
+  - `checkpoint_dir: cache/hfd/worldcam--worldcam`
 - `config/models/matrix_game.yaml`
   - `repo_root: third_party/Matrix-Game-3.0`
   - `checkpoint_dir: cache/hfd/Matrix-Game-3.0`
+
+Bundled configs also use a single schema for model capability metadata:
+
+- `backend_type`: `local_repo`, `python_module`, `sdk_api`, or `http_api`
+- `task_families`: for example `video_generation` or `world_model`
+- `artifact_types`: for example `video`, `image`, `mesh`, `point_cloud`
+- `control_signals`: for example `text`, `image`, `video`, `camera_pose`, `actions`
+- `roles`: `candidate`, `oracle`, `metric_backend`, `reconstruction`, or `foundation`
+
+API-backed models should use the same YAML shape and set `repo_root: null`. The starter template lives at `config/models/template_video_api.yaml.example`.
 
 If the upstream model code needs a separate CUDA-enabled interpreter, the configs still support `python_bin: auto`, which prefers `.runtime312/bin/python` when present.
 
@@ -188,10 +215,12 @@ Example runtime bootstrap for adapters that need a 3.12 side environment:
 uv venv --python 3.12 --system-site-packages .runtime312
 uv pip install --python .runtime312/bin/python \
   diffusers decord dashscope easydict scipy trimesh imageio imageio-ffmpeg \
-  opencv-python==4.10.0.84
+  modelscope sentencepiece protobuf pynvml opencv-python==4.10.0.84
 ```
 
 Optional model-side environment overrides live under `model.env` in the YAML configs. Use that block for `CUDA_VISIBLE_DEVICES`, `HF_HOME`, or other adapter-specific runtime settings.
+
+For `lingbot-world`, the `model.generation` block is intended to stay close to the upstream CLI. Beyond the core fields (`task`, `size`, `frame_num`, `sample_solver`), the adapter also forwards controls such as `sample_steps`, `sample_shift`, `sample_guide_scale`, `ulysses_size`, `offload_model`, `t5_fsdp`, `t5_cpu`, `dit_fsdp`, `use_prompt_extend`, `prompt_extend_*`, and `action_string_by_suite`.
 
 ## Dataset Analytics And Docs
 
@@ -209,7 +238,8 @@ uv run mkdocs serve
 
 Additional documentation:
 
-- `docs/benchmark.md`: benchmark scope, metric policy, reporting contract
+- `docs/architecture.md`: repo boundaries, task families, unified model config, and API integration pattern
+- `docs/benchmark/`: benchmark scope, metric policy, reporting contract, and per-metric notes
 - `docs/environment.md`: install profiles, self-check flow, runtime layering
 - `docs/third_party.md`: third-party repos, cache layout, and checkpoint integration
 - `docs/development.md`: maintainer workflow, validation commands, release hygiene

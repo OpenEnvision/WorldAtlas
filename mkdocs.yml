@@ -38,6 +38,7 @@ extra_css:
   - assets/stylesheets/extra.css
 nav:
   - Home: index.md
+  - Architecture: architecture.md
   - Benchmark:
       - Overview: benchmark/index.md
       - Protocol & Eligibility: benchmark/protocol.md

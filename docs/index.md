@@ -4,6 +4,7 @@ WorldArena is a benchmark and dataset analytics workspace for world models. The 
 
 Use the documentation in this order if you are getting started:
 
+- **Architecture**: repo boundaries, task families, unified model config, and how local/API models fit the same contract.
 - **Benchmark**: evaluation scope, metric surface, reporting contract, and output artifacts.
 - **Environment**: install profiles, `uv` commands, self-check workflow, and runtime layering.
 - **Runtime Setup**: how `cache/`, `third_party/`, checkpoints, and adapter repos are expected to be wired together.

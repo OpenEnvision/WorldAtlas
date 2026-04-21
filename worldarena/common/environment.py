@@ -49,6 +49,13 @@ DEPENDENCY_PROFILES = {
         "decord": "decord",
         "dashscope": "dashscope",
         "easydict": "easydict",
+        "ftfy": "ftfy",
+        "imageio": "imageio",
+        "modelscope": "modelscope",
+        "protobuf": "google.protobuf",
+        "pynvml": "pynvml",
+        "safetensors": "safetensors",
+        "sentencepiece": "sentencepiece",
     },
 }
 BUILTIN_METRIC_REQUIREMENTS = {

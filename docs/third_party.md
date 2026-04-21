@@ -16,6 +16,7 @@ WorldArena/
     hfd/
   third_party/
     lingbot-world/
+    WorldCam/
     Matrix-Game-3.0/
     metric-source/
 ```
@@ -25,6 +26,9 @@ The bundled model configs assume this layout by default:
 - `config/models/lingbot_world.yaml`
   - `repo_root: third_party/lingbot-world`
   - `checkpoint_dir: cache/hfd/robbyant--lingbot-world-base-cam`
+- `config/models/worldcam.yaml`
+  - `repo_root: third_party/WorldCam`
+  - `checkpoint_dir: cache/hfd/worldcam--worldcam`
 - `config/models/matrix_game.yaml`
   - `repo_root: third_party/Matrix-Game-3.0`
   - `checkpoint_dir: cache/hfd/Matrix-Game-3.0`
@@ -50,6 +54,7 @@ Link existing upstream repos into `third_party/`:
 ```bash
 uv run worldarena prepare-layout \
   --repo-link lingbot-world=/path/to/lingbot-world \
+  --repo-link WorldCam=/path/to/WorldCam \
   --repo-link Matrix-Game-3.0=/path/to/Matrix-Game-3.0
 ```
 
@@ -148,7 +153,7 @@ Example bootstrap:
 uv venv --python 3.12 --system-site-packages .runtime312
 uv pip install --python .runtime312/bin/python \
   diffusers decord dashscope easydict scipy trimesh imageio imageio-ffmpeg \
-  opencv-python==4.10.0.84
+  modelscope sentencepiece protobuf pynvml opencv-python==4.10.0.84
 ```
 
 Keep benchmark orchestration in the repo environment and isolate adapter-specific runtime packages in `.runtime312` when necessary.

@@ -43,6 +43,7 @@ If you already have machine-local caches or external clones:
 uv run worldarena prepare-layout \
   --shared-hf-cache /path/to/shared/hf-cache \
   --repo-link lingbot-world=/path/to/lingbot-world \
+  --repo-link WorldCam=/path/to/WorldCam \
   --repo-link Matrix-Game-3.0=/path/to/Matrix-Game-3.0
 ```
 
@@ -80,13 +81,23 @@ WorldArena's official benchmark surface is intentionally narrow:
 
 Bundled adapters assume open-source-friendly relative paths in `config/models/*.yaml`. If an upstream repo needs a different layout, prefer overriding the YAML locally or linking the repo into `third_party/` instead of hard-coding private absolute paths back into versioned config.
 
+All models, including future API-backed ones, should keep the same YAML surface:
+
+- `backend_type`
+- `task_families`
+- `artifact_types`
+- `control_signals`
+- `roles`
+
+Use `config/models/template_video_api.yaml.example` as the starting point for API models instead of introducing a second config format.
+
 If an adapter needs a separate interpreter, bootstrap `.runtime312` and keep adapter-specific packages there:
 
 ```bash
 uv venv --python 3.12 --system-site-packages .runtime312
 uv pip install --python .runtime312/bin/python \
   diffusers decord dashscope easydict scipy trimesh imageio imageio-ffmpeg \
-  opencv-python==4.10.0.84
+  modelscope sentencepiece protobuf pynvml opencv-python==4.10.0.84
 ```
 
 ## Preview And Validation

@@ -67,6 +67,10 @@ class BenchmarkSample:
     source_type: str
     source_group_id: str
     license_bucket: str
+    benchmark_family: str = "worldarena"
+    task_family: str | None = None
+    artifact_type: str | None = None
+    control_signals: list[str] = field(default_factory=list)
     annotation_path: str | None = None
     mask_path: str | None = None
     has_annotation: bool = False

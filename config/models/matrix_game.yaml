@@ -1,6 +1,11 @@
 model:
   name: matrix-game
   family: matrix_game_3
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, actions]
+  roles: [candidate]
   python_bin: auto
   # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
   repo_root: third_party/Matrix-Game-3.0

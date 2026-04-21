@@ -285,6 +285,53 @@ def _load_pose_indices(annotation_dir: Path) -> np.ndarray | None:
     return np.asarray(values, dtype=np.float32)
 
 
+def _intrinsics_matrix_to_vector(matrix: np.ndarray) -> np.ndarray:
+    matrix = np.asarray(matrix, dtype=np.float32)
+    if matrix.shape[-2:] != (3, 3):
+        raise ValueError(f"expected 3x3 intrinsics matrix, got {matrix.shape}")
+    return np.asarray([matrix[0, 0], matrix[1, 1], matrix[0, 2], matrix[1, 2]], dtype=np.float32)
+
+
+def _normalize_intrinsics_sequence(intrinsics: np.ndarray) -> np.ndarray:
+    intrinsics = np.asarray(intrinsics, dtype=np.float32)
+    if intrinsics.ndim == 1:
+        if intrinsics.shape[0] == 4:
+            return intrinsics[None].astype(np.float32)
+        raise ValueError(f"unsupported intrinsics vector shape: {intrinsics.shape}")
+    if intrinsics.ndim == 2:
+        if intrinsics.shape[-1] == 4:
+            return intrinsics.astype(np.float32)
+        if intrinsics.shape == (3, 3):
+            return _intrinsics_matrix_to_vector(intrinsics)[None]
+        raise ValueError(f"unsupported intrinsics layout: {intrinsics.shape}")
+    if intrinsics.ndim == 3 and intrinsics.shape[-2:] == (3, 3):
+        return np.stack([_intrinsics_matrix_to_vector(matrix) for matrix in intrinsics], axis=0)
+    raise ValueError(f"unsupported intrinsics layout: {intrinsics.shape}")
+
+
+def _resample_intrinsics_sequence(
+    intrinsics: np.ndarray,
+    intrinsics_indices: np.ndarray,
+    target_frames: int,
+) -> np.ndarray:
+    if target_frames <= 0:
+        raise ValueError(f"target_frames must be positive, got {target_frames}")
+    if len(intrinsics) == 1:
+        return np.repeat(intrinsics.astype(np.float32), target_frames, axis=0)
+
+    target_positions = np.linspace(
+        float(intrinsics_indices[0]),
+        float(intrinsics_indices[-1]),
+        num=target_frames,
+        dtype=np.float32,
+    )
+    columns = [
+        np.interp(target_positions, intrinsics_indices, intrinsics[:, idx]).astype(np.float32)
+        for idx in range(intrinsics.shape[1])
+    ]
+    return np.stack(columns, axis=1).astype(np.float32)
+
+
 def _slerp_quaternion(start: np.ndarray, end: np.ndarray, ratio: float) -> np.ndarray:
     start_unit = start / (np.linalg.norm(start) + 1e-8)
     end_unit = end / (np.linalg.norm(end) + 1e-8)
@@ -391,6 +438,33 @@ def load_intrinsics(annotation_path: str | None) -> np.ndarray | None:
     return np.load(intrinsics_path).astype(np.float32)
 
 
+def load_intrinsics_sequence(
+    annotation_path: str | None,
+    *,
+    target_frames: int | None = None,
+) -> np.ndarray | None:
+    annotation_dir = _annotation_dir(annotation_path)
+    if annotation_dir is None:
+        return None
+    intrinsics_path = annotation_dir / "intrinsics.npy"
+    if not intrinsics_path.exists():
+        return None
+
+    intrinsics = _normalize_intrinsics_sequence(np.load(intrinsics_path))
+    if target_frames is None or len(intrinsics) == target_frames:
+        return intrinsics.astype(np.float32)
+
+    intrinsics_indices = _load_pose_indices(annotation_dir)
+    if intrinsics_indices is None or len(intrinsics_indices) != len(intrinsics):
+        intrinsics_indices = np.linspace(
+            0.0,
+            float(len(intrinsics) - 1),
+            num=len(intrinsics),
+            dtype=np.float32,
+        )
+    return _resample_intrinsics_sequence(intrinsics, intrinsics_indices, target_frames)
+
+
 __all__ = [
     "annotation_text",
     "derive_object_prompts",
@@ -399,4 +473,5 @@ __all__ = [
     "load_caption",
     "load_instruction_payload",
     "load_intrinsics",
+    "load_intrinsics_sequence",
 ]

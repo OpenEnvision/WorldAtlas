@@ -14,6 +14,9 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "motion_accuracy": "motion_control",
     "motion_magnitude": "motion_dynamics",
     "motion_smoothness": "motion_dynamics",
+    "physical_fps_error": "temporal_calibration",
+    "physical_fps_pct_error": "temporal_calibration",
+    "physical_fps_intra_video_cv": "temporal_calibration",
 }
 
 

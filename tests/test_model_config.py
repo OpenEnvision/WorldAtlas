@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from worldarena.models.config import load_model_config
 
 
@@ -112,15 +114,99 @@ def test_load_model_config_parses_optional_env_overrides(tmp_path: Path) -> None
     }
 
 
+def test_load_model_config_supports_api_backends_without_repo_root(tmp_path: Path) -> None:
+    project_root = tmp_path
+    config_path = project_root / "config" / "models" / "veo3_api.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        "\n".join(
+            [
+                "model:",
+                "  name: veo3-api",
+                "  family: veo3",
+                "  backend_type: http_api",
+                "  task_families: [video_generation]",
+                "  artifact_types: [video]",
+                "  control_signals: [text, image]",
+                "  roles: [candidate]",
+                "  python_bin: python",
+                "  repo_root: null",
+                "  checkpoint_dir: null",
+                "  entrypoint: null",
+                "  output_ext: .mp4",
+                "  supported_suites: [video_static, video_dynamic]",
+                "  prompt_mode: prompt_target",
+                "  reference_mode: first_frame",
+                "  api:",
+                "    provider: veo",
+                "    api_key_env: VEO_API_KEY",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    config = load_model_config(config_path)
+    assert config.backend_type == "http_api"
+    assert config.repo_root is None
+    assert config.entrypoint is None
+    assert config.task_families == ["video_generation"]
+    assert config.artifact_types == ["video"]
+    assert config.control_signals == ["text", "image"]
+    assert config.roles == ["candidate"]
+    assert config.api == {
+        "provider": "veo",
+        "api_key_env": "VEO_API_KEY",
+    }
+
+
+def test_load_model_config_requires_repo_root_for_local_backends(tmp_path: Path) -> None:
+    project_root = tmp_path
+    config_path = project_root / "config" / "models" / "broken_local.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        "\n".join(
+            [
+                "model:",
+                "  name: broken-local",
+                "  family: custom",
+                "  backend_type: local_repo",
+                "  python_bin: python",
+                "  repo_root: null",
+                "  checkpoint_dir: null",
+                "  output_ext: .mp4",
+                "  supported_suites: [video_static]",
+                "  prompt_mode: prompt_target",
+                "  reference_mode: first_frame",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="requires repo_root"):
+        load_model_config(config_path)
+
+
 def test_repository_model_configs_use_project_relative_layout() -> None:
     project_root = Path(__file__).resolve().parents[1]
 
     lingbot = load_model_config(project_root / "config" / "models" / "lingbot_world.yaml")
+    worldcam = load_model_config(project_root / "config" / "models" / "worldcam.yaml")
     matrix_game = load_model_config(project_root / "config" / "models" / "matrix_game.yaml")
 
     assert lingbot.repo_root == (project_root / "third_party" / "lingbot-world").resolve()
     assert lingbot.checkpoint_dir == (
         project_root / "cache" / "hfd" / "robbyant--lingbot-world-base-cam"
     ).resolve()
+    assert worldcam.repo_root == (project_root / "third_party" / "WorldCam").resolve()
+    assert worldcam.checkpoint_dir == (project_root / "cache" / "hfd" / "worldcam--worldcam").resolve()
     assert matrix_game.repo_root == (project_root / "third_party" / "Matrix-Game-3.0").resolve()
     assert matrix_game.checkpoint_dir == (project_root / "cache" / "hfd" / "Matrix-Game-3.0").resolve()
+    assert lingbot.backend_type == "local_repo"
+    assert lingbot.task_families == ["world_model", "video_generation"]
+    assert lingbot.artifact_types == ["video"]
+    assert lingbot.control_signals == ["text", "image"]
+    assert lingbot.roles == ["candidate"]
+    assert worldcam.control_signals == ["text", "video", "camera_pose"]
+    assert matrix_game.control_signals == ["text", "image", "actions"]

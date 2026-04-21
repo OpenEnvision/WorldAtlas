@@ -18,6 +18,11 @@ import numpy as np
 
 from worldarena.benchmark.physics_manifest import REQUIRED_CORE_METRICS
 from worldarena.benchmark.schemas import BenchmarkSample
+from worldarena.benchmark.taxonomy import (
+    artifact_type_for_modality,
+    control_signals_for_sample,
+    task_family_for_suite,
+)
 
 
 WORLD_GT_REQUIRED_FILENAMES: tuple[str, ...] = ("rgb.mp4",)
@@ -1331,6 +1336,14 @@ def build_online_physics_sample(
         source_type="generated_case",
         source_group_id=benchmark_sample_id,
         license_bucket="internal",
+        benchmark_family="worldarena_physics",
+        task_family=task_family_for_suite("experimental", track="physics_i2v"),
+        artifact_type=artifact_type_for_modality("video"),
+        control_signals=control_signals_for_sample(
+            modality="video",
+            conditioning_strategy="external_image",
+            has_pose=False,
+        ),
         has_annotation=True,
         has_instruction=True,
         has_pose=False,

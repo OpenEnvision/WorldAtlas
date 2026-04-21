@@ -1,0 +1,28 @@
+model:
+  name: example-video-api
+  family: example_video_api
+  backend_type: http_api
+  task_families: [video_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  python_bin: python
+  repo_root: null
+  checkpoint_dir: null
+  entrypoint: null
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  api:
+    provider: example
+    api_key_env: EXAMPLE_API_KEY
+    base_url_env: EXAMPLE_API_BASE_URL
+    submit_mode: http_polling
+    timeout_seconds: 900
+    poll_interval_seconds: 10
+  generation:
+    resolution: 720p
+    duration_seconds: 8

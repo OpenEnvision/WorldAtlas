@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from worldarena.models.adapters.base import ModelAdapter
-from worldarena.models.adapters.common import build_env, run_command
+from worldarena.models.adapters.common import build_env, extend_command_with_options, run_command
 from worldarena.benchmark.schemas import BenchmarkSample
 
 
@@ -40,16 +40,27 @@ class LingBotWorldAdapter(ModelAdapter):
             "--sample_solver",
             str(generation.get("sample_solver", "unipc")),
         ]
-        if "sample_steps" in generation:
-            command.extend(["--sample_steps", str(int(generation["sample_steps"]))])
-        if "sample_shift" in generation:
-            command.extend(["--sample_shift", str(float(generation["sample_shift"]))])
-        if "sample_guide_scale" in generation:
-            command.extend(["--sample_guide_scale", str(float(generation["sample_guide_scale"]))])
-        if generation.get("offload_model", False):
-            command.extend(["--offload_model", "true"])
-        if generation.get("convert_model_dtype", False):
-            command.append("--convert_model_dtype")
+        extend_command_with_options(
+            command,
+            payload=generation,
+            value_options={
+                "sample_steps": int,
+                "sample_shift": float,
+                "sample_guide_scale": float,
+                "ulysses_size": int,
+                "prompt_extend_method": str,
+                "prompt_extend_model": str,
+                "prompt_extend_target_lang": str,
+            },
+            bool_value_options=("offload_model",),
+            flag_options=(
+                "convert_model_dtype",
+                "t5_fsdp",
+                "t5_cpu",
+                "dit_fsdp",
+                "use_prompt_extend",
+            ),
+        )
 
         action_path = generation.get("action_path")
         action_string_by_suite = generation.get("action_string_by_suite", {})
