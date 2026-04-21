@@ -27,6 +27,13 @@ def write_run_outputs(
     elif diagnostic_path.exists():
         diagnostic_path.unlink()
 
+    failure_summary = aggregate_payload.get("failure_summary", {})
+    failure_path = output_dir / "metric_failures.json"
+    if failure_summary:
+        write_json(failure_path, failure_summary)
+    elif failure_path.exists():
+        failure_path.unlink()
+
     write_json(output_dir / "domain_breakdown.json", aggregate_payload["domain_breakdown"])
 
     per_sample_path = output_dir / "per_sample_scores.jsonl"

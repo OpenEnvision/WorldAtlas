@@ -1,5 +1,6 @@
 site_name: WorldArena
 site_description: World model benchmark and dataset analytics toolkit
+site_url: https://ichubai.github.io/WorldArena/
 site_dir: .cache/site
 theme:
   name: material

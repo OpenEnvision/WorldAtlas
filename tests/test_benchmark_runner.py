@@ -190,11 +190,13 @@ def test_benchmark_runner_reports_official_metrics_for_instruction_conditioned_s
         "style_consistency",
     ]
     assert result["run_manifest"]["reported_diagnostics"] == {}
+    assert result["run_manifest"]["reported_failures"] == {}
     assert result["run_manifest"]["evaluation_protocol"] == "anchor_compat"
     assert (output_dir / "run_manifest.json").exists()
     assert (output_dir / "per_sample_scores.jsonl").exists()
     assert (output_dir / "leaderboard.csv").exists()
     assert not (output_dir / "diagnostic_metric_summary.json").exists()
+    assert not (output_dir / "metric_failures.json").exists()
 
     manifest_payload = json.loads((output_dir / "run_manifest.json").read_text(encoding="utf-8"))
     assert manifest_payload["reported_metrics"] == result["run_manifest"]["reported_metrics"]
@@ -268,7 +270,9 @@ def test_benchmark_runner_separates_weak_prompt_alignment_into_diagnostics(
         "style_consistency",
     ]
     assert result["run_manifest"]["reported_diagnostics"]["image_static"] == ["prompt_alignment"]
+    assert result["run_manifest"]["reported_failures"] == {}
     assert (output_dir / "diagnostic_metric_summary.json").exists()
+    assert not (output_dir / "metric_failures.json").exists()
 
     with (output_dir / "leaderboard.csv").open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -277,3 +281,43 @@ def test_benchmark_runner_separates_weak_prompt_alignment_into_diagnostics(
             "image_static__perceptual_quality",
             "image_static__style_consistency",
         ]
+
+
+def test_benchmark_runner_reports_metric_failures_explicitly(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    _mock_reference_metrics(monkeypatch)
+    monkeypatch.setattr(
+        quality_metrics,
+        "compute_reference_perceptual_quality",
+        lambda frames: (_ for _ in ()).throw(RuntimeError("quality backend unavailable")),
+    )
+    reference_path, predictions_root, output_dir = _prepare_prediction(tmp_path)
+    config = _make_config(tmp_path)
+    manifest = [_make_sample(reference_path, conditioning_strategy="text", has_instruction=True)]
+
+    result = run_benchmark(
+        config=config,
+        manifest=manifest,
+        predictions_root=predictions_root,
+        output_dir=output_dir,
+        model_name="toy_model",
+        suites=None,
+        splits={"dev_public"},
+        limit=None,
+    )
+
+    assert result["run_manifest"]["reported_metrics"]["image_static"] == [
+        "prompt_alignment",
+        "style_consistency",
+    ]
+    assert result["run_manifest"]["reported_failures"]["image_static"] == ["perceptual_quality"]
+
+    failure_payload = json.loads((output_dir / "metric_failures.json").read_text(encoding="utf-8"))
+    assert failure_payload["image_static"]["perceptual_quality"] == {
+        "failed_samples": 1,
+        "eligibility_statuses": ["official"],
+        "sample_ids": ["image_static_photorealistic_living_spaces_0001"],
+        "errors": [{"message": "quality backend unavailable", "count": 1}],
+    }

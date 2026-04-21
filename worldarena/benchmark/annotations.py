@@ -214,6 +214,39 @@ def _quaternion_to_rotation_matrix(quaternion: np.ndarray) -> np.ndarray:
     )
 
 
+def _rotation_matrix_to_quaternion(rotation: np.ndarray) -> np.ndarray:
+    trace = float(rotation[0, 0] + rotation[1, 1] + rotation[2, 2])
+    if trace > 0.0:
+        s = np.sqrt(trace + 1.0) * 2.0
+        qw = 0.25 * s
+        qx = (rotation[2, 1] - rotation[1, 2]) / s
+        qy = (rotation[0, 2] - rotation[2, 0]) / s
+        qz = (rotation[1, 0] - rotation[0, 1]) / s
+    elif rotation[0, 0] > rotation[1, 1] and rotation[0, 0] > rotation[2, 2]:
+        s = np.sqrt(1.0 + rotation[0, 0] - rotation[1, 1] - rotation[2, 2]) * 2.0
+        qw = (rotation[2, 1] - rotation[1, 2]) / s
+        qx = 0.25 * s
+        qy = (rotation[0, 1] + rotation[1, 0]) / s
+        qz = (rotation[0, 2] + rotation[2, 0]) / s
+    elif rotation[1, 1] > rotation[2, 2]:
+        s = np.sqrt(1.0 + rotation[1, 1] - rotation[0, 0] - rotation[2, 2]) * 2.0
+        qw = (rotation[0, 2] - rotation[2, 0]) / s
+        qx = (rotation[0, 1] + rotation[1, 0]) / s
+        qy = 0.25 * s
+        qz = (rotation[1, 2] + rotation[2, 1]) / s
+    else:
+        s = np.sqrt(1.0 + rotation[2, 2] - rotation[0, 0] - rotation[1, 1]) * 2.0
+        qw = (rotation[1, 0] - rotation[0, 1]) / s
+        qx = (rotation[0, 2] + rotation[2, 0]) / s
+        qy = (rotation[1, 2] + rotation[2, 1]) / s
+        qz = 0.25 * s
+    quaternion = np.array([qx, qy, qz, qw], dtype=np.float32)
+    norm = np.linalg.norm(quaternion)
+    if norm == 0.0:
+        return np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32)
+    return (quaternion / norm).astype(np.float32)
+
+
 def _pose_vector_to_matrix(pose: np.ndarray) -> np.ndarray:
     if pose.shape[0] != 7:
         raise ValueError(f"expected pose vector with 7 elements, got shape {pose.shape}")
@@ -223,7 +256,99 @@ def _pose_vector_to_matrix(pose: np.ndarray) -> np.ndarray:
     return matrix
 
 
-def load_camera_matrices(annotation_path: str | None) -> np.ndarray | None:
+def _matrix_to_pose_vector(matrix: np.ndarray) -> np.ndarray:
+    if matrix.shape != (4, 4):
+        raise ValueError(f"expected camera matrix with shape (4, 4), got {matrix.shape}")
+    return np.concatenate(
+        [
+            matrix[:3, 3].astype(np.float32),
+            _rotation_matrix_to_quaternion(matrix[:3, :3]),
+        ]
+    ).astype(np.float32)
+
+
+def _load_pose_indices(annotation_dir: Path) -> np.ndarray | None:
+    index_path = annotation_dir / "indexes.txt"
+    if not index_path.exists():
+        return None
+    values: list[float] = []
+    for line in index_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        parts = stripped.split()
+        if len(parts) < 2:
+            continue
+        values.append(float(parts[1]))
+    if not values:
+        return None
+    return np.asarray(values, dtype=np.float32)
+
+
+def _slerp_quaternion(start: np.ndarray, end: np.ndarray, ratio: float) -> np.ndarray:
+    start_unit = start / (np.linalg.norm(start) + 1e-8)
+    end_unit = end / (np.linalg.norm(end) + 1e-8)
+    dot = float(np.dot(start_unit, end_unit))
+    if dot < 0.0:
+        end_unit = -end_unit
+        dot = -dot
+    dot = float(np.clip(dot, -1.0, 1.0))
+    if dot > 0.9995:
+        blended = start_unit + ratio * (end_unit - start_unit)
+        return (blended / (np.linalg.norm(blended) + 1e-8)).astype(np.float32)
+    theta_0 = np.arccos(dot)
+    theta = theta_0 * ratio
+    sin_theta = np.sin(theta)
+    sin_theta_0 = np.sin(theta_0)
+    start_scale = np.sin(theta_0 - theta) / sin_theta_0
+    end_scale = sin_theta / sin_theta_0
+    blended = start_scale * start_unit + end_scale * end_unit
+    return (blended / (np.linalg.norm(blended) + 1e-8)).astype(np.float32)
+
+
+def _resample_pose_vectors(
+    pose_vectors: np.ndarray,
+    pose_indices: np.ndarray,
+    target_frames: int,
+) -> np.ndarray:
+    if target_frames <= 0:
+        raise ValueError(f"target_frames must be positive, got {target_frames}")
+    if len(pose_vectors) == 1:
+        return np.repeat(pose_vectors.astype(np.float32), target_frames, axis=0)
+
+    target_positions = np.linspace(
+        float(pose_indices[0]),
+        float(pose_indices[-1]),
+        num=target_frames,
+        dtype=np.float32,
+    )
+    result: list[np.ndarray] = []
+    for target_position in target_positions:
+        upper = int(np.searchsorted(pose_indices, target_position, side="right"))
+        lower = max(0, upper - 1)
+        upper = min(upper, len(pose_indices) - 1)
+        if lower == upper or pose_indices[upper] == pose_indices[lower]:
+            result.append(pose_vectors[lower].astype(np.float32))
+            continue
+        span = float(pose_indices[upper] - pose_indices[lower])
+        ratio = float((target_position - pose_indices[lower]) / span)
+        translation = (
+            (1.0 - ratio) * pose_vectors[lower, :3] + ratio * pose_vectors[upper, :3]
+        ).astype(np.float32)
+        rotation = _slerp_quaternion(
+            pose_vectors[lower, 3:7],
+            pose_vectors[upper, 3:7],
+            ratio,
+        )
+        result.append(np.concatenate([translation, rotation]).astype(np.float32))
+    return np.stack(result, axis=0).astype(np.float32)
+
+
+def load_camera_matrices(
+    annotation_path: str | None,
+    *,
+    target_frames: int | None = None,
+) -> np.ndarray | None:
     annotation_dir = _annotation_dir(annotation_path)
     if annotation_dir is None:
         return None
@@ -231,12 +356,29 @@ def load_camera_matrices(annotation_path: str | None) -> np.ndarray | None:
     if not pose_path.exists():
         return None
     poses = np.load(pose_path)
+    pose_vectors: np.ndarray
     if poses.ndim == 3 and poses.shape[1:] == (4, 4):
-        return poses.astype(np.float32)
-    if poses.ndim == 2 and poses.shape[1] == 7:
-        matrices = np.stack([_pose_vector_to_matrix(pose_row) for pose_row in poses], axis=0)
+        matrices = poses.astype(np.float32)
+        pose_vectors = np.stack([_matrix_to_pose_vector(matrix) for matrix in matrices], axis=0)
+    elif poses.ndim == 2 and poses.shape[1] == 7:
+        pose_vectors = poses.astype(np.float32)
+        matrices = np.stack([_pose_vector_to_matrix(pose_row) for pose_row in pose_vectors], axis=0)
+    else:
+        raise ValueError(f"unsupported pose array shape: {poses.shape}")
+
+    if target_frames is None or len(matrices) == target_frames:
         return matrices.astype(np.float32)
-    raise ValueError(f"unsupported pose array shape: {poses.shape}")
+
+    pose_indices = _load_pose_indices(annotation_dir)
+    if pose_indices is None or len(pose_indices) != len(pose_vectors):
+        pose_indices = np.linspace(
+            0.0,
+            float(len(pose_vectors) - 1),
+            num=len(pose_vectors),
+            dtype=np.float32,
+        )
+    interpolated = _resample_pose_vectors(pose_vectors, pose_indices, target_frames)
+    return np.stack([_pose_vector_to_matrix(pose_row) for pose_row in interpolated], axis=0)
 
 
 def load_intrinsics(annotation_path: str | None) -> np.ndarray | None:

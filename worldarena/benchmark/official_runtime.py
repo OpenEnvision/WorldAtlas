@@ -168,7 +168,7 @@ def resolve_metric_source_layout() -> MetricSourceLayout:
     )
     grounding_package_dir = _select_candidate_path(
         [path.parent for path in source_root.rglob("groundingdino/__init__.py")],
-        package_prefix=package_name,
+        package_prefix="GroundingDINO",
     )
     sam2_package_dir = _select_candidate_path(
         [path.parent for path in source_root.rglob("sam2/__init__.py")],
@@ -228,6 +228,10 @@ def metric_runtime_context() -> Iterator[MetricSourceLayout]:
 @lru_cache(maxsize=None)
 def _load_metric_class(metric_name: str) -> type[Any]:
     with metric_runtime_context() as layout:
+        try:
+            import torch  # noqa: F401
+        except ModuleNotFoundError:
+            pass
         module_suffix, class_name = OFFICIAL_IMPORT_TARGETS[metric_name]
         package_root = layout.overlay_root / layout.package_name
         benchmark_root = package_root / "benchmark"
@@ -419,13 +423,11 @@ def _native_score_details(score: Any) -> dict[str, Any]:
 
 def _run_metric(metric_name: str, *args: Any, **kwargs: Any) -> Any:
     metric_class = _load_metric_class(metric_name)
-    with metric_runtime_context():
-        metric = metric_class(*args, **kwargs)
-        try:
-            return metric
-        except Exception:
-            _empty_cuda_cache()
-            raise
+    try:
+        return metric_class(*args, **kwargs)
+    except Exception:
+        _empty_cuda_cache()
+        raise
 
 
 def inspect_metric_source_layout() -> dict[str, Any]:
@@ -519,12 +521,13 @@ def compute_camera_error(
     except ModuleNotFoundError as exc:  # pragma: no cover - optional runtime dependency
         raise ModuleNotFoundError("torch is required for camera_error") from exc
 
-    metric = _run_metric("camera_error")
-    try:
-        score = metric._compute_scores(frame_paths, torch.as_tensor(cameras_gt), scale=scale)
-    finally:
-        del metric
-        _empty_cuda_cache()
+    with metric_runtime_context():
+        metric = _run_metric("camera_error")
+        try:
+            score = metric._compute_scores(frame_paths, torch.as_tensor(cameras_gt), scale=scale)
+        finally:
+            del metric
+            _empty_cuda_cache()
     raw_components = [float(score[0]), float(score[1])]
     return {
         "raw": {
@@ -546,12 +549,13 @@ def compute_reprojection_error(
     normalization: dict[str, Any],
 ) -> dict[str, Any]:
     frame_paths = materialize_frame_paths(prediction_path)
-    metric = _run_metric("reprojection_error")
-    try:
-        score = float(metric._compute_scores(frame_paths))
-    finally:
-        del metric
-        _empty_cuda_cache()
+    with metric_runtime_context():
+        metric = _run_metric("reprojection_error")
+        try:
+            score = float(metric._compute_scores(frame_paths))
+        finally:
+            del metric
+            _empty_cuda_cache()
     return {
         "raw": score,
         "normalized": normalize_official_score(score, normalization),
@@ -565,12 +569,13 @@ def compute_optical_flow_aepe(
     normalization: dict[str, Any],
 ) -> dict[str, Any]:
     frame_paths = materialize_frame_paths(prediction_path)
-    metric = _run_metric("optical_flow_aepe")
-    try:
-        score = float(metric._compute_scores(frame_paths))
-    finally:
-        del metric
-        _empty_cuda_cache()
+    with metric_runtime_context():
+        metric = _run_metric("optical_flow_aepe")
+        try:
+            score = float(metric._compute_scores(frame_paths))
+        finally:
+            del metric
+            _empty_cuda_cache()
     return {
         "raw": score,
         "normalized": normalize_official_score(score, normalization),
@@ -584,12 +589,13 @@ def compute_motion_magnitude(
     normalization: dict[str, Any],
 ) -> dict[str, Any]:
     frame_paths = materialize_frame_paths(prediction_path)
-    metric = _run_metric("motion_magnitude")
-    try:
-        score = float(metric._compute_scores(frame_paths))
-    finally:
-        del metric
-        _empty_cuda_cache()
+    with metric_runtime_context():
+        metric = _run_metric("motion_magnitude")
+        try:
+            score = float(metric._compute_scores(frame_paths))
+        finally:
+            del metric
+            _empty_cuda_cache()
     return {
         "raw": score,
         "normalized": normalize_official_score(score, normalization),
@@ -603,12 +609,13 @@ def compute_motion_smoothness(
     normalization: dict[str, Any],
 ) -> dict[str, Any]:
     frame_paths = materialize_frame_paths(prediction_path)
-    metric = _run_metric("motion_smoothness")
-    try:
-        score = metric._compute_scores(frame_paths)
-    finally:
-        del metric
-        _empty_cuda_cache()
+    with metric_runtime_context():
+        metric = _run_metric("motion_smoothness")
+        try:
+            score = metric._compute_scores(frame_paths)
+        finally:
+            del metric
+            _empty_cuda_cache()
     components = [float(score[0]), float(score[1]), float(score[2])]
     return {
         "raw": {
@@ -635,12 +642,13 @@ def compute_object_detection(
     normalization: dict[str, Any],
 ) -> dict[str, Any]:
     frame_paths = materialize_frame_paths(prediction_path)
-    metric = _run_metric("object_detection")
-    try:
-        score = float(metric._compute_scores(frame_paths, prompt_string))
-    finally:
-        del metric
-        _empty_cuda_cache()
+    with metric_runtime_context():
+        metric = _run_metric("object_detection")
+        try:
+            score = float(metric._compute_scores(frame_paths, prompt_string))
+        finally:
+            del metric
+            _empty_cuda_cache()
     return {
         "raw": score,
         "normalized": normalize_official_score(score, normalization),
@@ -668,12 +676,13 @@ def compute_motion_accuracy(
     ]
     if not mask_paths:
         raise FileNotFoundError(f"no masks found in {mask_dir}")
-    metric = _run_metric("motion_accuracy", generate_type)
-    try:
-        score = float(metric._compute_scores(frame_paths, mask_paths, []))
-    finally:
-        del metric
-        _empty_cuda_cache()
+    with metric_runtime_context():
+        metric = _run_metric("motion_accuracy", generate_type)
+        try:
+            score = float(metric._compute_scores(frame_paths, mask_paths, []))
+        finally:
+            del metric
+            _empty_cuda_cache()
     return {
         "raw": score,
         "normalized": normalize_official_score(score, normalization),

@@ -121,7 +121,7 @@ def test_registry_builds_new_official_metrics_from_aliases(tmp_path: Path) -> No
 def test_camera_error_metric_uses_official_runtime(monkeypatch) -> None:
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.control.load_camera_matrices",
-        lambda annotation_path: object(),
+        lambda annotation_path, target_frames=None: object(),
     )
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.control.compute_camera_error",

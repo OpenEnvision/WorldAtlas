@@ -154,6 +154,11 @@ def run_benchmark(
             for suite, metric_map in aggregate_payload.get("diagnostic_metric_summary", {}).items()
             if metric_map
         },
+        "reported_failures": {
+            suite: sorted(metric_map.keys())
+            for suite, metric_map in aggregate_payload.get("failure_summary", {}).items()
+            if metric_map
+        },
         "evaluation_protocol": config.protocol.official,
     }
     write_run_outputs(

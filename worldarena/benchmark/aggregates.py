@@ -42,6 +42,16 @@ def aggregate_results(sample_scores: list[SampleScore]) -> dict[str, Any]:
     diagnostic_metric_values: dict[str, dict[str, list[float]]] = defaultdict(
         lambda: defaultdict(list)
     )
+    failure_values: dict[str, dict[str, dict[str, Any]]] = defaultdict(
+        lambda: defaultdict(
+            lambda: {
+                "failed_samples": 0,
+                "errors": defaultdict(int),
+                "eligibility_statuses": set(),
+                "sample_ids": [],
+            }
+        )
+    )
     domain_values = {
         "style": defaultdict(lambda: defaultdict(lambda: defaultdict(list))),
         "environment": defaultdict(lambda: defaultdict(lambda: defaultdict(list))),
@@ -52,6 +62,13 @@ def aggregate_results(sample_scores: list[SampleScore]) -> dict[str, Any]:
     for sample in sample_scores:
         for metric_name, output in sample.metrics.items():
             if output.normalized is None:
+                failure_entry = failure_values[sample.suite][metric_name]
+                failure_entry["failed_samples"] += 1
+                failure_entry["eligibility_statuses"].add(output.eligibility_status)
+                error_key = output.error or "score unavailable"
+                failure_entry["errors"][error_key] += 1
+                if len(failure_entry["sample_ids"]) < 5:
+                    failure_entry["sample_ids"].append(sample.sample_id)
                 continue
             if output.eligibility_status == "official":
                 official_metric_values[sample.suite][metric_name].append(output.normalized)
@@ -91,10 +108,30 @@ def aggregate_results(sample_scores: list[SampleScore]) -> dict[str, Any]:
         }
         for dimension, buckets in domain_values.items()
     }
+    failure_summary = {
+        suite: {
+            metric_name: {
+                "failed_samples": int(entry["failed_samples"]),
+                "eligibility_statuses": sorted(str(status) for status in entry["eligibility_statuses"]),
+                "sample_ids": list(entry["sample_ids"]),
+                "errors": [
+                    {"message": message, "count": count}
+                    for message, count in sorted(
+                        entry["errors"].items(),
+                        key=lambda item: (-item[1], item[0]),
+                    )
+                ],
+            }
+            for metric_name, entry in metric_map.items()
+        }
+        for suite, metric_map in failure_values.items()
+        if metric_map
+    }
 
     return {
         "per_metric_summary": per_metric_summary,
         "diagnostic_metric_summary": diagnostic_metric_summary,
+        "failure_summary": failure_summary,
         "domain_breakdown": domain_breakdown,
         "leaderboard_row": _flatten_metric_summary(per_metric_summary),
     }

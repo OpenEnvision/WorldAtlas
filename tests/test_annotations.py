@@ -50,6 +50,31 @@ def test_load_camera_matrices_supports_pose_vectors(tmp_path: Path) -> None:
     np.testing.assert_allclose(matrices[0, :3, :3], np.eye(3, dtype=np.float32), atol=1e-5)
 
 
+def test_load_camera_matrices_interpolates_to_target_frames(tmp_path: Path) -> None:
+    annotation_dir = _write_annotation_dir(tmp_path)
+    poses = np.array(
+        [
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            [10.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+        ],
+        dtype=np.float32,
+    )
+    np.save(annotation_dir / "poses.npy", poses)
+    (annotation_dir / "indexes.txt").write_text("0 0\n1 10\n", encoding="utf-8")
+
+    matrices = load_camera_matrices(str(annotation_dir), target_frames=6)
+
+    assert matrices is not None
+    assert matrices.shape == (6, 4, 4)
+    np.testing.assert_allclose(
+        matrices[:, 0, 3],
+        np.array([0.0, 2.0, 4.0, 6.0, 8.0, 10.0], dtype=np.float32),
+        atol=1e-4,
+    )
+    expected_rotations = np.repeat(np.eye(3, dtype=np.float32)[None, ...], 6, axis=0)
+    np.testing.assert_allclose(matrices[:, :3, :3], expected_rotations, atol=1e-5)
+
+
 def test_derive_object_prompts_falls_back_to_caption_text(tmp_path: Path) -> None:
     annotation_dir = _write_annotation_dir(tmp_path)
 

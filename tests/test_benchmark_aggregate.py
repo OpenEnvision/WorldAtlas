@@ -72,6 +72,7 @@ def test_benchmark_aggregate_separates_official_and_diagnostic_metrics() -> None
     assert aggregate["per_metric_summary"]["video_dynamic"]["motion_magnitude"] == 0.8
     assert "video_static" not in aggregate["per_metric_summary"]
     assert aggregate["diagnostic_metric_summary"]["video_static"]["anchor_consistency"] == 0.7
+    assert aggregate["failure_summary"] == {}
     assert aggregate["leaderboard_row"] == {
         "image_dynamic__prompt_alignment": 0.6,
         "image_static__prompt_alignment": 0.5,
@@ -84,3 +85,40 @@ def test_benchmark_aggregate_separates_official_and_diagnostic_metrics() -> None
         == 0.5
     )
     assert "video_static" not in aggregate["domain_breakdown"]["style"]["photorealistic"]
+
+
+def test_benchmark_aggregate_summarizes_metric_failures() -> None:
+    aggregate = aggregate_results(
+        sample_scores=[
+            SampleScore(
+                sample_id="broken_sample",
+                suite="video_static",
+                split="dev_public",
+                metrics={
+                    "camera_error": MetricOutput(
+                        raw=None,
+                        normalized=None,
+                        backend="droid_slam",
+                        eligibility_status="official",
+                        error="No module named 'lietorch_backends'",
+                    )
+                },
+                path="/tmp/broken.mp4",
+                prediction_path="/tmp/broken.mp4",
+                style="photorealistic",
+                environment="indoor",
+                scene="living_spaces",
+                motion_category=None,
+            )
+        ]
+    )
+
+    assert aggregate["per_metric_summary"] == {}
+    assert aggregate["failure_summary"]["video_static"]["camera_error"] == {
+        "failed_samples": 1,
+        "eligibility_statuses": ["official"],
+        "sample_ids": ["broken_sample"],
+        "errors": [
+            {"message": "No module named 'lietorch_backends'", "count": 1},
+        ],
+    }

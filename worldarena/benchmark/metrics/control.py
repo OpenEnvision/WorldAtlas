@@ -44,7 +44,10 @@ class CameraErrorMetric(OfficialMetric):
                 error="camera poses are unavailable for this sample",
             )
         try:
-            cameras_gt = load_camera_matrices(sample.annotation_path)
+            cameras_gt = load_camera_matrices(
+                sample.annotation_path,
+                target_frames=len(prediction.frames),
+            )
             if cameras_gt is None:
                 raise FileNotFoundError("camera poses are unavailable for this sample")
             result = compute_camera_error(
