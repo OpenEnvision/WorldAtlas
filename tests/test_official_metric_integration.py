@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+import numpy as np
 
 from worldarena.benchmark.config import BenchmarkConfig, BenchmarkPaths
 from worldarena.benchmark.media import LoadedMedia
@@ -15,6 +18,7 @@ from worldarena.benchmark.metrics.control import (
 )
 from worldarena.benchmark.metrics.motion import MotionMagnitudeMetric, MotionSmoothnessMetric
 from worldarena.benchmark.metrics.registry import build_metrics
+from worldarena.benchmark.official_runtime import _install_base_metric_shim
 from worldarena.benchmark.schemas import BenchmarkSample
 
 
@@ -280,3 +284,20 @@ def test_motion_metrics_support_official_backends(monkeypatch) -> None:
     assert magnitude_output.normalized == 0.7
     assert smoothness_output.backend == "vfi_mamba"
     assert smoothness_output.normalized == 0.82
+
+
+def test_official_base_metric_shim_supports_numpy_tensor_conversion() -> None:
+    package_name = "worldarena_shim_test"
+    module_name = f"{package_name}.benchmark.metrics.base_metrics"
+    sys.modules.pop(module_name, None)
+
+    _install_base_metric_shim(package_name)
+    module = sys.modules[module_name]
+    metric = module.BaseMetric()
+
+    left = np.zeros((8, 8, 3), dtype=np.uint8)
+    right = np.ones((8, 8, 3), dtype=np.uint8) * 255
+    left_tensor, right_tensor = metric._process_np_to_tensor(left, right)
+
+    assert tuple(left_tensor.shape) == (1, 3, 8, 8)
+    assert tuple(right_tensor.shape) == (1, 3, 8, 8)

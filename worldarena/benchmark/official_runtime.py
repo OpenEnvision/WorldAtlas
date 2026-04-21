@@ -276,6 +276,63 @@ def _install_base_metric_shim(package_name: str) -> None:
             self._metric = None
             self._device = "cuda" if torch is not None and torch.cuda.is_available() else "cpu"
 
+        def _process_image(self, rendered_images: list[str | Any]) -> Any:
+            from PIL import Image
+            from torchvision import transforms
+
+            preprocessing = transforms.Compose(
+                [
+                    transforms.Resize((512, 512)),
+                    transforms.ToTensor(),
+                ]
+            )
+            rendered_images_: list[Any] = []
+            for image in rendered_images:
+                if isinstance(image, str):
+                    image = Image.open(image).convert("RGB")
+                rendered_images_.append(preprocessing(image))
+            if torch is None:
+                return rendered_images_
+            return torch.stack(rendered_images_).to(self._device)
+
+        def _process_images(self, rendered_images: list[str | Any], reference_image: str | Any) -> Any:
+            from PIL import Image
+            from torchvision import transforms
+
+            preprocessing = transforms.Compose(
+                [
+                    transforms.Resize((512, 512)),
+                    transforms.ToTensor(),
+                ]
+            )
+            if isinstance(reference_image, str):
+                reference_image = Image.open(reference_image).convert("RGB")
+            reference_image = preprocessing(reference_image)
+
+            rendered_images_: list[Any] = []
+            reference_images_: list[Any] = []
+            for image in rendered_images:
+                if isinstance(image, str):
+                    image = Image.open(image).convert("RGB")
+                rendered_images_.append(preprocessing(image))
+                reference_images_.append(reference_image)
+
+            if torch is None:
+                return rendered_images_, reference_images_
+            return (
+                torch.stack(rendered_images_).to(self._device),
+                torch.stack(reference_images_).to(self._device),
+            )
+
+        def _process_np_to_tensor(self, rendered_image: np.ndarray, reference_image: np.ndarray) -> Any:
+            from torchvision.transforms import ToTensor
+
+            img1 = ToTensor()(rendered_image).unsqueeze(0)
+            img2 = ToTensor()(reference_image).unsqueeze(0)
+            if torch is None:
+                return img1, img2
+            return img1.to(self._device), img2.to(self._device)
+
         def _compute_scores(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover - interface shim
             raise NotImplementedError
 
