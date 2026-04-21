@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,26 @@ def _resolve(base_dir: Path, value: str | None) -> Path | None:
     return path if path.is_absolute() else (base_dir / path).resolve()
 
 
+def _resolve_python_bin(project_root: Path, value: str | None) -> str:
+    raw = str(value or "python")
+    if raw == "auto":
+        for candidate in (
+            project_root / ".runtime312" / "bin" / "python",
+            project_root / ".runtime310" / "bin" / "python",
+            project_root / ".runtime" / "bin" / "python",
+        ):
+            if candidate.exists():
+                return os.path.abspath(candidate)
+        return "python"
+
+    path = Path(raw).expanduser()
+    if path.is_absolute():
+        return str(path)
+    if raw.startswith(".") or "/" in raw:
+        return os.path.abspath(project_root / path)
+    return raw
+
+
 def load_model_config(path: Path) -> ModelRuntimeConfig:
     config_path = path.resolve()
     project_root = config_path.parent.parent.parent
@@ -41,7 +62,7 @@ def load_model_config(path: Path) -> ModelRuntimeConfig:
         config_path=config_path,
         name=str(model_payload["name"]),
         family=str(model_payload["family"]),
-        python_bin=str(model_payload.get("python_bin", "python")),
+        python_bin=_resolve_python_bin(project_root, model_payload.get("python_bin", "python")),
         repo_root=_resolve(project_root, model_payload["repo_root"]),
         checkpoint_dir=_resolve(project_root, model_payload.get("checkpoint_dir")),
         entrypoint=str(model_payload.get("entrypoint", "generate.py")),

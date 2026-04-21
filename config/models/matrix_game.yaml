@@ -1,7 +1,7 @@
 model:
   name: matrix-game
   family: matrix_game_3
-  python_bin: python
+  python_bin: auto
   repo_root: /bench-workspace/yesliu/hjd/model/tmp/Matrix-Game/Matrix-Game-3
   checkpoint_dir: /bench-workspace/yesliu/hjd/model/WorldEvals/cache/hfd/Matrix-Game-3.0
   entrypoint: generate.py

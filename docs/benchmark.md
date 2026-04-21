@@ -99,6 +99,15 @@ To run the first two integrated world models in the same workspace:
 uv sync --python 3.10 --group world_models --extra eval
 ```
 
+If the machine already has a CUDA-enabled system Python with `torch`, the model configs can reuse it through a local runtime shim. The configs default to `python_bin: auto`, which prefers `.runtime312/bin/python` when present.
+
+```bash
+uv venv --python 3.12 --system-site-packages .runtime312
+uv pip install --python .runtime312/bin/python \
+  diffusers decord dashscope easydict scipy trimesh imageio imageio-ffmpeg \
+  opencv-python==4.10.0.84
+```
+
 ## Prediction Layout
 
 The runner accepts a flat root and tries several common layouts. The simplest is:

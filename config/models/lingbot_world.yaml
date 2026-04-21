@@ -1,7 +1,7 @@
 model:
   name: lingbot-world
   family: lingbot_world
-  python_bin: python
+  python_bin: auto
   repo_root: /bench-workspace/yesliu/hjd/model/tmp/lingbot-world
   checkpoint_dir: /bench-workspace/yesliu/hjd/model/WorldEvals/cache/hfd/robbyant--lingbot-world-base-cam
   entrypoint: generate.py
