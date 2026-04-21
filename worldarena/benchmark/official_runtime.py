@@ -363,6 +363,77 @@ def _empty_cuda_cache() -> None:
         torch.cuda.empty_cache()
 
 
+def _coerce_runtime_bool(value: Any, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
+def _resolve_runtime_device(value: Any) -> str | None:
+    if value is None:
+        return None
+    device = str(value).strip()
+    if not device or device.lower() in {"auto", "none"}:
+        return None
+    return device
+
+
+def _configure_motion_accuracy_runtime(metric: Any, runtime: dict[str, Any] | None) -> dict[str, Any]:
+    runtime = dict(runtime or {})
+    details: dict[str, Any] = {}
+
+    sam2_device = _resolve_runtime_device(runtime.get("sam2_device"))
+    flow_device = _resolve_runtime_device(runtime.get("flow_device"))
+    grounding_dino_device = _resolve_runtime_device(runtime.get("grounding_dino_device"))
+    offload_video_to_cpu = _coerce_runtime_bool(
+        runtime.get("sam2_offload_video_to_cpu"),
+        default=False,
+    )
+    offload_state_to_cpu = _coerce_runtime_bool(
+        runtime.get("sam2_offload_state_to_cpu"),
+        default=False,
+    )
+
+    predictor = getattr(metric, "_predictor", None)
+    if predictor is not None:
+        if sam2_device is not None:
+            predictor = predictor.to(sam2_device)
+            metric._predictor = predictor
+        details["sam2_device"] = str(predictor.device)
+        if offload_video_to_cpu or offload_state_to_cpu:
+            original_init_state = predictor.init_state
+
+            def wrapped_init_state(*args: Any, **kwargs: Any) -> Any:
+                kwargs.setdefault("offload_video_to_cpu", offload_video_to_cpu)
+                kwargs.setdefault("offload_state_to_cpu", offload_state_to_cpu)
+                kwargs.setdefault("async_loading_frames", False)
+                return original_init_state(*args, **kwargs)
+
+            metric._predictor.init_state = wrapped_init_state
+        details["sam2_offload_video_to_cpu"] = offload_video_to_cpu
+        details["sam2_offload_state_to_cpu"] = offload_state_to_cpu
+
+    optical_flow_model = getattr(metric, "_optical_flow_model", None)
+    if flow_device is not None and optical_flow_model is not None:
+        metric._optical_flow_model = optical_flow_model.to(flow_device)
+        metric._device = flow_device
+    details["flow_device"] = str(getattr(metric, "_device", "cuda"))
+
+    grounding_dino_model = getattr(metric, "_grounding_dino_model", None)
+    if grounding_dino_device is not None and grounding_dino_model is not None:
+        metric._grounding_dino_model = grounding_dino_model.to(grounding_dino_device)
+        if hasattr(metric, "_grounding_dino_args"):
+            metric._grounding_dino_args.device = grounding_dino_device
+    if hasattr(metric, "_grounding_dino_args"):
+        details["grounding_dino_device"] = str(metric._grounding_dino_args.device)
+
+    return details
+
+
 def _video_frame_cache_key(path: Path) -> str:
     stat = path.stat()
     payload = f"{path.resolve()}::{stat.st_mtime_ns}::{stat.st_size}"
@@ -724,6 +795,7 @@ def compute_motion_accuracy(
     normalization: dict[str, Any],
     *,
     generate_type: str = "i2v",
+    runtime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     frame_paths = materialize_frame_paths(prediction_path)
     mask_paths = [
@@ -735,6 +807,7 @@ def compute_motion_accuracy(
         raise FileNotFoundError(f"no masks found in {mask_dir}")
     with metric_runtime_context():
         metric = _run_metric("motion_accuracy", generate_type)
+        runtime_details = _configure_motion_accuracy_runtime(metric, runtime)
         try:
             score = float(metric._compute_scores(frame_paths, mask_paths, []))
         finally:
@@ -749,6 +822,7 @@ def compute_motion_accuracy(
             "mask_count": len(mask_paths),
             "mask_dir": mask_dir,
             "generate_type": generate_type,
+            **runtime_details,
             **_native_score_details(score),
         },
     }

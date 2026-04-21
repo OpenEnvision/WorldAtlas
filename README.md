@@ -140,6 +140,8 @@ Run artifacts include:
 - `domain_breakdown.json`
 - `leaderboard.csv`
 
+`motion_accuracy` is the heaviest dynamic metric. The default benchmark config enables SAM2 video/state offload so that the official path can run on 80 GB cards more reliably. On multi-GPU hosts, `benchmark.metric_runtime.motion_accuracy` also supports device splitting such as `sam2_device: cuda:0` and `flow_device: cuda:1`.
+
 ## Official Reporting Contract
 
 Current official metric dimensions are:

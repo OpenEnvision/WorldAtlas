@@ -58,6 +58,7 @@ class BenchmarkConfig:
     metrics_by_suite: dict[str, list[str]]
     metric_backends: dict[str, str]
     normalization: dict[str, dict[str, Any]]
+    metric_runtime: dict[str, dict[str, Any]] = field(default_factory=dict)
     aggregation: BenchmarkAggregationConfig = field(default_factory=BenchmarkAggregationConfig)
     planned_counts: dict[str, int | None] = field(default_factory=dict)
     protocol: BenchmarkProtocolConfig = field(default_factory=BenchmarkProtocolConfig)
@@ -115,6 +116,10 @@ def load_config(path: Path) -> BenchmarkConfig:
         normalization={
             key: dict(value)
             for key, value in benchmark_payload.get("normalization", {}).items()
+        },
+        metric_runtime={
+            key: dict(value)
+            for key, value in benchmark_payload.get("metric_runtime", {}).items()
         },
         aggregation=BenchmarkAggregationConfig(
             enabled=bool(aggregation_payload.get("enabled", False)),

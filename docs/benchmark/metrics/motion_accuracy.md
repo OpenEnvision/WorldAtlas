@@ -63,3 +63,8 @@ Official only when segmentation masks exist and the metric returns a numeric val
 
 - `worldarena/benchmark/metrics/control.py`
 - `worldarena/benchmark/official_runtime.py`
+
+## Runtime Notes
+
+- Default benchmark config enables `sam2_offload_video_to_cpu` and `sam2_offload_state_to_cpu`.
+- Multi-GPU hosts can also split devices through `benchmark.metric_runtime.motion_accuracy`, for example `sam2_device: cuda:0` and `flow_device: cuda:1`.

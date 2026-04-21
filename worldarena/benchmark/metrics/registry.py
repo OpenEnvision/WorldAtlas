@@ -52,6 +52,7 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
         seen.add(metric_name)
         backend = config.metric_backends.get(metric_name, config.metric_backends.get(raw_metric_name, "auto"))
         normalization = config.normalization.get(metric_name, config.normalization.get(raw_metric_name, {}))
+        runtime = config.metric_runtime.get(metric_name, config.metric_runtime.get(raw_metric_name, {}))
         if metric_name == "prompt_alignment":
             metrics.append(PromptAlignmentMetric(backend=backend, normalization=normalization))
         elif metric_name == "reference_appearance_alignment":
@@ -73,7 +74,13 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
         elif metric_name == "optical_flow_aepe":
             metrics.append(OpticalFlowAepeMetric(backend=backend, normalization=normalization))
         elif metric_name == "motion_accuracy":
-            metrics.append(MotionAccuracyMetric(backend=backend, normalization=normalization))
+            metrics.append(
+                MotionAccuracyMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
         elif metric_name == "anchor_consistency":
             metrics.append(AnchorConsistencyMetric(backend=backend, normalization=normalization))
         elif is_physics_metric(metric_name):

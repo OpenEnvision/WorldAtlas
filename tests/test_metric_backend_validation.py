@@ -49,3 +49,13 @@ def test_build_metrics_rejects_disabled_fallback_backends(
 
     with pytest.raises(ValueError, match="fallback metrics are not allowed"):
         build_metrics(metric_names, config)
+
+
+def test_build_metrics_passes_metric_runtime_to_motion_accuracy(tmp_path: Path) -> None:
+    config = _make_config(tmp_path, {"motion_accuracy": "sam2_sea_raft"})
+    config.metric_runtime = {"motion_accuracy": {"sam2_offload_state_to_cpu": True}}
+
+    metrics = build_metrics(["motion_accuracy"], config)
+
+    assert len(metrics) == 1
+    assert getattr(metrics[0], "runtime", None) == {"sam2_offload_state_to_cpu": True}

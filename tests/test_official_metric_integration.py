@@ -221,9 +221,11 @@ def test_static_heavy_metrics_route_through_official_runtime(monkeypatch) -> Non
 
 
 def test_motion_accuracy_metric_requires_masks(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.control.compute_motion_accuracy",
-        lambda prediction_path, mask_dir, normalization, generate_type: {
+        lambda prediction_path, mask_dir, normalization, generate_type, runtime: captured.update({"runtime": runtime}) or {
             "raw": 1.4,
             "normalized": 0.67,
             "backend": "sam2_sea_raft",
@@ -234,6 +236,7 @@ def test_motion_accuracy_metric_requires_masks(monkeypatch) -> None:
     metric = MotionAccuracyMetric(
         backend="sam2_sea_raft",
         normalization={"avg": -0.1965, "std": 2.3687, "z_max": 1.518, "z_min": -1.6147, "range": [0.25, 0.75], "higher_is_better": True},
+        runtime={"sam2_offload_state_to_cpu": True},
     )
     sample = _make_sample(
         suite="video_dynamic",
@@ -245,6 +248,7 @@ def test_motion_accuracy_metric_requires_masks(monkeypatch) -> None:
     assert output.backend == "sam2_sea_raft"
     assert output.normalized == 0.67
     assert output.details["generate_type"] == "i2v"
+    assert captured["runtime"] == {"sam2_offload_state_to_cpu": True}
 
 
 def test_motion_metrics_support_official_backends(monkeypatch) -> None:

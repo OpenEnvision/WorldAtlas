@@ -137,8 +137,14 @@ class MotionAccuracyMetric(OfficialMetric):
     supported_backends = MOTION_ACCURACY_BACKENDS
     auto_backend = "sam2_sea_raft"
 
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        backend: str,
+        normalization: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__("motion_accuracy", backend, normalization)
+        self.runtime = dict(runtime or {})
 
     def compute(
         self,
@@ -164,6 +170,7 @@ class MotionAccuracyMetric(OfficialMetric):
                 mask_dir=sample.mask_path,
                 normalization=self.normalization,
                 generate_type="i2v" if sample.conditioning_strategy == "first_frame" else "t2v",
+                runtime=self.runtime,
             )
             details.update(result["details"])
             return MetricOutput(

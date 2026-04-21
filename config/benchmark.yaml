@@ -66,6 +66,14 @@ benchmark:
     motion_magnitude: sea_raft
     motion_smoothness: vfi_mamba
     anchor_consistency: clip
+  metric_runtime:
+    motion_accuracy:
+      sam2_offload_video_to_cpu: true
+      sam2_offload_state_to_cpu: true
+      # Optional on multi-GPU hosts:
+      # sam2_device: cuda:0
+      # flow_device: cuda:1
+      # grounding_dino_device: cuda:2
   normalization:
     prompt_alignment:
       lower: 0.0
