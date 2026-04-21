@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from worldarena.benchmark import aggregate_results
+from worldarena.benchmark.config import BenchmarkAggregationConfig
 from worldarena.benchmark.schemas import MetricOutput, SampleScore
 
 
-def test_benchmark_aggregate_uses_official_suite_weights() -> None:
-    samples = [
+def _sample_scores() -> list[SampleScore]:
+    return [
         SampleScore(
             sample_id="a",
             suite="image_static",
@@ -60,16 +61,23 @@ def test_benchmark_aggregate_uses_official_suite_weights() -> None:
         ),
     ]
 
-    aggregate = aggregate_results(
-        sample_scores=samples,
-        aggregate_weights={
-            "image_static": 0.15,
-            "image_dynamic": 0.15,
-            "video_static": 0.30,
-            "video_dynamic": 0.40,
-        },
-    )
+
+def test_benchmark_aggregate_defaults_to_official_suite_scores_only() -> None:
+    aggregate = aggregate_results(sample_scores=_sample_scores())
 
     assert aggregate["overall_scores"]["S_image_static"] == 0.5
+    assert aggregate["overall_scores"]["S_image_dynamic"] == 0.6
+    assert aggregate["overall_scores"]["S_video_static"] == 0.7
     assert aggregate["overall_scores"]["S_video_dynamic"] == 0.8
-    assert aggregate["overall_scores"]["S_worldarena"] == 0.695
+    assert "S_worldarena_derived" not in aggregate["overall_scores"]
+    assert aggregate["leaderboard_row"] == aggregate["overall_scores"]
+
+
+def test_benchmark_aggregate_optionally_emits_derived_world_score() -> None:
+    aggregate = aggregate_results(
+        sample_scores=_sample_scores(),
+        aggregation=BenchmarkAggregationConfig(enabled=True),
+    )
+
+    assert aggregate["overall_scores"]["S_worldarena_derived"] == 0.695
+    assert aggregate["leaderboard_row"]["S_worldarena_derived"] == 0.695

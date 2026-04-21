@@ -17,6 +17,24 @@ class BenchmarkPaths:
     cache_dir: Path
 
 
+DEFAULT_DERIVED_AGGREGATION_WEIGHTS: dict[str, float] = {
+    "image_static": 0.15,
+    "image_dynamic": 0.15,
+    "video_static": 0.30,
+    "video_dynamic": 0.40,
+}
+
+
+def _default_derived_aggregation_weights() -> dict[str, float]:
+    return dict(DEFAULT_DERIVED_AGGREGATION_WEIGHTS)
+
+
+@dataclass(slots=True)
+class BenchmarkAggregationConfig:
+    enabled: bool = False
+    suite_weights: dict[str, float] = field(default_factory=_default_derived_aggregation_weights)
+
+
 @dataclass(slots=True)
 class BenchmarkConfig:
     config_path: Path
@@ -26,10 +44,10 @@ class BenchmarkConfig:
     anchor_positions: list[float]
     motion_frame_count: int
     split_ratios: dict[str, float]
-    aggregate_weights: dict[str, float]
     metrics_by_suite: dict[str, list[str]]
     metric_backends: dict[str, str]
     normalization: dict[str, dict[str, Any]]
+    aggregation: BenchmarkAggregationConfig = field(default_factory=BenchmarkAggregationConfig)
     planned_counts: dict[str, int | None] = field(default_factory=dict)
 
 
@@ -45,6 +63,7 @@ def load_config(path: Path) -> BenchmarkConfig:
     payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
     path_payload = payload.get("paths", {})
     benchmark_payload = payload.get("benchmark", {})
+    aggregation_payload = benchmark_payload.get("aggregation") or {}
 
     paths = BenchmarkPaths(
         image_root=_resolve(project_root, path_payload["image_root"]),
@@ -69,10 +88,6 @@ def load_config(path: Path) -> BenchmarkConfig:
                 {"dev_public": 0.2, "dev_private": 0.1, "test_hidden": 0.7},
             ).items()
         },
-        aggregate_weights={
-            key: float(value)
-            for key, value in benchmark_payload.get("aggregate_weights", {}).items()
-        },
         metrics_by_suite={
             key: [str(metric) for metric in value]
             for key, value in benchmark_payload.get("metrics_by_suite", {}).items()
@@ -85,6 +100,16 @@ def load_config(path: Path) -> BenchmarkConfig:
             key: dict(value)
             for key, value in benchmark_payload.get("normalization", {}).items()
         },
+        aggregation=BenchmarkAggregationConfig(
+            enabled=bool(aggregation_payload.get("enabled", False)),
+            suite_weights={
+                key: float(value)
+                for key, value in aggregation_payload.get(
+                    "suite_weights",
+                    DEFAULT_DERIVED_AGGREGATION_WEIGHTS,
+                ).items()
+            },
+        ),
         planned_counts={
             key: (None if value is None else int(value))
             for key, value in benchmark_payload.get("planned_counts", {}).items()

@@ -7,9 +7,47 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-import imageio
 import numpy as np
-import torch
+
+
+def _install_config_aliases(config_module, alias_map: dict[str, str]) -> None:
+    config_class = type(config_module)
+
+    if getattr(config_class, "_worldarena_alias_patch_installed", False):
+        return
+
+    original_setattr = getattr(config_class, "__setattr__", object.__setattr__)
+    original_getattr = getattr(config_class, "__getattr__", None)
+
+    def compat_setattr(self, name, value):
+        target = alias_map.get(name)
+        if target and target in self._config:
+            allowed_keys = getattr(self, "_allowed_keys", None)
+            if allowed_keys is not None:
+                allowed_keys.add(name)
+            self._config[name] = value
+            self._config[target] = value
+            return
+        return original_setattr(self, name, value)
+
+    def compat_getattr(self, name):
+        target = alias_map.get(name)
+        if target and target in self._config:
+            return self._config.get(name, self._config[target])
+        if original_getattr is not None:
+            return original_getattr(self, name)
+        raise AttributeError(f"{type(self).__name__}.{name} does not exist")
+
+    config_class.__setattr__ = compat_setattr
+    config_class.__getattr__ = compat_getattr
+    config_class._worldarena_alias_patch_installed = True
+
+    allowed_keys = getattr(config_module, "_allowed_keys", None)
+    for alias, target in alias_map.items():
+        if target in config_module._config:
+            if allowed_keys is not None:
+                allowed_keys.add(alias)
+            config_module._config.setdefault(alias, config_module._config[target])
 
 
 def patch_torch_dynamo_config_aliases() -> None:
@@ -20,37 +58,7 @@ def patch_torch_dynamo_config_aliases() -> None:
         "accumulated_recompile_limit": "accumulated_cache_size_limit",
     }
     config_module = torch._dynamo.config
-    config_class = type(config_module)
-
-    if getattr(config_class, "_worldarena_alias_patch_installed", False):
-        return
-
-    original_setattr = config_class.__setattr__
-    original_getattr = config_class.__getattr__
-
-    def compat_setattr(self, name, value):
-        target = alias_map.get(name)
-        if target and target in self._config:
-            self._allowed_keys.add(name)
-            self._config[name] = value
-            self._config[target] = value
-            return
-        return original_setattr(self, name, value)
-
-    def compat_getattr(self, name):
-        target = alias_map.get(name)
-        if target and target in self._config:
-            return self._config.get(name, self._config[target])
-        return original_getattr(self, name)
-
-    config_class.__setattr__ = compat_setattr
-    config_class.__getattr__ = compat_getattr
-    config_class._worldarena_alias_patch_installed = True
-
-    for alias, target in alias_map.items():
-        if target in config_module._config:
-            config_module._allowed_keys.add(alias)
-            config_module._config.setdefault(alias, config_module._config[target])
+    _install_config_aliases(config_module, alias_map)
 
 
 def parse_args() -> argparse.Namespace:
@@ -126,6 +134,8 @@ def main() -> None:
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     patch_torch_dynamo_config_aliases()
+    import imageio
+    import torch
 
     with open(args.actions_json, "r", encoding="utf-8") as file:
         action_spec = json.load(file)

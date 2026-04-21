@@ -49,20 +49,19 @@
 - 对一个模型的最终结果，长期 taxonomy 可以保留：
   - `WorldModelScore-Core`
   - `WorldModelScore-Interactive`
-- 但**当前 WorldArena benchmark 的实际输出名**应以：
+- 但**当前 WorldArena benchmark 的 official headline output** 应以：
   - `S_image_static`
   - `S_image_dynamic`
   - `S_video_static`
   - `S_video_dynamic`
-  - `S_worldarena`
-  - `S_auxiliary`
-  - `S_experimental`
   为准。
+- 如需标量派生分，只能使用 `S_worldarena_derived`，且必须由显式 `aggregation_profile` 控制，默认关闭。
+- `S_auxiliary` 与 `S_experimental` 仅作为非 headline 独立报表。
 
 对于**当前 WorldArena benchmark**，上表只是完整 taxonomy，不是一次性全部上线的承诺。默认分为三层：
 
-- `official`：当前数据已经能完整闭环支持的 track，会进入主 leaderboard。
-- `experimental`：当前数据可以做弱版或代理版评测，但不进入主总分。
+- `official`：当前数据已经能完整闭环支持的 track，会进入 official headline leaderboard。
+- `experimental`：当前数据可以做弱版或代理版评测，但不进入 official headline reporting。
 - `future-expansion`：必须等后续补数据才能做的 track。
 
 基于现有数据，默认划分如下：
@@ -71,15 +70,11 @@
 - `experimental`：subset-level `camera_control/object_control/geom`、`long_delayed_effect`、`basic physics`
 - `future-expansion`：`long_revisit`、完整 `interactive`、更强 supervision 的 control / geometry / physics 主榜
 
-当前 benchmark 推荐统一使用下列分数名：
+当前 benchmark 的分数命名建议区分三层：
 
-- `S_image_static`
-- `S_image_dynamic`
-- `S_video_static`
-- `S_video_dynamic`
-- `S_worldarena`
-- `S_auxiliary`
-- `S_experimental`
+- official headline：`S_image_static`、`S_image_dynamic`、`S_video_static`、`S_video_dynamic`
+- separate non-headline：`S_auxiliary`、`S_experimental`
+- optional derived scalar：`S_worldarena_derived`（需要显式 `aggregation_profile`，默认关闭）
 
 ## 3. 数据与目录 Schema
 
@@ -461,7 +456,7 @@ official 不再是单一“视频主榜 + 图像辅助榜”，而是四个 form
 | `long_delayed_effect` | event boundary / instruction / index metadata |
 | `basic_physics` | object track 或可稳定追踪的 mask |
 
-这些指标即使启用，也应先作为 **subset report**，不要直接并入全局 `S_worldarena`，直到覆盖率和质量足够稳定。
+这些指标即使启用，也应先作为 **subset report**，不要直接并入四个 official suite score；若未来要形成标量派生分，也只能通过显式 `aggregation_profile` 进入可选 `S_worldarena_derived`。
 
 #### 3.7.3 Auxiliary / experimental：non-formal 数据
 
@@ -584,37 +579,41 @@ scripts/qa/build_worldarena_inventory.py
 
 基于当前资产，benchmark 需要拆成六个报告面板：
 
-1. `WorldArena-Image-Static`
-2. `WorldArena-Image-Dynamic`
-3. `WorldArena-Video-Static`
-4. `WorldArena-Video-Dynamic`
+1. `WorldArena-Image-Static`（official headline）
+2. `WorldArena-Image-Dynamic`（official headline）
+3. `WorldArena-Video-Static`（official headline）
+4. `WorldArena-Video-Dynamic`（official headline）
 
 以及一个实验面板：
 
-5. `WorldArena-Auxiliary`
-6. `WorldArena-Experimental`
+5. `WorldArena-Auxiliary`（separate, non-headline）
+6. `WorldArena-Experimental`（separate, non-headline）
 
 强制规则：
 
 - 只有 `is_formal = true` 的资产进入 official split。
 - `video_nonformal` 和 image backup 只进入 auxiliary / experimental。
 - `image` 与 `video` 必须分开 split，`static` 与 `dynamic` 也必须分层抽样。
-- 不允许把 non-formal 与 formal 样本混成一个无区分总分。
+- official headline reporting 只使用四个 formal suite score，不允许把 non-formal 与 formal 样本混成一个无区分总分。
+- 不要求任何 scalar headline total。
 
-推荐默认总体分数：
+可选标量派生分（默认关闭）：
 
 ```text
-S_worldarena =
-  0.15 * S_image_static +
-  0.15 * S_image_dynamic +
-  0.30 * S_video_static +
-  0.40 * S_video_dynamic
+S_worldarena_derived =
+  aggregation_profile(
+    S_image_static,
+    S_image_dynamic,
+    S_video_static,
+    S_video_dynamic
+  )
 ```
 
 其中：
 
-- `S_video_dynamic` 权重最高，因为它最贴近 world model 的时序建模核心能力
-- `S_experimental` 与 `S_auxiliary` 单独报告，不并入 `S_worldarena`
+- `aggregation_profile` 必须显式命名；未指定时不产出 `S_worldarena_derived`
+- 不允许把写死的单一加权和当作 official benchmark 的默认定义
+- `S_experimental` 与 `S_auxiliary` 单独报告，不进入 official headline reporting，也不作为 `S_worldarena_derived` 的输入
 
 ### 3.9 原始数据到 benchmark sample 的标准化加工
 
@@ -2657,24 +2656,22 @@ S_driving =
   0.10 * S_agent_missing
 ```
 
-这个分数默认只在 driving subset 报，不并入全局 `S_worldarena`，避免 benchmark 被某个单一 domain 主导。
+这个分数默认只在 driving subset 报，不进入四个 official headline score，也不作为 `S_worldarena_derived` 的输入，避免 benchmark 被某个单一 domain 主导。
 
 ---
 
-## 7. Overall Score 聚合
+## 7. Score Reporting 与可选聚合
 
-### 7.1 Core score
+### 7.1 Core suite scores
 
-对于**当前 WorldArena 数据驱动的 official**，总分默认采用“四个 formal suite + auxiliary + experimental”的结构：
+对于**当前 WorldArena 数据驱动的 official**，headline output 只采用四个 formal suite score：
 
 - `S_image_static`
 - `S_image_dynamic`
 - `S_video_static`
 - `S_video_dynamic`
-- `S_auxiliary`
-- `S_experimental`
 
-其中只有前四者进入 official 总分。
+`S_auxiliary` 与 `S_experimental` 只在独立非 headline 报表中出现。当前 benchmark 不要求任何 scalar headline total。
 
 #### 7.1.1 `S_image_static`
 
@@ -2717,32 +2714,37 @@ S_video_dynamic =
   0.10 * S_motion_smoothness_dynamic
 ```
 
-#### 7.1.5 Official 总分
+#### 7.1.5 可选 derived 标量
 
 ```text
-S_worldarena =
-  0.15 * S_image_static +
-  0.15 * S_image_dynamic +
-  0.30 * S_video_static +
-  0.40 * S_video_dynamic
+S_worldarena_derived =
+  aggregation_profile(
+    S_image_static,
+    S_image_dynamic,
+    S_video_static,
+    S_video_dynamic
+  )
 ```
 
 说明：
 
+- `aggregation_profile` 必须显式指定；未指定时不产出 `S_worldarena_derived`
+- `S_worldarena_derived` 默认关闭，不属于 official headline reporting
+- 不能把某个写死的单一加权和写成 official benchmark 的默认定义
 - `camera_control` / `object_control` / `geom_consistency` / `long_delayed` / `physics`
-  在当前数据形态下默认不进入 `S_worldarena`
+  在当前数据形态下默认不进入四个 official suite score，也不作为 `S_worldarena_derived` 的输入
 - 这些能力若有 sidecar 支持，只进入 subset report 或 `S_experimental`
 
-### 7.2 Auxiliary score
+### 7.2 Auxiliary reporting
 
 ```text
 S_auxiliary =
   mean(S_nonformal_video, S_nonformal_image)
 ```
 
-`S_auxiliary` 默认不并入 `S_worldarena`。
+`S_auxiliary` 默认不进入 official headline reporting，也不作为 `S_worldarena_derived` 的输入。
 
-### 7.3 Experimental score
+### 7.3 Experimental reporting
 
 实验轨道单独报告：
 
@@ -2758,24 +2760,27 @@ S_experimental =
   )
 ```
 
-`S_experimental` 默认不并入 `S_worldarena`。
+`S_experimental` 默认不进入 official headline reporting，也不作为 `S_worldarena_derived` 的输入。
 
-### 7.4 不要只报单一总分
+### 7.4 不要把单一标量当作 headline
 
-leaderboard 至少同时报：
+headline leaderboard 至少同时报：
 
-- `S_worldarena`
 - `S_image_static`
 - `S_image_dynamic`
 - `S_video_static`
 - `S_video_dynamic`
-- `S_auxiliary`
-- `S_experimental`
 - `S_quality_image_static`
 - `S_quality_image_dynamic`
 - `S_subjective_video_static`
 - `S_subjective_video_dynamic`
 - `DiscardRate`
+
+若启用补充报表，可另报：
+
+- `S_worldarena_derived`（必须同时标注 `aggregation_profile`，默认关闭）
+- `S_auxiliary`
+- `S_experimental`
 
 ## 8. Domain Slice 与报表要求
 
@@ -2905,7 +2910,7 @@ class Metric:
 - rollout quality
 - dataset-level FVD / suite aggregate
 - image-static / image-dynamic / video-static / video-dynamic suite 报表
-- official aggregate + leaderboard
+- four-suite official headline leaderboard
 
 ### Phase 3
 

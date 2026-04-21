@@ -15,11 +15,8 @@ benchmark:
     dev_public: 0.2
     dev_private: 0.1
     test_hidden: 0.7
-  aggregate_weights:
-    image_static: 0.15
-    image_dynamic: 0.15
-    video_static: 0.30
-    video_dynamic: 0.40
+  aggregation:
+    enabled: false
   planned_counts: {}
   metrics_by_suite:
     image_static:

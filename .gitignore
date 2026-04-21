@@ -1,4 +1,5 @@
 .venv/
+.runtime312/
 .cache/
 .pytest_cache/
 .ruff_cache/

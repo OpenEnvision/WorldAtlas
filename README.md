@@ -16,14 +16,14 @@ Use `uv run worldarena clean` to remove transient caches and local build outputs
 
 ## Benchmark Workflow
 
-WorldArena keeps four formal suites as the public core, matching a simpler WorldScore-style evaluation surface:
+WorldArena keeps four formal suites as the public core. Official headline reporting is the four suite scores:
 
-- `image_static`
-- `image_dynamic`
-- `video_static`
-- `video_dynamic`
+- `image_static` -> `S_image_static`
+- `image_dynamic` -> `S_image_dynamic`
+- `video_static` -> `S_video_static`
+- `video_dynamic` -> `S_video_dynamic`
 
-Non-formal assets stay outside the official score and are routed into `auxiliary` or `experimental`.
+Non-formal assets stay outside official headline reporting and are routed into separate `auxiliary` or `experimental` reporting. If a scalar aggregate is needed for internal comparison, use optional `S_worldarena_derived` under an explicit `aggregation_profile`; it is disabled by default and is not part of the official benchmark definition.
 
 ### Build Inventory And Manifest
 

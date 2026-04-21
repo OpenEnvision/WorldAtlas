@@ -3,8 +3,18 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from worldarena.benchmark_core.config import BenchmarkAggregationConfig
 from worldarena.benchmark_core.schemas import SampleScore
 from worldarena.benchmark_core.suites import OFFICIAL_SUITES
+
+
+OFFICIAL_SCORE_NAMES: dict[str, str] = {
+    "image_static": "S_image_static",
+    "image_dynamic": "S_image_dynamic",
+    "video_static": "S_video_static",
+    "video_dynamic": "S_video_dynamic",
+}
+DERIVED_WORLD_SCORE_NAME = "S_worldarena_derived"
 
 
 def _mean(values: list[float]) -> float | None:
@@ -13,10 +23,30 @@ def _mean(values: list[float]) -> float | None:
     return round(sum(values) / len(values), 4)
 
 
+def _derived_worldarena_score(
+    suite_scores: dict[str, float | None],
+    aggregation: BenchmarkAggregationConfig,
+) -> float | None:
+    if not aggregation.enabled:
+        return None
+
+    weighted_sum = 0.0
+    present_weight = 0.0
+    for suite in OFFICIAL_SUITES:
+        suite_score = suite_scores.get(suite)
+        if suite_score is None:
+            continue
+        weight = aggregation.suite_weights.get(suite, 0.0)
+        weighted_sum += suite_score * weight
+        present_weight += weight
+    return round(weighted_sum / present_weight, 4) if present_weight else None
+
+
 def aggregate_results(
     sample_scores: list[SampleScore],
-    aggregate_weights: dict[str, float],
+    aggregation: BenchmarkAggregationConfig | None = None,
 ) -> dict[str, Any]:
+    aggregation = aggregation or BenchmarkAggregationConfig()
     suite_values: dict[str, list[float]] = defaultdict(list)
     metric_values: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     domain_values: dict[str, dict[str, list[float]]] = {
@@ -42,24 +72,14 @@ def aggregate_results(
 
     suite_scores = {suite: _mean(values) for suite, values in suite_values.items()}
     overall_scores = {
-        "S_image_static": suite_scores.get("image_static"),
-        "S_image_dynamic": suite_scores.get("image_dynamic"),
-        "S_video_static": suite_scores.get("video_static"),
-        "S_video_dynamic": suite_scores.get("video_dynamic"),
-        "S_auxiliary": suite_scores.get("auxiliary"),
-        "S_experimental": suite_scores.get("experimental"),
+        score_name: suite_scores.get(suite_name)
+        for suite_name, score_name in OFFICIAL_SCORE_NAMES.items()
     }
-
-    weighted_sum = 0.0
-    present_weight = 0.0
-    for suite in OFFICIAL_SUITES:
-        suite_score = suite_scores.get(suite)
-        if suite_score is None:
-            continue
-        weight = aggregate_weights.get(suite, 0.0)
-        weighted_sum += suite_score * weight
-        present_weight += weight
-    overall_scores["S_worldarena"] = round(weighted_sum / present_weight, 4) if present_weight else None
+    if aggregation.enabled:
+        overall_scores[DERIVED_WORLD_SCORE_NAME] = _derived_worldarena_score(
+            suite_scores=suite_scores,
+            aggregation=aggregation,
+        )
 
     per_metric_summary = {
         suite: {
@@ -76,15 +96,7 @@ def aggregate_results(
         for dimension, buckets in domain_values.items()
     }
 
-    leaderboard_row = {
-        "S_image_static": overall_scores["S_image_static"],
-        "S_image_dynamic": overall_scores["S_image_dynamic"],
-        "S_video_static": overall_scores["S_video_static"],
-        "S_video_dynamic": overall_scores["S_video_dynamic"],
-        "S_worldarena": overall_scores["S_worldarena"],
-        "S_auxiliary": overall_scores["S_auxiliary"],
-        "S_experimental": overall_scores["S_experimental"],
-    }
+    leaderboard_row = dict(overall_scores)
 
     return {
         "suite_scores": suite_scores,

@@ -11,7 +11,7 @@ Official suites:
 - `video_static`
 - `video_dynamic`
 
-Non-formal assets do not enter the official aggregate. They are mapped to:
+Non-formal assets do not enter official headline reporting. They are reported separately as:
 
 - `auxiliary`
 - `experimental`
@@ -115,25 +115,35 @@ It also accepts `predictions/<suite>/<split>/<sample_id>.<ext>` and a flat `<sam
 
 ## Aggregation
 
-Official score names:
+Official benchmark headline scores:
 
 - `S_image_static`
 - `S_image_dynamic`
 - `S_video_static`
 - `S_video_dynamic`
-- `S_worldarena`
+
+These four suite scores are the official benchmark output. WorldArena does not require a scalar headline total.
+
+Separate non-headline reporting:
+
 - `S_auxiliary`
 - `S_experimental`
 
-Default default weights:
+Optional derived scalar:
+
+- `S_worldarena_derived`
 
 ```text
-S_worldarena =
-  0.15 * S_image_static +
-  0.15 * S_image_dynamic +
-  0.30 * S_video_static +
-  0.40 * S_video_dynamic
+S_worldarena_derived =
+  aggregation_profile(
+    S_image_static,
+    S_image_dynamic,
+    S_video_static,
+    S_video_dynamic
+  )
 ```
+
+`S_worldarena_derived` is only produced when an explicit `aggregation_profile` is provided. The profile controls how the four official suite scores are combined. This derived scalar is disabled by default and is not part of official headline reporting.
 
 ## Adapter Map
 

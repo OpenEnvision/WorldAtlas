@@ -138,7 +138,7 @@ def run_benchmark(
 
     aggregate_payload = aggregate_results(
         sample_scores=sample_scores,
-        aggregate_weights=config.aggregate_weights,
+        aggregation=config.aggregation,
     )
     run_manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -150,6 +150,7 @@ def run_benchmark(
         "suites": sorted({sample.suite for sample in filtered_manifest}),
         "splits": sorted({sample.split for sample in filtered_manifest}),
         "scores": aggregate_payload["overall_scores"],
+        "suite_scores": aggregate_payload["suite_scores"],
     }
     write_run_outputs(
         output_dir=output_dir,

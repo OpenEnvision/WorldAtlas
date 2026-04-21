@@ -4,9 +4,15 @@ from copy import deepcopy
 from pathlib import Path
 
 from worldarena.models.config import ModelRuntimeConfig
-from worldarena.benchmark_core.config import BenchmarkConfig, BenchmarkPaths, load_config as load_core_config
+from worldarena.benchmark_core.config import (
+    BenchmarkAggregationConfig,
+    BenchmarkConfig,
+    BenchmarkPaths,
+    load_config as load_core_config,
+)
 
 __all__ = [
+    "BenchmarkAggregationConfig",
     "BenchmarkConfig",
     "BenchmarkPaths",
     "apply_model_metric_overrides",

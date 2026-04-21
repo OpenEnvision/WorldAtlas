@@ -26,19 +26,11 @@ def write_run_outputs(
     per_sample_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     leaderboard_path = output_dir / "leaderboard.csv"
+    fieldnames = ["model_name", *aggregate_payload["leaderboard_row"].keys()]
     with leaderboard_path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=[
-                "model_name",
-                "S_image_static",
-                "S_image_dynamic",
-                "S_video_static",
-                "S_video_dynamic",
-                "S_worldarena",
-                "S_auxiliary",
-                "S_experimental",
-            ],
+            fieldnames=fieldnames,
         )
         writer.writeheader()
         row = {"model_name": model_name}

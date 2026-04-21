@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+import json
 from pathlib import Path
 
 from PIL import Image
@@ -33,12 +35,6 @@ def test_benchmark_runner_scores_identical_image_prediction(tmp_path: Path) -> N
         anchor_positions=[0.0, 0.5, 1.0],
         motion_frame_count=8,
         split_ratios={"dev_public": 0.2, "dev_private": 0.1, "test_hidden": 0.7},
-        aggregate_weights={
-            "image_static": 0.15,
-            "image_dynamic": 0.15,
-            "video_static": 0.30,
-            "video_dynamic": 0.40,
-        },
         metrics_by_suite={
             "image_static": ["scene_alignment", "style_consistency", "subjective_quality"],
             "image_dynamic": [],
@@ -110,6 +106,34 @@ def test_benchmark_runner_scores_identical_image_prediction(tmp_path: Path) -> N
     assert result["run_manifest"]["missing_predictions"] == 0
     assert result["aggregate_payload"]["overall_scores"]["S_image_static"] is not None
     assert result["aggregate_payload"]["overall_scores"]["S_image_static"] > 0.7
+    assert "S_worldarena_derived" not in result["aggregate_payload"]["overall_scores"]
+    assert result["run_manifest"]["scores"] == result["aggregate_payload"]["overall_scores"]
+    assert result["run_manifest"]["suite_scores"]["image_static"] == result["aggregate_payload"]["suite_scores"]["image_static"]
     assert (output_dir / "run_manifest.json").exists()
     assert (output_dir / "per_sample_scores.jsonl").exists()
     assert (output_dir / "leaderboard.csv").exists()
+
+    manifest_payload = json.loads((output_dir / "run_manifest.json").read_text(encoding="utf-8"))
+    assert manifest_payload["scores"] == result["aggregate_payload"]["overall_scores"]
+    assert manifest_payload["suite_scores"]["image_static"] == result["aggregate_payload"]["suite_scores"]["image_static"]
+
+    with (output_dir / "leaderboard.csv").open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        assert reader.fieldnames == [
+            "model_name",
+            "S_image_static",
+            "S_image_dynamic",
+            "S_video_static",
+            "S_video_dynamic",
+        ]
+        rows = list(reader)
+
+    assert rows == [
+        {
+            "model_name": "toy_model",
+            "S_image_static": str(result["aggregate_payload"]["overall_scores"]["S_image_static"]),
+            "S_image_dynamic": "",
+            "S_video_static": "",
+            "S_video_dynamic": "",
+        }
+    ]

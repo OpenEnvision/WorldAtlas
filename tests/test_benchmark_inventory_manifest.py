@@ -27,12 +27,6 @@ def _make_config(tmp_path: Path, image_root: Path, video_root: Path) -> Benchmar
         anchor_positions=[0.0, 0.5, 1.0],
         motion_frame_count=8,
         split_ratios={"dev_public": 0.2, "dev_private": 0.1, "test_hidden": 0.7},
-        aggregate_weights={
-            "image_static": 0.15,
-            "image_dynamic": 0.15,
-            "video_static": 0.30,
-            "video_dynamic": 0.40,
-        },
         metrics_by_suite={
             "image_static": ["scene_alignment"],
             "image_dynamic": ["dynamic_alignment"],
