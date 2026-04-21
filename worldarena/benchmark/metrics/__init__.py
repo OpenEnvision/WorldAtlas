@@ -9,6 +9,7 @@ from worldarena.benchmark.metrics.control import (
 )
 from worldarena.benchmark.metrics.catalog import METRIC_DIMENSIONS, group_metrics_by_dimension
 from worldarena.benchmark.metrics.motion import MotionMagnitudeMetric, MotionSmoothnessMetric
+from worldarena.benchmark.metrics.temporal import TemporalCalibrationMetric
 from worldarena.benchmark.metrics.registry import build_metrics
 
 __all__ = [
@@ -20,6 +21,7 @@ __all__ = [
     "ObjectDetectionMetric",
     "OpticalFlowAepeMetric",
     "ReprojectionErrorMetric",
+    "TemporalCalibrationMetric",
     "build_metrics",
     "group_metrics_by_dimension",
 ]

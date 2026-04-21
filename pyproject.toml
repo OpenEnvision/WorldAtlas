@@ -31,6 +31,13 @@ eval = [
 quality = [
   "pyiqa>=0.1.13",
 ]
+temporal-calibration = [
+  "torch>=2.4",
+  "omegaconf>=2.3",
+  "huggingface-hub>=0.24",
+  "pytorch-lightning>=1.9",
+  "einops>=0.7",
+]
 video-metrics = [
   "cvxpy>=1.5",
   "hydra-core>=1.3",

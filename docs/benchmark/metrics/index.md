@@ -16,6 +16,7 @@ This section explains metric semantics and reporting rules. Dataset coverage and
 | photometric consistency | [`optical_flow_aepe`](optical_flow_aepe.md) | `video_static` | prediction-only flow error |
 | motion control | [`motion_accuracy`](motion_accuracy.md) | `video_dynamic` | needs masks |
 | motion dynamics | [`motion_magnitude`](motion_magnitude.md), [`motion_smoothness`](motion_smoothness.md) | `video_dynamic`, `experimental` | amplitude and temporal smoothness are separate signals |
+| temporal calibration | [`physical_fps_error`](temporal_calibration.md), [`physical_fps_pct_error`](temporal_calibration.md), [`physical_fps_intra_video_cv`](temporal_calibration.md) | `video_dynamic` | estimates whether predicted physical tempo matches declared video FPS |
 
 ## How To Read A Metric Page
 

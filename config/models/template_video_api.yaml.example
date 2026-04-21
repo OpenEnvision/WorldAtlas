@@ -21,8 +21,27 @@ model:
     api_key_env: EXAMPLE_API_KEY
     base_url_env: EXAMPLE_API_BASE_URL
     submit_mode: http_polling
+    submit_route:
+      t2v: /v1/videos/text2video
+      i2v: /v1/videos/image2video
+    status_route: /v1/videos/{task_id}
+    task_id_path: task_id
+    status_path: status
+    artifact_url_path: video_url
+    success_statuses: [success, succeed, completed, done]
+    failure_statuses: [failed, error, canceled, cancelled]
+    image_field: image_url
+    image_transport: data_url
+    auth_header: Authorization
+    auth_scheme: Bearer
+    headers:
+      Content-Type: application/json
     timeout_seconds: 900
     poll_interval_seconds: 10
   generation:
+    task_type: auto
+    model: example-v1
     resolution: 720p
     duration_seconds: 8
+    aspect_ratio: "16:9"
+    mode: standard

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import io
 import os
 import subprocess
 from pathlib import Path
@@ -59,6 +61,14 @@ def first_frame_to_image(video_path: Path, output_path: Path) -> Path:
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     Image.fromarray(rgb).save(output_path)
     return output_path
+
+
+def image_path_to_data_url(path: Path) -> str:
+    image = Image.open(path).convert("RGB")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    content = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return f"data:image/png;base64,{content}"
 
 
 def run_command(

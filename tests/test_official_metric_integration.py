@@ -18,7 +18,10 @@ from worldarena.benchmark.metrics.control import (
 )
 from worldarena.benchmark.metrics.motion import MotionMagnitudeMetric, MotionSmoothnessMetric
 from worldarena.benchmark.metrics.registry import build_metrics
-from worldarena.benchmark.official_runtime import _install_base_metric_shim
+from worldarena.benchmark.official_runtime import (
+    _install_base_metric_shim,
+    resolve_official_runtime_python,
+)
 from worldarena.benchmark.schemas import BenchmarkSample
 
 
@@ -123,13 +126,18 @@ def test_registry_builds_new_official_metrics_from_aliases(tmp_path: Path) -> No
 
 
 def test_camera_error_metric_uses_official_runtime(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        "worldarena.benchmark.metrics.control.materialize_frame_paths",
+        lambda prediction_path: [f"/tmp/{index:03d}.png" for index in range(16)],
+    )
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.control.load_camera_matrices",
         lambda annotation_path, target_frames=None: object(),
     )
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.control.compute_camera_error",
-        lambda prediction_path, cameras_gt, scale, normalization: {
+        lambda prediction_path, cameras_gt, scale, normalization, frame_paths=None, runtime=None: captured.update({"runtime": runtime, "frame_paths": frame_paths}) or {
             "raw": {"rotation_error": 1.2, "translation_error": 0.03},
             "normalized": 0.91,
             "backend": "droid_slam",
@@ -140,22 +148,26 @@ def test_camera_error_metric_uses_official_runtime(monkeypatch) -> None:
     metric = CameraErrorMetric(
         backend="droid_slam",
         normalization={"empirical_min": [0.0, 0.0], "empirical_max": [15.0, 0.5], "higher_is_better": [False, False]},
+        runtime={"python_bin": "auto"},
     )
     output = metric.compute(_make_sample(), _make_loaded_media(), _make_loaded_media("/tmp/reference.mp4"))
 
     assert output.normalized == 0.91
     assert output.backend == "droid_slam"
     assert output.raw == {"rotation_error": 1.2, "translation_error": 0.03}
+    assert captured["runtime"] == {"python_bin": "auto"}
+    assert captured["frame_paths"] == [f"/tmp/{index:03d}.png" for index in range(16)]
 
 
 def test_object_detection_metric_marks_caption_derived_prompts_as_weak(monkeypatch) -> None:
+    captured: dict[str, object] = {}
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.control.derive_object_prompts",
         lambda annotation_path: (["coral", "fish"], "caption_derived"),
     )
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.control.compute_object_detection",
-        lambda prediction_path, prompt_string, normalization: {
+        lambda prediction_path, prompt_string, normalization, runtime=None: captured.update({"runtime": runtime}) or {
             "raw": 0.75,
             "normalized": 0.75,
             "backend": "grounding_dino",
@@ -166,18 +178,21 @@ def test_object_detection_metric_marks_caption_derived_prompts_as_weak(monkeypat
     metric = ObjectDetectionMetric(
         backend="grounding_dino",
         normalization={"empirical_min": 0.0, "empirical_max": 1.0, "higher_is_better": True},
+        runtime={"python_bin": "auto"},
     )
     output = metric.compute(_make_sample(), _make_loaded_media(), _make_loaded_media("/tmp/reference.mp4"))
 
     assert output.normalized == 0.75
     assert output.eligibility_status == "weak_supervision"
     assert output.details["prompt_candidates"] == ["coral", "fish"]
+    assert captured["runtime"] == {"python_bin": "auto"}
 
 
 def test_static_heavy_metrics_route_through_official_runtime(monkeypatch) -> None:
+    captured: dict[str, object] = {}
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.consistency.compute_reprojection_error",
-        lambda prediction_path, normalization: {
+        lambda prediction_path, normalization, runtime=None: captured.update({"reprojection_runtime": runtime}) or {
             "raw": 0.2,
             "normalized": 0.81,
             "backend": "droid_slam",
@@ -186,7 +201,7 @@ def test_static_heavy_metrics_route_through_official_runtime(monkeypatch) -> Non
     )
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.consistency.compute_optical_flow_aepe",
-        lambda prediction_path, normalization: {
+        lambda prediction_path, normalization, runtime=None: captured.update({"aepe_runtime": runtime}) or {
             "raw": 0.15,
             "normalized": 0.88,
             "backend": "sea_raft",
@@ -197,10 +212,12 @@ def test_static_heavy_metrics_route_through_official_runtime(monkeypatch) -> Non
     reprojection_metric = ReprojectionErrorMetric(
         backend="droid_slam",
         normalization={"empirical_min": 0.0, "empirical_max": 1.0719, "higher_is_better": False},
+        runtime={"python_bin": "auto"},
     )
     aepe_metric = OpticalFlowAepeMetric(
         backend="sea_raft",
         normalization={"empirical_min": 0.0, "empirical_max": 1.192, "higher_is_better": False},
+        runtime={"python_bin": "auto"},
     )
 
     reprojection_output = reprojection_metric.compute(
@@ -218,6 +235,8 @@ def test_static_heavy_metrics_route_through_official_runtime(monkeypatch) -> Non
     assert reprojection_output.normalized == 0.81
     assert aepe_output.backend == "sea_raft"
     assert aepe_output.normalized == 0.88
+    assert captured["reprojection_runtime"] == {"python_bin": "auto"}
+    assert captured["aepe_runtime"] == {"python_bin": "auto"}
 
 
 def test_motion_accuracy_metric_requires_masks(monkeypatch) -> None:
@@ -252,9 +271,10 @@ def test_motion_accuracy_metric_requires_masks(monkeypatch) -> None:
 
 
 def test_motion_metrics_support_official_backends(monkeypatch) -> None:
+    captured: dict[str, object] = {}
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.motion.compute_official_motion_magnitude",
-        lambda prediction_path, normalization: {
+        lambda prediction_path, normalization, runtime=None: captured.update({"magnitude_runtime": runtime}) or {
             "raw": 3.2,
             "normalized": 0.7,
             "backend": "sea_raft",
@@ -263,7 +283,7 @@ def test_motion_metrics_support_official_backends(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.motion.compute_official_motion_smoothness",
-        lambda prediction_path, normalization: {
+        lambda prediction_path, normalization, runtime=None: captured.update({"smoothness_runtime": runtime}) or {
             "raw": {"mse": 8.0, "ssim": 0.97, "lpips": 0.01},
             "normalized": 0.82,
             "backend": "vfi_mamba",
@@ -274,10 +294,12 @@ def test_motion_metrics_support_official_backends(monkeypatch) -> None:
     magnitude_metric = MotionMagnitudeMetric(
         backend="sea_raft",
         normalization={"avg": 3.2425, "std": 3.4505, "z_max": 2.7498, "z_min": -0.8638, "range": [0.25, 0.75], "higher_is_better": True},
+        runtime={"python_bin": "auto"},
     )
     smoothness_metric = MotionSmoothnessMetric(
         backend="vfi_mamba",
         normalization={"empirical_min": [0.0, 0.9224, 0.0], "empirical_max": [82.4014, 1.0, 0.0228], "higher_is_better": [False, True, False]},
+        runtime={"python_bin": "auto"},
     )
     sample = _make_sample(suite="video_dynamic", has_pose=False)
 
@@ -288,6 +310,8 @@ def test_motion_metrics_support_official_backends(monkeypatch) -> None:
     assert magnitude_output.normalized == 0.7
     assert smoothness_output.backend == "vfi_mamba"
     assert smoothness_output.normalized == 0.82
+    assert captured["magnitude_runtime"] == {"python_bin": "auto"}
+    assert captured["smoothness_runtime"] == {"python_bin": "auto"}
 
 
 def test_official_base_metric_shim_supports_numpy_tensor_conversion() -> None:
@@ -305,3 +329,20 @@ def test_official_base_metric_shim_supports_numpy_tensor_conversion() -> None:
 
     assert tuple(left_tensor.shape) == (1, 3, 8, 8)
     assert tuple(right_tensor.shape) == (1, 3, 8, 8)
+
+
+def test_resolve_official_runtime_python_preserves_runtime_symlink(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    runtime_python = tmp_path / ".runtime312" / "bin" / "python"
+    runtime_python.parent.mkdir(parents=True)
+    runtime_python.symlink_to(Path(sys.executable))
+    monkeypatch.setattr(
+        "worldarena.benchmark.official_runtime.DEFAULT_OFFICIAL_RUNTIME_PYTHONS",
+        (runtime_python,),
+    )
+
+    resolved = resolve_official_runtime_python({"python_bin": "auto"})
+
+    assert resolved == str(runtime_python.absolute())

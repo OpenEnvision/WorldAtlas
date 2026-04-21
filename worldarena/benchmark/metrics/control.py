@@ -9,6 +9,7 @@ from worldarena.benchmark.official_runtime import (
     compute_camera_error,
     compute_motion_accuracy,
     compute_object_detection,
+    materialize_frame_paths,
 )
 from worldarena.benchmark.schemas import BenchmarkSample, MetricOutput
 
@@ -22,8 +23,14 @@ class CameraErrorMetric(OfficialMetric):
     supported_backends = CAMERA_ERROR_BACKENDS
     auto_backend = "droid_slam"
 
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        backend: str,
+        normalization: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__("camera_error", backend, normalization)
+        self.runtime = dict(runtime or {})
 
     def compute(
         self,
@@ -44,9 +51,10 @@ class CameraErrorMetric(OfficialMetric):
                 error="camera poses are unavailable for this sample",
             )
         try:
+            frame_paths = materialize_frame_paths(prediction.path)
             cameras_gt = load_camera_matrices(
                 sample.annotation_path,
-                target_frames=len(prediction.frames),
+                target_frames=len(frame_paths),
             )
             if cameras_gt is None:
                 raise FileNotFoundError("camera poses are unavailable for this sample")
@@ -55,6 +63,8 @@ class CameraErrorMetric(OfficialMetric):
                 cameras_gt=cameras_gt,
                 scale=1.0,
                 normalization=self.normalization,
+                frame_paths=frame_paths,
+                runtime=self.runtime,
             )
             details.update(result["details"])
             return MetricOutput(
@@ -77,8 +87,14 @@ class ObjectDetectionMetric(OfficialMetric):
     supported_backends = OBJECT_DETECTION_BACKENDS
     auto_backend = "grounding_dino"
 
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        backend: str,
+        normalization: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__("object_detection", backend, normalization)
+        self.runtime = dict(runtime or {})
 
     def compute(
         self,
@@ -113,6 +129,7 @@ class ObjectDetectionMetric(OfficialMetric):
                 prediction.path,
                 prompt_string=prompt_string,
                 normalization=self.normalization,
+                runtime=self.runtime,
             )
             details.update(result["details"])
             return MetricOutput(

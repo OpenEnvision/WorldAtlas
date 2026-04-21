@@ -1,0 +1,46 @@
+model:
+  name: kling-api
+  family: kling_api
+  backend_type: http_api
+  task_families: [video_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  python_bin: python
+  repo_root: null
+  checkpoint_dir: null
+  entrypoint: null
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  api:
+    provider: kling
+    api_key_env: KLING_API_KEY
+    base_url: https://api.klingapi.com
+    submit_mode: http_polling
+    submit_route:
+      t2v: /v1/videos/text2video
+      i2v: /v1/videos/image2video
+    status_route: /v1/videos/{task_id}
+    task_id_path: task_id
+    status_path: status
+    artifact_url_path: video_url
+    success_statuses: [success, succeed, completed, done]
+    failure_statuses: [failed, error, canceled, cancelled]
+    image_field: image_url
+    image_transport: data_url
+    auth_header: Authorization
+    auth_scheme: Bearer
+    headers:
+      Content-Type: application/json
+    timeout_seconds: 900
+    poll_interval_seconds: 10
+  generation:
+    task_type: auto
+    model: kling-v2.6-pro
+    duration_seconds: 5
+    aspect_ratio: "16:9"
+    mode: professional

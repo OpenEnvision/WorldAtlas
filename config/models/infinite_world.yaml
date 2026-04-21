@@ -1,0 +1,54 @@
+model:
+  name: infinite-world
+  family: infinite_world
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, actions]
+  roles: [candidate]
+  # Infinite-World currently expects a CUDA-capable Python 3.10 runtime with flash-attn.
+  python_bin: .runtime310/bin/python
+  # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
+  repo_root: third_party/Infinite-World
+  # Keep checkpoints under cache/hfd or point this at a shared cache mount through `worldarena prepare-layout --shared-hf-cache`.
+  checkpoint_dir: cache/hfd/MeiGen-AI--Infinite-World
+  entrypoint: scripts/infworld_inference.py
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    config_path: configs/infworld_config.yaml
+    bucket_config_name: ASPECT_RATIO_627_F64
+    fps: 30
+    seed: 42
+    num_chunks: 1
+    num_sampling_steps: 30
+    sample_shift: 7.0
+    sample_guide_scale: 5.0
+    quality: 8
+    validation_num_frames: 81
+    chunk_stride: 20
+    action_plan:
+      default:
+        - forward
+        - camera_right
+        - forward
+        - camera_left
+        - forward
+      by_suite:
+        video_static:
+          - forward
+          - camera_right
+          - forward
+          - camera_left
+          - forward
+        video_dynamic:
+          - forward
+          - forward_right
+          - camera_right
+          - forward
+          - camera_left
+      frames_per_action: 16

@@ -19,8 +19,14 @@ class ReprojectionErrorMetric(OfficialMetric):
     supported_backends = REPROJECTION_ERROR_BACKENDS
     auto_backend = "droid_slam"
 
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        backend: str,
+        normalization: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__("reprojection_error", backend, normalization)
+        self.runtime = dict(runtime or {})
 
     def compute(
         self,
@@ -37,6 +43,7 @@ class ReprojectionErrorMetric(OfficialMetric):
             result = compute_reprojection_error(
                 prediction.path,
                 normalization=self.normalization,
+                runtime=self.runtime,
             )
             details.update(result["details"])
             return MetricOutput(
@@ -59,8 +66,14 @@ class OpticalFlowAepeMetric(OfficialMetric):
     supported_backends = OPTICAL_FLOW_AEPE_BACKENDS
     auto_backend = "sea_raft"
 
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        backend: str,
+        normalization: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__("optical_flow_aepe", backend, normalization)
+        self.runtime = dict(runtime or {})
 
     def compute(
         self,
@@ -77,6 +90,7 @@ class OpticalFlowAepeMetric(OfficialMetric):
             result = compute_optical_flow_aepe(
                 prediction.path,
                 normalization=self.normalization,
+                runtime=self.runtime,
             )
             details.update(result["details"])
             return MetricOutput(

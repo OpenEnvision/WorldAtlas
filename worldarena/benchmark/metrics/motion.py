@@ -67,8 +67,14 @@ def _distribution_details(prefix: str, values: list[float]) -> dict[str, float]:
 
 
 class MotionMagnitudeMetric(Metric):
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        backend: str,
+        normalization: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__("motion_magnitude", backend, normalization)
+        self.runtime = dict(runtime or {})
         _resolve_flow_backend(self.name, self.backend)
 
     def compute(
@@ -85,6 +91,7 @@ class MotionMagnitudeMetric(Metric):
                 official_result = compute_official_motion_magnitude(
                     prediction.path,
                     normalization=self.normalization,
+                    runtime=self.runtime,
                 )
                 details = {
                     "frame_indices": list(prediction.protocol_frame_indices),
@@ -141,8 +148,14 @@ class MotionMagnitudeMetric(Metric):
 
 
 class MotionSmoothnessMetric(Metric):
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        backend: str,
+        normalization: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> None:
         super().__init__("motion_smoothness", backend, normalization)
+        self.runtime = dict(runtime or {})
         _resolve_flow_backend(self.name, self.backend)
 
     def compute(
@@ -159,6 +172,7 @@ class MotionSmoothnessMetric(Metric):
                 official_result = compute_official_motion_smoothness(
                     prediction.path,
                     normalization=self.normalization,
+                    runtime=self.runtime,
                 )
                 details = {
                     "frame_indices": list(prediction.protocol_frame_indices),

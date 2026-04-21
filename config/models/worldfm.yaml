@@ -1,0 +1,29 @@
+model:
+  name: worldfm
+  family: worldfm
+  backend_type: local_repo
+  task_families: [video_generation, scene_3d_generation]
+  artifact_types: [video]
+  control_signals: [image, camera_pose]
+  roles: [candidate]
+  # WorldFM's published environment targets Python 3.10 with a dedicated CUDA stack.
+  python_bin: .runtime310/bin/python
+  # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
+  repo_root: third_party/worldfm
+  # Run `python download_ckpts.py --weights-dir <checkpoint_dir>` inside the repo to populate these weights.
+  checkpoint_dir: cache/hfd/inspatio--worldfm
+  entrypoint: run_pipeline.py
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+  prompt_mode: none
+  reference_mode: first_frame
+  generation:
+    model_filename: worldfm_2-step.pth
+    vae_subdir: vae
+    step: 2
+    image_size: 512
+    cfg_scale: 4.5
+    render_size: 512
+    fps: 30
+    gpu_index: 0

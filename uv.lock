@@ -2980,6 +2980,25 @@ wheels = [
 ]
 
 [[package]]
+name = "pytorch-lightning"
+version = "2.6.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "fsspec", extra = ["http"] },
+    { name = "lightning-utilities" },
+    { name = "packaging" },
+    { name = "pyyaml" },
+    { name = "torch" },
+    { name = "torchmetrics" },
+    { name = "tqdm" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8b/ac/ebd5f6f58691cbd4f73836e43e1727f3814311b960c41f88e259606ca2b2/pytorch_lightning-2.6.1.tar.gz", hash = "sha256:ba08f8901cf226fcca473046ad9346f414e99117762dc869c76e650d5b3d7bdc", size = 665563, upload-time = "2026-01-30T14:59:11.636Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/93/c8c361bf0a2fe50f828f32def460e8b8a14b93955d3fd302b1a9b63b19e4/pytorch_lightning-2.6.1-py3-none-any.whl", hash = "sha256:1f8118567ec829e3055f16cf1aa320883a86a47c836951bfd9dcfa34ec7ffd59", size = 857273, upload-time = "2026-01-30T14:59:10.141Z" },
+]
+
+[[package]]
 name = "pytz"
 version = "2026.1.post1"
 source = { registry = "https://pypi.org/simple" }
@@ -4105,6 +4124,13 @@ eval = [
 quality = [
     { name = "pyiqa" },
 ]
+temporal-calibration = [
+    { name = "einops" },
+    { name = "huggingface-hub" },
+    { name = "omegaconf" },
+    { name = "pytorch-lightning" },
+    { name = "torch" },
+]
 video-metrics = [
     { name = "causal-conv1d" },
     { name = "cvxpy", version = "1.7.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
@@ -4154,7 +4180,9 @@ world-models = [
 requires-dist = [
     { name = "causal-conv1d", marker = "extra == 'video-metrics'", specifier = ">=1.5.0.post8" },
     { name = "cvxpy", marker = "extra == 'video-metrics'", specifier = ">=1.5" },
+    { name = "einops", marker = "extra == 'temporal-calibration'", specifier = ">=0.7" },
     { name = "einops", marker = "extra == 'video-metrics'", specifier = ">=0.7" },
+    { name = "huggingface-hub", marker = "extra == 'temporal-calibration'", specifier = ">=0.24" },
     { name = "hydra-core", marker = "extra == 'video-metrics'", specifier = ">=1.3" },
     { name = "iopath", marker = "extra == 'video-metrics'", specifier = ">=0.1.10" },
     { name = "jinja2", specifier = ">=3.1" },
@@ -4162,24 +4190,27 @@ requires-dist = [
     { name = "mkdocs", specifier = ">=1.6" },
     { name = "mkdocs-material", specifier = ">=9.5" },
     { name = "numpy", specifier = ">=1.26" },
+    { name = "omegaconf", marker = "extra == 'temporal-calibration'", specifier = ">=2.3" },
     { name = "opencv-python-headless", specifier = ">=4.10" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pillow", specifier = ">=10.0" },
     { name = "plotly", specifier = ">=5.24" },
     { name = "pycocotools", marker = "extra == 'video-metrics'", specifier = ">=2.0.8" },
     { name = "pyiqa", marker = "extra == 'quality'", specifier = ">=0.1.13" },
+    { name = "pytorch-lightning", marker = "extra == 'temporal-calibration'", specifier = ">=1.9" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "scipy", marker = "extra == 'video-metrics'", specifier = ">=1.13" },
     { name = "spacy", marker = "extra == 'video-metrics'", specifier = ">=3.8" },
     { name = "tabulate", specifier = ">=0.9" },
     { name = "timm", marker = "extra == 'video-metrics'", specifier = ">=0.9" },
     { name = "torch", marker = "extra == 'eval'", specifier = ">=2.4" },
+    { name = "torch", marker = "extra == 'temporal-calibration'", specifier = ">=2.4" },
     { name = "torchmetrics", marker = "extra == 'eval'", specifier = ">=1.4" },
     { name = "torchvision", marker = "extra == 'eval'", specifier = ">=0.19" },
     { name = "tqdm", marker = "extra == 'video-metrics'", specifier = ">=4.66" },
     { name = "transformers", marker = "extra == 'eval'", specifier = ">=4.44" },
 ]
-provides-extras = ["eval", "quality", "video-metrics"]
+provides-extras = ["eval", "quality", "temporal-calibration", "video-metrics"]
 
 [package.metadata.requires-dev]
 dev = [

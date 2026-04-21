@@ -57,6 +57,7 @@ nav:
           - Motion Accuracy: benchmark/metrics/motion_accuracy.md
           - Motion Magnitude: benchmark/metrics/motion_magnitude.md
           - Motion Smoothness: benchmark/metrics/motion_smoothness.md
+          - Temporal Calibration: benchmark/metrics/temporal_calibration.md
   - Environment: environment.md
   - Runtime Setup: third_party.md
   - Dataset Analytics:

@@ -9,13 +9,41 @@ DEFAULT_MODEL_LAYOUT = {
         "repo_root": "third_party/lingbot-world",
         "checkpoint_dir": "cache/hfd/robbyant--lingbot-world-base-cam",
     },
+    "matrix-game-1": {
+        "repo_root": "third_party/Matrix-Game-1",
+        "checkpoint_dir": "cache/hfd/Matrix-Game-1.0",
+    },
+    "matrix-game-2": {
+        "repo_root": "third_party/Matrix-Game-2",
+        "checkpoint_dir": "cache/hfd/Skywork--Matrix-Game-2.0",
+    },
     "matrix-game": {
         "repo_root": "third_party/Matrix-Game-3.0",
         "checkpoint_dir": "cache/hfd/Matrix-Game-3.0",
     },
+    "lyra-1": {
+        "repo_root": "third_party/Lyra-1",
+        "checkpoint_dir": "cache/hfd/Lyra",
+    },
+    "lyra-2": {
+        "repo_root": "third_party/Lyra-2",
+        "checkpoint_dir": "cache/hfd/Lyra-2.0",
+    },
+    "infinite-world": {
+        "repo_root": "third_party/Infinite-World",
+        "checkpoint_dir": "cache/hfd/MeiGen-AI--Infinite-World",
+    },
     "worldcam": {
         "repo_root": "third_party/WorldCam",
         "checkpoint_dir": "cache/hfd/worldcam--worldcam",
+    },
+    "worldfm": {
+        "repo_root": "third_party/worldfm",
+        "checkpoint_dir": "cache/hfd/inspatio--worldfm",
+    },
+    "HunyuanWorld-1.0": {
+        "repo_root": "third_party/HunyuanWorld-1.0",
+        "checkpoint_dir": "cache/hfd/tencent--HunyuanWorld-1",
     },
 }
 DEFAULT_RUNTIME_PYTHONS = {

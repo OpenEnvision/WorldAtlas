@@ -23,6 +23,16 @@ def test_prepare_runtime_layout_creates_local_cache_and_env_paths(tmp_path: Path
         "HF_HUB_CACHE": str(cache_root / "huggingface" / "hub"),
         "TRANSFORMERS_CACHE": str(cache_root / "transformers"),
     }
+    assert result["expected_model_layout"]["matrix-game-1"]["repo_root"].endswith("third_party/Matrix-Game-1")
+    assert result["expected_model_layout"]["matrix-game-2"]["checkpoint_dir"].endswith(
+        "cache/hfd/Skywork--Matrix-Game-2.0"
+    )
+    assert result["expected_model_layout"]["lyra-1"]["repo_root"].endswith("third_party/Lyra-1")
+    assert result["expected_model_layout"]["lyra-2"]["checkpoint_dir"].endswith("cache/hfd/Lyra-2.0")
+    assert result["expected_model_layout"]["worldfm"]["repo_root"].endswith("third_party/worldfm")
+    assert result["expected_model_layout"]["HunyuanWorld-1.0"]["repo_root"].endswith(
+        "third_party/HunyuanWorld-1.0"
+    )
     assert result["runtime_pythons"]["managed"]["path"].endswith(".venv/bin/python")
 
 

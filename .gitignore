@@ -1,4 +1,5 @@
 .venv/
+.runtime310/
 .runtime312/
 .cache/
 .pytest_cache/

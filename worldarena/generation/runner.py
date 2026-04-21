@@ -38,6 +38,8 @@ def _conditioning_image_for(
     reference_mode: str,
     cache_root: Path,
 ) -> Path:
+    if reference_mode == "none":
+        return cache_root / f"{sample.prediction_stem}.unused.png"
     if sample.conditioning_path:
         conditioning_path = Path(sample.conditioning_path).expanduser().resolve()
         if not conditioning_path.exists():

@@ -1,0 +1,37 @@
+model:
+  name: lyra-1
+  family: lyra1
+  backend_type: local_repo
+  task_families: [video_generation, scene_3d_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  # Lyra-1 and its GEN3C stack target Python 3.10 with a dedicated CUDA environment.
+  python_bin: .runtime310/bin/python
+  repo_root: third_party/Lyra-1
+  # Keep the Lyra checkpoints under cache/hfd/Lyra; the runner resolves sibling GEN3C/T5/tokenizer caches from the same root.
+  checkpoint_dir: cache/hfd/Lyra
+  entrypoint: sample.py
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+  prompt_mode: prompt_current
+  reference_mode: first_frame
+  generation:
+    num_gpus: 1
+    num_video_frames: 121
+    height: 704
+    width: 1280
+    fps: 24
+    seed: 42
+    guidance: 1.0
+    num_steps: 35
+    trajectory: left
+    camera_rotation: center_facing
+    movement_distance: 0.3
+    total_movement_distance_factor: 1.0
+    foreground_masking: true
+    multi_trajectory: true
+    target_index_subsample: 4
+    output_view_index: 0
+    static_view_indices_fixed: ["5", "0", "1", "2", "3", "4"]

@@ -59,3 +59,37 @@ def test_build_metrics_passes_metric_runtime_to_motion_accuracy(tmp_path: Path) 
 
     assert len(metrics) == 1
     assert getattr(metrics[0], "runtime", None) == {"sam2_offload_state_to_cpu": True}
+
+
+def test_build_metrics_merges_shared_official_runtime(tmp_path: Path) -> None:
+    config = _make_config(
+        tmp_path,
+        {
+            "camera_control": "droid_slam",
+            "photometric_consistency": "sea_raft",
+            "motion_accuracy": "sam2_sea_raft",
+            "motion_magnitude": "sea_raft",
+        },
+    )
+    config.metric_runtime = {
+        "official_source": {"python_bin": "auto"},
+        "camera_error": {"env": {"CUDA_VISIBLE_DEVICES": "0"}},
+        "motion_accuracy": {"sam2_offload_state_to_cpu": True},
+    }
+
+    metrics = build_metrics(
+        ["camera_control", "photometric_consistency", "motion_accuracy", "motion_magnitude"],
+        config,
+    )
+    metrics_by_name = {metric.name: metric for metric in metrics}
+
+    assert getattr(metrics_by_name["camera_error"], "runtime", None) == {
+        "python_bin": "auto",
+        "env": {"CUDA_VISIBLE_DEVICES": "0"},
+    }
+    assert getattr(metrics_by_name["optical_flow_aepe"], "runtime", None) == {"python_bin": "auto"}
+    assert getattr(metrics_by_name["motion_accuracy"], "runtime", None) == {
+        "python_bin": "auto",
+        "sam2_offload_state_to_cpu": True,
+    }
+    assert getattr(metrics_by_name["motion_magnitude"], "runtime", None) == {"python_bin": "auto"}

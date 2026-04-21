@@ -49,6 +49,8 @@ class ApiModelAdapter(ModelAdapter):
         handle = provider.submit(request)
         result = provider.wait(handle)
         artifact = provider.download(result, output_path)
+        if not artifact.request:
+            artifact.request = dict(request)
         return self._to_record(handle=handle, artifact=artifact)
 
     def _to_record(
@@ -61,6 +63,7 @@ class ApiModelAdapter(ModelAdapter):
             "prediction_path": str(artifact.artifact_path),
             "provider": artifact.provider,
             "job_id": handle.job_id,
+            "submit_response": handle.raw,
             "request": artifact.request,
             "response": artifact.response,
             "metadata": artifact.metadata,

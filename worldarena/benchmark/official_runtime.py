@@ -7,8 +7,10 @@ import importlib.util
 import json
 import os
 import shutil
+import subprocess
 import sys
 import types
+import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import lru_cache
@@ -21,6 +23,12 @@ import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 OFFICIAL_RUNTIME_ENV = "WORLDARENA_METRIC_SOURCE_ROOT"
+OFFICIAL_RUNTIME_WORKER_ENV = "WORLDARENA_OFFICIAL_RUNTIME_WORKER"
+DEFAULT_OFFICIAL_RUNTIME_PYTHONS = (
+    PROJECT_ROOT / ".runtime312" / "bin" / "python",
+    PROJECT_ROOT / ".runtime310" / "bin" / "python",
+    PROJECT_ROOT / ".runtime" / "bin" / "python",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,6 +37,7 @@ class MetricSourceLayout:
     package_name: str
     overlay_root: Path
     droid_root: Path | None
+    droid_build_root: Path | None
     lietorch_root: Path | None
 
 
@@ -69,6 +78,10 @@ def _runtime_cache_dir(name: str) -> Path:
     path = PROJECT_ROOT / ".cache" / "benchmark" / name
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def _current_cpython_tag() -> str:
+    return f"cpython-{sys.version_info.major}{sys.version_info.minor}"
 
 
 def _ensure_symlink(link_path: Path, target_path: Path) -> None:
@@ -158,6 +171,10 @@ def resolve_metric_source_layout() -> MetricSourceLayout:
         [path.parent for path in source_root.rglob("droid.py") if path.parent.name == "droid_slam"],
         package_prefix=package_name,
     )
+    droid_build_root = _select_candidate_path(
+        [path.parent for path in source_root.rglob("droid_backends*.so")],
+        package_prefix=_current_cpython_tag(),
+    )
     lietorch_root = _select_candidate_path(
         [path.parent.parent for path in source_root.rglob("lietorch/__init__.py")],
         package_prefix="DROID-SLAM",
@@ -195,6 +212,7 @@ def resolve_metric_source_layout() -> MetricSourceLayout:
         package_name=package_name,
         overlay_root=overlay_root,
         droid_root=droid_root,
+        droid_build_root=droid_build_root,
         lietorch_root=lietorch_root,
     )
 
@@ -208,6 +226,7 @@ def metric_runtime_context() -> Iterator[MetricSourceLayout]:
         for path in (
             layout.overlay_root,
             layout.droid_root,
+            layout.droid_build_root,
             layout.lietorch_root,
         )
         if path is not None
@@ -223,6 +242,109 @@ def metric_runtime_context() -> Iterator[MetricSourceLayout]:
             path_str = str(path)
             while path_str in sys.path:
                 sys.path.remove(path_str)
+
+
+def _resolve_runtime_python_bin(runtime: dict[str, Any] | None) -> str | None:
+    payload = dict(runtime or {})
+    raw = str(payload.get("python_bin") or "").strip()
+    if not raw:
+        return None
+    if raw == "auto":
+        for candidate in DEFAULT_OFFICIAL_RUNTIME_PYTHONS:
+            if candidate.exists():
+                return str(candidate.absolute())
+        return None
+    path = Path(raw).expanduser()
+    if path.is_absolute():
+        return str(path)
+    if raw.startswith(".") or "/" in raw:
+        return str((PROJECT_ROOT / path).absolute())
+    return raw
+
+
+def resolve_official_runtime_python(runtime: dict[str, Any] | None = None) -> str | None:
+    return _resolve_runtime_python_bin(runtime)
+
+
+def _subprocess_runtime_env(runtime: dict[str, Any] | None) -> dict[str, str]:
+    env = os.environ.copy()
+    env[OFFICIAL_RUNTIME_WORKER_ENV] = "1"
+    pythonpath_entries = [str(PROJECT_ROOT)]
+    existing_pythonpath = env.get("PYTHONPATH")
+    if existing_pythonpath:
+        pythonpath_entries.append(existing_pythonpath)
+    env["PYTHONPATH"] = os.pathsep.join(pythonpath_entries)
+    for key, value in dict((runtime or {}).get("env", {})).items():
+        env[str(key)] = str(value)
+    return env
+
+
+def _maybe_run_metric_in_subprocess(
+    metric_name: str,
+    payload: dict[str, Any],
+    runtime: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if os.getenv(OFFICIAL_RUNTIME_WORKER_ENV) == "1":
+        return None
+    python_bin = _resolve_runtime_python_bin(runtime)
+    if python_bin is None:
+        return None
+
+    ipc_dir = _runtime_cache_dir("official_runtime_ipc")
+    token = uuid.uuid4().hex
+    request_path = ipc_dir / f"{metric_name}.{token}.request.json"
+    response_path = ipc_dir / f"{metric_name}.{token}.response.json"
+    request_path.write_text(
+        json.dumps({"metric": metric_name, "kwargs": payload}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    command = [
+        python_bin,
+        "-m",
+        "worldarena.benchmark.official_runtime_worker",
+        "--request",
+        str(request_path),
+        "--response",
+        str(response_path),
+    ]
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(PROJECT_ROOT),
+            env=_subprocess_runtime_env(runtime),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = (exc.stderr or "").strip()
+        stdout = (exc.stdout or "").strip()
+        error_parts = [f"official runtime subprocess failed for {metric_name}"]
+        if stderr:
+            error_parts.append(stderr)
+        if stdout:
+            error_parts.append(stdout)
+        raise RuntimeError(" | ".join(error_parts)) from exc
+
+    if not response_path.exists():
+        logs = " | ".join(
+            part for part in ((completed.stderr or "").strip(), (completed.stdout or "").strip()) if part
+        )
+        raise RuntimeError(f"official runtime subprocess did not write a response for {metric_name}: {logs}")
+
+    response = json.loads(response_path.read_text(encoding="utf-8"))
+    if not bool(response.get("ok")):
+        error = str(response.get("error") or f"official runtime subprocess failed for {metric_name}")
+        traceback_text = str(response.get("traceback") or "").strip()
+        stderr = str(response.get("stderr") or "").strip()
+        stdout = str(response.get("stdout") or "").strip()
+        details = " | ".join(part for part in (error, traceback_text, stderr, stdout) if part)
+        raise RuntimeError(details)
+
+    if not _coerce_runtime_bool((runtime or {}).get("keep_ipc"), default=False):
+        request_path.unlink(missing_ok=True)
+        response_path.unlink(missing_ok=True)
+    return dict(response["result"])
 
 
 @lru_cache(maxsize=None)
@@ -575,6 +697,7 @@ def inspect_metric_source_layout() -> dict[str, Any]:
         "package_name": layout.package_name,
         "overlay_root": str(layout.overlay_root),
         "droid_root": str(layout.droid_root) if layout.droid_root is not None else None,
+        "droid_build_root": str(layout.droid_build_root) if layout.droid_build_root is not None else None,
         "lietorch_root": str(layout.lietorch_root) if layout.lietorch_root is not None else None,
     }
 
@@ -642,8 +765,25 @@ def compute_camera_error(
     cameras_gt: np.ndarray,
     scale: float,
     normalization: dict[str, Any],
+    *,
+    frame_paths: list[str] | None = None,
+    runtime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    frame_paths = materialize_frame_paths(prediction_path)
+    delegated = _maybe_run_metric_in_subprocess(
+        "camera_error",
+        {
+            "prediction_path": prediction_path,
+            "cameras_gt": np.asarray(cameras_gt).tolist(),
+            "scale": float(scale),
+            "normalization": normalization,
+            "frame_paths": frame_paths,
+            "runtime": runtime,
+        },
+        runtime,
+    )
+    if delegated is not None:
+        return delegated
+    frame_paths = list(frame_paths) if frame_paths is not None else materialize_frame_paths(prediction_path)
     try:
         import torch
     except ModuleNotFoundError as exc:  # pragma: no cover - optional runtime dependency
@@ -652,7 +792,11 @@ def compute_camera_error(
     with metric_runtime_context():
         metric = _run_metric("camera_error")
         try:
-            score = metric._compute_scores(frame_paths, torch.as_tensor(cameras_gt), scale=scale)
+            score = metric._compute_scores(
+                frame_paths,
+                torch.as_tensor(np.asarray(cameras_gt)),
+                scale=scale,
+            )
         finally:
             del metric
             _empty_cuda_cache()
@@ -675,7 +819,20 @@ def compute_camera_error(
 def compute_reprojection_error(
     prediction_path: str,
     normalization: dict[str, Any],
+    *,
+    runtime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    delegated = _maybe_run_metric_in_subprocess(
+        "reprojection_error",
+        {
+            "prediction_path": prediction_path,
+            "normalization": normalization,
+            "runtime": runtime,
+        },
+        runtime,
+    )
+    if delegated is not None:
+        return delegated
     frame_paths = materialize_frame_paths(prediction_path)
     with metric_runtime_context():
         metric = _run_metric("reprojection_error")
@@ -695,7 +852,20 @@ def compute_reprojection_error(
 def compute_optical_flow_aepe(
     prediction_path: str,
     normalization: dict[str, Any],
+    *,
+    runtime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    delegated = _maybe_run_metric_in_subprocess(
+        "optical_flow_aepe",
+        {
+            "prediction_path": prediction_path,
+            "normalization": normalization,
+            "runtime": runtime,
+        },
+        runtime,
+    )
+    if delegated is not None:
+        return delegated
     frame_paths = materialize_frame_paths(prediction_path)
     with metric_runtime_context():
         metric = _run_metric("optical_flow_aepe")
@@ -715,7 +885,20 @@ def compute_optical_flow_aepe(
 def compute_motion_magnitude(
     prediction_path: str,
     normalization: dict[str, Any],
+    *,
+    runtime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    delegated = _maybe_run_metric_in_subprocess(
+        "motion_magnitude",
+        {
+            "prediction_path": prediction_path,
+            "normalization": normalization,
+            "runtime": runtime,
+        },
+        runtime,
+    )
+    if delegated is not None:
+        return delegated
     frame_paths = materialize_frame_paths(prediction_path)
     with metric_runtime_context():
         metric = _run_metric("motion_magnitude")
@@ -735,7 +918,20 @@ def compute_motion_magnitude(
 def compute_motion_smoothness(
     prediction_path: str,
     normalization: dict[str, Any],
+    *,
+    runtime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    delegated = _maybe_run_metric_in_subprocess(
+        "motion_smoothness",
+        {
+            "prediction_path": prediction_path,
+            "normalization": normalization,
+            "runtime": runtime,
+        },
+        runtime,
+    )
+    if delegated is not None:
+        return delegated
     frame_paths = materialize_frame_paths(prediction_path)
     with metric_runtime_context():
         metric = _run_metric("motion_smoothness")
@@ -768,7 +964,21 @@ def compute_object_detection(
     prediction_path: str,
     prompt_string: str,
     normalization: dict[str, Any],
+    *,
+    runtime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    delegated = _maybe_run_metric_in_subprocess(
+        "object_detection",
+        {
+            "prediction_path": prediction_path,
+            "prompt_string": prompt_string,
+            "normalization": normalization,
+            "runtime": runtime,
+        },
+        runtime,
+    )
+    if delegated is not None:
+        return delegated
     frame_paths = materialize_frame_paths(prediction_path)
     with metric_runtime_context():
         metric = _run_metric("object_detection")
@@ -797,6 +1007,19 @@ def compute_motion_accuracy(
     generate_type: str = "i2v",
     runtime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    delegated = _maybe_run_metric_in_subprocess(
+        "motion_accuracy",
+        {
+            "prediction_path": prediction_path,
+            "mask_dir": mask_dir,
+            "normalization": normalization,
+            "generate_type": generate_type,
+            "runtime": runtime,
+        },
+        runtime,
+    )
+    if delegated is not None:
+        return delegated
     frame_paths = materialize_frame_paths(prediction_path)
     mask_paths = [
         str(path)
@@ -843,5 +1066,6 @@ __all__ = [
     "materialize_frame_paths",
     "metric_runtime_context",
     "normalize_official_score",
+    "resolve_official_runtime_python",
     "resolve_metric_source_layout",
 ]

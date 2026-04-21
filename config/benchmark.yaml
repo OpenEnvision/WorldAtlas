@@ -45,6 +45,9 @@ benchmark:
       - motion_accuracy
       - motion_magnitude
       - motion_smoothness
+      - physical_fps_error
+      - physical_fps_pct_error
+      - physical_fps_intra_video_cv
     auxiliary:
       - reference_appearance_alignment
       - anchor_consistency
@@ -65,8 +68,13 @@ benchmark:
     motion_accuracy: sam2_sea_raft
     motion_magnitude: sea_raft
     motion_smoothness: vfi_mamba
+    physical_fps_error: pulse_of_motion
+    physical_fps_pct_error: pulse_of_motion
+    physical_fps_intra_video_cv: pulse_of_motion
     anchor_consistency: clip
   metric_runtime:
+    official_source:
+      python_bin: auto
     motion_accuracy:
       sam2_offload_video_to_cpu: true
       sam2_offload_state_to_cpu: true
@@ -74,6 +82,12 @@ benchmark:
       # sam2_device: cuda:0
       # flow_device: cuda:1
       # grounding_dino_device: cuda:2
+    temporal_calibration:
+      # Optional on multi-GPU hosts:
+      # device: cuda:2
+      clip_length: 30
+      stride: 4
+      resolution: 216
   normalization:
     prompt_alignment:
       lower: 0.0
@@ -127,6 +141,18 @@ benchmark:
       z_min: -1.6147
       range: [0.25, 0.75]
       higher_is_better: true
+    physical_fps_error:
+      lower: 0.0
+      upper: 30.0
+      higher_is_better: false
+    physical_fps_pct_error:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: false
+    physical_fps_intra_video_cv:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: false
     anchor_consistency:
       lower: 0.0
       upper: 1.0

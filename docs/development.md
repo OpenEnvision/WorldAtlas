@@ -14,6 +14,12 @@ Official metric backends:
 uv sync --python 3.10 --extra eval --extra quality
 ```
 
+Temporal calibration metrics:
+
+```bash
+uv sync --python 3.10 --extra temporal-calibration
+```
+
 Heavy video metrics:
 
 ```bash
@@ -43,7 +49,13 @@ If you already have machine-local caches or external clones:
 uv run worldarena prepare-layout \
   --shared-hf-cache /path/to/shared/hf-cache \
   --repo-link lingbot-world=/path/to/lingbot-world \
+  --repo-link Lyra-1=/path/to/Lyra-1 \
+  --repo-link Lyra-2=/path/to/Lyra-2 \
+  --repo-link HunyuanWorld-1.0=/path/to/HunyuanWorld-1.0 \
+  --repo-link worldfm=/path/to/worldfm \
   --repo-link WorldCam=/path/to/WorldCam \
+  --repo-link Matrix-Game-1=/path/to/Matrix-Game-1 \
+  --repo-link Matrix-Game-2=/path/to/Matrix-Game-2 \
   --repo-link Matrix-Game-3.0=/path/to/Matrix-Game-3.0
 ```
 
@@ -90,6 +102,15 @@ All models, including future API-backed ones, should keep the same YAML surface:
 - `roles`
 
 Use `config/models/template_video_api.yaml.example` as the starting point for API models instead of introducing a second config format.
+
+The current API adapter path is the generic benchmark path, not a service-specific side framework:
+
+- `backend_type: http_api`
+- one request builder for both `t2v` and `i2v`
+- provider-specific submission and polling under `model.api`
+- no special-case benchmark command path for remote models
+
+`config/models/kling_api.yaml.example` is the concrete reference config. The API pipeline regression tests run against a local fake polling server, so they validate the benchmark contract without needing real credentials.
 
 If an adapter needs a separate interpreter, bootstrap `.runtime312` and keep adapter-specific packages there:
 

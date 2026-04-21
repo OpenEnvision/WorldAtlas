@@ -1,0 +1,34 @@
+model:
+  name: lyra-2
+  family: lyra2
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  # Lyra-2's published environment targets Python 3.10 plus compiled CUDA extensions.
+  python_bin: .runtime310/bin/python
+  repo_root: third_party/Lyra-2
+  # Point this at the published Lyra-2.0 cache root or a direct checkpoint tree.
+  checkpoint_dir: cache/hfd/Lyra-2.0
+  entrypoint: lyra_2/_src/inference/lyra2_custom_traj_inference.py
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+  prompt_mode: prompt_current
+  reference_mode: first_frame
+  generation:
+    height: 480
+    width: 832
+    num_frames: 81
+    guidance: 5.0
+    shift: 5.0
+    num_sampling_step: 35
+    seed: 1
+    fps: 16
+    pose_scale: 1.0
+    context_parallel_size: 1
+    use_moge_scale: true
+    da3_frame_interval: 8
+    da3_max_history_frames: 10
+    offload: false
