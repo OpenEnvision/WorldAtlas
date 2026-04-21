@@ -74,3 +74,39 @@ def test_load_model_config_keeps_runtime_symlink_path(tmp_path: Path) -> None:
 
     config = load_model_config(config_path)
     assert config.python_bin == str(runtime_python.absolute())
+
+
+def test_load_model_config_parses_optional_env_overrides(tmp_path: Path) -> None:
+    project_root = tmp_path
+    repo_root = project_root / "external" / "lingbot-world"
+    repo_root.mkdir(parents=True, exist_ok=True)
+    config_path = project_root / "config" / "models" / "lingbot_world.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        "\n".join(
+            [
+                "model:",
+                "  name: lingbot-world",
+                "  family: lingbot_world",
+                "  python_bin: python",
+                f"  repo_root: {repo_root}",
+                "  checkpoint_dir: null",
+                "  entrypoint: generate.py",
+                "  output_ext: .mp4",
+                "  supported_suites: [video_static]",
+                "  prompt_mode: prompt_target",
+                "  reference_mode: first_frame",
+                "  env:",
+                "    CUDA_VISIBLE_DEVICES: '2'",
+                "    HF_HOME: /tmp/hf-cache",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    config = load_model_config(config_path)
+    assert config.env == {
+        "CUDA_VISIBLE_DEVICES": "2",
+        "HF_HOME": "/tmp/hf-cache",
+    }

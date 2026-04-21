@@ -8,6 +8,7 @@ from worldarena.benchmark_core.config import (
     BenchmarkAggregationConfig,
     BenchmarkConfig,
     BenchmarkPaths,
+    BenchmarkProtocolConfig,
     load_config as load_core_config,
 )
 
@@ -15,6 +16,7 @@ __all__ = [
     "BenchmarkAggregationConfig",
     "BenchmarkConfig",
     "BenchmarkPaths",
+    "BenchmarkProtocolConfig",
     "apply_model_metric_overrides",
     "load_config",
 ]

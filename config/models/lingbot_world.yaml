@@ -13,17 +13,15 @@ model:
   reference_mode: first_frame
   metric_overrides:
     video_static:
-      - scene_alignment
+      - prompt_alignment
       - style_consistency
-      - subjective_quality
-      - rollout_quality
+      - perceptual_quality
     video_dynamic:
-      - dynamic_alignment
+      - prompt_alignment
       - style_consistency
-      - subjective_quality
+      - perceptual_quality
       - motion_magnitude
       - motion_smoothness
-      - rollout_quality
   generation:
     task: i2v-A14B
     size: 832*480

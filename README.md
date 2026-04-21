@@ -16,14 +16,25 @@ Use `uv run worldarena clean` to remove transient caches and local build outputs
 
 ## Benchmark Workflow
 
-WorldArena keeps four formal suites as the public core. Official headline reporting is the four suite scores:
+WorldArena keeps four formal suites as the public core:
 
-- `image_static` -> `S_image_static`
-- `image_dynamic` -> `S_image_dynamic`
-- `video_static` -> `S_video_static`
-- `video_dynamic` -> `S_video_dynamic`
+- `image_static`
+- `image_dynamic`
+- `video_static`
+- `video_dynamic`
 
-Non-formal assets stay outside official headline reporting and are routed into separate `auxiliary` or `experimental` reporting. If a scalar aggregate is needed for internal comparison, use optional `S_worldarena_derived` under an explicit `aggregation_profile`; it is disabled by default and is not part of the official benchmark definition.
+Official headline reporting is a per-suite metric vector, not a suite-level scalar and not a benchmark-wide total score.
+
+Current official metric families are:
+
+- `image_static`: `style_consistency`, `perceptual_quality`
+- `image_dynamic`: `style_consistency`, `perceptual_quality`
+- `video_static`: `style_consistency`, `perceptual_quality`
+- `video_dynamic`: `style_consistency`, `perceptual_quality`, `motion_magnitude`, `motion_smoothness`
+
+`prompt_alignment` is still computed, but on self-conditioned samples with template-derived prompts it is reported as `weak_supervision` and routed to diagnostics instead of the official aggregate.
+
+Non-formal assets stay outside official headline reporting and are routed into separate `auxiliary` or `experimental` reporting.
 
 ### Build Inventory And Manifest
 
@@ -45,42 +56,37 @@ This writes:
 Model runtime stays adapter-based: the benchmark contract lives here, while the actual model code can stay in the upstream repo or a sibling workspace.
 
 ```bash
-uv run worldarena generate \
-  --config config/benchmark.yaml \
-  --model-config config/models/lingbot_world.yaml \
-  --limit 8
+uv run worldarena generate           --config config/benchmark.yaml           --model-config config/models/lingbot_world.yaml           --limit 8
 ```
 
 ```bash
-uv run worldarena generate \
-  --config config/benchmark.yaml \
-  --model-config config/models/matrix_game.yaml \
-  --suites video_static,video_dynamic \
-  --limit 8
+uv run worldarena generate           --config config/benchmark.yaml           --model-config config/models/matrix_game.yaml           --suites video_static,video_dynamic           --limit 8
 ```
 
 ### Evaluate Predictions
 
-Core lightweight backends work with the default environment. For CLIP/VGG-style model backends, sync the eval extra:
+For official metric backends, sync the benchmark extras:
 
 ```bash
-uv sync --extra eval
+uv sync --extra eval --extra quality
 ```
 
-For the two first integrated world models, install the runtime group as well:
+For the integrated world models, install the runtime group as well:
 
 ```bash
-uv sync --python 3.10 --group world_models --extra eval
+uv sync --python 3.10 --group world_models --extra eval --extra quality
 ```
 
-Then run:
+If the machine already has a CUDA-enabled system Python with `torch`, the model configs can reuse it through a local runtime shim. The configs default to `python_bin: auto`, which prefers `.runtime312/bin/python` when present.
 
 ```bash
-uv run worldarena evaluate \
-  --config config/benchmark.yaml \
-  --predictions-root /path/to/predictions \
-  --model-name my_model
+uv venv --python 3.12 --system-site-packages .runtime312
+uv pip install --python .runtime312/bin/python           diffusers decord dashscope easydict scipy trimesh imageio imageio-ffmpeg           opencv-python==4.10.0.84
 ```
+
+Optional model-side environment overrides live under `model.env`. This is the cleanest place to pin `CUDA_VISIBLE_DEVICES`, `HF_HOME`, proxy settings, or other runtime variables without changing the benchmark runner itself.
+
+A shared checkpoint cache can be mounted through `cache/hfd`. In the current remote setup, `cache/hfd` points to the shared WorldEvals cache and is used by reference metric backends such as VFI, optical flow, SAM, and GroundingDINO.
 
 Expected prediction layout:
 
@@ -95,10 +101,7 @@ Expected prediction layout:
 Or use the integrated one-shot path:
 
 ```bash
-uv run worldarena run-model \
-  --config config/benchmark.yaml \
-  --model-config config/models/lingbot_world.yaml \
-  --limit 8
+uv run worldarena run-model           --config config/benchmark.yaml           --model-config config/models/lingbot_world.yaml           --limit 8
 ```
 
 The runner writes:
@@ -106,5 +109,6 @@ The runner writes:
 - `run_manifest.json`
 - `per_sample_scores.jsonl`
 - `per_metric_summary.json`
+- `diagnostic_metric_summary.json` when any metric is non-official for eligibility reasons
 - `domain_breakdown.json`
 - `leaderboard.csv`

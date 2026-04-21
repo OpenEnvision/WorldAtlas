@@ -36,10 +36,10 @@ def _make_config(tmp_path: Path, image_root: Path, video_root: Path) -> Benchmar
             "experimental": ["dynamic_alignment"],
         },
         metric_backends={
-            "scene_alignment": "reference_proxy",
-            "dynamic_alignment": "reference_proxy",
-            "rollout_quality": "reference_proxy",
-            "motion_magnitude": "pixel_diff",
+            "scene_alignment": "reference",
+            "dynamic_alignment": "reference",
+            "rollout_quality": "clip",
+            "motion_magnitude": "farneback",
         },
         normalization={
             "scene_alignment": {"lower": 0.0, "upper": 1.0, "higher_is_better": True},

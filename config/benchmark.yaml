@@ -11,56 +11,57 @@ benchmark:
   target_fps: 24
   anchor_positions: [0.0, 0.3333, 0.6667, 1.0]
   motion_frame_count: 12
+  protocol:
+    official: segment_random
+    compatibility: anchor_compat
+    seed: 17
+    segment_count: 4
   split_ratios:
     dev_public: 0.2
     dev_private: 0.1
     test_hidden: 0.7
-  aggregation:
-    enabled: false
   planned_counts: {}
   metrics_by_suite:
     image_static:
-      - scene_alignment
+      - prompt_alignment
       - style_consistency
-      - subjective_quality
+      - perceptual_quality
     image_dynamic:
-      - dynamic_alignment
+      - prompt_alignment
       - style_consistency
-      - subjective_quality
+      - perceptual_quality
     video_static:
-      - scene_alignment
+      - prompt_alignment
       - style_consistency
-      - subjective_quality
-      - rollout_quality
+      - perceptual_quality
     video_dynamic:
-      - dynamic_alignment
+      - prompt_alignment
       - style_consistency
-      - subjective_quality
+      - perceptual_quality
       - motion_magnitude
       - motion_smoothness
-      - rollout_quality
     auxiliary:
-      - dynamic_alignment
-      - subjective_quality
+      - reference_appearance_alignment
+      - anchor_consistency
     experimental:
-      - dynamic_alignment
-      - subjective_quality
+      - reference_appearance_alignment
+      - anchor_consistency
       - motion_magnitude
       - motion_smoothness
   metric_backends:
-    scene_alignment: auto
-    dynamic_alignment: auto
-    style_consistency: auto
-    subjective_quality: auto
+    prompt_alignment: reference
+    reference_appearance_alignment: clip
+    style_consistency: reference
+    perceptual_quality: reference
     motion_magnitude: farneback
     motion_smoothness: farneback
-    rollout_quality: auto
+    anchor_consistency: clip
   normalization:
-    scene_alignment:
+    prompt_alignment:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
-    dynamic_alignment:
+    reference_appearance_alignment:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
@@ -68,7 +69,7 @@ benchmark:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
-    subjective_quality:
+    perceptual_quality:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
@@ -76,11 +77,13 @@ benchmark:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
+      tau_log_ratio: 0.35
     motion_smoothness:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
-    rollout_quality:
+      tau_log_ratio: 0.5
+    anchor_consistency:
       lower: 0.0
       upper: 1.0
       higher_is_better: true

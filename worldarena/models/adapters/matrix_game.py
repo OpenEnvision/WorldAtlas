@@ -176,7 +176,10 @@ class MatrixGameAdapter(ModelAdapter):
         if generation.get("async_vae_warmup_iters", 0):
             command.extend(["--async_vae_warmup_iters", str(int(generation["async_vae_warmup_iters"]))])
 
-        env = build_env(extra_pythonpaths=[project_root])
+        env = build_env(
+            extra_pythonpaths=[project_root],
+            overrides=self.config.env,
+        )
         run_command(command, cwd=project_root, env=env)
         if not output_path.exists():
             raise FileNotFoundError(f"Matrix-Game output was not written: {output_path}")

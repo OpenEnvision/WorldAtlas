@@ -3,11 +3,11 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Any
 
-import cv2
 import numpy as np
 
 from worldarena.benchmark_core.media import LoadedMedia
-from worldarena.benchmark_core.metrics.base import Metric, clamp01, normalize_score
+from worldarena.benchmark_core.metrics.base import Metric, normalize_score, resolve_metric_backend
+from worldarena.benchmark_core.reference_runtime import compute_reference_perceptual_quality
 from worldarena.benchmark_core.schemas import BenchmarkSample, MetricOutput
 
 
@@ -20,24 +20,23 @@ def _load_pyiqa_backend() -> Any | None:
     return pyiqa
 
 
-def _heuristic_quality(frame: np.ndarray) -> float:
-    gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-    sharpness = cv2.Laplacian(gray, cv2.CV_32F).var()
-    contrast = gray.std()
-    exposure = 1.0 - min(abs(float(gray.mean()) / 255.0 - 0.5) * 2.0, 1.0)
-    sharpness_score = clamp01(sharpness / 600.0)
-    contrast_score = clamp01(contrast / 64.0)
-    return round(0.5 * sharpness_score + 0.3 * contrast_score + 0.2 * exposure, 4)
+QUALITY_BACKENDS = {"reference", "pyiqa"}
+DISABLED_QUALITY_BACKENDS = {"heuristic"}
 
 
-class SubjectiveQualityMetric(Metric):
+class PerceptualQualityMetric(Metric):
     def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
-        super().__init__("subjective_quality", backend, normalization)
+        super().__init__("perceptual_quality", backend, normalization)
+        self._resolve_backend()
 
     def _resolve_backend(self) -> str:
-        if self.backend == "auto":
-            return "pyiqa" if _load_pyiqa_backend() is not None else "heuristic"
-        return self.backend
+        return resolve_metric_backend(
+            metric_name=self.name,
+            configured_backend=self.backend,
+            auto_backend="reference",
+            supported_backends=QUALITY_BACKENDS,
+            disabled_backends=DISABLED_QUALITY_BACKENDS,
+        )
 
     def compute(
         self,
@@ -46,11 +45,27 @@ class SubjectiveQualityMetric(Metric):
         reference: LoadedMedia,
     ) -> MetricOutput:
         backend = self._resolve_backend()
+        details = {
+            "frame_indices": list(prediction.protocol_frame_indices),
+            "sampled_frame_indices": list(prediction.sampled_frame_indices),
+        }
         try:
+            if backend == "reference":
+                reference_result = compute_reference_perceptual_quality(prediction.anchor_frames)
+                raw = reference_result["raw"]
+                details.update(reference_result["details"])
+                return MetricOutput(
+                    raw=raw,
+                    normalized=normalize_score(raw, self.normalization),
+                    backend=str(reference_result["backend"]),
+                    details=details,
+                )
             if backend == "pyiqa":
                 import torch
 
                 pyiqa = _load_pyiqa_backend()
+                if pyiqa is None:
+                    raise ModuleNotFoundError("pyiqa is not available")
                 metric = pyiqa.create_metric("clipiqa+")
                 device = "cuda" if torch.cuda.is_available() else "cpu"
                 metric = metric.to(device)
@@ -61,19 +76,24 @@ class SubjectiveQualityMetric(Metric):
                     score = float(metric(tensor).item())
                     frame_scores.append(score)
                 raw = float(np.mean(frame_scores)) if frame_scores else None
-            else:
-                frame_scores = [_heuristic_quality(frame) for frame in prediction.anchor_frames]
-                raw = float(np.mean(frame_scores)) if frame_scores else None
+            details["frame_scores"] = [round(value, 4) for value in frame_scores]
             return MetricOutput(
                 raw=raw,
                 normalized=normalize_score(raw, self.normalization),
                 backend=backend,
-                details={"frame_scores": [round(value, 4) for value in frame_scores]},
+                details=details,
             )
         except Exception as exc:  # pragma: no cover - backend-specific runtime failures
             return MetricOutput(
                 raw=None,
                 normalized=None,
                 backend=backend,
+                details=details,
                 error=str(exc),
             )
+
+
+class SubjectiveQualityMetric(PerceptualQualityMetric):
+    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+        super().__init__(backend=backend, normalization=normalization)
+        self.name = "subjective_quality"

@@ -13,15 +13,15 @@ model:
   reference_mode: first_frame
   metric_overrides:
     video_static:
+      - prompt_alignment
       - style_consistency
-      - subjective_quality
-      - rollout_quality
+      - perceptual_quality
     video_dynamic:
+      - prompt_alignment
       - style_consistency
-      - subjective_quality
+      - perceptual_quality
       - motion_magnitude
       - motion_smoothness
-      - rollout_quality
   generation:
     size: 704*1280
     fps: 17

@@ -9,7 +9,7 @@ from worldarena.benchmark_core.config import BenchmarkConfig
 from worldarena.benchmark_core.media import load_media
 from worldarena.benchmark_core.metrics.registry import build_metrics
 from worldarena.benchmark_core.report import write_run_outputs
-from worldarena.benchmark_core.schemas import BenchmarkSample, MetricOutput, SampleScore
+from worldarena.benchmark_core.schemas import BenchmarkSample, SampleScore
 from worldarena.benchmark_core.taxonomy import prediction_extensions
 
 
@@ -28,13 +28,6 @@ def _resolve_prediction_path(predictions_root: Path, sample: BenchmarkSample) ->
         if candidate.exists():
             return candidate
     return None
-
-
-def _sample_score(metrics: dict[str, MetricOutput]) -> float:
-    values = [output.normalized for output in metrics.values() if output.normalized is not None]
-    if not values:
-        return 0.0
-    return round(sum(values) / len(values), 4)
 
 
 def run_benchmark(
@@ -71,7 +64,6 @@ def run_benchmark(
                     sample_id=sample.sample_id,
                     suite=sample.suite,
                     split=sample.split,
-                    score=0.0,
                     metrics={},
                     path=sample.path,
                     prediction_path=None,
@@ -91,24 +83,32 @@ def run_benchmark(
                 modality=sample.modality,
                 anchor_positions=config.anchor_positions,
                 frame_count=config.motion_frame_count,
+                sample_key=sample.sample_id,
+                protocol_name=config.protocol.official,
+                protocol_seed=config.protocol.seed,
+                segment_count=config.protocol.segment_count,
             )
             prediction = load_media(
                 path=prediction_path,
                 modality=sample.modality,
                 anchor_positions=config.anchor_positions,
                 frame_count=config.motion_frame_count,
+                sample_key=sample.sample_id,
+                protocol_name=config.protocol.official,
+                protocol_seed=config.protocol.seed,
+                segment_count=config.protocol.segment_count,
             )
             metrics = {
                 metric.name: metric.compute(sample=sample, prediction=prediction, reference=reference)
                 for metric in metrics_by_suite[sample.suite]
             }
-            score = _sample_score(metrics)
+            for output in metrics.values():
+                output.protocol_name = prediction.evaluation_protocol
             sample_scores.append(
                 SampleScore(
                     sample_id=sample.sample_id,
                     suite=sample.suite,
                     split=sample.split,
-                    score=score,
                     metrics=metrics,
                     path=sample.path,
                     prediction_path=str(prediction_path),
@@ -124,7 +124,6 @@ def run_benchmark(
                     sample_id=sample.sample_id,
                     suite=sample.suite,
                     split=sample.split,
-                    score=0.0,
                     metrics={},
                     path=sample.path,
                     prediction_path=str(prediction_path),
@@ -136,10 +135,7 @@ def run_benchmark(
                 )
             )
 
-    aggregate_payload = aggregate_results(
-        sample_scores=sample_scores,
-        aggregation=config.aggregation,
-    )
+    aggregate_payload = aggregate_results(sample_scores=sample_scores)
     run_manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "model_name": model_name,
@@ -149,8 +145,16 @@ def run_benchmark(
         "missing_predictions": missing_predictions,
         "suites": sorted({sample.suite for sample in filtered_manifest}),
         "splits": sorted({sample.split for sample in filtered_manifest}),
-        "scores": aggregate_payload["overall_scores"],
-        "suite_scores": aggregate_payload["suite_scores"],
+        "reported_metrics": {
+            suite: sorted(metric_map.keys())
+            for suite, metric_map in aggregate_payload["per_metric_summary"].items()
+        },
+        "reported_diagnostics": {
+            suite: sorted(metric_map.keys())
+            for suite, metric_map in aggregate_payload.get("diagnostic_metric_summary", {}).items()
+            if metric_map
+        },
+        "evaluation_protocol": config.protocol.official,
     }
     write_run_outputs(
         output_dir=output_dir,

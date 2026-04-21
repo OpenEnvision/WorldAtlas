@@ -28,6 +28,33 @@ def normalize_score(value: float | None, spec: dict[str, Any]) -> float | None:
     return clamp01(scaled)
 
 
+def resolve_metric_backend(
+    *,
+    metric_name: str,
+    configured_backend: str,
+    auto_backend: str,
+    supported_backends: set[str],
+    disabled_backends: set[str] | None = None,
+) -> str:
+    if configured_backend == "auto":
+        return auto_backend
+
+    if disabled_backends and configured_backend in disabled_backends:
+        raise ValueError(
+            f"{metric_name} backend '{configured_backend}' is disabled because fallback "
+            "metrics are not allowed"
+        )
+
+    if configured_backend not in supported_backends:
+        supported = ", ".join(sorted({"auto", *supported_backends}))
+        raise ValueError(
+            f"unsupported backend '{configured_backend}' for {metric_name}; "
+            f"supported values: {supported}"
+        )
+
+    return configured_backend
+
+
 def cosine_similarity(left: np.ndarray, right: np.ndarray) -> float:
     left_norm = np.linalg.norm(left)
     right_norm = np.linalg.norm(right)

@@ -21,6 +21,7 @@ class ModelRuntimeConfig:
     supported_suites: list[str]
     prompt_mode: str
     reference_mode: str
+    env: dict[str, str] = field(default_factory=dict)
     metric_overrides: dict[str, list[str]] = field(default_factory=dict)
     generation: dict[str, Any] = field(default_factory=dict)
 
@@ -70,6 +71,10 @@ def load_model_config(path: Path) -> ModelRuntimeConfig:
         supported_suites=[str(value) for value in model_payload.get("supported_suites", [])],
         prompt_mode=str(model_payload.get("prompt_mode", "prompt_target")),
         reference_mode=str(model_payload.get("reference_mode", "first_frame")),
+        env={
+            str(key): str(value)
+            for key, value in dict(model_payload.get("env", {})).items()
+        },
         metric_overrides={
             str(key): [str(metric) for metric in value]
             for key, value in model_payload.get("metric_overrides", {}).items()

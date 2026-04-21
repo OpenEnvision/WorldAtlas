@@ -77,6 +77,10 @@ class BenchmarkSample:
     fps: float | None
     duration_seconds: float | None
     duration_bucket: str | None
+    conditioning_path: str | None = None
+    track: str | None = None
+    physics_case: dict[str, Any] | None = None
+    physics_spec: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -88,6 +92,8 @@ class MetricOutput:
     normalized: float | None
     backend: str
     details: dict[str, Any] = field(default_factory=dict)
+    protocol_name: str | None = None
+    eligibility_status: str = "official"
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -99,7 +105,6 @@ class SampleScore:
     sample_id: str
     suite: str
     split: str
-    score: float
     metrics: dict[str, MetricOutput]
     path: str
     prediction_path: str | None

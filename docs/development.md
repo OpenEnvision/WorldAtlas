@@ -28,19 +28,22 @@ The benchmark stack is intentionally narrower than the full `plan.md` taxonomy:
 - extra panels: `auxiliary`, `experimental`
 - default metric families: semantic alignment, style consistency, subjective quality, rollout quality, motion magnitude, motion smoothness
 
-If you want CLIP/VGG-based backends instead of the default lightweight fallbacks, install:
+If you want the official metric stack, install:
 
 ```bash
-uv sync --extra eval
+uv sync --extra eval --extra quality
 ```
 
 If you want to run the first integrated world-model backends from this repo:
 
 ```bash
-uv sync --python 3.10 --group world_models --extra eval
+uv sync --python 3.10 --group world_models --extra eval --extra quality
 uv run worldarena generate --config config/benchmark.yaml --model-config config/models/lingbot_world.yaml
 uv run worldarena generate --config config/benchmark.yaml --model-config config/models/matrix_game.yaml
 ```
+
+Model configs can also carry an optional `env` block for runtime overrides such as
+`CUDA_VISIBLE_DEVICES`.
 
 ## Preview And Validation
 

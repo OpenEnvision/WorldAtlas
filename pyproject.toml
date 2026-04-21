@@ -24,6 +24,7 @@ dependencies = [
 [project.optional-dependencies]
 eval = [
   "torch>=2.4",
+  "torchmetrics>=1.4",
   "torchvision>=0.19",
   "transformers>=4.44",
 ]

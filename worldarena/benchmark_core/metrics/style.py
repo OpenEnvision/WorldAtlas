@@ -6,7 +6,13 @@ from typing import Any
 import numpy as np
 
 from worldarena.benchmark_core.media import LoadedMedia
-from worldarena.benchmark_core.metrics.base import Metric, clamp01, cosine_similarity, normalize_score, rgb_histogram
+from worldarena.benchmark_core.metrics.base import (
+    Metric,
+    clamp01,
+    normalize_score,
+    resolve_metric_backend,
+)
+from worldarena.benchmark_core.reference_runtime import compute_reference_style_consistency
 from worldarena.benchmark_core.schemas import BenchmarkSample, MetricOutput
 
 
@@ -59,18 +65,23 @@ def _gram_similarity(left: np.ndarray, right: np.ndarray) -> float:
     return clamp01(1.0 / (1.0 + distance))
 
 
-def _histogram_style_similarity(left: np.ndarray, right: np.ndarray) -> float:
-    return clamp01((cosine_similarity(rgb_histogram(left), rgb_histogram(right)) + 1.0) / 2.0)
+STYLE_BACKENDS = {"reference", "vgg19"}
+DISABLED_STYLE_BACKENDS = {"histogram"}
 
 
 class StyleConsistencyMetric(Metric):
     def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
         super().__init__("style_consistency", backend, normalization)
+        self._resolve_backend()
 
     def _resolve_backend(self) -> str:
-        if self.backend == "auto":
-            return "vgg19" if _load_vgg_backend() is not None else "histogram"
-        return self.backend
+        return resolve_metric_backend(
+            metric_name=self.name,
+            configured_backend=self.backend,
+            auto_backend="reference",
+            supported_backends=STYLE_BACKENDS,
+            disabled_backends=DISABLED_STYLE_BACKENDS,
+        )
 
     def compute(
         self,
@@ -80,11 +91,20 @@ class StyleConsistencyMetric(Metric):
     ) -> MetricOutput:
         backend = self._resolve_backend()
         try:
+            if backend == "reference":
+                reference_result = compute_reference_style_consistency(
+                    reference.anchor_frames,
+                    prediction.anchor_frames,
+                )
+                raw = reference_result["raw"]
+                return MetricOutput(
+                    raw=raw,
+                    normalized=normalize_score(raw, self.normalization),
+                    backend=str(reference_result["backend"]),
+                    details=reference_result["details"],
+                )
             paired = zip(prediction.anchor_frames, reference.anchor_frames)
-            if backend == "vgg19":
-                scores = [_gram_similarity(left, right) for left, right in paired]
-            else:
-                scores = [_histogram_style_similarity(left, right) for left, right in paired]
+            scores = [_gram_similarity(left, right) for left, right in paired]
             raw = float(np.mean(scores)) if scores else None
             return MetricOutput(
                 raw=raw,

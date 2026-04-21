@@ -2,7 +2,7 @@
 
 ## 1. 目标与范围
 
-这份文档不是综述，而是给后续 coding agent 的**实现规格书**。目标是把你已经按 WorldScore 分类方式收集好的高质量 image / video 数据，组织成一个可执行的 benchmark，使后续 agent 可以直接按本文实现：
+这份文档不是综述，而是给后续 coding agent 的**实现规格书**。目标是把你已经按 reference-style 分类方式收集好的高质量 image / video 数据，组织成一个可执行的 benchmark，使后续 agent 可以直接按本文实现：
 
 1. 数据 schema
 2. 数据获取与许可分层
@@ -20,7 +20,7 @@
 - **reference-grounded**：有参考视频、相机轨迹、动作序列或 reference state，可做精确对齐评测
 - **physics-grounded**：没有唯一 ground truth，但有明确物理规律、守恒量或 counterfactual 方向，可做 rule-based / invariant-based 评测
 
-本文默认使用 WorldScore 的三大主轴作为总框架，再补齐长时建模、counterfactual、physics、interactive 四块：
+本文默认使用 reference metric stack 的三大主轴作为总框架，再补齐长时建模、counterfactual、physics、interactive 四块：
 
 - **Controllability**
 - **Consistency / Quality**
@@ -120,7 +120,7 @@ data/benchmarks/worldmodel/
   "num_frames": 96,
   "resolution": [1024, 576],
   "category_path": "dynamic/photorealistic/videos/articulated",
-  "worldscore_tags": {
+  "reference_style_tags": {
     "scene_domain": null,
     "dynamic": true,
     "style": "photorealistic",
@@ -543,8 +543,8 @@ scripts/qa/build_worldarena_inventory.py
    - `asset_level`
    - `is_formal`
    - `category_path`
-   - `worldscore_tags.dynamic`
-   - `worldscore_tags.style`
+   - `reference_style_tags.dynamic`
+   - `reference_style_tags.style`
    - `domain_tags.scene_domain` 或 `physics/motion_family`
 4. 对 image 资产生成：
    - `conditioning.png`
@@ -1055,21 +1055,21 @@ artifacts/{sample_id}/frames/000001.png
 
 ### 4.4 推荐底层模型
 
-统一推荐下面这些实现，优先选择已经有公开代码、复现成本低、和 WorldScore / MEt3R / Morpheus 一致的组合。
+统一推荐下面这些实现，优先选择已经有公开代码、复现成本低、和 reference metric stack / MEt3R / Morpheus 一致的组合。
 
 | 用途 | 模型 / 算法 | 推荐实现 |
 | --- | --- | --- |
-| Camera pose estimation | DROID-SLAM | 与 WorldScore 一致 |
-| Open-vocabulary object detect | GroundingDINO SwinT OGC | 与 WorldScore 一致 |
-| Zero-shot segmentation / tracking | SAM2.1 Hiera B+ | 与 WorldScore / Morpheus 一致 |
-| Optical flow | SEA-RAFT | 与 WorldScore 一致 |
+| Camera pose estimation | DROID-SLAM | 与 reference metric stack 一致 |
+| Open-vocabulary object detect | GroundingDINO SwinT OGC | 与 reference metric stack 一致 |
+| Zero-shot segmentation / tracking | SAM2.1 Hiera B+ | 与 reference metric stack / Morpheus 一致 |
+| Optical flow | SEA-RAFT | 与 reference metric stack 一致 |
 | 3D pair consistency | MEt3R + DUSt3R / MASt3R + FeatUp DINO | MEt3R 官方实现 |
 | Depth sanity check | Depth Anything V2 | 与 Morpheus 一致 |
-| Text-image alignment | CLIPScore, `openai/clip-vit-base-patch16` | WorldScore |
-| Subjective quality | CLIP-IQA+ | WorldScore / DrivingGen |
-| Aesthetic quality | CLIP + MLP aesthetic predictor | WorldScore |
-| Motion smoothness interpolation | VFIMamba | WorldScore |
-| Style consistency | VGG19 Gram Matrix | WorldScore |
+| Text-image alignment | CLIPScore, `openai/clip-vit-base-patch16` | reference metric stack |
+| Subjective quality | CLIP-IQA+ | reference metric stack / DrivingGen |
+| Aesthetic quality | CLIP + MLP aesthetic predictor | reference metric stack |
+| Motion smoothness interpolation | VFIMamba | reference metric stack |
+| Style consistency | VGG19 Gram Matrix | reference metric stack |
 
 ## 5. Score Normalization 统一规则
 
@@ -1110,7 +1110,7 @@ s_norm = (x_clip - l) / (u - l)
 
 ### 5.3 对开放区间 metric 使用 z-score mapping
 
-对 WorldScore 风格的开放值 metric，使用：
+对 reference-style 的开放值 metric，使用：
 
 ```text
 z = (x - mean_ref) / std_ref
@@ -1126,7 +1126,7 @@ s_norm = r0 + (r1 - r0) * (z_clip - z_min) / (z_max - z_min)
 这样做的原因：
 
 - 避免开放值 metric 一票否决
-- 保持与 WorldScore 相近的分布压缩方式
+- 保持与 reference metric stack 相近的分布压缩方式
 
 适用：
 
@@ -1186,7 +1186,7 @@ configs/worldmodel_metric_bounds.json
 
 ### 6.1.4 Revisit-Pose Error
 
-如果有 GT camera，使用 DROID-SLAM 估计 pose，再与 GT 对齐，公式与 WorldScore 相同。
+如果有 GT camera，使用 DROID-SLAM 估计 pose，再与 GT 对齐，公式与 reference metric implementation 相同。
 
 设：
 
@@ -1302,7 +1302,7 @@ matching 规则：
 
 - 先 exact string match
 - 再 noun-level partial match
-- 与 WorldScore object metric 的 matching 策略一致
+- 与 reference-style object metric 的 matching 策略一致
 
 ### 6.1.8 长时静态一致性总分
 
@@ -1541,7 +1541,7 @@ S_cam_action = mean_seg S_seg
 
 ### 6.4.2 Object Presence Score
 
-与 WorldScore 一致，基础版用 GroundingDINO detection rate。
+与 reference metric implementation 一致，基础版用 GroundingDINO detection rate。
 
 对于每个 expected object：
 
@@ -1616,7 +1616,7 @@ S_object_control =
 
 ### 6.5.1 主 metric：CLIPScore
 
-与 WorldScore 一致，使用：
+与 reference metric implementation 一致，使用：
 
 - model: `openai/clip-vit-base-patch16`
 
@@ -1697,7 +1697,7 @@ S_geom_consistency =
 
 ### 6.7.1 原理
 
-WorldScore 的 photometric consistency 实现本质是**forward-backward optical flow cycle consistency**。
+reference metric implementation 的 photometric consistency 本质是**forward-backward optical flow cycle consistency**。
 
 ### 6.7.2 模型
 
@@ -1829,7 +1829,7 @@ S_subjective =
 
 ### 6.10.1 原理
 
-与 WorldScore 一致，用 optical flow magnitude 的中位数衡量“到底有没有在动”。
+与 reference metric implementation 一致，用 optical flow magnitude 的中位数衡量“到底有没有在动”。
 
 ### 6.10.2 公式
 
@@ -1855,7 +1855,7 @@ S_motion_mag = norm(M)
 
 ### 6.11.1 原理
 
-与 WorldScore 一致，采用“丢掉奇数帧，再插值恢复”的方式衡量运动是否自然。
+与 reference metric implementation 一致，采用“丢掉奇数帧，再插值恢复”的方式衡量运动是否自然。
 
 ### 6.11.2 模型
 
@@ -2998,7 +2998,7 @@ outputs/{run_id}/
 
 下列对应关系建议在文档和代码注释里写清楚：
 
-- `camera_error` / `object_detection` / `clip_score` / `gram_matrix` / `optical_flow_aepe` / `motion_smoothness`：参考 **WorldScore**
+- `camera_error` / `object_detection` / `clip_score` / `gram_matrix` / `optical_flow_aepe` / `motion_smoothness`：参考 **reference metric stack**
 - `met3r`：参考 **MEt3R**
 - `discard rate` / `dynamical score` / `physical invariance` / `SAM2 + Depth Anything V2 trajectory extraction`：参考 **Morpheus**
 - `fluid / optics / thermodynamics` 的 mask-based 多视角重复实验评测：参考 **Physics-IQ**
@@ -3029,9 +3029,9 @@ outputs/{run_id}/
 
 ## 16. Reference Links
 
-- [WorldScore](https://arxiv.org/abs/2504.00983)
-- [WorldScore project page](https://haoyi-duan.github.io/WorldScore/)
-- [WorldScore official code](https://github.com/haoyi-duan/WorldScore)
+- [Reference metric stack paper](https://arxiv.org/abs/2504.00983)
+- Legacy reference metric project page
+- Legacy reference metric official codebase
 - [MEt3R](https://arxiv.org/abs/2501.06336)
 - [MEt3R project page](https://geometric-rl.mpi-inf.mpg.de/met3r/)
 - [MEt3R code](https://github.com/mohammadasim98/met3r)

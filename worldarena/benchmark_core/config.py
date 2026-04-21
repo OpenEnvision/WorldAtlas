@@ -36,6 +36,14 @@ class BenchmarkAggregationConfig:
 
 
 @dataclass(slots=True)
+class BenchmarkProtocolConfig:
+    official: str = "anchor_compat"
+    compatibility: str = "anchor_compat"
+    seed: int = 17
+    segment_count: int = 4
+
+
+@dataclass(slots=True)
 class BenchmarkConfig:
     config_path: Path
     paths: BenchmarkPaths
@@ -49,6 +57,7 @@ class BenchmarkConfig:
     normalization: dict[str, dict[str, Any]]
     aggregation: BenchmarkAggregationConfig = field(default_factory=BenchmarkAggregationConfig)
     planned_counts: dict[str, int | None] = field(default_factory=dict)
+    protocol: BenchmarkProtocolConfig = field(default_factory=BenchmarkProtocolConfig)
 
 
 def _resolve(base_dir: Path, value: str) -> Path:
@@ -64,6 +73,7 @@ def load_config(path: Path) -> BenchmarkConfig:
     path_payload = payload.get("paths", {})
     benchmark_payload = payload.get("benchmark", {})
     aggregation_payload = benchmark_payload.get("aggregation") or {}
+    protocol_payload = benchmark_payload.get("protocol") or {}
 
     paths = BenchmarkPaths(
         image_root=_resolve(project_root, path_payload["image_root"]),
@@ -114,4 +124,10 @@ def load_config(path: Path) -> BenchmarkConfig:
             key: (None if value is None else int(value))
             for key, value in benchmark_payload.get("planned_counts", {}).items()
         },
+        protocol=BenchmarkProtocolConfig(
+            official=str(protocol_payload.get("official", "anchor_compat")),
+            compatibility=str(protocol_payload.get("compatibility", "anchor_compat")),
+            seed=int(protocol_payload.get("seed", 17)),
+            segment_count=int(protocol_payload.get("segment_count", 4)),
+        ),
     )

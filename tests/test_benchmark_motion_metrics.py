@@ -77,11 +77,11 @@ def test_benchmark_motion_metrics_reward_matching_motion_profile() -> None:
     )
 
     magnitude = MotionMagnitudeMetric(
-        backend="pixel_diff",
+        backend="farneback",
         normalization={"lower": 0.0, "upper": 1.0, "higher_is_better": True},
     )
     smoothness = MotionSmoothnessMetric(
-        backend="pixel_diff",
+        backend="farneback",
         normalization={"lower": 0.0, "upper": 1.0, "higher_is_better": True},
     )
 

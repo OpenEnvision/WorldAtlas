@@ -38,6 +38,11 @@ def _conditioning_image_for(
     reference_mode: str,
     cache_root: Path,
 ) -> Path:
+    if sample.conditioning_path:
+        conditioning_path = Path(sample.conditioning_path).expanduser().resolve()
+        if not conditioning_path.exists():
+            raise FileNotFoundError(f"conditioning image not found: {conditioning_path}")
+        return conditioning_path
     reference_path = Path(sample.reference_path)
     if reference_mode == "reference_image" or sample.modality == "image":
         return reference_path

@@ -62,7 +62,10 @@ class LingBotWorldAdapter(ModelAdapter):
         if action_string:
             command.extend(["--action_string", str(action_string), "--allow_act2cam"])
 
-        env = build_env(extra_pythonpaths=[self.config.repo_root])
+        env = build_env(
+            extra_pythonpaths=[self.config.repo_root],
+            overrides=self.config.env,
+        )
         run_command(command, cwd=self.config.repo_root, env=env)
         if not output_path.exists():
             raise FileNotFoundError(f"LingBot output was not written: {output_path}")

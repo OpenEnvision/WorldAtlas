@@ -15,8 +15,8 @@ from worldarena.benchmark import (
     write_manifest_artifacts,
 )
 from worldarena.benchmark.config import apply_model_metric_overrides
+from worldarena.benchmark_core.physics_manifest import build_worldarena_physics_manifest
 from worldarena.common.cleanup import clean_project
-from worldarena.docs.builder import build_docs_site
 from worldarena.generation import generate_predictions
 from worldarena.models import load_model_config
 
@@ -50,6 +50,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Build the WorldArena benchmark manifest from the scanned raw assets.",
     )
     build_manifest_benchmark.add_argument("--config", default="config/benchmark.yaml")
+
+    build_physics_manifest = subparsers.add_parser(
+        "build-physics-manifest",
+        help="Build a simulator-backed physics manifest from physics-pipeline assets.",
+    )
+    build_physics_manifest.add_argument("--physics-pipeline-root", required=True)
+    build_physics_manifest.add_argument(
+        "--output-root",
+        default="artifacts/benchmark/physics/manifest",
+    )
+    build_physics_manifest.add_argument("--sample-ids", default=None)
 
     generate = subparsers.add_parser(
         "generate",
@@ -167,6 +178,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
+    if args.command == "build-physics-manifest":
+        sample_ids = (
+            [item.strip() for item in args.sample_ids.split(",") if item.strip()]
+            if args.sample_ids
+            else None
+        )
+        result = build_worldarena_physics_manifest(
+            physics_pipeline_root=args.physics_pipeline_root,
+            output_root=args.output_root,
+            sample_ids=sample_ids,
+        )
+        print(
+            json.dumps(
+                {
+                    "manifest_path": result["manifest_path"],
+                    "items": result["items"],
+                    "physics_pipeline_root": result["physics_pipeline_root"],
+                    "cases_root": result["cases_root"],
+                    "conditioning_root": result["conditioning_root"],
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return 0
+
     if args.command == "generate":
         config = load_config(Path(args.config))
         model_config = load_model_config(Path(args.model_config))
@@ -263,6 +300,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
         return 0
+
+    from worldarena.docs.builder import build_docs_site
 
     result = build_docs_site(
         config_path=Path(args.config),
