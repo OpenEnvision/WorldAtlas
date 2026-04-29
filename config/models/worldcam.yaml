@@ -6,18 +6,17 @@ model:
   artifact_types: [video]
   control_signals: [text, video, camera_pose]
   roles: [candidate]
-  python_bin: auto
-  # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
-  repo_root: third_party/WorldCam
+  # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
+  repo_root: thirdparty/WorldCam
   # Download the fine-tuned WorldCam DiT here as `finetuned_dit.safetensors`.
-  checkpoint_dir: cache/hfd/worldcam--worldcam
+  checkpoint_dir: ckpt/worldcam--worldcam
   entrypoint: inference.py
   output_ext: .mp4
   supported_suites:
     - video_static
     - video_dynamic
   prompt_mode: prompt_current
-  reference_mode: first_frame
+  reference_mode: reference_video
   generation:
     height: 480
     width: 832

@@ -1,0 +1,552 @@
+{
+  "selected": [
+    {
+      "id": "T010",
+      "score": 5,
+      "transition_type": "exit_room",
+      "start_scene": "bright interior foyer facing a white front door with sidelights",
+      "expected_new_scene": "quiet residential porch and landscaped front walk beyond the door",
+      "why_suitable": "front door is centered and gives a clear grounded exit boundary",
+      "duration_seconds": 68,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "68s trajectory: start fixed in the foyer facing the front door, push_in for 20s toward the door, open and cross the threshold by 35s, reveal a calm porch, steps, shrubs, and a residential street outside, then pan_left and pan_right slowly to inspect the facade, walkway, and neighboring houses.",
+      "risk_notes": "door must open naturally; avoid cutting to an unrelated exterior"
+    },
+    {
+      "id": "T012",
+      "score": 5,
+      "transition_type": "stairs_or_tunnel",
+      "start_scene": "futuristic illuminated pedestrian tunnel with strong vanishing point",
+      "expected_new_scene": "larger transit concourse or station hall at the far end",
+      "why_suitable": "long tunnel clearly defines a forward crossing path",
+      "duration_seconds": 70,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "70s trajectory: move forward down the glowing cylindrical tunnel for 40s, keep the lights and floor perspective stable, pass through the bright opening at the end into a wider station concourse, then pan_left and pan_right to reveal signage, side corridors, benches, and commuters.",
+      "risk_notes": "may be repetitive; ensure a distinct new concourse appears after the tunnel"
+    },
+    {
+      "id": "T020",
+      "score": 5,
+      "transition_type": "pass_gate",
+      "start_scene": "orange torii gate corridor curving along a stone path",
+      "expected_new_scene": "small shrine courtyard with lanterns and garden beyond the gates",
+      "why_suitable": "successive gates and path bend create a strong transition route",
+      "duration_seconds": 72,
+      "canonical_tokens": [
+        "push_in",
+        "pan_right",
+        "pan_left"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "forward_right",
+        "camera_r",
+        "camera_l"
+      ],
+      "generation_prompt": "72s trajectory: advance through the orange gate tunnel for 45s, following the slight rightward bend, pass the final gate into a quiet shrine courtyard with stone lanterns, moss, trees, and a small altar, then pan_right and pan_left to explore the revealed garden and buildings.",
+      "risk_notes": "keep gates consistent; avoid turning into a generic forest"
+    },
+    {
+      "id": "T026",
+      "score": 5,
+      "transition_type": "corridor_to_room",
+      "start_scene": "elegant corridor with steps rising toward an arched upper hallway",
+      "expected_new_scene": "gallery landing or formal room at the top of the stairs",
+      "why_suitable": "stairs and corridor strongly ground upward movement into another space",
+      "duration_seconds": 66,
+      "canonical_tokens": [
+        "push_in",
+        "tilt_up",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_up",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "66s trajectory: begin at the lower corridor, push_in toward the staircase for 20s, tilt_up slightly while climbing, cross the top landing by 42s into a brighter gallery room, then pan_left and pan_right to show framed art, windows, and side doorways.",
+      "risk_notes": "avoid making the staircase impossibly steep or changing architecture abruptly"
+    },
+    {
+      "id": "T030",
+      "score": 5,
+      "transition_type": "stairs_or_tunnel",
+      "start_scene": "narrow atmospheric alley with stone stairs rising beside a red-lit wall",
+      "expected_new_scene": "upper courtyard or residential lane above the stairs",
+      "why_suitable": "stairs are a clear navigable boundary to a hidden upper area",
+      "duration_seconds": 67,
+      "canonical_tokens": [
+        "push_in",
+        "tilt_up",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_up",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "67s trajectory: move forward through the dim alley toward the stairs, climb steadily while tilting_up to follow the landing, pass the top by 42s into a small upper courtyard with doors, plants, and warm window light, then pan_left and pan_right to inspect the lane.",
+      "risk_notes": "lighting is dark; preserve spatial continuity while climbing"
+    },
+    {
+      "id": "T031",
+      "score": 5,
+      "transition_type": "pass_gate",
+      "start_scene": "sunlit rustic courtyard with a stone archway leading deeper inside",
+      "expected_new_scene": "shaded garden patio or old village passage beyond the arch",
+      "why_suitable": "central archway and path clearly invite passage into a new space",
+      "duration_seconds": 69,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "69s trajectory: start in the courtyard facing the stone arch, push_in for 30s past benches and pots, cross under the arch by 42s, reveal a shaded garden patio with vines, stone paving, and another small passage, then pan_left and pan_right to explore the walls, plants, and seating.",
+      "risk_notes": "avoid treating the arch as a flat backdrop"
+    },
+    {
+      "id": "T035",
+      "score": 5,
+      "transition_type": "stairs_or_tunnel",
+      "start_scene": "arched historic stair passage with stone steps rising ahead",
+      "expected_new_scene": "upper vaulted landing or small chapel-like hall",
+      "why_suitable": "stairs framed by arches provide a strong upward transition",
+      "duration_seconds": 70,
+      "canonical_tokens": [
+        "push_in",
+        "tilt_up",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_up",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "70s trajectory: advance into the arched stairwell, climb the stone steps for 42s with a gentle tilt_up, pass through the top arch into a vaulted landing with warm light, old plaster, and side alcoves, then pan_left and pan_right to reveal the new upper chamber.",
+      "risk_notes": "fisheye look may distort; maintain believable stair geometry"
+    },
+    {
+      "id": "T039",
+      "score": 5,
+      "transition_type": "stairs_or_tunnel",
+      "start_scene": "grand exterior staircase leading to an ornate building entrance",
+      "expected_new_scene": "formal lobby or terrace at the top of the stairs",
+      "why_suitable": "staircase and entrance are visually grounded and navigable",
+      "duration_seconds": 65,
+      "canonical_tokens": [
+        "push_in",
+        "tilt_up",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_up",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "65s trajectory: move from the courtyard toward the red-carpeted stairs, climb while tilting_up to the ornate doorway, cross the threshold around 40s into a formal lobby with columns and patterned floor, then pan_left and pan_right to show the entrance hall and stair details.",
+      "risk_notes": "needs a plausible interior beyond the exterior facade"
+    },
+    {
+      "id": "T061",
+      "score": 5,
+      "transition_type": "street_corner",
+      "start_scene": "urban street canyon with buildings forming a clear corner ahead",
+      "expected_new_scene": "cross street with shops, parked cars, and deeper city blocks",
+      "why_suitable": "street perspective grounds forward movement around the corner",
+      "duration_seconds": 66,
+      "canonical_tokens": [
+        "push_in",
+        "pan_right",
+        "pan_left"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "forward_right",
+        "camera_r",
+        "camera_l"
+      ],
+      "generation_prompt": "66s trajectory: proceed along the sidewalk toward the visible street corner, angle slightly right by 30s, round the building edge by 42s, reveal a cross street with storefronts, cars, pedestrians, and building facades, then pan_right and pan_left to survey both directions.",
+      "risk_notes": "avoid drifting into the road unrealistically"
+    },
+    {
+      "id": "T063",
+      "score": 5,
+      "transition_type": "enter_shop",
+      "start_scene": "retro diner exterior with large windows and a sign at the entrance",
+      "expected_new_scene": "chrome-and-vinyl diner interior with booths and counter",
+      "why_suitable": "shopfront is explicit and entry direction is grounded",
+      "duration_seconds": 68,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "68s trajectory: start outside facing the diner facade, push_in toward the entrance for 25s, pass through the glass door by 40s, reveal a warmly lit diner with booths, stools, counter, menu boards, and reflections, then pan_left and pan_right to inspect tables and the service area.",
+      "risk_notes": "glass reflections may confuse inside-outside boundary"
+    },
+    {
+      "id": "T069",
+      "score": 5,
+      "transition_type": "street_corner",
+      "start_scene": "narrow urban intersection with a corner building and side street",
+      "expected_new_scene": "denser side street with balconies, signs, and pedestrians",
+      "why_suitable": "corner geometry makes a clear around-the-building reveal",
+      "duration_seconds": 67,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "forward_left",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "67s trajectory: move toward the corner building, drift slightly left around the visible bend by 35s, reveal a narrower side street lined with balconies, signs, bicycles, and small shops, then pan_left and pan_right to examine the new street depth and storefronts.",
+      "risk_notes": "keep urban scale consistent; avoid teleporting to a different city"
+    },
+    {
+      "id": "T070",
+      "score": 5,
+      "transition_type": "enter_shop",
+      "start_scene": "colorful corner shopfront with open-looking glass entrance",
+      "expected_new_scene": "small boutique interior with displays, shelves, and counter",
+      "why_suitable": "bright shopfront at the street corner is an obvious entry boundary",
+      "duration_seconds": 64,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "64s trajectory: approach the colorful shop entrance from the sidewalk, pass through the doorway by 34s, reveal a compact boutique with plants, shelves, colorful merchandise, and a checkout counter, then pan_left and pan_right to explore displays and windows back to the street.",
+      "risk_notes": "avoid leaving the camera outside looking only at the facade"
+    },
+    {
+      "id": "T096",
+      "score": 5,
+      "transition_type": "pass_gate",
+      "start_scene": "traditional garden gate with tiled roof and trees behind it",
+      "expected_new_scene": "temple garden path with courtyard, lanterns, and foliage",
+      "why_suitable": "gate is centered and clearly separates exterior from inner garden",
+      "duration_seconds": 69,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "69s trajectory: move straight toward the traditional gate, pass under the roofed opening by 35s, reveal a peaceful inner garden with gravel path, stone lanterns, trees, and a small temple structure, then pan_left and pan_right to inspect the courtyard and gate from inside.",
+      "risk_notes": "ensure the opening is passable and not just decorative"
+    },
+    {
+      "id": "T099",
+      "score": 5,
+      "transition_type": "path_reveal",
+      "start_scene": "overgrown stone garden path leading through an arched ruin",
+      "expected_new_scene": "hidden courtyard or ruined greenhouse beyond the arch",
+      "why_suitable": "path and archway strongly indicate forward exploration",
+      "duration_seconds": 72,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right",
+        "tilt_up"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r",
+        "camera_up"
+      ],
+      "generation_prompt": "72s trajectory: follow the stone path through dense plants toward the arched ruin, pass under the arch around 42s, reveal a hidden courtyard with broken columns, hanging vines, and filtered sunlight, then pan_left, pan_right, and briefly tilt_up to explore the ruin walls and canopy.",
+      "risk_notes": "vegetation may occlude the path; maintain a clear walkable route"
+    },
+    {
+      "id": "T120",
+      "score": 5,
+      "transition_type": "exit_room",
+      "start_scene": "rustic interior with an open red door looking out to fields",
+      "expected_new_scene": "sunlit rural yard and open countryside beyond the threshold",
+      "why_suitable": "open door already reveals exterior light and gives a clear exit",
+      "duration_seconds": 65,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "65s trajectory: begin inside the rustic room facing the open red door, push_in toward the bright doorway, cross outside by 32s, reveal a rural yard, grass, fence, distant hills, and warm daylight, then pan_left and pan_right to inspect the exterior wall, path, and landscape.",
+      "risk_notes": "high contrast doorway; avoid washing out the exterior reveal"
+    },
+    {
+      "id": "T122",
+      "score": 5,
+      "transition_type": "stairs_or_tunnel",
+      "start_scene": "ornate interior hall with curved staircase and doors",
+      "expected_new_scene": "upper landing with balcony rooms and decorative corridor",
+      "why_suitable": "staircase provides a clear vertical transition to unseen space",
+      "duration_seconds": 71,
+      "canonical_tokens": [
+        "push_in",
+        "tilt_up",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_up",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "71s trajectory: push forward into the ornate hall, climb the curved staircase for 45s while tilting_up slightly, arrive on the upper landing with railings, framed art, and doorways, then pan_left and pan_right to explore the balcony corridor and rooms beyond.",
+      "risk_notes": "complex stairs may warp; keep railing and steps coherent"
+    },
+    {
+      "id": "T124",
+      "score": 5,
+      "transition_type": "street_corner",
+      "start_scene": "old covered alley opening onto a brighter exterior lane",
+      "expected_new_scene": "small urban courtyard with apartments and side passages",
+      "why_suitable": "arch-like alley exit frames a new outdoor space",
+      "duration_seconds": 66,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "66s trajectory: move through the covered alley toward the bright opening, cross into the exterior by 34s, reveal a small weathered courtyard with balconies, laundry, doorways, and side lanes, then pan_left and pan_right to inspect the surrounding walls and possible paths.",
+      "risk_notes": "avoid turning it into a flat facade; preserve the alley-to-courtyard transition"
+    },
+    {
+      "id": "T130",
+      "score": 5,
+      "transition_type": "enter_building",
+      "start_scene": "stone arched doorway leading into a darker interior passage",
+      "expected_new_scene": "historic entry hall with tiled floor and candlelit side alcoves",
+      "why_suitable": "arched doorway is central and clearly crossable",
+      "duration_seconds": 68,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "68s trajectory: approach the stone arch and heavy doorway, pass through the threshold by 36s, reveal a historic interior hall with patterned floor, carved stone, warm lamps, and side alcoves, then pan_left and pan_right to explore the entry room and doorway behind.",
+      "risk_notes": "dark interior needs visible detail after crossing"
+    },
+    {
+      "id": "T134",
+      "score": 5,
+      "transition_type": "stairs_or_tunnel",
+      "start_scene": "sci-fi metallic tunnel with a dark circular opening ahead",
+      "expected_new_scene": "larger spaceship chamber or equipment bay beyond the tunnel",
+      "why_suitable": "tunnel aperture creates a direct forward reveal boundary",
+      "duration_seconds": 70,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right",
+        "tilt_up"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r",
+        "camera_up"
+      ],
+      "generation_prompt": "70s trajectory: travel forward through the metallic corridor toward the dark circular hatch, cross the hatch by 42s into a larger spacecraft equipment bay with consoles, pipes, lights, and side doors, then pan_left, pan_right, and slight tilt_up to inspect machinery and ceiling structure.",
+      "risk_notes": "must avoid collapsing into abstract sci-fi textures"
+    },
+    {
+      "id": "T140",
+      "score": 5,
+      "transition_type": "stairs_or_tunnel",
+      "start_scene": "white stairway rising to a closed wooden door at the top",
+      "expected_new_scene": "formal room or landing beyond the door",
+      "why_suitable": "stairs plus door create a precise crossing target",
+      "duration_seconds": 64,
+      "canonical_tokens": [
+        "push_in",
+        "tilt_up",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_up",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "64s trajectory: push forward up the white stairs toward the wooden door, open it at the top around 36s, cross into a bright formal landing with artwork, side table, and another corridor, then pan_left and pan_right to explore the newly revealed interior.",
+      "risk_notes": "door is initially closed; generation must open it rather than stop"
+    },
+    {
+      "id": "T148",
+      "score": 5,
+      "transition_type": "corridor_to_room",
+      "start_scene": "long glass-sided skybridge corridor stretching forward",
+      "expected_new_scene": "terminal or office atrium at the end of the bridge",
+      "why_suitable": "linear bridge gives strong motion cues and endpoint reveal",
+      "duration_seconds": 73,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "73s trajectory: move steadily down the glass skybridge for 48s, maintaining the railings and exterior views, pass through the far doorway into a bright atrium or terminal lobby, then pan_left and pan_right to reveal seating, signage, plants, and adjacent corridors.",
+      "risk_notes": "long corridor may feel slow; ensure a real room appears at the end"
+    },
+    {
+      "id": "T150",
+      "score": 5,
+      "transition_type": "stairs_or_tunnel",
+      "start_scene": "curved subway passage with signs and dark side openings",
+      "expected_new_scene": "underground platform or ticket hall beyond the passage",
+      "why_suitable": "subway tunnel architecture clearly supports forward transition",
+      "duration_seconds": 70,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "70s trajectory: advance through the curved subway corridor toward the platform direction, pass the side openings and emerge by 44s into an underground platform or ticket hall with signs, columns, benches, and tracks, then pan_left and pan_right to inspect both directions.",
+      "risk_notes": "avoid empty black voids in side openings; keep station signage plausible"
+    },
+    {
+      "id": "T165",
+      "score": 5,
+      "transition_type": "stairs_or_tunnel",
+      "start_scene": "transit station escalator rising beside glass walls and signage",
+      "expected_new_scene": "upper station concourse with ticket gates and platforms",
+      "why_suitable": "escalator gives a clear upward transition to another level",
+      "duration_seconds": 69,
+      "canonical_tokens": [
+        "push_in",
+        "tilt_up",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_up",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "69s trajectory: ride or walk up the escalator while pushing forward and tilting_up, reach the upper level around 42s, reveal a station concourse with ticket gates, signs, glass walls, and people, then pan_left and pan_right to inspect exits and platforms.",
+      "risk_notes": "moving stairs can distort; keep escalator direction consistent"
+    },
+    {
+      "id": "T175",
+      "score": 5,
+      "transition_type": "stairs_or_tunnel",
+      "start_scene": "dark rocky mine or subway tunnel with tracks leading inside",
+      "expected_new_scene": "underground cavern station or maintenance chamber beyond the bend",
+      "why_suitable": "tracks and tunnel strongly ground a forward reveal",
+      "duration_seconds": 72,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right",
+        "tilt_up"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r",
+        "camera_up"
+      ],
+      "generation_prompt": "72s trajectory: move forward along the tracks into the rocky tunnel for 45s, pass through the darker section into a larger underground chamber with lamps, supports, rail equipment, and side passages, then pan_left, pan_right, and slight tilt_up to explore the cavern ceiling and exits.",
+      "risk_notes": "low light; avoid losing readable geometry"
+    },
+    {
+      "id": "T247",
+      "score": 4,
+      "transition_type": "path_reveal",
+      "start_scene": "narrow night alley with lanterns and storefronts receding ahead",
+      "expected_new_scene": "lively hidden food street or small market courtyard",
+      "why_suitable": "alley path gives a clear forward reveal between buildings",
+      "duration_seconds": 67,
+      "canonical_tokens": [
+        "push_in",
+        "pan_left",
+        "pan_right"
+      ],
+      "matrix_game_actions": [
+        "forward",
+        "camera_l",
+        "camera_r"
+      ],
+      "generation_prompt": "67s trajectory: walk forward through the lantern-lit alley, pass between close storefronts and signs by 38s, reveal a small night market courtyard with food stalls, tables, bicycles, and warm lights, then pan_left and pan_right to inspect stalls and side passages.",
+      "risk_notes": "night scene may be cluttered; keep the path navigable"
+    }
+  ]
+}

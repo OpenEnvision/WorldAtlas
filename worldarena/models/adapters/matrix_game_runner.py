@@ -72,6 +72,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--save_name", required=True, type=str)
     parser.add_argument("--size", default="704*1280", type=str)
     parser.add_argument("--fps", default=17, type=int)
+    parser.add_argument("--save_num_frames", default=0, type=int)
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--num_iterations", default=1, type=int)
     parser.add_argument("--num_inference_steps", default=3, type=int)
@@ -107,6 +108,7 @@ def build_runtime_args(args: argparse.Namespace) -> SimpleNamespace:
         seed=args.seed,
         num_iterations=args.num_iterations,
         output_dir=args.output_dir,
+        save_num_frames=args.save_num_frames,
         sample_shift=args.sample_shift,
         sample_guide_scale=args.sample_guide_scale,
         num_inference_steps=args.num_inference_steps,
@@ -211,7 +213,14 @@ def main() -> None:
                 mouse_rotation=mouse_rotation,
                 default_frame_res=default_frame_res,
             )
-        imageio.mimsave(str(output_path), input_video, fps=args.fps)
+        frames = input_video
+        if args.save_num_frames:
+            if args.save_num_frames > len(frames):
+                raise ValueError(
+                    f"save_num_frames={args.save_num_frames} exceeds generated frame count {len(frames)}"
+                )
+            frames = frames[: args.save_num_frames]
+        imageio.mimsave(str(output_path), np.ascontiguousarray(frames), fps=args.fps)
 
     mg_inference.get_data = custom_get_data
     mg_inference.process_video = patched_process_video

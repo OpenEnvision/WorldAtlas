@@ -184,9 +184,7 @@ def default_task_families_for_suites(supported_suites: Iterable[str]) -> list[st
 def default_artifact_types_for_suites(supported_suites: Iterable[str]) -> list[str]:
     suite_tokens = {normalize_token(value) for value in supported_suites if str(value).strip()}
     artifact_types: list[str] = []
-    if any(token.startswith("image_") for token in suite_tokens):
-        artifact_types.append("image")
-    if any(token.startswith("video_") for token in suite_tokens):
+    if any(token.startswith("image_") or token.startswith("video_") for token in suite_tokens):
         artifact_types.append("video")
     return artifact_types
 

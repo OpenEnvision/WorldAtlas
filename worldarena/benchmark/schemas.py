@@ -67,6 +67,9 @@ class BenchmarkSample:
     source_type: str
     source_group_id: str
     license_bucket: str
+    prompt_sequence: list[str] = field(default_factory=list)
+    camera_path: list[str] = field(default_factory=list)
+    generation_mode: str | None = None
     benchmark_family: str = "worldarena"
     task_family: str | None = None
     artifact_type: str | None = None
@@ -84,6 +87,9 @@ class BenchmarkSample:
     duration_seconds: float | None = None
     duration_bucket: str | None = None
     conditioning_path: str | None = None
+    conditioning_frame_count: int | None = None
+    conditioning_end_ratio: float | None = None
+    evaluation_start_ratio: float | None = None
     track: str | None = None
     physics_case: dict[str, Any] | None = None
     physics_spec: dict[str, Any] | None = None
@@ -110,7 +116,6 @@ class MetricOutput:
 class SampleScore:
     sample_id: str
     suite: str
-    split: str
     metrics: dict[str, MetricOutput]
     path: str
     prediction_path: str | None

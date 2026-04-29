@@ -1,0 +1,43 @@
+model:
+  name: motionctrl
+  family: motionctrl
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, camera_pose]
+  roles: [candidate]
+  python_bin: /share/project/yesliu/miniconda3/envs/motionctrl/bin/python
+  repo_root: /share/project/yesliu/hjd/model/tmp/MotionCtrl
+  entrypoint: main/evaluation/motionctrl_inference.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: none
+  env:
+    HF_HUB_OFFLINE: "1"
+    TRANSFORMERS_OFFLINE: "1"
+    TOKENIZERS_PARALLELISM: "false"
+  metadata:
+    image_conditioning_contract: text_camera_only_no_image_conditioning
+    note: MotionCtrl VideoCrafter inference consumes text prompts and camera pose JSON, not a conditioning image.
+  generation:
+    config_path: configs/inference/config_both.yaml
+    checkpoint: checkpoints/motionctrl.pth
+    height: 256
+    width: 256
+    frames: 16
+    fps: 10.0
+    n_samples: 1
+    ddim_steps: 50
+    ddim_eta: 1.0
+    unconditional_guidance_scale: 7.5
+    unconditional_guidance_scale_temporal:
+    cond_T: 800
+    seed: 1234
+    translation_step: 1.5
+    lateral_step: 1.0
+    rotation_degrees: 30.0
+    openclip_pretrained_path:
+    image_conditioning_contract: text_camera_only_no_image_conditioning

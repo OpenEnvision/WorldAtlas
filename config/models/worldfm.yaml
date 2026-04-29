@@ -7,23 +7,35 @@ model:
   control_signals: [image, camera_pose]
   roles: [candidate]
   # WorldFM's published environment targets Python 3.10 with a dedicated CUDA stack.
-  python_bin: .runtime310/bin/python
-  # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
-  repo_root: third_party/worldfm
-  # Run `python download_ckpts.py --weights-dir <checkpoint_dir>` inside the repo to populate these weights.
-  checkpoint_dir: cache/hfd/inspatio--worldfm
+  # Use the prepared upstream repo with populated submodules.
+  repo_root: ../tmp/worldfm
+  # Run `python download_ckpts.py --weights-dir ckpt/worldfm` inside the repo to populate the unified ckpt tree.
+  checkpoint_dir: ckpt/worldfm
   entrypoint: run_pipeline.py
   output_ext: .mp4
   supported_suites:
+    - image_static
+    - image_dynamic
     - video_static
+    - video_dynamic
   prompt_mode: none
   reference_mode: first_frame
   generation:
+    # HunyuanWorld's image-to-panorama stage is text-conditioned. Use the
+    # current-scene caption so panorama completion stays semantically aligned.
+    panorama_prompt_mode: prompt_current
+    panorama_negative_prompt: ""
     model_filename: worldfm_2-step.pth
     vae_subdir: vae
     step: 2
     image_size: 512
     cfg_scale: 4.5
     render_size: 512
+    video_crf: 14
+    video_preset: medium
+    cache_condition_latents: false
+    trajectory_frames: 81
+    synthetic_focal_scale: 0.6
+    moge_pretrained: ckpt/moge-2-vitl-normal
     fps: 30
     gpu_index: 0

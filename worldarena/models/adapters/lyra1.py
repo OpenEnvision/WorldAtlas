@@ -4,8 +4,13 @@ from pathlib import Path
 from typing import Any
 
 from worldarena.benchmark.schemas import BenchmarkSample
-from worldarena.models.adapters.base import ModelAdapter
-from worldarena.models.adapters.common import build_env, extend_command_with_options, run_command
+from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
+from worldarena.models.adapters.common import (
+    build_env,
+    extend_command_with_options,
+    run_command,
+    run_sequential_generate_batch,
+)
 
 
 def _view_indices_arg(value: object | None) -> str | None:
@@ -19,6 +24,15 @@ def _view_indices_arg(value: object | None) -> str | None:
 
 
 class Lyra1Adapter(ModelAdapter):
+    def supports_batch_generation(self) -> bool:
+        return True
+
+    def generate_batch(
+        self,
+        requests: list[PreparedGenerationRequest],
+    ) -> dict[str, dict[str, Any]]:
+        return run_sequential_generate_batch(self, requests)
+
     def generate(
         self,
         sample: BenchmarkSample,
@@ -28,6 +42,8 @@ class Lyra1Adapter(ModelAdapter):
     ) -> dict[str, Any]:
         if self.config.repo_root is None:
             raise ValueError("Lyra-1 adapter requires repo_root")
+        if self.config.checkpoint_dir is None:
+            raise ValueError("Lyra-1 adapter requires checkpoint_dir")
 
         generation = self.config.generation
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -48,8 +64,7 @@ class Lyra1Adapter(ModelAdapter):
             "--prompt",
             prompt,
         ]
-        if self.config.checkpoint_dir is not None:
-            command.extend(["--checkpoint_dir", str(self.config.checkpoint_dir)])
+        command.extend(["--checkpoint_dir", str(self.config.checkpoint_dir)])
 
         extend_command_with_options(
             command,

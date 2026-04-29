@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from worldarena.benchmark.schemas import BenchmarkSample
-from worldarena.models.adapters.base import ModelAdapter
-from worldarena.models.adapters.common import build_env, extend_command_with_options, run_command
+from worldarena.common.checkpoints import project_root as worldarena_project_root
+from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
+from worldarena.models.adapters.common import (
+    build_env,
+    extend_command_with_options,
+    run_command,
+)
+from worldarena.models.adapters.lingbot_world import _camera_path_for_sample
 
 
 MOVE_ACTION_MAP = {
@@ -94,6 +102,20 @@ VIEW_PART_ALIASES = {
     "camera_r": "turn right",
     "turn_right": "turn right",
 }
+_WORLD_ARENA_CAMERA_ACTIONS = {
+    "fixed": {"move": "no-op", "view": "no-op"},
+    "push_in": {"move": "go forward", "view": "no-op"},
+    "pull_out": {"move": "go back", "view": "no-op"},
+    "move_left": {"move": "go left", "view": "no-op"},
+    "move_right": {"move": "go right", "view": "no-op"},
+    # User-aligned WorldArena convention:
+    # pan left/right move backward diagonally while turning in the same direction;
+    # orbit left/right move forward diagonally while turning toward the target.
+    "pan_left": {"move": "go back and go left", "view": "turn left"},
+    "pan_right": {"move": "go back and go right", "view": "turn right"},
+    "orbit_left": {"move": "go forward and go left", "view": "turn right"},
+    "orbit_right": {"move": "go forward and go right", "view": "turn left"},
+}
 
 
 def _sanitize_action_token(text: str) -> str:
@@ -146,18 +168,45 @@ def _interaction_plan(config: dict[str, Any], suite: str) -> list[str | dict[str
     return list(actions)
 
 
+def _worldarena_actions_for_sample(sample: BenchmarkSample) -> tuple[list[str], list[dict[str, str]], str]:
+    raw_camera_path = _camera_path_for_sample(sample) or ["fixed"]
+    camera_tokens = [_sanitize_action_token(token) for token in raw_camera_path if str(token).strip()] or ["fixed"]
+    control_source = "camera_path" if sample.camera_path else "annotation_or_default_camera_path"
+    actions: list[dict[str, str]] = []
+    unsupported = False
+    for camera_token in camera_tokens:
+        action = _WORLD_ARENA_CAMERA_ACTIONS.get(camera_token)
+        if action is None:
+            action = _WORLD_ARENA_CAMERA_ACTIONS["fixed"]
+            unsupported = True
+        actions.append(dict(action))
+    if unsupported:
+        control_source = f"unsupported_{control_source}"
+    return camera_tokens, actions or [dict(_WORLD_ARENA_CAMERA_ACTIONS["fixed"])], control_source
+
+
 def _build_action_payload(
     config: dict[str, Any],
     suite: str,
     *,
     validation_num_frames: int = 81,
+    sample: BenchmarkSample | None = None,
 ) -> dict[str, Any]:
     action_plan = dict(config.get("action_plan", {}))
-    actions = _interaction_plan(config, suite)
-    frames_per_action = int(action_plan.get("frames_per_action", 16))
-    chunk_stride = int(config.get("chunk_stride", 20))
     num_chunks = max(int(config.get("num_chunks", 1)), 1)
-    required_frames = validation_num_frames + (num_chunks - 1) * chunk_stride
+    chunk_stride = int(config.get("chunk_stride", validation_num_frames - 1))
+    required_frames = 1 + num_chunks * max(validation_num_frames - 1, 1)
+    action_source = str(config.get("action_source", "worldarena_plan")).strip().lower()
+    camera_tokens: list[str] = []
+    control_source = action_source
+
+    if sample is not None and action_source in {"worldarena_prompt", "camera_path", "prompt_target"}:
+        camera_tokens, normalized_actions, control_source = _worldarena_actions_for_sample(sample)
+        actions: list[str | dict[str, str]] = normalized_actions
+        frames_per_action = max(math.ceil(required_frames / max(len(actions), 1)), 1)
+    else:
+        actions = _interaction_plan(config, suite)
+        frames_per_action = int(action_plan.get("frames_per_action", 16))
 
     frame_actions: list[dict[str, str]] = []
     for action in actions:
@@ -175,12 +224,138 @@ def _build_action_payload(
         "frames_per_action": frames_per_action,
         "required_frames": required_frames,
         "validation_num_frames": validation_num_frames,
-        "chunk_stride": chunk_stride,
+            "chunk_stride": chunk_stride,
         "num_chunks": num_chunks,
+        "action_source": action_source,
+        "control_source": control_source,
+        "camera_tokens": camera_tokens,
+        "camera_path": list(sample.camera_path) if sample is not None else [],
+        "prompt_current": sample.prompt_current if sample is not None else None,
+        "prompt_target": sample.prompt_target if sample is not None else None,
+    }
+
+
+def _request_payload_for(
+    request: PreparedGenerationRequest,
+    *,
+    generation: dict[str, Any],
+    runtime_root: Path,
+) -> dict[str, Any]:
+    action_payload = _build_action_payload(
+        generation,
+        request.sample.suite,
+        validation_num_frames=int(generation.get("validation_num_frames", 81)),
+        sample=request.sample,
+    )
+    action_spec_path = runtime_root / "actions" / f"{request.output_path.stem}_actions.json"
+    action_spec_path.parent.mkdir(parents=True, exist_ok=True)
+    action_spec_path.write_text(
+        json.dumps(action_payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return {
+        "sample_id": request.sample.sample_id,
+        "suite": request.sample.suite,
+        "prompt": request.prompt,
+        "prompt_source": "prompt_target",
+        "prompt_current": request.sample.prompt_current,
+        "prompt_target": request.sample.prompt_target,
+        "image_path": str(request.conditioning_image),
+        "actions_json": str(action_spec_path),
+        "output_path": str(request.output_path),
+        "camera_path": action_payload["camera_path"],
+        "camera_tokens": action_payload["camera_tokens"],
+        "actions": action_payload["actions"],
+        "action_spec_path": str(action_spec_path),
+        "action_source": action_payload["action_source"],
+        "control_source": action_payload["control_source"],
+        "seed": int(generation.get("seed", 42)),
     }
 
 
 class InfiniteWorldAdapter(ModelAdapter):
+    def supports_batch_generation(self) -> bool:
+        return True
+
+    def generate_batch(
+        self,
+        requests: list[PreparedGenerationRequest],
+    ) -> dict[str, dict[str, Any]]:
+        if not requests:
+            return {}
+        if self.config.repo_root is None:
+            raise ValueError("Infinite-World adapter requires repo_root")
+        if self.config.checkpoint_dir is None:
+            raise ValueError("Infinite-World adapter requires checkpoint_dir")
+
+        generation = dict(self.config.generation)
+        project_root = worldarena_project_root()
+        runtime_root = project_root / "cache" / "model_runtime" / "infinite_world"
+        runtime_root.mkdir(parents=True, exist_ok=True)
+        for request in requests:
+            request.output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        request_payloads = [
+            _request_payload_for(request, generation=generation, runtime_root=runtime_root)
+            for request in requests
+        ]
+        with TemporaryDirectory(prefix="worldarena_infinite_world_") as temp_dir_raw:
+            temp_dir = Path(temp_dir_raw)
+            requests_json = temp_dir / "requests.json"
+            results_json = temp_dir / "results.json"
+            requests_json.write_text(
+                json.dumps({"requests": request_payloads}, indent=2, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            command = [
+                self.config.python_bin,
+                "-m",
+                "worldarena.models.adapters.infinite_world_runner",
+                "--repo_root",
+                str(self.config.repo_root),
+                "--ckpt_dir",
+                str(self.config.checkpoint_dir),
+                "--requests_json",
+                str(requests_json),
+                "--results_json",
+                str(results_json),
+            ]
+            extend_command_with_options(
+                command,
+                payload=generation,
+                value_options={
+                    "config_path": str,
+                    "bucket_config_name": str,
+                    "fps": int,
+                    "seed": int,
+                    "batch_size": int,
+                    "num_chunks": int,
+                    "num_sampling_steps": int,
+                    "sample_shift": float,
+                    "sample_guide_scale": float,
+                    "quality": int,
+                    "target_duration_sec": float,
+                    "negative_prompt": str,
+                    "device": str,
+                },
+            )
+
+            env = build_env(
+                extra_pythonpaths=[project_root, self.config.repo_root],
+                overrides=self.config.env,
+            )
+            run_command(command, cwd=project_root, env=env)
+            if not results_json.exists():
+                raise FileNotFoundError(f"Infinite-World runner did not write results: {results_json}")
+            raw_results = json.loads(results_json.read_text(encoding="utf-8"))
+
+        results: dict[str, dict[str, Any]] = {}
+        for item in raw_results.get("results", []):
+            sample_id = str(item.get("sample_id", ""))
+            if sample_id:
+                results[sample_id] = dict(item)
+        return results
+
     def generate(
         self,
         sample: BenchmarkSample,
@@ -190,72 +365,25 @@ class InfiniteWorldAdapter(ModelAdapter):
     ) -> dict[str, Any]:
         if self.config.repo_root is None:
             raise ValueError("Infinite-World adapter requires repo_root")
+        if self.config.checkpoint_dir is None:
+            raise ValueError("Infinite-World adapter requires checkpoint_dir")
 
-        generation = self.config.generation
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        action_payload = _build_action_payload(
-            generation,
-            sample.suite,
-            validation_num_frames=int(generation.get("validation_num_frames", 81)),
+        request = PreparedGenerationRequest(
+            sample=sample,
+            conditioning_image=conditioning_image,
+            output_path=output_path,
+            prompt=prompt,
         )
-        action_spec_path = output_path.parent / f"{output_path.stem}_actions.json"
-        action_spec_path.write_text(
-            json.dumps(action_payload, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-        project_root = Path(__file__).resolve().parents[3]
-
-        command = [
-            self.config.python_bin,
-            "-m",
-            "worldarena.models.adapters.infinite_world_runner",
-            "--repo_root",
-            str(self.config.repo_root),
-            "--ckpt_dir",
-            str(self.config.checkpoint_dir or ""),
-            "--actions_json",
-            str(action_spec_path),
-            "--image_path",
-            str(conditioning_image),
-            "--prompt",
-            prompt,
-            "--output_path",
-            str(output_path),
-        ]
-        extend_command_with_options(
-            command,
-            payload=generation,
-            value_options={
-                "config_path": str,
-                "bucket_config_name": str,
-                "fps": int,
-                "seed": int,
-                "num_chunks": int,
-                "num_sampling_steps": int,
-                "sample_shift": float,
-                "sample_guide_scale": float,
-                "quality": int,
-                "negative_prompt": str,
-                "device": str,
-            },
-        )
-
-        env = build_env(
-            extra_pythonpaths=[project_root],
-            overrides=self.config.env,
-        )
-        run_command(command, cwd=project_root, env=env)
-        if not output_path.exists():
-            raise FileNotFoundError(f"Infinite-World output was not written: {output_path}")
-        return {
-            "actions": action_payload["actions"],
-            "command": command,
-            "prediction_path": str(output_path),
-            "prompt": prompt,
-        }
+        payload = self.generate_batch([request]).get(sample.sample_id, {})
+        if not payload:
+            raise RuntimeError(f"Infinite-World runner returned no result for sample {sample.sample_id}")
+        if payload.get("status") == "failed":
+            raise RuntimeError(str(payload.get("error", "Infinite-World generation failed")))
+        return payload
 
 
 __all__ = [
     "InfiniteWorldAdapter",
     "_build_action_payload",
+    "_request_payload_for",
 ]

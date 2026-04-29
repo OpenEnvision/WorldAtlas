@@ -8,19 +8,21 @@ from typing import Sequence
 from worldarena.benchmark import (
     build_inventory,
     build_manifest,
+    build_wmbench_physics_judge_manifest,
+    build_worldarena_physics_seed_manifest,
     load_config,
     load_manifest,
     run_benchmark,
     write_inventory_artifacts,
     write_manifest_artifacts,
+    write_physics_judge_manifest_artifacts,
 )
 from worldarena.benchmark.config import apply_model_metric_overrides
 from worldarena.benchmark.physics_manifest import build_worldarena_physics_manifest
 from worldarena.common.cleanup import clean_project
-from worldarena.common.environment import inspect_environment
-from worldarena.common.runtime_layout import prepare_runtime_layout
 from worldarena.generation import generate_predictions
 from worldarena.models import load_model_config
+from worldarena.visualization.showcase import add_showcase_arguments
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -64,6 +66,34 @@ def build_parser() -> argparse.ArgumentParser:
     )
     build_physics_manifest.add_argument("--sample-ids", default=None)
 
+    build_physics_seed_manifest = subparsers.add_parser(
+        "build-physics-seed-manifest",
+        help="Build a simulator-backed i2v physics manifest from generated seed images.",
+    )
+    build_physics_seed_manifest.add_argument("--image-manifest", required=True)
+    build_physics_seed_manifest.add_argument("--catalog", default=None)
+    build_physics_seed_manifest.add_argument("--physics-pipeline-root", required=True)
+    build_physics_seed_manifest.add_argument(
+        "--output-root",
+        default="artifacts/benchmark/physics/seed_manifest",
+    )
+    build_physics_seed_manifest.add_argument("--case-ids", default=None)
+
+    build_physics_judge_manifest = subparsers.add_parser(
+        "build-physics-judge-manifest",
+        help="Build an experimental physics-judge manifest from WMBench physics videos.",
+    )
+    build_physics_judge_manifest.add_argument(
+        "--data-root",
+        default="/bench-workspace/yesliu/hjd/data/WMBench/physics",
+    )
+    build_physics_judge_manifest.add_argument(
+        "--config",
+        default="config/benchmark_physics_judge.yaml",
+    )
+    build_physics_judge_manifest.add_argument("--index-name", default="benchmark_physics_subset_extended.json")
+    build_physics_judge_manifest.add_argument("--limit", type=int, default=None)
+
     generate = subparsers.add_parser(
         "generate",
         help="Generate benchmark predictions with a configured model adapter.",
@@ -73,8 +103,9 @@ def build_parser() -> argparse.ArgumentParser:
     generate.add_argument("--manifest", default=None)
     generate.add_argument("--output-dir", default=None)
     generate.add_argument("--suites", default=None)
-    generate.add_argument("--splits", default=None)
     generate.add_argument("--limit", type=int, default=None)
+    generate.add_argument("--num-shards", type=int, default=1)
+    generate.add_argument("--shard-index", type=int, default=0)
     generate.add_argument("--overwrite", action="store_true")
 
     evaluate = subparsers.add_parser(
@@ -88,7 +119,6 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--output-dir", default=None)
     evaluate.add_argument("--model-name", default=None)
     evaluate.add_argument("--suites", default=None)
-    evaluate.add_argument("--splits", default=None)
     evaluate.add_argument("--limit", type=int, default=None)
 
     run_model = subparsers.add_parser(
@@ -101,30 +131,10 @@ def build_parser() -> argparse.ArgumentParser:
     run_model.add_argument("--predictions-root", default=None)
     run_model.add_argument("--output-dir", default=None)
     run_model.add_argument("--suites", default=None)
-    run_model.add_argument("--splits", default=None)
     run_model.add_argument("--limit", type=int, default=None)
+    run_model.add_argument("--num-shards", type=int, default=1)
+    run_model.add_argument("--shard-index", type=int, default=0)
     run_model.add_argument("--overwrite", action="store_true")
-
-    prepare_layout = subparsers.add_parser(
-        "prepare-layout",
-        help="Create the cache/ and third_party/ layout used by adapters and metric backends.",
-    )
-    prepare_layout.add_argument("--project-root", default=".")
-    prepare_layout.add_argument("--shared-hf-cache", default=None)
-    prepare_layout.add_argument(
-        "--repo-link",
-        action="append",
-        default=[],
-        metavar="NAME=PATH",
-        help="Symlink PATH into third_party/NAME. Repeat as needed.",
-    )
-    prepare_layout.add_argument("--force", action="store_true")
-
-    check_env = subparsers.add_parser(
-        "check-env",
-        help="Inspect the local runtime layout, dependency profiles, and metric backend readiness.",
-    )
-    check_env.add_argument("--project-root", default=".")
 
     clean = subparsers.add_parser(
         "clean",
@@ -136,6 +146,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Also remove generated docs pages and dataset artifacts.",
     )
+
+    showcase = subparsers.add_parser(
+        "showcase",
+        help="Build a static viewer for comparing generated media.",
+    )
+    add_showcase_arguments(showcase)
 
     return parser
 
@@ -161,47 +177,9 @@ def _ensure_manifest(config, manifest_arg: str | None) -> Path:
 
 
 
-def _parse_repo_links(raw_values: Sequence[str]) -> dict[str, str]:
-    links: dict[str, str] = {}
-    for raw in raw_values:
-        if "=" not in raw:
-            raise ValueError(
-                f"Invalid --repo-link value {raw!r}. Expected NAME=PATH, for example lingbot-world=/path/to/repo."
-            )
-        name, source = raw.split("=", 1)
-        name = name.strip()
-        source = source.strip()
-        if not name or not source:
-            raise ValueError(
-                f"Invalid --repo-link value {raw!r}. Expected NAME=PATH, for example lingbot-world=/path/to/repo."
-            )
-        links[name] = source
-    return links
-
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-
-    if args.command == "prepare-layout":
-        try:
-            repo_links = _parse_repo_links(args.repo_link)
-        except ValueError as exc:
-            parser.error(str(exc))
-        result = prepare_runtime_layout(
-            project_root=Path(args.project_root),
-            shared_hf_cache=args.shared_hf_cache,
-            repo_links=repo_links,
-            force=args.force,
-        )
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-        return 0
-
-    if args.command == "check-env":
-        result = inspect_environment(Path(args.project_root).resolve())
-        print(json.dumps(result, indent=2, ensure_ascii=False))
-        return 0
 
     if args.command == "clean":
         removed = clean_project(
@@ -209,6 +187,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             include_generated=args.generated,
         )
         print(json.dumps({"removed": removed}, indent=2, ensure_ascii=False))
+        return 0
+
+    if args.command == "showcase":
+        from worldarena.visualization.showcase import run_showcase_from_args
+
+        result = run_showcase_from_args(args)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
 
     if args.command == "build-inventory":
@@ -267,12 +252,66 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 0
 
+    if args.command == "build-physics-seed-manifest":
+        case_ids = (
+            [item.strip() for item in args.case_ids.split(",") if item.strip()]
+            if args.case_ids
+            else None
+        )
+        result = build_worldarena_physics_seed_manifest(
+            image_manifest_path=args.image_manifest,
+            catalog_path=args.catalog,
+            physics_pipeline_root=args.physics_pipeline_root,
+            output_root=args.output_root,
+            case_ids=case_ids,
+        )
+        print(
+            json.dumps(
+                {
+                    "manifest_path": result["manifest_path"],
+                    "items": result["items"],
+                    "image_manifest_path": result["image_manifest_path"],
+                    "catalog_path": result["catalog_path"],
+                    "physics_pipeline_root": result["physics_pipeline_root"],
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return 0
+
+    if args.command == "build-physics-judge-manifest":
+        config = load_config(Path(args.config))
+        manifest = build_wmbench_physics_judge_manifest(
+            data_root=Path(args.data_root).resolve(),
+            index_name=args.index_name,
+            limit=args.limit,
+        )
+        manifest_path = write_physics_judge_manifest_artifacts(
+            manifest=manifest,
+            output_dir=config.paths.manifest_dir,
+            snapshot_name=config.snapshot_name,
+            source_root=Path(args.data_root).resolve(),
+        )
+        print(
+            json.dumps(
+                {
+                    "manifest_path": str(manifest_path),
+                    "items": len(manifest),
+                    "data_root": str(Path(args.data_root).resolve()),
+                    "snapshot_name": config.snapshot_name,
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+        return 0
+
     if args.command == "generate":
         config = load_config(Path(args.config))
         model_config = load_model_config(Path(args.model_config))
         manifest = load_manifest(_ensure_manifest(config, args.manifest))
         suites = {item.strip() for item in args.suites.split(",")} if args.suites else None
-        splits = {item.strip() for item in args.splits.split(",")} if args.splits else None
         output_dir = (
             Path(args.output_dir).resolve()
             if args.output_dir
@@ -283,9 +322,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest=manifest,
             output_dir=output_dir,
             suites=suites,
-            splits=splits,
             limit=args.limit,
             overwrite=args.overwrite,
+            num_shards=args.num_shards,
+            shard_index=args.shard_index,
         )
         print(json.dumps(result["manifest"], indent=2, ensure_ascii=False))
         return 0
@@ -302,7 +342,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             else (config.paths.reports_dir / (args.model_name or (model_config.name if model_config else predictions_root.name))).resolve()
         )
         suites = {item.strip() for item in args.suites.split(",")} if args.suites else None
-        splits = {item.strip() for item in args.splits.split(",")} if args.splits else None
         result = run_benchmark(
             config=config,
             manifest=manifest,
@@ -310,7 +349,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             output_dir=output_dir,
             model_name=args.model_name or (model_config.name if model_config else predictions_root.name),
             suites=suites,
-            splits=splits,
             limit=args.limit,
         )
         print(json.dumps(result["run_manifest"], indent=2, ensure_ascii=False))
@@ -321,7 +359,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         model_config = load_model_config(Path(args.model_config))
         manifest = load_manifest(_ensure_manifest(config, args.manifest))
         suites = {item.strip() for item in args.suites.split(",")} if args.suites else None
-        splits = {item.strip() for item in args.splits.split(",")} if args.splits else None
         predictions_root = (
             Path(args.predictions_root).resolve()
             if args.predictions_root
@@ -332,9 +369,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest=manifest,
             output_dir=predictions_root,
             suites=suites,
-            splits=splits,
             limit=args.limit,
             overwrite=args.overwrite,
+            num_shards=args.num_shards,
+            shard_index=args.shard_index,
         )
         eval_config = apply_model_metric_overrides(config, model_config)
         output_dir = (
@@ -349,7 +387,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             output_dir=output_dir,
             model_name=model_config.name,
             suites=suites,
-            splits=splits,
             limit=args.limit,
         )
         print(

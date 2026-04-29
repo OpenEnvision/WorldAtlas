@@ -8,6 +8,8 @@ import cv2
 import numpy as np
 from PIL import Image
 
+from worldarena.common.video_io import probe_video_frame_count
+
 
 @dataclass(slots=True)
 class LoadedMedia:
@@ -18,6 +20,9 @@ class LoadedMedia:
     evaluation_protocol: str = "anchor_compat"
     sampled_frame_indices: list[int] = field(default_factory=list)
     protocol_frame_indices: list[int] = field(default_factory=list)
+    native_frame_count: int | None = None
+    window_start_ratio: float = 0.0
+    window_end_ratio: float = 1.0
 
 
 def _sample_positions(length: int, count: int) -> list[int]:
@@ -70,7 +75,25 @@ def _protocol_indices(
     return _anchor_indices(length, anchor_positions)
 
 
-def _load_image(path: Path, protocol_name: str) -> LoadedMedia:
+def _window_bounds(length: int, start_ratio: float, end_ratio: float) -> tuple[int, int]:
+    if length <= 0:
+        return 0, 0
+    start = min(max(float(start_ratio), 0.0), 1.0)
+    end = min(max(float(end_ratio), 0.0), 1.0)
+    if end < start:
+        end = start
+    start_index = int(round(start * max(length - 1, 0)))
+    end_index = int(round(end * max(length - 1, 0)))
+    return start_index, max(start_index, end_index)
+
+
+def _load_image(
+    path: Path,
+    protocol_name: str,
+    *,
+    start_ratio: float,
+    end_ratio: float,
+) -> LoadedMedia:
     frame = np.asarray(Image.open(path).convert("RGB"))
     return LoadedMedia(
         modality="image",
@@ -80,6 +103,9 @@ def _load_image(path: Path, protocol_name: str) -> LoadedMedia:
         evaluation_protocol=protocol_name,
         sampled_frame_indices=[0],
         protocol_frame_indices=[0],
+        native_frame_count=1,
+        window_start_ratio=start_ratio,
+        window_end_ratio=end_ratio,
     )
 
 
@@ -91,32 +117,52 @@ def _load_video(
     protocol_name: str,
     protocol_seed: int,
     segment_count: int,
+    *,
+    start_ratio: float,
+    end_ratio: float,
 ) -> LoadedMedia:
     capture = cv2.VideoCapture(str(path))
     if not capture.isOpened():
         raise RuntimeError(f"failed to open video: {path}")
 
     native_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-    target_indices = _sample_positions(native_count if native_count > 0 else frame_count, frame_count)
-    target_set = set(target_indices) if native_count > 0 else None
-
-    frames: list[np.ndarray] = []
-    frame_index = 0
-    while True:
-        success, frame = capture.read()
-        if not success:
-            break
-        if target_set is None or frame_index in target_set:
-            frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        frame_index += 1
+    frames: list[np.ndarray]
+    sampled_frame_indices: list[int]
+    if native_count > 0:
+        start_index, end_index = _window_bounds(native_count, start_ratio, end_ratio)
+        target_indices = [
+            start_index + offset
+            for offset in _sample_positions(end_index - start_index + 1, frame_count)
+        ]
+        target_set = set(target_indices)
+        frames = []
+        frame_index = 0
+        while True:
+            success, frame = capture.read()
+            if not success:
+                break
+            if frame_index in target_set:
+                frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            frame_index += 1
+        sampled_frame_indices = target_indices[: len(frames)]
+    else:
+        decoded_frames: list[np.ndarray] = []
+        while True:
+            success, frame = capture.read()
+            if not success:
+                break
+            decoded_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        native_count = len(decoded_frames)
+        start_index, end_index = _window_bounds(native_count, start_ratio, end_ratio)
+        window_frames = decoded_frames[start_index : end_index + 1]
+        relative_indices = _sample_positions(len(window_frames), frame_count)
+        frames = [window_frames[index] for index in relative_indices]
+        sampled_frame_indices = [start_index + index for index in relative_indices]
     capture.release()
 
     if not frames:
         raise RuntimeError(f"video contains no decodable frames: {path}")
 
-    sampled_frame_indices = target_indices[: len(frames)] if native_count > 0 else list(
-        range(len(frames))
-    )
     protocol_frame_indices = _protocol_indices(
         len(frames),
         anchor_positions,
@@ -134,6 +180,9 @@ def _load_video(
         evaluation_protocol=protocol_name,
         sampled_frame_indices=sampled_frame_indices,
         protocol_frame_indices=protocol_frame_indices,
+        native_frame_count=native_count,
+        window_start_ratio=start_ratio,
+        window_end_ratio=end_ratio,
     )
 
 
@@ -147,9 +196,11 @@ def load_media(
     protocol_name: str = "anchor_compat",
     protocol_seed: int = 17,
     segment_count: int = 4,
+    start_ratio: float = 0.0,
+    end_ratio: float = 1.0,
 ) -> LoadedMedia:
     if modality == "image":
-        return _load_image(path, protocol_name)
+        return _load_image(path, protocol_name, start_ratio=start_ratio, end_ratio=end_ratio)
     return _load_video(
         path,
         anchor_positions,
@@ -158,7 +209,15 @@ def load_media(
         protocol_name,
         protocol_seed,
         segment_count,
+        start_ratio=start_ratio,
+        end_ratio=end_ratio,
     )
 
 
-__all__ = ["LoadedMedia", "load_media"]
+def probe_media_frame_count(path: Path, modality: str) -> int:
+    if modality == "image":
+        return 1
+    return probe_video_frame_count(path)
+
+
+__all__ = ["LoadedMedia", "load_media", "probe_media_frame_count"]

@@ -1,0 +1,41 @@
+model:
+  name: astra
+  family: astra
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  # Astra's current open-source inference path is image-conditioned camera motion.
+  # Keep the upstream checkout under thirdparty/ or symlink it there after preparing its environment externally.
+  repo_root: thirdparty/Astra
+  checkpoint_dir: ckpt/EvanEternal--Astra
+  entrypoint: scripts/infer_demo.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    wan_model_path: ckpt/Wan-AI--Wan2.1-T2V-1.3B
+    start_frame: 0
+    initial_condition_frames: 1
+    frames_per_generation: 8
+    total_frames_to_generate: 24
+    max_history_frames: 100
+    device: cuda
+    modality_type: sekai
+    cam_type: 4
+    cam_type_from_sample: true
+    use_real_poses: false
+    use_camera_cfg: false
+    camera_guidance_scale: 2.0
+    text_guidance_scale: 1.0
+    moe_num_experts: 3
+    moe_top_k: 1
+    use_gt_prompt: false
+    add_icons: false
+    gpu_index: 0

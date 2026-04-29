@@ -442,7 +442,7 @@ official 不再是单一“视频主榜 + 图像辅助榜”，而是四个 form
 4. `motion_magnitude`
 5. `motion_smoothness`
 6. `rollout_quality_decay`
-7. dataset-level distribution metrics，例如 `FVD` / `VBench`-style aggregate（按 suite 单独算）
+7. dataset-level distribution metrics，例如 `FVD` / `Long-Sequence`-style aggregate（按 suite 单独算）
 
 #### 3.7.2 Conditional official metrics：扫描到 sidecar 才启用
 
@@ -3043,7 +3043,7 @@ outputs/{run_id}/
 - [DrivingGen project page](https://drivinggen-bench.github.io/)
 - [CameraBench](https://arxiv.org/abs/2504.15376)
 - [CameraBench project page](https://linzhiqiu.github.io/papers/camerabench/)
-- [VBench](https://github.com/Vchitect/VBench)
+- [Long-Sequence](https://github.com/Vchitect/Long-Sequence)
 - [WorldArena dataset tree](https://huggingface.co/datasets/OpenEnvisionLab/WorldArena/tree/main)
 - [Pexels license](https://www.pexels.com/license/)
 - [Pexels API](https://www.pexels.com/api/)

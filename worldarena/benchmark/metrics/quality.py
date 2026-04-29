@@ -1,23 +1,12 @@
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Any
-
-import numpy as np
 
 from worldarena.benchmark.media import LoadedMedia
 from worldarena.benchmark.metrics.base import Metric, normalize_score, resolve_metric_backend
+from worldarena.benchmark.quality_backends import compute_quality_component_scores
 from worldarena.benchmark.reference_runtime import compute_reference_perceptual_quality
 from worldarena.benchmark.schemas import BenchmarkSample, MetricOutput
-
-
-@lru_cache(maxsize=1)
-def _load_pyiqa_backend() -> Any | None:
-    try:
-        import pyiqa
-    except ModuleNotFoundError:
-        return None
-    return pyiqa
 
 
 QUALITY_BACKENDS = {"reference", "pyiqa"}
@@ -61,28 +50,25 @@ class PerceptualQualityMetric(Metric):
                     details=details,
                 )
             if backend == "pyiqa":
-                import torch
-
-                pyiqa = _load_pyiqa_backend()
-                if pyiqa is None:
-                    raise ModuleNotFoundError("pyiqa is not available")
-                metric = pyiqa.create_metric("clipiqa+")
-                device = "cuda" if torch.cuda.is_available() else "cpu"
-                metric = metric.to(device)
-                frame_scores = []
-                for frame in prediction.anchor_frames:
-                    tensor = torch.from_numpy(frame).permute(2, 0, 1).float().unsqueeze(0) / 255.0
-                    tensor = tensor.to(device)
-                    score = float(metric(tensor).item())
-                    frame_scores.append(score)
-                raw = float(np.mean(frame_scores)) if frame_scores else None
-            details["frame_scores"] = [round(value, 4) for value in frame_scores]
-            return MetricOutput(
-                raw=raw,
-                normalized=normalize_score(raw, self.normalization),
-                backend=backend,
-                details=details,
-            )
+                quality_result = compute_quality_component_scores(
+                    prediction.anchor_frames,
+                    component_name="clip_iqa",
+                )
+                raw = quality_result["raw"]
+                details.update(
+                    {
+                        "frame_scores": list(quality_result["frame_scores"]),
+                        "native_frame_scores": list(quality_result["native_frame_scores"]),
+                        "native_score_range": list(quality_result["native_score_range"]),
+                    }
+                )
+                return MetricOutput(
+                    raw=raw,
+                    normalized=normalize_score(raw, self.normalization),
+                    backend=str(quality_result["backend"]),
+                    details=details,
+                )
+            raise RuntimeError(f"unsupported quality backend resolved at runtime: {backend}")
         except Exception as exc:  # pragma: no cover - backend-specific runtime failures
             return MetricOutput(
                 raw=None,

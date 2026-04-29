@@ -1,5 +1,5 @@
 paths:
-  image_root: /bench-workspace/yesliu/hjd/data/image
+  image_root: /bench-workspace/yesliu/hjd/data/image_test_balanced_5000
   video_root: /bench-workspace/yesliu/hjd/data/videos
   inventory_dir: artifacts/benchmark/physics/inventory
   manifest_dir: artifacts/benchmark/physics/manifest
@@ -16,10 +16,6 @@ benchmark:
     compatibility: anchor_compat
     seed: 17
     segment_count: 4
-  split_ratios:
-    dev_public: 0.2
-    dev_private: 0.1
-    test_hidden: 0.7
   metrics_by_suite:
     experimental:
       - mse

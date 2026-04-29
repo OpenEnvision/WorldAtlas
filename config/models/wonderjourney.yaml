@@ -1,0 +1,56 @@
+model:
+  name: wonderjourney
+  family: wonderjourney
+  backend_type: local_repo
+  task_families: [video_generation, scene_3d_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  # WonderJourney targets a dedicated Python 3.10 CUDA environment.
+  # Keep the upstream repo under thirdparty/ or symlink it there after preparing its environment externally.
+  repo_root: thirdparty/WonderJourney
+  entrypoint: run.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - video_static
+  prompt_mode: prompt_current
+  reference_mode: first_frame
+  generation:
+    stable_diffusion_checkpoint: sd2-community/stable-diffusion-2-inpainting
+    midas_checkpoint: ckpt/WonderJourney/dpt_beit_large_512.pt
+    scene_name:
+    entities:
+    entity_limit: 3
+    style_prompt:
+    background_prompt: ""
+    negative_prompt: ""
+    seed: 1
+    frames: 5
+    num_scenes: 1
+    num_keyframes: 2
+    rotation_path: [0, 0]
+    save_fps: 10
+    depth_model: midas_v3.1
+    camera_speed: 0.0005
+    rotation_range: 0.0
+    init_focal_length: 500
+    inpainting_resolution_gen: 512
+    inpainting_resolution_interp: 512
+    kf2_upsample_coef: 4
+    fg_depth_range: 0.0015
+    depth_shift: 0.0001
+    regenerate_times: 3
+    num_finetune_decoder_steps: 100
+    num_finetune_decoder_steps_interp: 30
+    camera_speed_multiplier_rotation: 0.0
+    use_gpt: false
+    debug: false
+    skip_interp: false
+    skip_gen: false
+    enable_regenerate: false
+    finetune_decoder_gen: true
+    finetune_decoder_interp: false
+    finetune_depth_model: true
+    keep_work_dir: false
+    archive_sidecars: true

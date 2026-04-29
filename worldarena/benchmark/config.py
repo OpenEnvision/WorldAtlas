@@ -7,6 +7,7 @@ from typing import Any
 
 import yaml
 
+from worldarena.common.checkpoints import resolve_project_path
 from worldarena.models.config import ModelRuntimeConfig
 
 
@@ -54,11 +55,12 @@ class BenchmarkConfig:
     target_fps: int
     anchor_positions: list[float]
     motion_frame_count: int
-    split_ratios: dict[str, float]
     metrics_by_suite: dict[str, list[str]]
     metric_backends: dict[str, str]
     normalization: dict[str, dict[str, Any]]
     metric_runtime: dict[str, dict[str, Any]] = field(default_factory=dict)
+    dynamic_prefix_ratio: float = 0.25
+    dynamic_prefix_min_frames: int = 4
     aggregation: BenchmarkAggregationConfig = field(default_factory=BenchmarkAggregationConfig)
     planned_counts: dict[str, int | None] = field(default_factory=dict)
     protocol: BenchmarkProtocolConfig = field(default_factory=BenchmarkProtocolConfig)
@@ -67,6 +69,17 @@ class BenchmarkConfig:
 def _resolve(base_dir: Path, value: str) -> Path:
     path = Path(value)
     return path if path.is_absolute() else (base_dir / path).resolve()
+
+
+def _resolve_runtime_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _resolve_runtime_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_resolve_runtime_value(item) for item in value]
+    if isinstance(value, str) and value.startswith(("ckpt/", "./", "../", "/", "~")):
+        resolved = resolve_project_path(value)
+        return str(resolved) if resolved is not None else value
+    return value
 
 
 def load_config(path: Path) -> BenchmarkConfig:
@@ -98,13 +111,8 @@ def load_config(path: Path) -> BenchmarkConfig:
             for value in benchmark_payload.get("anchor_positions", [0.0, 0.3333, 0.6667, 1.0])
         ],
         motion_frame_count=int(benchmark_payload.get("motion_frame_count", 12)),
-        split_ratios={
-            key: float(value)
-            for key, value in benchmark_payload.get(
-                "split_ratios",
-                {"dev_public": 0.2, "dev_private": 0.1, "test_hidden": 0.7},
-            ).items()
-        },
+        dynamic_prefix_ratio=float(benchmark_payload.get("dynamic_prefix_ratio", 0.25)),
+        dynamic_prefix_min_frames=int(benchmark_payload.get("dynamic_prefix_min_frames", 4)),
         metrics_by_suite={
             key: [str(metric) for metric in value]
             for key, value in benchmark_payload.get("metrics_by_suite", {}).items()
@@ -118,7 +126,7 @@ def load_config(path: Path) -> BenchmarkConfig:
             for key, value in benchmark_payload.get("normalization", {}).items()
         },
         metric_runtime={
-            key: dict(value)
+            key: dict(_resolve_runtime_value(value or {}))
             for key, value in benchmark_payload.get("metric_runtime", {}).items()
         },
         aggregation=BenchmarkAggregationConfig(

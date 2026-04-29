@@ -3,17 +3,6 @@
 ## Project Structure & Module Organization
 This repository is the `WorldArena` benchmark workspace for dataset analysis. Core Python code lives under `worldarena/`. Keep reusable utilities in `worldarena/common/`, dataset discovery and stats logic in `worldarena/datasets/`, and documentation builders in `worldarena/docs/`. Store runtime configuration in `config/`, helper scripts in `scripts/`, generated analytics in `artifacts/dataset_stats/`, and MkDocs sources in `docs/`. Treat `.cache/` as disposable workspace output, not source content.
 
-## Build, Test, and Development Commands
-Use `uv` for all local development:
-
-- `uv sync` creates or updates the managed environment.
-- `uv run worldarena build-docs --config config/datasets.yaml` scans datasets, refreshes CSV/JSON artifacts, and regenerates `docs/generated/`.
-- `uv run mkdocs serve` previews the documentation site locally.
-- `uv run mkdocs build --strict` validates the site build.
-- `uv run pytest` runs unit tests.
-- `uv run ruff check .` runs lint checks.
-- `uv run worldarena clean` removes transient caches and local build output.
-
 When dataset roots or schema assumptions change, update `config/datasets.yaml` and rerun the docs build.
 
 ## Coding Style & Naming Conventions

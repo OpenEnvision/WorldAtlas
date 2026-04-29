@@ -1,0 +1,43 @@
+model:
+  name: recammaster-wan2.1
+  family: recammaster
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, video, camera_pose]
+  roles: [candidate]
+  python_bin: /share/project/yesliu/miniconda3/envs/recammaster/bin/python
+  repo_root: /bench-workspace/yesliu/hjd/model/tmp/ReCamMaster
+  checkpoint_dir: /bench-workspace/yesliu/hjd/model/WorldArena/ckpt/KlingTeam--ReCamMaster-Wan2.1
+  entrypoint: inference_recammaster.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+  prompt_mode: prompt_target
+  reference_mode: reference_video
+  env:
+    HF_HUB_OFFLINE: "1"
+    TRANSFORMERS_OFFLINE: "1"
+    TOKENIZERS_PARALLELISM: "false"
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  metadata:
+    image_conditioning_contract: image_reference_frozen_to_source_video
+    note: ReCamMaster is source-video-conditioned recamera; WorldArena image_static references are frozen to an 81-frame source video.
+  generation:
+    checkpoint: step20000.ckpt
+    wan_model_dir: /WorldArena_ckpt/Wan-AI--Wan2.1-T2V-1.3B
+    height: 480
+    width: 832
+    num_frames: 81
+    conditioning_video_frames: 81
+    pose_frames: 21
+    fps: 30
+    quality: 5
+    cfg_scale: 5.0
+    num_inference_steps: 50
+    seed: 0
+    tiled: true
+    forward_step: 2.0
+    lateral_step: 2.0
+    rotation_degrees: 30.0
+    image_conditioning_contract: image_reference_frozen_to_source_video

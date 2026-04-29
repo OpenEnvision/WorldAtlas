@@ -1,0 +1,217 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+from worldarena.benchmark.schemas import BenchmarkSample
+from worldarena.common.checkpoints import (
+    project_root as worldarena_project_root,
+    resolve_checkpoint_path,
+)
+from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
+from worldarena.models.adapters.common import (
+    build_env,
+    extend_command_with_options,
+    run_command,
+    run_sequential_generate_batch,
+)
+from worldarena.models.adapters.wonderworld import (
+    _generation_for_suite,
+    _structured_prompts_for_sample,
+)
+from worldarena.models.config import ModelRuntimeConfig
+
+
+def _project_root(config: ModelRuntimeConfig) -> Path:
+    del config
+    return worldarena_project_root()
+
+
+def _resolved_midas_checkpoint(
+    config: ModelRuntimeConfig,
+    generation: dict[str, Any],
+) -> Path:
+    del config
+    configured_value = generation.get("midas_checkpoint")
+    checkpoint_path = resolve_checkpoint_path(
+        configured_value,
+        kind="file",
+        required=configured_value is not None,
+    )
+    if checkpoint_path is None:
+        raise ValueError("WonderJourney adapter requires generation.midas_checkpoint")
+    return checkpoint_path
+
+
+def _resolved_checkpointish_option(value: object | None) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if Path(text).is_absolute() or text.startswith("ckpt/"):
+        path = resolve_checkpoint_path(text, kind="any", required=False)
+        return str(path) if path is not None else None
+    return text
+
+
+def _sequence_option(value: object | None) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value.strip() or None
+    try:
+        return json.dumps(list(value))
+    except TypeError:
+        return json.dumps([value])
+
+
+class WonderJourneyAdapter(ModelAdapter):
+    def supports_batch_generation(self) -> bool:
+        return True
+
+    def generate_batch(
+        self,
+        requests: list[PreparedGenerationRequest],
+    ) -> dict[str, dict[str, Any]]:
+        return run_sequential_generate_batch(self, requests)
+
+    def generate(
+        self,
+        sample: BenchmarkSample,
+        conditioning_image: Path,
+        output_path: Path,
+        prompt: str,
+    ) -> dict[str, Any]:
+        repo_root = self.config.repo_root
+        if repo_root is None:
+            raise ValueError("WonderJourney adapter requires repo_root")
+
+        generation = _generation_for_suite(self.config.generation, sample.suite)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        project_root = _project_root(self.config)
+
+        prompt_prefix = str(generation.get("prompt_prefix", ""))
+        prompt_suffix = str(generation.get("prompt_suffix", ""))
+        prompt_text = f"{prompt_prefix}{prompt}{prompt_suffix}".strip()
+        if not prompt_text:
+            prompt_text = str(sample.prompt_current or sample.prompt_target or "").strip()
+
+        structured = _structured_prompts_for_sample(
+            sample,
+            prompt_text=prompt_text,
+            generation=generation,
+        )
+        midas_checkpoint = _resolved_midas_checkpoint(self.config, generation)
+
+        command = [
+            self.config.python_bin,
+            "-m",
+            "worldarena.models.adapters.wonderjourney_runner",
+            "--repo_root",
+            str(repo_root),
+            "--entrypoint",
+            str(self.config.entrypoint or "run.py"),
+            "--conditioning_image",
+            str(conditioning_image.expanduser().resolve()),
+            "--output_path",
+            str(output_path),
+            "--sample_name",
+            output_path.stem,
+            "--prompt",
+            prompt_text,
+            "--scene_name",
+            str(structured["scene_name"]),
+            "--style_prompt",
+            str(structured["style_prompt"]),
+            "--negative_prompt",
+            str(structured["negative_prompt"]),
+            "--midas_checkpoint",
+            str(midas_checkpoint),
+        ]
+        background_prompt = str(structured["background_prompt"])
+        if background_prompt:
+            command.extend(["--background_prompt", background_prompt])
+        entities = [str(entity) for entity in structured["entities"]]
+        if entities:
+            command.extend(["--entities", *entities])
+
+        stable_diffusion_checkpoint = _resolved_checkpointish_option(
+            generation.get("stable_diffusion_checkpoint")
+        )
+        if stable_diffusion_checkpoint is not None:
+            command.extend(["--stable_diffusion_checkpoint", stable_diffusion_checkpoint])
+        rotation_path = _sequence_option(generation.get("rotation_path"))
+        if rotation_path is not None:
+            command.extend(["--rotation_path", rotation_path])
+
+        extend_command_with_options(
+            command,
+            payload=generation,
+            value_options={
+                "seed": int,
+                "frames": int,
+                "num_scenes": int,
+                "num_keyframes": int,
+                "save_fps": int,
+                "run_timeout": float,
+                "depth_model": str,
+                "stable_diffusion_revision": str,
+                "camera_speed": float,
+                "rotation_range": float,
+                "init_focal_length": float,
+                "inpainting_resolution_gen": int,
+                "inpainting_resolution_interp": int,
+                "kf2_upsample_coef": int,
+                "fg_depth_range": float,
+                "depth_shift": float,
+                "regenerate_times": int,
+                "num_finetune_decoder_steps": int,
+                "num_finetune_decoder_steps_interp": int,
+                "camera_speed_multiplier_rotation": float,
+            },
+            bool_value_options=(
+                "use_gpt",
+                "debug",
+                "skip_interp",
+                "skip_gen",
+                "enable_regenerate",
+                "finetune_decoder_gen",
+                "finetune_decoder_interp",
+                "finetune_depth_model",
+                "keep_work_dir",
+                "archive_sidecars",
+            ),
+        )
+
+        env = build_env(
+            extra_pythonpaths=[project_root],
+            overrides=self.config.env,
+        )
+        run_command(command, cwd=project_root, env=env)
+        if not output_path.exists():
+            raise FileNotFoundError(f"WonderJourney output was not written: {output_path}")
+
+        payload: dict[str, Any] = {
+            "command": command,
+            "prediction_path": str(output_path),
+            "prompt": prompt_text,
+            "scene_name": structured["scene_name"],
+            "entities": structured["entities"],
+            "entity_source": structured["entity_source"],
+            "style_prompt": structured["style_prompt"],
+            "background_prompt": structured["background_prompt"],
+            "negative_prompt": structured["negative_prompt"],
+            "content_prompt": structured["content_prompt"],
+        }
+        reverse_path = output_path.with_name(f"{output_path.stem}.reverse{output_path.suffix}")
+        keyframes_path = output_path.with_name(f"{output_path.stem}.keyframes{output_path.suffix}")
+        if reverse_path.exists():
+            payload["reverse_video_path"] = str(reverse_path)
+        if keyframes_path.exists():
+            payload["keyframes_video_path"] = str(keyframes_path)
+        return payload
+
+
+__all__ = ["WonderJourneyAdapter"]

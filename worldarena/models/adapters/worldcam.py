@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Any
 
 from worldarena.benchmark.schemas import BenchmarkSample
-from worldarena.models.adapters.base import ModelAdapter
-from worldarena.models.adapters.common import build_env, run_command
+from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
+from worldarena.models.adapters.common import build_env, run_command, run_sequential_generate_batch
 
 
 def _ref_indices_arg(value: Any) -> str | None:
@@ -19,6 +19,15 @@ def _ref_indices_arg(value: Any) -> str | None:
 
 
 class WorldCamAdapter(ModelAdapter):
+    def supports_batch_generation(self) -> bool:
+        return True
+
+    def generate_batch(
+        self,
+        requests: list[PreparedGenerationRequest],
+    ) -> dict[str, dict[str, Any]]:
+        return run_sequential_generate_batch(self, requests)
+
     def generate(
         self,
         sample: BenchmarkSample,
@@ -26,11 +35,12 @@ class WorldCamAdapter(ModelAdapter):
         output_path: Path,
         prompt: str,
     ) -> dict[str, Any]:
-        del conditioning_image
         if not sample.annotation_path:
             raise FileNotFoundError(
                 f"WorldCam requires annotation_path with poses.npy/intrinsics.npy for {sample.sample_id}"
             )
+        if self.config.checkpoint_dir is None:
+            raise ValueError("WorldCam adapter requires checkpoint_dir")
 
         generation = self.config.generation
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -43,7 +53,7 @@ class WorldCamAdapter(ModelAdapter):
             "--repo_root",
             str(self.config.repo_root),
             "--input_video",
-            str(Path(sample.reference_path).expanduser().resolve()),
+            str(conditioning_image.expanduser().resolve()),
             "--annotation_path",
             str(Path(sample.annotation_path).expanduser().resolve()),
             "--output_path",
@@ -81,8 +91,7 @@ class WorldCamAdapter(ModelAdapter):
             "--negative_prompt",
             str(generation.get("negative_prompt", "")),
         ]
-        if self.config.checkpoint_dir is not None:
-            command.extend(["--checkpoint_dir", str(self.config.checkpoint_dir)])
+        command.extend(["--checkpoint_dir", str(self.config.checkpoint_dir)])
         ref_indices = _ref_indices_arg(generation.get("long_term_memory_ref_indices"))
         if ref_indices:
             command.extend(["--long_term_memory_ref_indices", ref_indices])

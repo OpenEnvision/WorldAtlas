@@ -1,23 +1,79 @@
-.venv/
-.runtime310/
-.runtime312/
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
 .cache/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.pyre/
+.tox/
+.nox/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging and build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Test and coverage output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+junit.xml
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Documentation build output
+docs/generated/
+site/
+
+# Benchmark and experiment outputs
+bench_output/
+bench_output
+bench_output.tar.gz
+outputs/
+multirun/
+runs/
+logs/
+wandb/
 artifacts/benchmark/
 artifacts/dataset_stats/
 artifacts/predictions/
 artifacts/v1/
-docs/generated/
-site/
-build/
-dist/
-*.egg-info/
-__pycache__/
-*.py[cod]
+
+# Model weights and generated assets
+checkpoints/
+ckpt/
+pretrained/
+weights/
+*.ckpt
+*.pth
+*.pt
+*.safetensors
+
+# Local scratch directories
 .ps__*
+tmp/
+temp/
 cache/*
 !cache/README.md
-third_party/*
-!third_party/README.md
-tmp/
+thirdparty/*
+!thirdparty/README.md

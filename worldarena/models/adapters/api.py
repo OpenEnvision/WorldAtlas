@@ -5,7 +5,8 @@ from pathlib import Path
 from typing import Any
 
 from worldarena.benchmark.schemas import BenchmarkSample
-from worldarena.models.adapters.base import ModelAdapter
+from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
+from worldarena.models.adapters.common import run_sequential_generate_batch
 from worldarena.models.providers.base import ApiGenerationResult, ApiProvider
 
 
@@ -31,6 +32,15 @@ class ApiModelAdapter(ModelAdapter):
         prompt: str,
     ) -> dict[str, Any]:
         raise NotImplementedError
+
+    def supports_batch_generation(self) -> bool:
+        return True
+
+    def generate_batch(
+        self,
+        requests: list[PreparedGenerationRequest],
+    ) -> dict[str, dict[str, Any]]:
+        return run_sequential_generate_batch(self, requests)
 
     def generate(
         self,

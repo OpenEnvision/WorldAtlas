@@ -5,10 +5,15 @@ import io
 import os
 import subprocess
 from pathlib import Path
-from typing import Callable, Iterable, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping
 
 import cv2
 from PIL import Image
+
+from worldarena.common.checkpoints import apply_checkpoint_env, filter_checkpoint_env_overrides
+
+if TYPE_CHECKING:
+    from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
 
 
 def build_env(
@@ -16,14 +21,14 @@ def build_env(
     extra_pythonpaths: Iterable[Path] = (),
     overrides: dict[str, str] | None = None,
 ) -> dict[str, str]:
-    env = os.environ.copy()
+    env = apply_checkpoint_env()
     pythonpaths = [str(path) for path in extra_pythonpaths if str(path)]
     if env.get("PYTHONPATH"):
         pythonpaths.append(env["PYTHONPATH"])
     if pythonpaths:
         env["PYTHONPATH"] = os.pathsep.join(pythonpaths)
     if overrides:
-        env.update({key: str(value) for key, value in overrides.items()})
+        env.update(filter_checkpoint_env_overrides(overrides))
     return env
 
 
@@ -83,3 +88,32 @@ def run_command(
         cwd=str(cwd),
         env=env,
     )
+
+
+def run_sequential_generate_batch(
+    adapter: "ModelAdapter",
+    requests: list["PreparedGenerationRequest"],
+) -> dict[str, dict[str, Any]]:
+    results: dict[str, dict[str, Any]] = {}
+    for request in requests:
+        try:
+            payload = dict(
+                adapter.generate(
+                    sample=request.sample,
+                    conditioning_image=request.conditioning_image,
+                    output_path=request.output_path,
+                    prompt=request.prompt,
+                )
+            )
+            payload.setdefault("status", "generated")
+            payload.setdefault("prediction_path", str(request.output_path))
+            payload.setdefault("prompt", request.prompt)
+        except Exception as exc:
+            payload = {
+                "status": "failed",
+                "error": str(exc),
+                "prediction_path": str(request.output_path),
+                "prompt": request.prompt,
+            }
+        results[request.sample.sample_id] = payload
+    return results

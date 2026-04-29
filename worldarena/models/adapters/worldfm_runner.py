@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -12,6 +11,7 @@ import tempfile
 import numpy as np
 
 from worldarena.benchmark.annotations import load_camera_matrices, load_intrinsics_sequence
+from worldarena.common.checkpoints import apply_checkpoint_env, resolve_checkpoint_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -45,8 +45,35 @@ def _resolve_repo_path(repo_root: Path, value: str | None) -> Path | None:
 
 
 def _resolve_checkpoint_path(checkpoint_dir: Path, value: str) -> Path:
-    path = Path(value).expanduser()
-    return path.resolve() if path.is_absolute() else (checkpoint_dir / path).resolve()
+    checkpoint_root = checkpoint_dir.resolve()
+    token = str(value)
+    if token.startswith(("ckpt/", "./", "../", "/", "~")):
+        resolved = resolve_checkpoint_path(token)
+        if resolved is None:
+            raise FileNotFoundError(f"WorldFM checkpoint path is missing: {token}")
+        return resolved
+    resolved = (checkpoint_root / Path(token)).resolve()
+    if not resolved.is_relative_to(checkpoint_root):
+        raise ValueError(f"WorldFM checkpoint path must stay under {checkpoint_root}: {resolved}")
+    return resolved
+
+
+def _resolve_model_reference(value: str | None) -> str | None:
+    if not value:
+        return None
+    token = str(value).strip()
+    if token.startswith("ckpt/"):
+        resolved = resolve_checkpoint_path(token, kind="dir", required=True)
+        if resolved is None:
+            raise FileNotFoundError(f"WorldFM model reference is missing: {token}")
+        return str(resolved)
+    path = Path(token).expanduser()
+    if path.is_absolute() or token.startswith(("./", "../", "~")):
+        resolved = path.resolve()
+        if not resolved.exists():
+            raise FileNotFoundError(f"WorldFM model reference is missing: {resolved}")
+        return str(resolved)
+    return token
 
 
 def _intrinsics_vector_to_matrix(intrinsics: np.ndarray) -> list[list[float]]:
@@ -96,11 +123,9 @@ def _build_meta_payload(
 def main() -> None:
     args = parse_args()
     repo_root = Path(args.repo_root).expanduser().resolve()
-    checkpoint_dir = (
-        Path(args.checkpoint_dir).expanduser().resolve()
-        if args.checkpoint_dir
-        else (repo_root / "weights").resolve()
-    )
+    checkpoint_dir = resolve_checkpoint_path(args.checkpoint_dir, kind="dir", required=True)
+    if checkpoint_dir is None:
+        raise ValueError("WorldFM runner requires checkpoint_dir")
     output_path = Path(args.output_path).expanduser().resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -109,6 +134,7 @@ def main() -> None:
     moge_path = _resolve_repo_path(repo_root, args.moge_path)
     model_path = _resolve_checkpoint_path(checkpoint_dir, args.model_filename)
     vae_path = _resolve_checkpoint_path(checkpoint_dir, args.vae_subdir)
+    moge_pretrained = _resolve_model_reference(args.moge_pretrained)
 
     if not model_path.exists():
         raise FileNotFoundError(f"WorldFM checkpoint not found: {model_path}")
@@ -165,14 +191,14 @@ def main() -> None:
             command.extend(["--hw_path", str(hw_path)])
         if moge_path is not None:
             command.extend(["--moge_path", str(moge_path)])
-        if args.moge_pretrained:
-            command.extend(["--moge_pretrained", str(args.moge_pretrained)])
+        if moge_pretrained:
+            command.extend(["--moge_pretrained", moge_pretrained])
 
         subprocess.run(
             command,
             check=True,
             cwd=str(repo_root),
-            env=os.environ.copy(),
+            env=apply_checkpoint_env(),
         )
 
         generated_video = output_root / args.sample_name / "output.mp4"

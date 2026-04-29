@@ -10,10 +10,13 @@ import sys
 import tempfile
 import zipfile
 
+from worldarena.common.checkpoints import apply_checkpoint_env, checkpoint_path, resolve_checkpoint_path
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="WorldArena HunyuanWorld subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
+    parser.add_argument("--checkpoint_dir", default=None, type=str)
     parser.add_argument("--conditioning_image", default=None, type=str)
     parser.add_argument("--annotation_path", default=None, type=str)
     parser.add_argument("--output_path", required=True, type=str)
@@ -41,7 +44,7 @@ def _pythonpath_entries(repo_root: Path) -> list[str]:
 
 
 def _build_env(repo_root: Path, *, gpu_index: int) -> dict[str, str]:
-    env = os.environ.copy()
+    env = apply_checkpoint_env()
     pythonpaths = _pythonpath_entries(repo_root)
     if env.get("PYTHONPATH"):
         pythonpaths.append(env["PYTHONPATH"])
@@ -67,12 +70,25 @@ def _require_repo_layout(repo_root: Path) -> None:
         path = repo_root / required_file
         if not path.exists():
             raise FileNotFoundError(f"HunyuanWorld entrypoint not found: {path}")
-    zim_checkpoint = repo_root / "ZIM" / "zim_vit_l_2092"
-    if not zim_checkpoint.exists():
-        raise FileNotFoundError(
-            "HunyuanWorld expects the ZIM checkpoint under "
-            f"{zim_checkpoint}. Symlink or clone the ZIM repo there before running."
-        )
+
+
+def _stage_zim_checkpoint(repo_root: Path) -> Path:
+    zim_source_root = repo_root / "ZIM"
+    if not zim_source_root.exists():
+        raise FileNotFoundError(f"HunyuanWorld dependency checkout not found: {zim_source_root}")
+
+    checkpoint_dir = checkpoint_path("ZIM", "zim_vit_l_2092", kind="dir", required=True)
+    target = zim_source_root / "zim_vit_l_2092"
+    if target.is_symlink():
+        if target.resolve() != checkpoint_dir.resolve():
+            raise FileExistsError(f"HunyuanWorld ZIM checkpoint symlink points elsewhere: {target}")
+        return target
+    if target.exists():
+        if target.resolve() != checkpoint_dir.resolve():
+            raise FileExistsError(f"HunyuanWorld ZIM checkpoint path is occupied: {target}")
+        return target
+    target.symlink_to(checkpoint_dir, target_is_directory=True)
+    return target
 
 
 def _archive_directory(source_dir: Path, output_path: Path) -> list[str]:
@@ -91,8 +107,12 @@ def _archive_directory(source_dir: Path, output_path: Path) -> list[str]:
 def main() -> None:
     args = parse_args()
     repo_root = Path(args.repo_root).expanduser().resolve()
+    checkpoint_dir = resolve_checkpoint_path(args.checkpoint_dir, kind="dir", required=True)
+    if checkpoint_dir is None:
+        raise ValueError("HunyuanWorld runner requires checkpoint_dir")
     output_path = Path(args.output_path).expanduser().resolve()
     _require_repo_layout(repo_root)
+    _stage_zim_checkpoint(repo_root)
     env = _build_env(repo_root, gpu_index=args.gpu_index)
 
     labels_fg1 = _normalize_labels(args.labels_fg1)

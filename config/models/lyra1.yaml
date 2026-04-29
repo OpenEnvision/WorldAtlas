@@ -7,15 +7,17 @@ model:
   control_signals: [text, image]
   roles: [candidate]
   # Lyra-1 and its GEN3C stack target Python 3.10 with a dedicated CUDA environment.
-  python_bin: .runtime310/bin/python
-  repo_root: third_party/Lyra-1
-  # Keep the Lyra checkpoints under cache/hfd/Lyra; the runner resolves sibling GEN3C/T5/tokenizer caches from the same root.
-  checkpoint_dir: cache/hfd/Lyra
+  repo_root: thirdparty/Lyra-1
+  # Store the Lyra-1 weights under ckpt/Lyra and keep companion GEN3C/T5/tokenizer/MoGe checkpoints under ckpt/.
+  checkpoint_dir: ckpt/Lyra
   entrypoint: sample.py
   output_ext: .mp4
   supported_suites:
+    - image_static
+    - image_dynamic
     - video_static
-  prompt_mode: prompt_current
+    - video_dynamic
+  prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
     num_gpus: 1

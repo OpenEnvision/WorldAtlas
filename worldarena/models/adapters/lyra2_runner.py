@@ -7,10 +7,236 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 
 import numpy as np
 
 from worldarena.benchmark.annotations import load_camera_matrices, load_intrinsics_sequence
+from worldarena.common.checkpoints import (
+    apply_checkpoint_env,
+    hf_local_dir,
+    resolve_checkpoint_path,
+)
+
+
+HF_ALIAS_SPECS: dict[str, tuple[str, tuple[str, ...], bool]] = {
+    "google/umt5-xxl": ("google/umt5-xxl", ("spiece.model", "tokenizer_config.json"), False),
+    "Ruicheng/moge-vitl": ("Ruicheng/moge-vitl", ("model.pt",), True),
+}
+UMT5_CONFIG_SHIM = '{"model_type": "umt5"}\n'
+TRANSFORMER_ENGINE_INIT_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+    from . import common, pytorch
+
+    __version__ = "0.0.0"
+    __all__ = ["__version__", "common", "pytorch"]
+    """
+)
+TRANSFORMER_ENGINE_RECIPE_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+
+    class Format:
+        E4M3 = "E4M3"
+        HYBRID = "HYBRID"
+
+
+    class DelayedScaling:
+        def __init__(self, *args, **kwargs) -> None:
+            self.args = args
+            self.kwargs = kwargs
+
+
+    class Float8CurrentScaling(DelayedScaling):
+        pass
+
+
+    class MXFP8BlockScaling(DelayedScaling):
+        pass
+    """
+)
+TRANSFORMER_ENGINE_DISTRIBUTED_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+
+    class CudaRNGStatesTracker:
+        def __init__(self) -> None:
+            self.reset()
+
+        def reset(self) -> None:
+            self._states = {}
+
+        def set_states(self, states) -> None:
+            self._states = states
+
+        def add(self, name, seed) -> None:
+            self._states[name] = seed
+
+
+    def checkpoint(forward_func, *args, **kwargs):
+        return forward_func(*args)
+    """
+)
+TRANSFORMER_ENGINE_PYTORCH_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+    from contextlib import nullcontext
+
+    import torch
+    from torch import nn
+
+    from . import distributed
+    from .attention import DotProductAttention
+
+
+    class LayerNorm(nn.LayerNorm):
+        def __init__(self, hidden_size: int, eps: float = 1e-5, **_: object) -> None:
+            super().__init__(hidden_size, eps=eps)
+
+
+    class RMSNorm(nn.Module):
+        def __init__(self, hidden_size: int, eps: float = 1e-5, **_: object) -> None:
+            super().__init__()
+            self.weight = nn.Parameter(torch.ones(hidden_size))
+            self.eps = float(eps)
+
+        def forward(self, x):
+            norm = torch.rsqrt(x.float().pow(2).mean(dim=-1, keepdim=True) + self.eps)
+            return x * norm.to(dtype=x.dtype) * self.weight
+
+
+    class Linear(nn.Linear):
+        def __init__(
+            self,
+            *,
+            in_features: int,
+            out_features: int,
+            bias: bool = True,
+            return_bias: bool = False,
+            **_: object,
+        ) -> None:
+            super().__init__(in_features, out_features, bias=bias)
+            self.return_bias = bool(return_bias)
+
+        def forward(self, x, **_: object):
+            output = super().forward(x)
+            if self.return_bias and self.bias is not None:
+                return output, self.bias
+            return output
+
+
+    class LayerNormLinear(nn.Module):
+        def __init__(
+            self,
+            *,
+            in_features: int,
+            out_features: int,
+            bias: bool = True,
+            return_bias: bool = False,
+            normalization: str = "LayerNorm",
+            eps: float = 1e-5,
+            **kwargs: object,
+        ) -> None:
+            super().__init__()
+            norm_cls = RMSNorm if normalization == "RMSNorm" else LayerNorm
+            self.norm = norm_cls(in_features, eps=eps, **kwargs)
+            self.linear = Linear(
+                in_features=in_features,
+                out_features=out_features,
+                bias=bias,
+                return_bias=return_bias,
+                **kwargs,
+            )
+
+        def forward(self, x, **kwargs: object):
+            return self.linear(self.norm(x), **kwargs)
+
+
+    class GroupedLinear(nn.Module):
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            super().__init__()
+            self.return_bias = bool(kwargs.get("return_bias", False))
+
+        def forward(self, x, **_: object):
+            if self.return_bias:
+                return x, None
+            return x
+
+
+    def fp8_autocast(*args: object, **kwargs: object):
+        return nullcontext()
+
+
+    def fp8_model_init(*args: object, **kwargs: object):
+        return nullcontext()
+
+
+    __all__ = [
+        "distributed",
+        "DotProductAttention",
+        "LayerNorm",
+        "RMSNorm",
+        "Linear",
+        "LayerNormLinear",
+        "GroupedLinear",
+        "fp8_autocast",
+        "fp8_model_init",
+    ]
+    """
+)
+TRANSFORMER_ENGINE_ATTENTION_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+    import torch
+    import torch.nn.functional as F
+    from torch import nn
+
+
+    class DotProductAttention(nn.Module):
+        def __init__(
+            self,
+            num_attention_heads: int,
+            kv_channels: int,
+            *,
+            num_gqa_groups: int | None = None,
+            attention_dropout: float = 0.0,
+            qkv_format: str = "bshd",
+            attn_mask_type: str = "no_mask",
+            **_: object,
+        ) -> None:
+            super().__init__()
+            if qkv_format != "bshd":
+                raise NotImplementedError(f"unsupported qkv_format for fallback: {qkv_format}")
+            if attn_mask_type != "no_mask":
+                raise NotImplementedError(f"unsupported attn_mask_type for fallback: {attn_mask_type}")
+            self.num_attention_heads = int(num_attention_heads)
+            self.kv_channels = int(kv_channels)
+            self.num_gqa_groups = int(num_gqa_groups or num_attention_heads)
+            self.attention_dropout = float(attention_dropout)
+
+        def forward(self, q_B_L_H_D, k_B_L_H_D, v_B_L_H_D, *_args, **_kwargs):
+            q = q_B_L_H_D.permute(0, 2, 1, 3).contiguous()
+            k = k_B_L_H_D.permute(0, 2, 1, 3).contiguous()
+            v = v_B_L_H_D.permute(0, 2, 1, 3).contiguous()
+            output = F.scaled_dot_product_attention(
+                q,
+                k,
+                v,
+                dropout_p=self.attention_dropout if self.training else 0.0,
+                is_causal=False,
+            )
+            return output.permute(0, 2, 1, 3).contiguous()
+
+        def set_context_parallel_group(self, *_args, **_kwargs) -> None:
+            return None
+    """
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -22,6 +248,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output_path", required=True, type=str)
     parser.add_argument("--sample_name", required=True, type=str)
     parser.add_argument("--prompt", required=True, type=str)
+    parser.add_argument("--experiment", default="lyra2", type=str)
     parser.add_argument("--height", default=480, type=int)
     parser.add_argument("--width", default=832, type=int)
     parser.add_argument("--num_frames", default=81, type=int)
@@ -109,18 +336,139 @@ def _checkpoint_tree(checkpoint_dir: Path) -> Path:
     )
 
 
+def _resolve_local_da3_model_name(value: str) -> str:
+    token = str(value).strip()
+    if not token:
+        raise ValueError("Lyra-2 DA3 model name is empty")
+    if token.startswith(("ckpt/", "./", "../", "/", "~")):
+        resolved = resolve_checkpoint_path(token, kind="dir", required=True)
+        if resolved is None:
+            raise FileNotFoundError(f"Lyra-2 DA3 model directory is missing: {token}")
+        return str(resolved)
+    return token
+
+
+def _hf_repo_aliases(da3_model_name: str) -> dict[str, Path]:
+    aliases: dict[str, Path] = {}
+    for repo_id, (local_repo_id, required_files, link_file) in HF_ALIAS_SPECS.items():
+        source_path = hf_local_dir(local_repo_id, required=True)
+        missing = [filename for filename in required_files if not (source_path / filename).exists()]
+        if missing:
+            raise FileNotFoundError(
+                f"Lyra-2 dependency {local_repo_id} is incomplete under {source_path}: missing {', '.join(missing)}"
+            )
+        aliases[repo_id] = (source_path / required_files[0]) if link_file else source_path
+    if "/" in da3_model_name and not Path(da3_model_name).exists():
+        source_path = hf_local_dir(da3_model_name, required=True)
+        missing = [filename for filename in ("config.json", "model.safetensors") if not (source_path / filename).exists()]
+        if missing:
+            raise FileNotFoundError(
+                f"Lyra-2 DA3 dependency {da3_model_name} is incomplete under {source_path}: "
+                f"missing {', '.join(missing)}"
+            )
+        aliases[da3_model_name] = source_path
+    return aliases
+
+
+def _link_hf_repo_aliases(workspace_root: Path, da3_model_name: str) -> None:
+    for repo_id, source_path in _hf_repo_aliases(da3_model_name).items():
+        link_path = workspace_root / repo_id
+        link_path.parent.mkdir(parents=True, exist_ok=True)
+        if repo_id == "google/umt5-xxl":
+            if link_path.exists() or link_path.is_symlink():
+                if link_path.is_dir() and not link_path.is_symlink():
+                    shutil.rmtree(link_path)
+                else:
+                    link_path.unlink()
+            link_path.mkdir(parents=True, exist_ok=True)
+            for source_file in source_path.iterdir():
+                if source_file.is_file():
+                    (link_path / source_file.name).symlink_to(source_file)
+            if not (link_path / "config.json").exists():
+                (link_path / "config.json").write_text(UMT5_CONFIG_SHIM, encoding="utf-8")
+            continue
+        if link_path.exists() or link_path.is_symlink():
+            if link_path.is_symlink() and link_path.resolve() == source_path:
+                continue
+            if link_path.is_dir():
+                shutil.rmtree(link_path)
+            else:
+                link_path.unlink()
+        link_path.symlink_to(source_path, target_is_directory=source_path.is_dir())
+
+
+def _prepare_transformer_engine_shim(workspace_root: Path) -> None:
+    package_root = workspace_root / "transformer_engine"
+    pytorch_root = package_root / "pytorch"
+    common_root = package_root / "common"
+    pytorch_root.mkdir(parents=True, exist_ok=True)
+    common_root.mkdir(parents=True, exist_ok=True)
+    (package_root / "__init__.py").write_text(TRANSFORMER_ENGINE_INIT_SHIM, encoding="utf-8")
+    (common_root / "__init__.py").write_text("from . import recipe\n", encoding="utf-8")
+    (common_root / "recipe.py").write_text(TRANSFORMER_ENGINE_RECIPE_SHIM, encoding="utf-8")
+    (pytorch_root / "__init__.py").write_text(TRANSFORMER_ENGINE_PYTORCH_SHIM, encoding="utf-8")
+    (pytorch_root / "attention.py").write_text(TRANSFORMER_ENGINE_ATTENTION_SHIM, encoding="utf-8")
+    (pytorch_root / "distributed.py").write_text(
+        TRANSFORMER_ENGINE_DISTRIBUTED_SHIM,
+        encoding="utf-8",
+    )
+
+
+def _use_transformer_engine_shim() -> bool:
+    backend = os.environ.get("WORLDARENA_LYRA2_ATTENTION_BACKEND", "native").strip().lower()
+    return backend in {"shim", "pytorch", "torch", "sdpa"}
+
+
+def _prepend_runtime_library_path(env: dict[str, str], executable: str) -> None:
+    env_root = Path(executable).expanduser().resolve().parent.parent
+    lib_dir = env_root / "lib"
+    if not (lib_dir / "libstdc++.so.6").exists():
+        return
+    existing = env.get("LD_LIBRARY_PATH")
+    parts = [str(lib_dir)]
+    if existing:
+        parts.extend(part for part in existing.split(os.pathsep) if part and part != str(lib_dir))
+    env["LD_LIBRARY_PATH"] = os.pathsep.join(parts)
+
+
+def _configure_lyra2_runtime_env(env: dict[str, str], executable: str) -> None:
+    _prepend_runtime_library_path(env, executable)
+    if not _use_transformer_engine_shim():
+        env.setdefault("NVTE_FLASH_ATTN", "1")
+        env.setdefault("NVTE_FUSED_ATTN", "0")
+        env.setdefault("NVTE_UNFUSED_ATTN", "1")
+
+
 def main() -> None:
     args = parse_args()
     repo_root = Path(args.repo_root).expanduser().resolve()
-    checkpoint_dir = Path(args.checkpoint_dir).expanduser().resolve()
+    checkpoint_dir = resolve_checkpoint_path(args.checkpoint_dir, kind="dir", required=True)
+    if checkpoint_dir is None:
+        raise ValueError("Lyra-2 runner requires checkpoint_dir")
     output_path = Path(args.output_path).expanduser().resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     checkpoint_tree = _checkpoint_tree(checkpoint_dir)
+    da3_model_name = _resolve_local_da3_model_name(args.da3_model_name)
+    da3_model_path_custom = None
+    if args.da3_model_path_custom:
+        da3_model_path_custom = resolve_checkpoint_path(
+            args.da3_model_path_custom,
+            kind="file",
+            required=True,
+        )
+        if da3_model_path_custom is None:
+            raise FileNotFoundError(
+                f"Lyra-2 DA3 checkpoint path is missing: {args.da3_model_path_custom}"
+            )
 
     with tempfile.TemporaryDirectory(prefix="worldarena_lyra2_") as temp_dir_raw:
         temp_dir = Path(temp_dir_raw)
         workspace_root = temp_dir / "workspace"
         workspace_root.mkdir(parents=True, exist_ok=True)
+
+        if _use_transformer_engine_shim():
+            _prepare_transformer_engine_shim(workspace_root)
+        _link_hf_repo_aliases(workspace_root, da3_model_name)
 
         (workspace_root / "lyra_2").symlink_to(repo_root / "lyra_2", target_is_directory=True)
         (workspace_root / "checkpoints").symlink_to(checkpoint_tree, target_is_directory=True)
@@ -153,6 +501,8 @@ def main() -> None:
             str(trajectory_path),
             "--checkpoint_dir",
             "checkpoints/model",
+            "--experiment",
+            args.experiment,
             "--output_path",
             str(output_root),
             "--prompt",
@@ -178,7 +528,7 @@ def main() -> None:
             "--prompt_suffix",
             args.prompt_suffix,
             "--da3_model_name",
-            args.da3_model_name,
+            da3_model_name,
             "--da3_frame_interval",
             str(args.da3_frame_interval),
             "--da3_max_history_frames",
@@ -188,8 +538,8 @@ def main() -> None:
             command.append("--use_moge_scale")
         else:
             command.append("--no-use_moge_scale")
-        if args.da3_model_path_custom:
-            command.extend(["--da3_model_path_custom", args.da3_model_path_custom])
+        if da3_model_path_custom is not None:
+            command.extend(["--da3_model_path_custom", str(da3_model_path_custom)])
         for flag_name in (
             "offload",
             "offload_when_prompt",
@@ -205,7 +555,10 @@ def main() -> None:
             if getattr(args, flag_name):
                 command.append(f"--{flag_name}")
 
-        env = os.environ.copy()
+        env = apply_checkpoint_env()
+        # Transformers still honors TRANSFORMERS_CACHE before HF_HUB_CACHE.
+        env["TRANSFORMERS_CACHE"] = env["HF_HUB_CACHE"]
+        _configure_lyra2_runtime_env(env, sys.executable)
         pythonpath = [str(workspace_root), str(repo_root)]
         if env.get("PYTHONPATH"):
             pythonpath.append(env["PYTHONPATH"])

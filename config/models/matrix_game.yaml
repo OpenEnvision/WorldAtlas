@@ -6,11 +6,9 @@ model:
   artifact_types: [video]
   control_signals: [text, image, actions]
   roles: [candidate]
-  python_bin: auto
-  # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
-  repo_root: third_party/Matrix-Game-3.0
-  # Keep checkpoints under cache/hfd or point this at a shared cache mount through `worldarena prepare-layout --shared-hf-cache`.
-  checkpoint_dir: cache/hfd/Matrix-Game-3.0
+  # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
+  repo_root: thirdparty/Matrix-Game-3.0
+  checkpoint_dir: ckpt/Matrix-Game-3.0
   entrypoint: generate.py
   output_ext: .mp4
   supported_suites:

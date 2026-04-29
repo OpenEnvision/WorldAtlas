@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Any
 
 import numpy as np
-from PIL import Image
 
+from worldarena.benchmark.clip_backend import clip_image_features, clip_text_features
 from worldarena.benchmark.media import LoadedMedia
 from worldarena.benchmark.metrics.base import (
     Metric,
@@ -20,75 +19,26 @@ from worldarena.benchmark.reference_runtime import (
 from worldarena.benchmark.schemas import BenchmarkSample, MetricOutput
 
 
-@lru_cache(maxsize=1)
-def _load_clip_backend() -> tuple[Any, Any, Any] | None:
-    try:
-        import torch
-        from transformers import AutoProcessor, CLIPModel
-    except ModuleNotFoundError:
-        return None
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = CLIPModel.from_pretrained("openai/clip-vit-base-patch16").to(device)
-    processor = AutoProcessor.from_pretrained("openai/clip-vit-base-patch16")
-    model.eval()
-    return model, processor, device
+def _clip_image_text_similarity(frame: np.ndarray, text: str) -> tuple[float, str]:
+    image_features, loader_name = clip_image_features([frame])
+    text_features, _ = clip_text_features([text])
+    score = clamp01((cosine_similarity(image_features[0], text_features[0]) + 1.0) / 2.0)
+    return score, loader_name
 
 
-def _clip_image_text_similarity(frame: np.ndarray, text: str) -> float:
-    backend = _load_clip_backend()
-    if backend is None:
-        raise ModuleNotFoundError("transformers/torch not available")
-
-    import torch
-
-    model, processor, device = backend
-    inputs = processor(
-        text=[text],
-        images=[Image.fromarray(frame)],
-        return_tensors="pt",
-        padding=True,
-    )
-    inputs = {key: value.to(device) for key, value in inputs.items()}
-    with torch.no_grad():
-        image_features = model.get_image_features(pixel_values=inputs["pixel_values"])
-        text_features = model.get_text_features(
-            input_ids=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-        )
-    image_vector = image_features[0].detach().cpu().numpy()
-    text_vector = text_features[0].detach().cpu().numpy()
-    return clamp01((cosine_similarity(image_vector, text_vector) + 1.0) / 2.0)
-
-
-def _clip_image_image_similarity(left: np.ndarray, right: np.ndarray) -> float:
-    backend = _load_clip_backend()
-    if backend is None:
-        raise ModuleNotFoundError("transformers/torch not available")
-
-    import torch
-
-    model, processor, device = backend
-    inputs = processor(
-        images=[Image.fromarray(left), Image.fromarray(right)],
-        return_tensors="pt",
-        padding=True,
-    )
-    pixel_values = inputs["pixel_values"].to(device)
-    with torch.no_grad():
-        image_features = model.get_image_features(pixel_values=pixel_values)
-    left_vector = image_features[0].detach().cpu().numpy()
-    right_vector = image_features[1].detach().cpu().numpy()
-    return clamp01((cosine_similarity(left_vector, right_vector) + 1.0) / 2.0)
+def _clip_image_image_similarity(left: np.ndarray, right: np.ndarray) -> tuple[float, str]:
+    image_features, loader_name = clip_image_features([left, right])
+    score = clamp01((cosine_similarity(image_features[0], image_features[1]) + 1.0) / 2.0)
+    return score, loader_name
 
 
 PROMPT_ALIGNMENT_BACKENDS = {"reference", "clip", "reference_proxy"}
 IMAGE_ALIGNMENT_BACKENDS = {"clip", "reference_proxy"}
 DISABLED_ALIGNMENT_BACKENDS = {"reference_proxy"}
-WEAK_SUPERVISION_WARNING = (
-    "prompt alignment is diagnostic-only because the sample is self-conditioned "
-    "or lacks explicit instruction supervision"
+PROMPT_NOT_APPLICABLE_REASON = (
+    "prompt_alignment requires explicit instruction supervision and non-self conditioning"
 )
+PROMPT_INVALID_PREDICTION_REASON = "prompt_alignment requires a video prediction"
 
 
 class AlignmentMetric(Metric):
@@ -107,6 +57,7 @@ class AlignmentMetric(Metric):
 
     def _protocol_details(self, prediction: LoadedMedia) -> dict[str, Any]:
         return {
+            "prediction_modality": prediction.modality,
             "frame_indices": list(prediction.protocol_frame_indices),
             "sampled_frame_indices": list(prediction.sampled_frame_indices),
         }
@@ -125,10 +76,44 @@ class PromptAlignmentMetric(AlignmentMetric):
             disabled_backends=DISABLED_ALIGNMENT_BACKENDS,
         )
 
+    def _is_applicable(self, sample: BenchmarkSample) -> bool:
+        return bool(sample.has_instruction and sample.conditioning_strategy != "self")
+
+    def _not_applicable_output(
+        self,
+        *,
+        backend: str,
+        prediction: LoadedMedia,
+        error: str = PROMPT_NOT_APPLICABLE_REASON,
+    ) -> MetricOutput:
+        return MetricOutput(
+            raw=None,
+            normalized=None,
+            backend=backend,
+            details=self._protocol_details(prediction),
+            eligibility_status="not_applicable",
+            error=error,
+        )
+
     def _resolve_eligibility(self, sample: BenchmarkSample) -> tuple[str, str | None]:
         if not sample.has_instruction or sample.conditioning_strategy == "self":
-            return "weak_supervision", WEAK_SUPERVISION_WARNING
+            return "not_applicable", PROMPT_NOT_APPLICABLE_REASON
         return "official", None
+
+    def _invalid_prediction_output(
+        self,
+        *,
+        backend: str,
+        prediction: LoadedMedia,
+    ) -> MetricOutput:
+        return MetricOutput(
+            raw=None,
+            normalized=None,
+            backend=backend,
+            details=self._protocol_details(prediction),
+            eligibility_status="official",
+            error=PROMPT_INVALID_PREDICTION_REASON,
+        )
 
     def compute(
         self,
@@ -137,79 +122,59 @@ class PromptAlignmentMetric(AlignmentMetric):
         reference: LoadedMedia,
     ) -> MetricOutput:
         backend = self._resolve_backend()
-        eligibility_status, supervision_warning = self._resolve_eligibility(sample)
+        eligibility_status, not_applicable_reason = self._resolve_eligibility(sample)
+        if eligibility_status == "not_applicable":
+            return self._not_applicable_output(
+                backend=backend,
+                prediction=prediction,
+                error=str(not_applicable_reason),
+            )
+        if prediction.modality != "video":
+            return self._invalid_prediction_output(
+                backend=backend,
+                prediction=prediction,
+            )
+        prompt_target = sample.prompt_target.strip()
+        if not prompt_target:
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=self._protocol_details(prediction),
+                eligibility_status="official",
+                error="prompt target is unavailable for this sample",
+            )
         try:
             details = self._protocol_details(prediction)
             if backend == "reference":
                 reference_result = compute_reference_prompt_alignment(
                     prediction.anchor_frames,
-                    sample.prompt_target,
+                    prompt_target,
                 )
                 raw = reference_result["raw"]
                 details.update(reference_result["details"])
-                if supervision_warning:
-                    details["supervision_warning"] = supervision_warning
                 return MetricOutput(
                     raw=raw,
                     normalized=normalize_score(raw, self.normalization),
                     backend=str(reference_result["backend"]),
                     details=details,
-                    eligibility_status=eligibility_status,
+                    eligibility_status="official",
                 )
             scores = [
-                _clip_image_text_similarity(frame, sample.prompt_target)
+                _clip_image_text_similarity(frame, prompt_target)
                 for frame in prediction.anchor_frames
             ]
-            raw = float(np.mean(scores)) if scores else None
-            details["frame_scores"] = [round(value, 4) for value in scores]
-            if supervision_warning:
-                details["supervision_warning"] = supervision_warning
+            score_values = [score for score, _ in scores]
+            raw = float(np.mean(score_values)) if score_values else None
+            details["frame_scores"] = [round(value, 4) for value in score_values]
+            if scores:
+                details["clip_loader"] = scores[0][1]
             return MetricOutput(
                 raw=raw,
                 normalized=normalize_score(raw, self.normalization),
                 backend=backend,
                 details=details,
-                eligibility_status=eligibility_status,
-            )
-        except Exception as exc:  # pragma: no cover - backend-specific runtime failures
-            details = self._protocol_details(prediction)
-            if supervision_warning:
-                details["supervision_warning"] = supervision_warning
-            return MetricOutput(
-                raw=None,
-                normalized=None,
-                backend=backend,
-                details=details,
-                eligibility_status=eligibility_status,
-                error=str(exc),
-            )
-
-
-class ReferenceAppearanceAlignmentMetric(AlignmentMetric):
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
-        super().__init__("reference_appearance_alignment", backend, normalization)
-
-    def compute(
-        self,
-        sample: BenchmarkSample,
-        prediction: LoadedMedia,
-        reference: LoadedMedia,
-    ) -> MetricOutput:
-        del sample
-
-        backend = self._resolve_backend()
-        try:
-            paired = list(zip(prediction.anchor_frames, reference.anchor_frames))
-            scores = [_clip_image_image_similarity(left, right) for left, right in paired]
-            raw = float(np.mean(scores)) if scores else None
-            details = self._protocol_details(prediction)
-            details["frame_scores"] = [round(value, 4) for value in scores]
-            return MetricOutput(
-                raw=raw,
-                normalized=normalize_score(raw, self.normalization),
-                backend=backend,
-                details=details,
-                eligibility_status="diagnostic",
+                eligibility_status="official",
             )
         except Exception as exc:  # pragma: no cover - backend-specific runtime failures
             return MetricOutput(
@@ -217,7 +182,7 @@ class ReferenceAppearanceAlignmentMetric(AlignmentMetric):
                 normalized=None,
                 backend=backend,
                 details=self._protocol_details(prediction),
-                eligibility_status="diagnostic",
+                eligibility_status="official",
                 error=str(exc),
             )
 
@@ -238,10 +203,13 @@ class AnchorConsistencyMetric(AlignmentMetric):
         try:
             paired = list(zip(prediction.anchor_frames, reference.anchor_frames))
             scores = [_clip_image_image_similarity(left, right) for left, right in paired]
-            raw = float(np.mean(scores)) if scores else None
+            score_values = [score for score, _ in scores]
+            raw = float(np.mean(score_values)) if score_values else None
             details = self._protocol_details(prediction)
-            details["frame_scores"] = [round(value, 4) for value in scores]
-            details["late_minus_early"] = round(scores[-1] - scores[0], 4) if scores else None
+            details["frame_scores"] = [round(value, 4) for value in score_values]
+            details["late_minus_early"] = round(score_values[-1] - score_values[0], 4) if score_values else None
+            if scores:
+                details["clip_loader"] = scores[0][1]
             return MetricOutput(
                 raw=raw,
                 normalized=normalize_score(raw, self.normalization),

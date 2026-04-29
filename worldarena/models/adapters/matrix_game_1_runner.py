@@ -8,6 +8,8 @@ from pathlib import Path
 
 import numpy as np
 
+from worldarena.common.checkpoints import apply_checkpoint_env, resolve_checkpoint_path
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="WorldArena Matrix-Game-1 runner.")
@@ -53,11 +55,14 @@ def main() -> None:
     args = parse_args()
     launch_cwd = Path.cwd()
     repo_root = (launch_cwd / Path(args.repo_root).expanduser()).resolve()
-    checkpoint_dir = (launch_cwd / Path(args.checkpoint_dir).expanduser()).resolve()
+    checkpoint_dir = resolve_checkpoint_path(args.checkpoint_dir, kind="dir", required=True)
+    if checkpoint_dir is None:
+        raise ValueError("Matrix-Game-1 runner requires checkpoint_dir")
     actions_path = (launch_cwd / Path(args.actions_json).expanduser()).resolve()
     image_path = (launch_cwd / Path(args.image_path).expanduser()).resolve()
     output_path = (launch_cwd / Path(args.output_path).expanduser()).resolve()
 
+    os.environ.update(apply_checkpoint_env())
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
     os.chdir(repo_root)
     if str(repo_root) not in sys.path:

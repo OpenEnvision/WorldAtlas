@@ -1,21 +1,28 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
 from functools import lru_cache
+import os
 from typing import Any, Sequence
 
 import numpy as np
 from PIL import Image
 
+from worldarena.benchmark.clip_backend import (
+    clip_backend_available,
+    clip_image_features,
+    clip_text_features,
+    load_clip_backend,
+)
 from worldarena.benchmark.metrics.base import clamp01
+from worldarena.benchmark.quality_backends import (
+    REQUIRED_REFERENCE_QUALITY_COMPONENTS,
+    compute_quality_component_scores,
+    quality_component_available,
+)
+from worldarena.common.checkpoints import checkpoint_env
 
 
 STYLE_CAPTURE_INDICES = (0, 2, 5, 7, 10)
-REFERENCE_QUALITY_COMPONENTS = {
-    "clip_iqa": ("clipiqa_plus", "clipiqa+", 1.0),
-    "aesthetic": ("laion_aes", "laion_aes", 10.0),
-}
-REQUIRED_REFERENCE_QUALITY_COMPONENTS = ("clip_iqa", "aesthetic")
 
 
 def _mean(values: list[float]) -> float | None:
@@ -32,31 +39,19 @@ def _frame_to_image(frame: np.ndarray) -> Image.Image:
     return Image.fromarray(frame)
 
 
-def _to_float(value: Any) -> float:
-    if hasattr(value, "detach"):
-        value = value.detach()
-    if hasattr(value, "item"):
-        value = value.item()
-    return float(value)
-
-
 @lru_cache(maxsize=1)
-def _load_reference_clipscore_backend() -> tuple[str, Any, str] | None:
-    try:
-        import torch
-        from torchmetrics.multimodal.clip_score import CLIPScore
-    except (ImportError, ModuleNotFoundError):
+def _reference_prompt_alignment_backend_name() -> str | None:
+    backend = load_clip_backend()
+    if backend is None:
         return None
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    metric = CLIPScore(model_name_or_path="openai/clip-vit-base-patch16").to(device)
-    metric.eval()
-    return "clipscore_torchmetrics", metric, device
+    loader_name = backend[0]
+    return f"clipscore_{loader_name}"
 
 
 @lru_cache(maxsize=1)
 def _load_reference_style_backend() -> tuple[str, Any, Any, str] | None:
     try:
+        os.environ.update(checkpoint_env())
         import torch
         from torchvision import transforms
         from torchvision.models import VGG19_Weights, vgg19
@@ -81,28 +76,8 @@ def _load_reference_style_backend() -> tuple[str, Any, Any, str] | None:
     return "vgg19_gram", model, preprocessing, device
 
 
-@lru_cache(maxsize=2)
-def _load_reference_quality_component(
-    component_name: str,
-) -> tuple[str, Any, str, float] | None:
-    component_spec = REFERENCE_QUALITY_COMPONENTS.get(component_name)
-    if component_spec is None:
-        return None
-
-    backend_name, metric_name, scale = component_spec
-    try:
-        import pyiqa
-        import torch
-    except (ImportError, ModuleNotFoundError):
-        return None
-
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    metric = pyiqa.create_metric(metric_name).to(device)
-    return backend_name, metric, device, scale
-
-
 def reference_prompt_alignment_available() -> bool:
-    return _load_reference_clipscore_backend() is not None
+    return clip_backend_available()
 
 
 def reference_style_consistency_available() -> bool:
@@ -111,24 +86,9 @@ def reference_style_consistency_available() -> bool:
 
 def reference_perceptual_quality_available() -> bool:
     return all(
-        _load_reference_quality_component(component_name) is not None
+        quality_component_available(component_name)
         for component_name in REQUIRED_REFERENCE_QUALITY_COMPONENTS
     )
-
-
-def _frame_to_uint8_tensor(frame: np.ndarray, device: str) -> Any:
-    import torch
-
-    tensor = torch.from_numpy(np.ascontiguousarray(frame))
-    return tensor.permute(2, 0, 1).to(device=device, dtype=torch.uint8)
-
-
-def _frame_to_float_tensor(frame: np.ndarray, device: str) -> Any:
-    import torch
-
-    tensor = torch.from_numpy(np.ascontiguousarray(frame))
-    tensor = tensor.permute(2, 0, 1).float().unsqueeze(0) / 255.0
-    return tensor.to(device)
 
 
 def _gram_matrix(features: Any) -> Any:
@@ -174,33 +134,35 @@ def compute_reference_prompt_alignment(
     frames: Sequence[np.ndarray],
     prompt: str,
 ) -> dict[str, Any]:
-    backend_payload = _load_reference_clipscore_backend()
-    if backend_payload is None:
+    backend_name = _reference_prompt_alignment_backend_name()
+    if backend_name is None:
         raise ModuleNotFoundError("CLIPScore backend is unavailable")
-
-    try:
-        import torch
-    except ModuleNotFoundError:
-        torch = None  # type: ignore[assignment]
-
-    backend_name, metric, device = backend_payload
-    native_scores: list[float] = []
-    frame_scores: list[float] = []
     native_upper = 100.0
+    if not frames:
+        return {
+            "raw": None,
+            "backend": backend_name,
+            "details": {
+                "frame_scores": [],
+                "native_frame_scores": [],
+                "native_score_range": [0.0, native_upper],
+            },
+        }
 
-    context = torch.inference_mode() if torch is not None else nullcontext()
-    with context:
-        for frame in frames:
-            image = _frame_to_uint8_tensor(frame, device)
-            native_score = _to_float(metric(image, prompt))
-            metric.reset()
-            native_scores.append(native_score)
-            frame_scores.append(clamp01(native_score / native_upper))
+    image_features, loader_name = clip_image_features(frames)
+    text_features, _ = clip_text_features([prompt])
+    text_feature = text_features[0]
+    native_scores = [
+        max(100.0 * float(np.dot(image_feature, text_feature)), 0.0)
+        for image_feature in image_features
+    ]
+    frame_scores = [clamp01(native_score / native_upper) for native_score in native_scores]
 
     return {
         "raw": _mean(frame_scores),
         "backend": backend_name,
         "details": {
+            "clip_loader": loader_name,
             "frame_scores": _round(frame_scores),
             "native_frame_scores": _round(native_scores),
             "native_score_range": [0.0, native_upper],
@@ -241,40 +203,22 @@ def compute_reference_style_consistency(
 def compute_reference_perceptual_quality(
     frames: Sequence[np.ndarray],
 ) -> dict[str, Any]:
-    component_payloads: dict[str, tuple[str, Any, str, float]] = {}
-    missing_components: list[str] = []
-    for component_name in REQUIRED_REFERENCE_QUALITY_COMPONENTS:
-        payload = _load_reference_quality_component(component_name)
-        if payload is None:
-            missing_components.append(component_name)
-            continue
-        component_payloads[component_name] = payload
-    if missing_components:
-        missing = ", ".join(sorted(missing_components))
-        raise ModuleNotFoundError(
-            "reference perceptual-quality backends are unavailable for required "
-            f"components: {missing}"
-        )
-
     frame_component_scores: list[list[float]] = [[] for _ in frames]
     components: dict[str, dict[str, Any]] = {}
 
-    for component_name, payload in component_payloads.items():
-        backend_name, metric, device, scale = payload
-        native_scores: list[float] = []
-        normalized_scores: list[float] = []
-        for index, frame in enumerate(frames):
-            tensor = _frame_to_float_tensor(frame, device)
-            native_score = _to_float(metric(tensor))
-            normalized_score = clamp01(native_score / scale)
-            native_scores.append(native_score)
-            normalized_scores.append(normalized_score)
-            frame_component_scores[index].append(normalized_score)
+    for component_name in REQUIRED_REFERENCE_QUALITY_COMPONENTS:
+        component_result = compute_quality_component_scores(
+            frames,
+            component_name=component_name,
+        )
+        normalized_scores = list(component_result["frame_scores"])
+        for index, normalized_score in enumerate(normalized_scores):
+            frame_component_scores[index].append(float(normalized_score))
         components[component_name] = {
-            "backend": backend_name,
-            "frame_scores": _round(normalized_scores),
-            "native_frame_scores": _round(native_scores),
-            "native_score_range": [0.0, scale],
+            "backend": component_result["backend"],
+            "frame_scores": normalized_scores,
+            "native_frame_scores": list(component_result["native_frame_scores"]),
+            "native_score_range": list(component_result["native_score_range"]),
         }
 
     frame_scores = [

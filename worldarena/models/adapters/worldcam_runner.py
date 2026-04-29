@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image
 
 from worldarena.benchmark.annotations import load_camera_matrices, load_intrinsics_sequence
+from worldarena.common.checkpoints import apply_checkpoint_env, hf_local_dir, resolve_checkpoint_path
 
 
 CAMERA_WINDOW_LATENTS = 8
@@ -112,112 +113,62 @@ def _torch_dtype_name(raw: str) -> str:
     return normalized
 
 
-def _candidate_base_model_roots(checkpoint_dir: Path) -> list[Path]:
-    candidates = [
-        checkpoint_dir / "base_models" / "Wan-AI" / "Wan2.1-T2V-1.3B",
-        checkpoint_dir.parent / "Wan-AI--Wan2.1-T2V-1.3B",
-    ]
-    hf_home = os.environ.get("HF_HOME")
-    if hf_home:
-        candidates.append(Path(hf_home).expanduser().resolve() / "Wan-AI--Wan2.1-T2V-1.3B")
-
-    ordered: list[Path] = []
-    seen: set[Path] = set()
-    for candidate in candidates:
-        resolved = candidate.expanduser().resolve()
-        if resolved not in seen:
-            ordered.append(resolved)
-            seen.add(resolved)
-    return ordered
-
-
-def _existing_base_model_root(checkpoint_dir: Path) -> Path | None:
+def _base_model_root() -> Path:
     required_files = (
         "models_t5_umt5-xxl-enc-bf16.pth",
         "Wan2.1_VAE.pth",
         "diffusion_pytorch_model.safetensors",
     )
-    for candidate in _candidate_base_model_roots(checkpoint_dir):
-        if all((candidate / name).exists() for name in required_files):
-            return candidate
-    return None
+    candidate = hf_local_dir("Wan-AI/Wan2.1-T2V-1.3B", required=True)
+    if not all((candidate / name).exists() for name in required_files):
+        raise FileNotFoundError(
+            "WorldCam base model files are incomplete under "
+            f"{candidate}. Expected {required_files}."
+        )
+    return candidate
 
 
 def _load_base_models(
     *,
-    checkpoint_dir: Path,
     model_manager,
     pipe,
-    model_config_cls,
 ) -> Path:
-    existing_root = _existing_base_model_root(checkpoint_dir)
-    if existing_root is not None:
-        for file_name in (
-            "models_t5_umt5-xxl-enc-bf16.pth",
-            "Wan2.1_VAE.pth",
-            "diffusion_pytorch_model.safetensors",
-        ):
-            model_manager.load_model(
-                str(existing_root / file_name),
-                device="cpu",
-                torch_dtype=pipe.torch_dtype,
-            )
-        tokenizer_candidates = sorted((existing_root / "google").glob("*"))
-        if not tokenizer_candidates:
-            raise FileNotFoundError(f"tokenizer files not found under: {existing_root / 'google'}")
-        return tokenizer_candidates[0]
-
-    base_model_cache = checkpoint_dir / "base_models"
-    base_model_configs = [
-        model_config_cls(
-            model_id="Wan-AI/Wan2.1-T2V-1.3B",
-            origin_file_pattern="models_t5_umt5-xxl-enc-bf16.pth",
-            local_model_path=str(base_model_cache),
-        ),
-        model_config_cls(
-            model_id="Wan-AI/Wan2.1-T2V-1.3B",
-            origin_file_pattern="Wan2.1_VAE.pth",
-            local_model_path=str(base_model_cache),
-        ),
-        model_config_cls(
-            model_id="Wan-AI/Wan2.1-T2V-1.3B",
-            origin_file_pattern="diffusion_pytorch_model.safetensors",
-            local_model_path=str(base_model_cache),
-        ),
-    ]
-    for config in base_model_configs:
-        config.download_if_necessary()
-        model_manager.load_model(config.path, device="cpu", torch_dtype=pipe.torch_dtype)
-
-    tokenizer_config = model_config_cls(
-        model_id="Wan-AI/Wan2.1-T2V-1.3B",
-        origin_file_pattern="google/*",
-        local_model_path=str(base_model_cache),
-    )
-    tokenizer_config.download_if_necessary()
-    return Path(tokenizer_config.path)
+    existing_root = _base_model_root()
+    for file_name in (
+        "models_t5_umt5-xxl-enc-bf16.pth",
+        "Wan2.1_VAE.pth",
+        "diffusion_pytorch_model.safetensors",
+    ):
+        model_manager.load_model(
+            str(existing_root / file_name),
+            device="cpu",
+            torch_dtype=pipe.torch_dtype,
+        )
+    tokenizer_candidates = sorted((existing_root / "google").glob("*"))
+    if not tokenizer_candidates:
+        raise FileNotFoundError(f"tokenizer files not found under: {existing_root / 'google'}")
+    return tokenizer_candidates[0]
 
 
 def main() -> None:
     args = parse_args()
     repo_root = Path(args.repo_root).expanduser().resolve()
-    checkpoint_dir = (
-        Path(args.checkpoint_dir).expanduser().resolve()
-        if args.checkpoint_dir
-        else (repo_root / "weights").resolve()
-    )
+    checkpoint_dir = resolve_checkpoint_path(args.checkpoint_dir, kind="dir", required=True)
+    if checkpoint_dir is None:
+        raise ValueError("WorldCam runner requires checkpoint_dir")
     output_path = Path(args.output_path).expanduser().resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
+    os.environ.update(apply_checkpoint_env())
     os.chdir(repo_root)
 
     import torch
 
     from diffsynth import save_video
     from diffsynth.models import ModelManager, load_state_dict
-    from diffsynth.pipelines.wan_video_new import ModelConfig, WanVideoPipeline
+    from diffsynth.pipelines.wan_video_new import WanVideoPipeline
 
     torch_dtype_name = _torch_dtype_name(args.torch_dtype)
     torch_dtype = getattr(torch, torch_dtype_name)
@@ -236,10 +187,8 @@ def main() -> None:
     pipe = WanVideoPipeline(torch_dtype=torch_dtype, device=args.device)
     model_manager = ModelManager()
     tokenizer_path = _load_base_models(
-        checkpoint_dir=checkpoint_dir,
         model_manager=model_manager,
         pipe=pipe,
-        model_config_cls=ModelConfig,
     )
 
     pipe.text_encoder = model_manager.fetch_model("wan_video_text_encoder")

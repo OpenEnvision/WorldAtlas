@@ -7,14 +7,14 @@ model:
   control_signals: [text, image, actions]
   roles: [candidate]
   # Infinite-World currently expects a CUDA-capable Python 3.10 runtime with flash-attn.
-  python_bin: .runtime310/bin/python
-  # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
-  repo_root: third_party/Infinite-World
-  # Keep checkpoints under cache/hfd or point this at a shared cache mount through `worldarena prepare-layout --shared-hf-cache`.
-  checkpoint_dir: cache/hfd/MeiGen-AI--Infinite-World
+  python_bin: /share/project/yesliu/miniconda3/envs/infworld/bin/python
+  repo_root: /bench-workspace/yesliu/hjd/model/WorldArena/ckpt/MeiGen-AI--Infinite-World
+  checkpoint_dir: /bench-workspace/yesliu/hjd/model/WorldArena/ckpt/MeiGen-AI--Infinite-World
   entrypoint: scripts/infworld_inference.py
   output_ext: .mp4
   supported_suites:
+    - image_static
+    - image_dynamic
     - video_static
     - video_dynamic
   prompt_mode: prompt_target
@@ -24,13 +24,16 @@ model:
     bucket_config_name: ASPECT_RATIO_627_F64
     fps: 30
     seed: 42
-    num_chunks: 1
+    batch_size: 1
+    num_chunks: 2
     num_sampling_steps: 30
     sample_shift: 7.0
     sample_guide_scale: 5.0
     quality: 8
+    target_duration_sec: 5.0
     validation_num_frames: 81
-    chunk_stride: 20
+    chunk_stride: 80
+    action_source: worldarena_prompt
     action_plan:
       default:
         - forward

@@ -1,25 +1,44 @@
-from worldarena.models.adapters.api import ApiModelAdapter
-from worldarena.models.adapters.base import ModelAdapter
-from worldarena.models.adapters.hunyuanworld import HunyuanWorldAdapter
-from worldarena.models.adapters.infinite_world import InfiniteWorldAdapter
-from worldarena.models.adapters.lingbot_world import LingBotWorldAdapter
-from worldarena.models.adapters.lyra1 import Lyra1Adapter
-from worldarena.models.adapters.lyra2 import Lyra2Adapter
-from worldarena.models.adapters.matrix_game import MatrixGameAdapter
-from worldarena.models.adapters.video_api import VideoApiAdapter
-from worldarena.models.adapters.worldcam import WorldCamAdapter
-from worldarena.models.adapters.worldfm import WorldFMAdapter
+from __future__ import annotations
 
-__all__ = [
-    "ApiModelAdapter",
-    "HunyuanWorldAdapter",
-    "InfiniteWorldAdapter",
-    "LingBotWorldAdapter",
-    "Lyra1Adapter",
-    "Lyra2Adapter",
-    "MatrixGameAdapter",
-    "VideoApiAdapter",
-    "WorldCamAdapter",
-    "WorldFMAdapter",
-    "ModelAdapter",
-]
+from importlib import import_module
+from typing import Any
+
+_ADAPTER_MODULES = {
+    "AstraAdapter": "worldarena.models.adapters.astra",
+    "ApiModelAdapter": "worldarena.models.adapters.api",
+    "CameraCtrlAdapter": "worldarena.models.adapters.cameractrl",
+    "FlashWorldAdapter": "worldarena.models.adapters.flashworld",
+    "Gen3CAdapter": "worldarena.models.adapters.gen3c",
+    "HYWorldPlayAdapter": "worldarena.models.adapters.hy_worldplay",
+    "HunyuanGameCraftAdapter": "worldarena.models.adapters.hunyuan_gamecraft",
+    "HunyuanWorldAdapter": "worldarena.models.adapters.hunyuanworld",
+    "InSpatioWorldAdapter": "worldarena.models.adapters.inspatio_world",
+    "InfiniteWorldAdapter": "worldarena.models.adapters.infinite_world",
+    "LingBotWorldAdapter": "worldarena.models.adapters.lingbot_world",
+    "LucidDreamerAdapter": "worldarena.models.adapters.luciddreamer",
+    "Lyra1Adapter": "worldarena.models.adapters.lyra1",
+    "Lyra2Adapter": "worldarena.models.adapters.lyra2",
+    "MatrixGameAdapter": "worldarena.models.adapters.matrix_game",
+    "ModelAdapter": "worldarena.models.adapters.base",
+    "MotionCtrlAdapter": "worldarena.models.adapters.motionctrl",
+    "NeoVerseAdapter": "worldarena.models.adapters.neoverse",
+    "ReCamMasterAdapter": "worldarena.models.adapters.recammaster",
+    "VideoApiAdapter": "worldarena.models.adapters.video_api",
+    "WonderJourneyAdapter": "worldarena.models.adapters.wonderjourney",
+    "WonderWorldAdapter": "worldarena.models.adapters.wonderworld",
+    "WorldCamAdapter": "worldarena.models.adapters.worldcam",
+    "WorldFMAdapter": "worldarena.models.adapters.worldfm",
+    "YumeAdapter": "worldarena.models.adapters.yume",
+}
+
+
+def __getattr__(name: str) -> Any:
+    module_name = _ADAPTER_MODULES.get(name)
+    if module_name is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    value = getattr(import_module(module_name), name)
+    globals()[name] = value
+    return value
+
+
+__all__ = sorted(_ADAPTER_MODULES)

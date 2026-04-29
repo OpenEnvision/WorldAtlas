@@ -8,6 +8,12 @@ from typing import Any
 
 import numpy as np
 
+from worldarena.common.annotation_index import (
+    load_annotation_entry_from_reference,
+    split_annotation_reference,
+)
+from worldarena.common.checkpoints import rehome_legacy_workspace_path
+
 
 GENERIC_OBJECT_TOKENS = {
     "absence",
@@ -61,13 +67,53 @@ GENERIC_OBJECT_TOKENS = {
 }
 TEXT_KEYS = ("SceneSummary", "SceneDescription")
 STRUCTURED_OBJECT_KEYS = ("objects", "Objects", "entities", "Entities", "subjects", "Subjects")
+WORLD_SCORE_CAMERA_PROMPTS = {
+    "push_in": "push in",
+    "pull_out": "pull out",
+    "move_left": "move left",
+    "move_right": "move right",
+    "orbit_left": "orbit left",
+    "orbit_right": "orbit right",
+    "pan_left": "pan left",
+    "pan_right": "pan right",
+    "tilt_up": "tilt up",
+    "tilt_down": "tilt down",
+    "roll_cw": "roll clockwise",
+    "roll_ccw": "roll counterclockwise",
+    "pedestal_up": "pedestal up",
+    "pedestal_down": "pedestal down",
+    "fixed": "fixed",
+}
+WORLD_SCORE_CAMERA_ALIASES = {
+    "dolly_in": "push_in",
+    "dolly_out": "pull_out",
+    "truck_left": "move_left",
+    "truck_right": "move_right",
+    "tiltup": "tilt_up",
+    "tiltdown": "tilt_down",
+    "rollcw": "roll_cw",
+    "rollccw": "roll_ccw",
+    "pedestalup": "pedestal_up",
+    "pedestaldown": "pedestal_down",
+    "stay": "fixed",
+}
 
 
 def _annotation_dir(annotation_path: str | None) -> Path | None:
     if not annotation_path:
         return None
-    path = Path(annotation_path)
+    if split_annotation_reference(annotation_path) is not None:
+        return None
+    remapped = rehome_legacy_workspace_path(annotation_path)
+    if remapped is None:
+        return None
+    path = Path(remapped)
     return path if path.exists() else None
+
+
+def _annotation_entry(annotation_path: str | None) -> dict[str, Any]:
+    entry = load_annotation_entry_from_reference(annotation_path)
+    return entry if isinstance(entry, dict) else {}
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -75,6 +121,16 @@ def _read_json(path: Path) -> dict[str, Any]:
         return {}
     payload = json.loads(path.read_text(encoding="utf-8"))
     return payload if isinstance(payload, dict) else {}
+
+
+def _clean_text(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return " ".join(value.strip().split())
+
+
+def _clean_text_list(value: Any) -> list[str]:
+    return [text for text in (_clean_text(item) for item in _flatten_strings(value)) if text]
 
 
 def _normalize_phrase(value: str) -> str | None:
@@ -117,16 +173,26 @@ def _flatten_strings(value: Any) -> list[str]:
 
 def load_caption(annotation_path: str | None) -> dict[str, Any]:
     annotation_dir = _annotation_dir(annotation_path)
-    if annotation_dir is None:
-        return {}
-    return _read_json(annotation_dir / "caption.json")
+    if annotation_dir is not None:
+        return _read_json(annotation_dir / "caption.json")
+    caption_payload = _annotation_entry(annotation_path).get("caption")
+    return caption_payload if isinstance(caption_payload, dict) else {}
 
 
 def load_instruction_payload(annotation_path: str | None) -> dict[str, Any]:
     annotation_dir = _annotation_dir(annotation_path)
-    if annotation_dir is None:
-        return {}
-    return _read_json(annotation_dir / "instructions.json")
+    if annotation_dir is not None:
+        return _read_json(annotation_dir / "instructions.json")
+    instruction_payload = _annotation_entry(annotation_path).get("instructions")
+    return instruction_payload if isinstance(instruction_payload, dict) else {}
+
+
+def load_generation_spec(annotation_path: str | None) -> dict[str, Any]:
+    annotation_dir = _annotation_dir(annotation_path)
+    if annotation_dir is not None:
+        return _read_json(annotation_dir / "generation_spec.json")
+    generation_spec = _annotation_entry(annotation_path).get("generation_spec")
+    return generation_spec if isinstance(generation_spec, dict) else {}
 
 
 def flatten_instruction_labels(annotation_path: str | None) -> list[str]:
@@ -141,6 +207,98 @@ def annotation_text(annotation_path: str | None) -> str:
     caption = load_caption(annotation_path)
     parts = [str(caption.get(key, "")).strip() for key in TEXT_KEYS if caption.get(key)]
     return " ".join(part for part in parts if part)
+
+
+def _normalize_camera_token(value: Any) -> str | None:
+    text = _clean_text(value).lower()
+    if not text:
+        return None
+    token = text.replace("-", "_").replace(" ", "_")
+    token = WORLD_SCORE_CAMERA_ALIASES.get(token, token)
+    if token in WORLD_SCORE_CAMERA_PROMPTS:
+        return token
+    return None
+
+
+def _worldscore_segment_prompts(camera_path: list[str], prompt_list: list[str], *, mode: str) -> list[str]:
+    prompts: list[str] = []
+    if mode == "static":
+        for layout, scene_prompt in zip(camera_path, prompt_list[1:]):
+            layout_prompt = WORLD_SCORE_CAMERA_PROMPTS.get(layout, layout.replace("_", " "))
+            prompt = f"Camera {layout_prompt}. {scene_prompt}"
+            if not prompt.endswith((".", "!", "?")):
+                prompt += "."
+            prompt += " Everything in the scene remains completely motionless."
+            prompts.append(prompt)
+        return prompts
+
+    if not prompt_list:
+        return prompts
+    layout = camera_path[0] if camera_path else "fixed"
+    layout_prompt = WORLD_SCORE_CAMERA_PROMPTS.get(layout, layout.replace("_", " "))
+    prompt = f"Camera {layout_prompt}. {prompt_list[0]}"
+    if not prompt.endswith((".", "!", "?")):
+        prompt += "."
+    prompts.append(prompt)
+    return prompts
+
+
+def resolve_prompt_contract(annotation_path: str | None) -> dict[str, Any]:
+    generation_spec = load_generation_spec(annotation_path)
+    if not generation_spec:
+        return {
+            "mode": None,
+            "camera_path": [],
+            "prompt_sequence": [],
+            "prompt_current": "",
+            "prompt_target": "",
+        }
+
+    mode = _clean_text(generation_spec.get("mode")).lower() or None
+    camera_path = [
+        token
+        for token in (_normalize_camera_token(item) for item in _flatten_strings(generation_spec.get("camera_path")))
+        if token is not None
+    ]
+    prompt_sequence = _clean_text_list(generation_spec.get("segment_prompts"))
+    prompt_list = _clean_text_list(generation_spec.get("prompt_list"))
+    prompt_current = _clean_text(generation_spec.get("current_prompt"))
+    prompt_target = ""
+
+    if mode == "static":
+        if not prompt_current and prompt_list:
+            prompt_current = prompt_list[0]
+        if not prompt_sequence and camera_path and len(prompt_list) >= len(camera_path) + 1:
+            prompt_sequence = _worldscore_segment_prompts(camera_path, prompt_list, mode="static")
+        prompt_target = prompt_sequence[0] if prompt_sequence else (prompt_list[1] if len(prompt_list) > 1 else "")
+    elif mode == "dynamic":
+        dynamic_prompt = _clean_text(generation_spec.get("prompt"))
+        if not prompt_current and prompt_list:
+            prompt_current = prompt_list[0]
+        if not prompt_current:
+            prompt_current = _clean_text(generation_spec.get("current_prompt")) or dynamic_prompt
+        if not prompt_sequence and dynamic_prompt:
+            prompt_sequence = _worldscore_segment_prompts(
+                camera_path or ["fixed"],
+                [dynamic_prompt],
+                mode="dynamic",
+            )
+        prompt_target = prompt_sequence[0] if prompt_sequence else dynamic_prompt
+    else:
+        if not prompt_current and prompt_list:
+            prompt_current = prompt_list[0]
+        prompt_target = prompt_sequence[0] if prompt_sequence else (prompt_list[1] if len(prompt_list) > 1 else "")
+
+    if not prompt_current:
+        prompt_current = _clean_text(load_caption(annotation_path).get("SceneSummary"))
+
+    return {
+        "mode": mode,
+        "camera_path": camera_path,
+        "prompt_sequence": prompt_sequence,
+        "prompt_current": prompt_current,
+        "prompt_target": prompt_target,
+    }
 
 
 @lru_cache(maxsize=1)
@@ -183,7 +341,13 @@ def _derive_object_prompts_from_text(text: str, limit: int) -> list[str]:
 
 def derive_object_prompts(annotation_path: str | None, *, limit: int = 6) -> tuple[list[str], str]:
     caption = load_caption(annotation_path)
+    generation_spec = load_generation_spec(annotation_path)
     explicit_values: list[str] = []
+    explicit_values.extend(_flatten_strings(generation_spec.get("objects")))
+    explicit_values.extend(_flatten_strings(generation_spec.get("current_objects")))
+    scene_objects = generation_spec.get("scene_objects")
+    if isinstance(scene_objects, list) and scene_objects:
+        explicit_values.extend(_flatten_strings(scene_objects[0]))
     for key in STRUCTURED_OBJECT_KEYS:
         explicit_values.extend(_flatten_strings(caption.get(key)))
     category_tags = caption.get("CategoryTags")
@@ -471,7 +635,9 @@ __all__ = [
     "flatten_instruction_labels",
     "load_camera_matrices",
     "load_caption",
+    "load_generation_spec",
     "load_instruction_payload",
     "load_intrinsics",
     "load_intrinsics_sequence",
+    "resolve_prompt_contract",
 ]

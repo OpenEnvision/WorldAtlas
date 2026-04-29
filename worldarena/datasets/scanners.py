@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import Any, Callable
 
+from worldarena.common.annotation_index import build_annotation_reference, load_annotation_entry
 from worldarena.datasets.config import CollectionConfig
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
@@ -133,10 +134,53 @@ def read_annotation_bundle(annotation_dir: Path) -> dict[str, Any]:
     return payload
 
 
+def read_annotation_payloads(
+    *,
+    annotation_path: str | None,
+    caption_payload: dict[str, Any] | None,
+    instruction_payload: dict[str, Any] | None,
+) -> dict[str, Any]:
+    has_annotation = isinstance(caption_payload, dict) or isinstance(instruction_payload, dict)
+    present: list[str] = []
+    if isinstance(caption_payload, dict):
+        present.append("caption.json")
+    if isinstance(instruction_payload, dict):
+        present.append("instructions.json")
+    missing = [name for name in ANNOTATION_FILES if name not in present]
+
+    payload = {
+        "annotation_path": annotation_path if has_annotation else None,
+        "has_annotation": has_annotation,
+        "annotation_complete": has_annotation and len(present) == len(ANNOTATION_FILES),
+        "annotation_present_count": len(present),
+        "annotation_missing_files": " | ".join(missing) if missing else None,
+        "has_mask": False,
+        "mask_count": 0,
+        "mask_kind": None,
+    }
+    payload.update(_extract_caption_metadata(caption_payload))
+    payload.update(_extract_instruction_metadata(instruction_payload))
+    return payload
+
+
 def _count_mask_images(mask_dir: Path) -> int:
     if not mask_dir.exists():
         return 0
     return sum(1 for path in mask_dir.rglob("*") if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS)
+
+
+def _image_annotation_dir(path: Path) -> Path:
+    return path.parent / "annotations" / f"{path.stem}_ann"
+
+
+def _image_annotation_entry(collection: CollectionConfig, path: Path) -> tuple[str, dict[str, Any]] | None:
+    dataset_root = collection.root.parent
+    index_path = dataset_root / "image_annotations.json"
+    relative_path = path.relative_to(dataset_root)
+    entry = load_annotation_entry(index_path, relative_path)
+    if entry is None:
+        return None
+    return build_annotation_reference(index_path, relative_path), entry
 
 
 def scan_static_image(collection: CollectionConfig) -> list[dict[str, Any]]:
@@ -164,6 +208,20 @@ def scan_static_image(collection: CollectionConfig) -> list[dict[str, Any]]:
                 "mask_kind": None,
             }
         )
+        annotation_entry = _image_annotation_entry(collection, path)
+        if annotation_entry is not None:
+            annotation_path, payload = annotation_entry
+            record.update(
+                read_annotation_payloads(
+                    annotation_path=annotation_path,
+                    caption_payload=payload.get("caption") if isinstance(payload.get("caption"), dict) else None,
+                    instruction_payload=payload.get("instructions")
+                    if isinstance(payload.get("instructions"), dict)
+                    else None,
+                )
+            )
+        else:
+            record.update(read_annotation_bundle(_image_annotation_dir(path)))
         records.append(record)
     return records
 
@@ -197,6 +255,23 @@ def scan_dynamic_image(collection: CollectionConfig) -> list[dict[str, Any]]:
                 "mask_path": str(mask_dir) if mask_dir.exists() else None,
             }
         )
+        annotation_entry = _image_annotation_entry(collection, path)
+        if annotation_entry is not None:
+            annotation_path, payload = annotation_entry
+            annotation_payload = read_annotation_payloads(
+                annotation_path=annotation_path,
+                caption_payload=payload.get("caption") if isinstance(payload.get("caption"), dict) else None,
+                instruction_payload=payload.get("instructions")
+                if isinstance(payload.get("instructions"), dict)
+                else None,
+            )
+        else:
+            annotation_payload = read_annotation_bundle(_image_annotation_dir(path))
+        if mask_count > 0:
+            annotation_payload["has_mask"] = True
+            annotation_payload["mask_count"] = mask_count
+            annotation_payload["mask_kind"] = "mask_directory"
+        record.update(annotation_payload)
         records.append(record)
     return records
 

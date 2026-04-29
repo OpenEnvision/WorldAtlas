@@ -1,0 +1,38 @@
+model:
+  name: neoverse
+  family: neoverse
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, video, camera_pose]
+  roles: [candidate]
+  # NeoVerse's published environment targets Python 3.10 with custom CUDA extensions.
+  # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
+  repo_root: thirdparty/NeoVerse
+  # Example checkpoint bootstrap:
+  # hf download Yuppie1204/NeoVerse --local-dir ckpt/Yuppie1204--NeoVerse
+  checkpoint_dir: ckpt/Yuppie1204--NeoVerse
+  entrypoint: inference.py
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_current
+  reference_mode: first_frame
+  generation:
+    input_mode: auto
+    trajectory_source: auto
+    trajectory: static
+    traj_mode: relative
+    zoom_ratio: 1.0
+    num_frames: 81
+    height: 336
+    width: 560
+    resize_mode: center_crop
+    alpha_threshold: 1.0
+    seed: 42
+    model_subdir: NeoVerse
+    reconstructor_filename: reconstructor.ckpt
+    disable_lora: false
+    low_vram: false
+    vis_rendering: false

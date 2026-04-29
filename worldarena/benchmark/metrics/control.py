@@ -114,14 +114,21 @@ class ObjectDetectionMetric(OfficialMetric):
                 normalized=None,
                 backend=backend,
                 details=details,
-                error="object prompts are unavailable for this sample",
+                eligibility_status="not_applicable",
+                error="object_detection requires explicit object annotations",
+            )
+        if prompt_source != "annotation_explicit":
+            details["prompt_source"] = prompt_source
+            details["prompt_candidates"] = prompt_candidates
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=details,
+                eligibility_status="not_applicable",
+                error="caption-derived object prompts are not scored",
             )
         prompt_string = ", ".join(["scene", *prompt_candidates])
-        eligibility_status = "official" if prompt_source == "annotation_explicit" else "weak_supervision"
-        if eligibility_status != "official":
-            details["supervision_warning"] = (
-                "object prompts were derived from caption text instead of explicit object annotations"
-            )
         details["prompt_source"] = prompt_source
         details["prompt_candidates"] = prompt_candidates
         try:
@@ -137,7 +144,7 @@ class ObjectDetectionMetric(OfficialMetric):
                 normalized=result["normalized"],
                 backend=str(result["backend"]),
                 details=details,
-                eligibility_status=eligibility_status,
+                eligibility_status="official",
             )
         except Exception as exc:  # pragma: no cover - heavy runtime failures
             return MetricOutput(
@@ -145,7 +152,7 @@ class ObjectDetectionMetric(OfficialMetric):
                 normalized=None,
                 backend=backend,
                 details=details,
-                eligibility_status=eligibility_status,
+                eligibility_status="official",
                 error=str(exc),
             )
 
@@ -186,7 +193,12 @@ class MotionAccuracyMetric(OfficialMetric):
                 prediction.path,
                 mask_dir=sample.mask_path,
                 normalization=self.normalization,
-                generate_type="i2v" if sample.conditioning_strategy == "first_frame" else "t2v",
+                generate_type=(
+                    "i2v"
+                    if sample.conditioning_strategy
+                    in {"first_frame", "reference_image", "reference_video", "external_video"}
+                    else "t2v"
+                ),
                 runtime=self.runtime,
             )
             details.update(result["details"])

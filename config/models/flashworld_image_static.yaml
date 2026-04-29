@@ -1,0 +1,31 @@
+model:
+  name: flashworld-image-static
+  family: flashworld
+  backend_type: local_repo
+  task_families: [video_generation, scene_3d_generation]
+  artifact_types: [video, gaussian_splat, point_cloud]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  # Image-conditioned static-scene generation for FlashWorld.
+  repo_root: thirdparty/FlashWorld
+  checkpoint_dir: ckpt/imlixinyang--FlashWorld
+  python_bin: /share/project/yesliu/miniconda3/envs/flashworld/bin/python
+  entrypoint: cli.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+  # Use the image dataset detailed caption as the text prompt.
+  prompt_mode: prompt_current
+  reference_mode: reference_image
+  generation:
+    num_frames: 24
+    image_height: 480
+    image_width: 704
+    image_index: 0
+    video_fps: 15
+    offload_t5: false
+    offload_vae: false
+    offload_transformer_during_vae: false
+    export_ply: false
+    export_spz: false
+    synthetic_focal_scale: 0.6

@@ -10,6 +10,8 @@ import sys
 import tempfile
 from typing import Iterator
 
+from worldarena.common.checkpoints import apply_checkpoint_env, hf_local_dir, resolve_checkpoint_path
+
 
 DEFAULT_STATIC_VIEW_INDICES = ("5", "0", "1", "2", "3", "4")
 
@@ -46,52 +48,27 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _existing_dir(candidates: list[Path], *, required_files: tuple[str, ...]) -> Path | None:
-    for candidate in candidates:
-        resolved = candidate.expanduser().resolve()
-        if resolved.is_dir() and all((resolved / name).exists() for name in required_files):
-            return resolved
-    return None
-
-
 def _checkpoint_layout(checkpoint_dir: Path) -> dict[str, Path]:
     resolved = checkpoint_dir.expanduser().resolve()
-    cache_root = resolved.parent
-
-    lyra_dir = _existing_dir(
-        [resolved / "Lyra", resolved, cache_root / "Lyra"],
-        required_files=("lyra_static.pt",),
-    )
-    gen3c_dir = _existing_dir(
-        [resolved / "Gen3C-Cosmos-7B", cache_root / "nvidia--GEN3C-Cosmos-7B", cache_root / "Gen3C-Cosmos-7B"],
-        required_files=("model.pt",),
-    )
-    tokenizer_dir = _existing_dir(
-        [
-            resolved / "Cosmos-Tokenize1-CV8x8x8-720p",
-            cache_root / "nvidia--Cosmos-Tokenize1-CV8x8x8-720p",
-            cache_root / "Cosmos-Tokenize1-CV8x8x8-720p",
-        ],
-        required_files=("encoder.jit", "decoder.jit", "mean_std.pt"),
-    )
-    t5_dir = _existing_dir(
-        [
-            resolved / "google-t5" / "t5-11b",
-            cache_root / "google-t5--t5-11b",
-            cache_root / "google-t5" / "t5-11b",
-        ],
-        required_files=("config.json", "spiece.model"),
-    )
+    lyra_dir = resolved
+    gen3c_dir = hf_local_dir("nvidia/GEN3C-Cosmos-7B", required=True)
+    tokenizer_dir = hf_local_dir("nvidia/Cosmos-Tokenize1-CV8x8x8-720p", required=True)
+    t5_dir = hf_local_dir("google-t5/t5-11b", required=True)
+    moge_dir = hf_local_dir("Ruicheng/moge-vitl", required=True)
 
     missing: list[str] = []
-    if lyra_dir is None:
+    if not (lyra_dir / "lyra_static.pt").is_file():
         missing.append("Lyra/lyra_static.pt")
-    if gen3c_dir is None:
+    if not (gen3c_dir / "model.pt").is_file():
         missing.append("Gen3C-Cosmos-7B/model.pt")
-    if tokenizer_dir is None:
-        missing.append("Cosmos-Tokenize1-CV8x8x8-720p/{encoder.jit,decoder.jit,mean_std.pt}")
-    if t5_dir is None:
+    if not all((tokenizer_dir / name).exists() for name in ("encoder.jit", "decoder.jit", "mean_std.pt", "image_mean_std.pt")):
+        missing.append(
+            "Cosmos-Tokenize1-CV8x8x8-720p/{encoder.jit,decoder.jit,mean_std.pt,image_mean_std.pt}"
+        )
+    if not all((t5_dir / name).exists() for name in ("config.json", "spiece.model")):
         missing.append("google-t5/t5-11b/{config.json,spiece.model}")
+    if not (moge_dir / "model.pt").is_file():
+        missing.append("Ruicheng/moge-vitl/model.pt")
     if missing:
         raise FileNotFoundError(
             "Lyra-1 checkpoint dependencies are incomplete. Missing: " + ", ".join(missing)
@@ -102,6 +79,7 @@ def _checkpoint_layout(checkpoint_dir: Path) -> dict[str, Path]:
         "gen3c_dir": gen3c_dir,
         "tokenizer_dir": tokenizer_dir,
         "t5_dir": t5_dir,
+        "moge_dir": moge_dir,
     }
 
 
@@ -296,7 +274,9 @@ def _dataset_root(generated_root: Path, *, multi_trajectory: bool) -> Path:
 def main() -> None:
     args = parse_args()
     repo_root = Path(args.repo_root).expanduser().resolve()
-    checkpoint_dir = Path(args.checkpoint_dir).expanduser().resolve()
+    checkpoint_dir = resolve_checkpoint_path(args.checkpoint_dir, kind="dir", required=True)
+    if checkpoint_dir is None:
+        raise ValueError("Lyra-1 runner requires checkpoint_dir")
     output_path = Path(args.output_path).expanduser().resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
     static_view_indices = _parse_static_view_indices(args.static_view_indices_fixed)
@@ -306,9 +286,15 @@ def main() -> None:
         workspace_root = temp_dir / "workspace"
         workspace_root.mkdir(parents=True, exist_ok=True)
         (workspace_root / "cosmos_predict1").symlink_to(repo_root / "cosmos_predict1", target_is_directory=True)
+        layout = _checkpoint_layout(checkpoint_dir)
         checkpoints_root = _prepare_checkpoint_root(
             workspace_root,
-            _checkpoint_layout(checkpoint_dir),
+            layout,
+        )
+        (workspace_root / "Ruicheng").mkdir(parents=True, exist_ok=True)
+        (workspace_root / "Ruicheng" / "moge-vitl").symlink_to(
+            layout["moge_dir"] / "model.pt",
+            target_is_directory=False,
         )
 
         input_root = temp_dir / "input"
@@ -318,7 +304,7 @@ def main() -> None:
         shutil.copy2(conditioning_source, conditioning_copy)
 
         generated_root = temp_dir / "generated"
-        env = os.environ.copy()
+        env = apply_checkpoint_env()
         pythonpath = [str(workspace_root), str(repo_root)]
         if env.get("PYTHONPATH"):
             pythonpath.append(env["PYTHONPATH"])

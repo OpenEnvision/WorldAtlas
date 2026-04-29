@@ -8,6 +8,8 @@ from pathlib import Path
 
 import numpy as np
 
+from worldarena.common.checkpoints import apply_checkpoint_env, resolve_checkpoint_path
+
 
 _DEFAULT_CONFIG_BY_MODE = {
     "universal": "configs/inference_yaml/inference_universal.yaml",
@@ -32,6 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config_path", default=None, type=str)
     parser.add_argument("--checkpoint_filename", default=None, type=str)
     parser.add_argument("--num_output_frames", default=15, type=int)
+    parser.add_argument("--save_num_frames", default=0, type=int)
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--output_fps", default=12, type=int)
     parser.add_argument("--compile_vae", action="store_true")
@@ -63,11 +66,14 @@ def main() -> None:
     args = parse_args()
     launch_cwd = Path.cwd()
     repo_root = (launch_cwd / Path(args.repo_root).expanduser()).resolve()
-    checkpoint_dir = (launch_cwd / Path(args.checkpoint_dir).expanduser()).resolve()
+    checkpoint_dir = resolve_checkpoint_path(args.checkpoint_dir, kind="dir", required=True)
+    if checkpoint_dir is None:
+        raise ValueError("Matrix-Game-2 runner requires checkpoint_dir")
     actions_path = (launch_cwd / Path(args.actions_json).expanduser()).resolve()
     image_path = (launch_cwd / Path(args.image_path).expanduser()).resolve()
     output_path = (launch_cwd / Path(args.output_path).expanduser()).resolve()
 
+    os.environ.update(apply_checkpoint_env())
     os.chdir(repo_root)
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
@@ -200,6 +206,12 @@ def main() -> None:
     videos_tensor = torch.cat(videos, dim=1)
     frames = rearrange(videos_tensor, "b t c h w -> b t h w c")
     frames = ((frames.float() + 1) * 127.5).clip(0, 255).cpu().numpy().astype(np.uint8)[0]
+    if args.save_num_frames:
+        if args.save_num_frames > frames.shape[0]:
+            raise ValueError(
+                f"save_num_frames={args.save_num_frames} exceeds generated frame count {frames.shape[0]}"
+            )
+        frames = frames[: args.save_num_frames]
     frames = np.ascontiguousarray(frames)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

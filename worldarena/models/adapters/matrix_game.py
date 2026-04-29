@@ -3,13 +3,19 @@ from __future__ import annotations
 import json
 import math
 from pathlib import Path
+import random
 from typing import Any
 
 import numpy as np
 
 from worldarena.benchmark.schemas import BenchmarkSample
-from worldarena.models.adapters.base import ModelAdapter
-from worldarena.models.adapters.common import build_env, extend_command_with_options, run_command
+from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
+from worldarena.models.adapters.common import (
+    build_env,
+    extend_command_with_options,
+    run_command,
+    run_sequential_generate_batch,
+)
 
 
 _DEFAULT_ACTIONS = ["forward", "camera_r", "forward_right", "camera_l", "forward"]
@@ -69,6 +75,43 @@ _COMBINATION_MAP = {
     "right_attack": ["right", "attack"],
     "jump_attack": ["jump", "attack"],
     "idle": [],
+}
+_WORLD_ARENA_CAMERA_ACTIONS = {
+    "fixed": "idle",
+    "push_in": "forward",
+    "pull_out": "back",
+    "pan_left": "back_left_camera_l",
+    "pan_right": "back_right_camera_r",
+    "move_left": "left",
+    "move_right": "right",
+    "orbit_left": "forward_left_camera_r",
+    "orbit_right": "forward_right_camera_l",
+}
+_WORLD_ARENA_CAMERA_PHRASES = {
+    "camera fixed": "fixed",
+    "fixed camera": "fixed",
+    "camera push in": "push_in",
+    "camera pushes in": "push_in",
+    "camera move forward": "push_in",
+    "camera moves forward": "push_in",
+    "camera pull out": "pull_out",
+    "camera pulls out": "pull_out",
+    "camera move backward": "pull_out",
+    "camera moves backward": "pull_out",
+    "camera pan left": "pan_left",
+    "camera pans left": "pan_left",
+    "camera pan right": "pan_right",
+    "camera pans right": "pan_right",
+    "camera move left": "move_left",
+    "camera moves left": "move_left",
+    "camera truck left": "move_left",
+    "camera move right": "move_right",
+    "camera moves right": "move_right",
+    "camera truck right": "move_right",
+    "camera orbit left": "orbit_left",
+    "camera orbits left": "orbit_left",
+    "camera orbit right": "orbit_right",
+    "camera orbits right": "orbit_right",
 }
 
 
@@ -149,6 +192,66 @@ def _action_plan(config: dict[str, Any], suite: str) -> list[str]:
     by_suite = plan.get("by_suite", {})
     actions = by_suite.get(suite) or plan.get("default") or _DEFAULT_ACTIONS
     return [str(action) for action in actions]
+
+
+def _normalized_camera_token(value: str) -> str:
+    return str(value).strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def _worldarena_camera_token(sample: BenchmarkSample) -> tuple[str, str]:
+    camera_path = [
+        _normalized_camera_token(token)
+        for token in sample.camera_path
+        if str(token).strip()
+    ]
+    if camera_path:
+        return camera_path[0], "camera_path"
+
+    prompt_prefix = str(sample.prompt_target or sample.prompt_current or "").split(".", 1)[0]
+    normalized_prefix = " ".join(
+        prompt_prefix.strip().lower().replace("-", " ").replace("_", " ").split()
+    )
+    if normalized_prefix in _WORLD_ARENA_CAMERA_PHRASES:
+        return _WORLD_ARENA_CAMERA_PHRASES[normalized_prefix], "prompt_target"
+
+    if sample.suite == "image_dynamic" or sample.generation_mode == "dynamic":
+        return "fixed", "dynamic_default"
+    return "fixed", "fallback"
+
+
+def _worldarena_camera_tokens(sample: BenchmarkSample) -> tuple[list[str], str]:
+    camera_path = [
+        _normalized_camera_token(token)
+        for token in sample.camera_path
+        if str(token).strip()
+    ]
+    if camera_path:
+        return camera_path, "camera_path"
+
+    token, source = _worldarena_camera_token(sample)
+    return [token], source
+
+
+def _worldarena_matrix_game_actions(sample: BenchmarkSample) -> tuple[list[str], list[str], str]:
+    if sample.suite == "image_dynamic" or sample.generation_mode == "dynamic":
+        return ["fixed"], ["idle"], "dynamic_idle"
+
+    camera_tokens, source = _worldarena_camera_tokens(sample)
+    actions: list[str] = []
+    unsupported = False
+    for camera_token in camera_tokens:
+        action = _WORLD_ARENA_CAMERA_ACTIONS.get(camera_token)
+        if action is None:
+            action = "idle"
+            unsupported = True
+        actions.append(action)
+    control_source = f"unsupported_{source}" if unsupported else source
+    return camera_tokens, actions or ["idle"], control_source
+
+
+def _worldarena_matrix_game_2_action(sample: BenchmarkSample) -> tuple[str, str, str]:
+    camera_tokens, actions, source = _worldarena_matrix_game_actions(sample)
+    return camera_tokens[0], actions[0], source
 
 
 def _segment_rows(
@@ -281,11 +384,101 @@ def _matrix_game_1_payload(config: dict[str, Any], suite: str) -> dict[str, Any]
     return payload
 
 
-def _matrix_game_2_payload(config: dict[str, Any], suite: str) -> dict[str, Any]:
+def _matrix_game_2_worldarena_prompt_payload(
+    *,
+    config: dict[str, Any],
+    suite: str,
+    sample: BenchmarkSample | None,
+    mode: str,
+    spec: dict[str, Any],
+    num_output_frames: int,
+    total_frames: int,
+) -> dict[str, Any]:
+    if sample is None:
+        raise ValueError("Matrix-Game-2 worldarena_prompt action_source requires a BenchmarkSample")
+
+    camera_tokens, matrix_actions, control_source = _worldarena_matrix_game_actions(sample)
+    prompt_config = dict(config)
+    frames_per_action = max(math.ceil(total_frames / max(len(matrix_actions), 1)), 1)
+    prompt_config["action_plan"] = {
+        "default": matrix_actions,
+        "by_suite": {suite: matrix_actions},
+        "frames_per_action": frames_per_action,
+    }
+    payload = _build_fixed_length_action_payload(
+        config=prompt_config,
+        suite=suite,
+        variant="matrix_game_2",
+        keyboard_idx=spec["keyboard_idx"],
+        total_frames=total_frames,
+        mouse_enabled=bool(spec["mouse_enabled"]),
+        mouse_step=float(spec["mouse_step"]),
+        default_frames_per_action=total_frames,
+    )
+    payload.update(
+        {
+            "mode": mode,
+            "num_output_frames": num_output_frames,
+            "action_source": "worldarena_prompt",
+            "control_source": control_source,
+            "camera_token": camera_tokens[0],
+            "camera_tokens": camera_tokens,
+            "camera_path": list(sample.camera_path),
+            "prompt_current": sample.prompt_current,
+            "prompt_target": sample.prompt_target,
+            "prompt_control_note": (
+                "image_dynamic uses idle/no-action controls so Matrix-Game-2 can freely evolve the scene"
+                if sample.suite == "image_dynamic" or sample.generation_mode == "dynamic"
+                else "image_static maps the full WorldArena camera_path to Matrix-Game-2 universal controls"
+            ),
+        }
+    )
+    return payload
+
+
+def _matrix_game_2_payload(
+    config: dict[str, Any],
+    suite: str,
+    sample: BenchmarkSample | None = None,
+) -> dict[str, Any]:
     mode = _matrix_game_2_mode(config)
     spec = _MATRIX_GAME_2_SPECS[mode]
     num_output_frames = int(config.get("num_output_frames", 15))
     total_frames = int(config.get("num_frames", (num_output_frames - 1) * 4 + 1))
+    action_source = str(config.get("action_source", "worldarena_plan")).strip().lower()
+    if action_source in {"official", "official_bench", "official_bench_actions"}:
+        payload = _matrix_game_2_official_bench_payload(
+            mode=mode,
+            total_frames=total_frames,
+            seed=int(config.get("seed", 42)),
+        )
+        payload["mode"] = mode
+        payload["num_output_frames"] = num_output_frames
+        payload["action_source"] = "official_bench"
+        return payload
+
+    if action_source in {"worldarena_prompt", "prompt", "prompt_target", "camera_path"}:
+        return _matrix_game_2_worldarena_prompt_payload(
+            config=config,
+            suite=suite,
+            sample=sample,
+            mode=mode,
+            spec=spec,
+            num_output_frames=num_output_frames,
+            total_frames=total_frames,
+        )
+
+    if sample is not None and action_source in {"worldarena", "worldarena_camera"}:
+        return _matrix_game_2_worldarena_prompt_payload(
+            config=config,
+            suite=suite,
+            sample=sample,
+            mode=mode,
+            spec=spec,
+            num_output_frames=num_output_frames,
+            total_frames=total_frames,
+        )
+
     payload = _build_fixed_length_action_payload(
         config=config,
         suite=suite,
@@ -298,12 +491,201 @@ def _matrix_game_2_payload(config: dict[str, Any], suite: str) -> dict[str, Any]
     )
     payload["mode"] = mode
     payload["num_output_frames"] = num_output_frames
+    payload["action_source"] = action_source
     return payload
 
 
-def _matrix_game_3_payload(config: dict[str, Any], suite: str) -> dict[str, Any]:
+def _combine_official_matrix_game_2_actions(
+    data: list[dict[str, np.ndarray]],
+    *,
+    total_frames: int,
+    keyboard_dim: int,
+    mouse_enabled: bool,
+    rng: random.Random,
+) -> dict[str, Any]:
+    if total_frames % 4 != 1:
+        raise ValueError(f"Matrix-Game-2 official action frame count must be 4n+1, got {total_frames}")
+
+    keyboard_condition = np.zeros((total_frames, keyboard_dim), dtype=np.float32)
+    mouse_condition = np.zeros((total_frames, 2), dtype=np.float32) if mouse_enabled else None
+    current_frame = 0
+    selections = [12]
+
+    while current_frame < total_frames:
+        segment_frames = selections[rng.randint(0, len(selections) - 1)]
+        selected = data[rng.randint(0, len(data) - 1)]
+        keyboard_segment = selected["keyboard_condition"]
+        mouse_segment = selected.get("mouse_condition")
+
+        if current_frame == 0:
+            keyboard_condition[:1] = keyboard_segment[:1]
+            if mouse_enabled and mouse_condition is not None and mouse_segment is not None:
+                mouse_condition[:1] = mouse_segment[:1]
+            current_frame = 1
+            continue
+
+        segment_frames = min(segment_frames, total_frames - current_frame)
+        repeat_time = segment_frames // 4
+        keyboard_condition[current_frame : current_frame + segment_frames] = np.tile(
+            keyboard_segment,
+            (repeat_time, 1),
+        )
+        if mouse_enabled and mouse_condition is not None and mouse_segment is not None:
+            mouse_condition[current_frame : current_frame + segment_frames] = np.tile(
+                mouse_segment,
+                (repeat_time, 1),
+            )
+        current_frame += segment_frames
+
+    payload: dict[str, Any] = {
+        "variant": "matrix_game_2",
+        "actions": ["official_bench"],
+        "keyboard_condition": keyboard_condition.tolist(),
+        "total_frames": total_frames,
+    }
+    if mouse_enabled and mouse_condition is not None:
+        payload["mouse_condition"] = mouse_condition.tolist()
+    return payload
+
+
+def _matrix_game_2_official_bench_payload(
+    *,
+    mode: str,
+    total_frames: int,
+    seed: int,
+) -> dict[str, Any]:
+    rng = random.Random(seed)
+
+    if mode == "universal":
+        single_actions = ["forward", "left", "right"]
+        double_actions = ["forward_left", "forward_right"]
+        camera_actions = ["camera_l", "camera_r"]
+        actions_to_test = (
+            double_actions * 5
+            + camera_actions * 5
+            + single_actions * 5
+            + [f"{action}_{camera}" for action in single_actions + double_actions for camera in camera_actions]
+        )
+        keyboard_idx = {"forward": 0, "back": 1, "left": 2, "right": 3}
+        camera_map = {
+            "camera_up": [0.1, 0.0],
+            "camera_down": [-0.1, 0.0],
+            "camera_l": [0.0, -0.1],
+            "camera_r": [0.0, 0.1],
+            "camera_ur": [0.1, 0.1],
+            "camera_ul": [0.1, -0.1],
+            "camera_dr": [-0.1, 0.1],
+            "camera_dl": [-0.1, -0.1],
+        }
+        base_actions = single_actions + camera_actions
+        data: list[dict[str, np.ndarray]] = []
+        for action_name in actions_to_test:
+            keyboard_condition = np.zeros((4, 4), dtype=np.float32)
+            mouse_condition = np.zeros((4, 2), dtype=np.float32)
+            for sub_action in base_actions:
+                if sub_action not in action_name:
+                    continue
+                if sub_action in camera_map:
+                    mouse_condition[:] = np.asarray(camera_map[sub_action], dtype=np.float32)
+                elif sub_action in keyboard_idx:
+                    keyboard_condition[:, keyboard_idx[sub_action]] = 1.0
+            data.append(
+                {
+                    "keyboard_condition": keyboard_condition,
+                    "mouse_condition": mouse_condition,
+                }
+            )
+        return _combine_official_matrix_game_2_actions(
+            data,
+            total_frames=total_frames,
+            keyboard_dim=4,
+            mouse_enabled=True,
+            rng=rng,
+        )
+
+    if mode == "gta_drive":
+        single_actions = ["forward", "back"]
+        camera_actions = ["camera_l", "camera_r"]
+        actions_to_test = (
+            camera_actions * 2
+            + single_actions * 2
+            + [f"{action}_{camera}" for action in single_actions for camera in camera_actions]
+        )
+        keyboard_idx = {"forward": 0, "back": 1}
+        camera_map = {"camera_l": [0.0, -0.1], "camera_r": [0.0, 0.1]}
+        base_actions = single_actions + camera_actions
+        data = []
+        for action_name in actions_to_test:
+            keyboard_condition = np.zeros((4, 2), dtype=np.float32)
+            mouse_condition = np.zeros((4, 2), dtype=np.float32)
+            for sub_action in base_actions:
+                if sub_action not in action_name:
+                    continue
+                if sub_action in camera_map:
+                    mouse_condition[:] = np.asarray(camera_map[sub_action], dtype=np.float32)
+                elif sub_action in keyboard_idx:
+                    keyboard_condition[:, keyboard_idx[sub_action]] = 1.0
+            data.append(
+                {
+                    "keyboard_condition": keyboard_condition,
+                    "mouse_condition": mouse_condition,
+                }
+            )
+        return _combine_official_matrix_game_2_actions(
+            data,
+            total_frames=total_frames,
+            keyboard_dim=2,
+            mouse_enabled=True,
+            rng=rng,
+        )
+
+    if mode == "templerun":
+        actions_to_test = ["jump", "slide", "leftside", "rightside", "turnleft", "turnright", "nomove"]
+        keyboard_idx = {
+            "nomove": 0,
+            "jump": 1,
+            "slide": 2,
+            "turnleft": 3,
+            "turnright": 4,
+            "leftside": 5,
+            "rightside": 6,
+        }
+        data = []
+        for action_name in actions_to_test:
+            keyboard_condition = np.zeros((4, 7), dtype=np.float32)
+            for sub_action, column in keyboard_idx.items():
+                if sub_action in action_name:
+                    keyboard_condition[:, column] = 1.0
+            data.append({"keyboard_condition": keyboard_condition})
+        return _combine_official_matrix_game_2_actions(
+            data,
+            total_frames=total_frames,
+            keyboard_dim=7,
+            mouse_enabled=False,
+            rng=rng,
+        )
+
+    raise ValueError(f"Unsupported Matrix-Game-2 mode for official actions: {mode}")
+
+
+def _matrix_game_3_payload(
+    config: dict[str, Any],
+    suite: str,
+    sample: BenchmarkSample | None = None,
+) -> dict[str, Any]:
     action_plan = dict(config.get("action_plan", {}))
-    actions = _action_plan(config, suite)
+    action_source = str(config.get("action_source", "worldarena_plan")).strip().lower()
+    camera_tokens: list[str] | None = None
+    control_source = None
+    if action_source in {"worldarena_prompt", "prompt", "prompt_target", "camera_path", "worldarena", "worldarena_camera"}:
+        if sample is None:
+            raise ValueError("Matrix-Game-3 worldarena_prompt action_source requires a BenchmarkSample")
+        camera_tokens, matrix_actions, control_source = _worldarena_matrix_game_actions(sample)
+        actions = matrix_actions
+        payload_config = None
+    else:
+        actions = _action_plan(config, suite)
+        payload_config = config
     frames_per_action = int(action_plan.get("frames_per_action", 12))
     first_clip_frames = int(action_plan.get("first_clip_frames", 57))
     clip_overlap_frames = int(action_plan.get("clip_overlap_frames", 16))
@@ -320,8 +702,19 @@ def _matrix_game_3_payload(config: dict[str, Any], suite: str) -> dict[str, Any]
         num_iterations = max(int(configured_iterations), 1)
 
     total_frames = first_clip_frames + (num_iterations - 1) * followup_frames
+    if payload_config is None:
+        prompt_config = dict(config)
+        saved_frames = int(config.get("save_num_frames") or total_frames)
+        action_frames = min(saved_frames, total_frames)
+        frames_per_action = max(action_frames // max(len(matrix_actions), 1), 1)
+        prompt_config["action_plan"] = {
+            "default": matrix_actions,
+            "by_suite": {suite: matrix_actions},
+            "frames_per_action": frames_per_action,
+        }
+        payload_config = prompt_config
     payload = _build_fixed_length_action_payload(
-        config=config,
+        config=payload_config,
         suite=suite,
         variant="matrix_game_3",
         keyboard_idx=_MATRIX_GAME_1_AND_3_KEYBOARD_IDX,
@@ -331,16 +724,39 @@ def _matrix_game_3_payload(config: dict[str, Any], suite: str) -> dict[str, Any]
         default_frames_per_action=frames_per_action,
     )
     payload["num_iterations"] = num_iterations
+    payload["action_source"] = action_source
+    if sample is not None:
+        payload.update(
+            {
+                "control_source": control_source,
+                "camera_token": camera_tokens[0] if camera_tokens else None,
+                "camera_tokens": camera_tokens if payload_config is not config else None,
+                "camera_path": list(sample.camera_path),
+                "prompt_current": sample.prompt_current,
+                "prompt_target": sample.prompt_target,
+                "prompt_control_note": (
+                    "dynamic suites use idle/no-action controls so Matrix-Game-3 can freely evolve the scene"
+                    if sample.suite == "image_dynamic" or sample.generation_mode == "dynamic"
+                    else "static suites map the full WorldArena camera_path to Matrix-Game-3 controls"
+                ),
+            }
+        )
     return payload
 
 
-def _build_action_payload(config: dict[str, Any], suite: str, *, family: str = "matrix_game_3") -> dict[str, Any]:
+def _build_action_payload(
+    config: dict[str, Any],
+    suite: str,
+    *,
+    family: str = "matrix_game_3",
+    sample: BenchmarkSample | None = None,
+) -> dict[str, Any]:
     variant = _matrix_game_variant(family)
     if variant == "matrix_game_1":
         return _matrix_game_1_payload(config, suite)
     if variant == "matrix_game_2":
-        return _matrix_game_2_payload(config, suite)
-    return _matrix_game_3_payload(config, suite)
+        return _matrix_game_2_payload(config, suite, sample=sample)
+    return _matrix_game_3_payload(config, suite, sample=sample)
 
 
 def _matrix_game_3_command(
@@ -385,6 +801,8 @@ def _matrix_game_3_command(
         str(int(generation.get("num_inference_steps", 3))),
         "--sample_guide_scale",
         str(float(generation.get("sample_guide_scale", 5.0))),
+        "--save_num_frames",
+        str(int(generation.get("save_num_frames", 0) or 0)),
         "--ulysses_size",
         str(int(generation.get("ulysses_size", 1))),
         "--vae_type",
@@ -501,6 +919,7 @@ def _matrix_game_2_command(
         payload=generation,
         value_options={
             "num_output_frames": int,
+            "save_num_frames": int,
             "seed": int,
             "output_fps": int,
             "config_path": str,
@@ -512,6 +931,15 @@ def _matrix_game_2_command(
 
 
 class MatrixGameAdapter(ModelAdapter):
+    def supports_batch_generation(self) -> bool:
+        return True
+
+    def generate_batch(
+        self,
+        requests: list[PreparedGenerationRequest],
+    ) -> dict[str, dict[str, Any]]:
+        return run_sequential_generate_batch(self, requests)
+
     def generate(
         self,
         sample: BenchmarkSample,
@@ -522,7 +950,12 @@ class MatrixGameAdapter(ModelAdapter):
         generation = self.config.generation
         variant = _matrix_game_variant(self.config.family)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        action_payload = _build_action_payload(generation, sample.suite, family=self.config.family)
+        action_payload = _build_action_payload(
+            generation,
+            sample.suite,
+            family=self.config.family,
+            sample=sample,
+        )
         action_spec_path = output_path.parent / f"{output_path.stem}_actions.json"
         action_spec_path.write_text(
             json.dumps(action_payload, indent=2, ensure_ascii=False),
@@ -533,7 +966,9 @@ class MatrixGameAdapter(ModelAdapter):
         repo_root = self.config.repo_root
         if repo_root is None:
             raise ValueError("Matrix-Game adapters require repo_root")
-        checkpoint_dir = self.config.checkpoint_dir or repo_root
+        checkpoint_dir = self.config.checkpoint_dir
+        if checkpoint_dir is None:
+            raise ValueError("Matrix-Game adapters require checkpoint_dir")
 
         if variant == "matrix_game_1":
             command = _matrix_game_1_command(
@@ -579,6 +1014,11 @@ class MatrixGameAdapter(ModelAdapter):
             raise FileNotFoundError(f"Matrix-Game output was not written: {output_path}")
         return {
             "actions": action_payload["actions"],
+            "action_source": action_payload.get("action_source"),
+            "camera_token": action_payload.get("camera_token"),
+            "camera_path": action_payload.get("camera_path"),
+            "control_source": action_payload.get("control_source"),
+            "prompt_control_note": action_payload.get("prompt_control_note"),
             "command": command,
             "prediction_path": str(output_path),
             "prompt": prompt,

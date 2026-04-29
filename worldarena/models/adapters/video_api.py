@@ -5,6 +5,7 @@ from typing import Any
 
 from worldarena.benchmark.schemas import BenchmarkSample
 from worldarena.models.adapters.api import ApiModelAdapter
+from worldarena.models.adapters.base import PreparedGenerationRequest
 from worldarena.models.adapters.common import image_path_to_data_url
 from worldarena.models.providers import ApiProvider, HttpPollingProvider
 
@@ -25,6 +26,15 @@ DEFAULT_FIELD_MAP = {
 
 
 class VideoApiAdapter(ApiModelAdapter):
+    def supports_batch_generation(self) -> bool:
+        return True
+
+    def generate_batch(
+        self,
+        requests: list[PreparedGenerationRequest],
+    ) -> dict[str, dict[str, Any]]:
+        return super().generate_batch(requests)
+
     def build_provider(self) -> ApiProvider:
         submit_mode = str(self.config.api.get("submit_mode", "http_polling")).strip().lower()
         provider_name = str(self.config.api.get("provider", self.config.name))

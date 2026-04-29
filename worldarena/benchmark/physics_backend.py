@@ -20,6 +20,7 @@ from worldarena.benchmark.physics_manifest import REQUIRED_CORE_METRICS
 from worldarena.benchmark.schemas import BenchmarkSample
 from worldarena.benchmark.taxonomy import (
     artifact_type_for_modality,
+    benchmark_split,
     control_signals_for_sample,
     task_family_for_suite,
 )
@@ -59,6 +60,7 @@ SYNC_FILE_NAMES: tuple[str, ...] = (
 )
 SYNC_DIR_NAMES: tuple[str, ...] = WORLD_GT_DIRNAMES
 AUTO_PRED_WORLD_ENV = "WORLDARENA_PHYSICS_DISABLE_AUTO_PRED_WORLD"
+PHYSICS_PYTHON_BIN_ENV = "WORLDARENA_PHYSICS_PYTHON_BIN"
 ONLINE_PHYSICS_INTERNAL_SAMPLE_ID = "0000"
 
 
@@ -85,6 +87,57 @@ def _sample_payload(sample: BenchmarkSample | Mapping[str, Any]) -> Mapping[str,
     if isinstance(sample, BenchmarkSample):
         return sample.to_dict()
     return sample
+
+
+def _present_metadata(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple, dict, set)):
+        return bool(value)
+    return True
+
+
+def _clean_metadata_overrides(payload: Mapping[str, Any] | None) -> dict[str, Any]:
+    if not payload:
+        return {}
+    return {
+        str(key): value
+        for key, value in dict(payload).items()
+        if str(key)
+        not in {
+            "conditioning_tracks",
+            "video_prompt",
+            "fg_prompt",
+            "primary",
+            "secondary",
+            "submitted_video_path",
+        }
+        and _present_metadata(value)
+    }
+
+
+def _coalesce_metadata_str(payload: Mapping[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = payload.get(key)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return None
+
+
+def _conditioning_tracks_from_metadata(payload: Mapping[str, Any]) -> list[str]:
+    value = payload.get("conditioning_tracks")
+    if isinstance(value, str):
+        text = value.strip()
+        return [text] if text else ["i2v"]
+    if isinstance(value, (list, tuple)):
+        tracks = [str(item).strip() for item in value if str(item).strip()]
+        return tracks or ["i2v"]
+    return ["i2v"]
 
 
 def parse_case_spec(sample: BenchmarkSample | Mapping[str, Any]) -> PhysicsCaseSpec:
@@ -193,10 +246,28 @@ def _physics_subprocess_env(case: PhysicsCaseSpec, *, data_root: Path | None = N
     return env
 
 
+def _resolve_physics_python_bin(case: PhysicsCaseSpec) -> str:
+    override = os.environ.get(PHYSICS_PYTHON_BIN_ENV, "").strip()
+    if override:
+        return str(Path(override).expanduser())
+
+    case_payload = None
+    try:
+        case_payload = json.loads(case.metadata_template_path.read_text(encoding="utf-8"))
+    except Exception:
+        case_payload = None
+    if isinstance(case_payload, Mapping):
+        python_bin = str(case_payload.get("python_bin", "")).strip()
+        if python_bin:
+            return str(Path(python_bin).expanduser())
+    return sys.executable
+
+
 def _benchmark_export_command(case: PhysicsCaseSpec) -> str:
+    python_bin = _resolve_physics_python_bin(case)
     return " ".join(
         [
-            shlex_quote(sys.executable),
+            shlex_quote(python_bin),
             shlex_quote(str(case.physics_pipeline_root / "benchmark_export.py")),
             "--benchmark-name",
             shlex_quote(case.export_benchmark_name),
@@ -210,9 +281,10 @@ def _benchmark_export_command(case: PhysicsCaseSpec) -> str:
 
 
 def _benchmark_export_invocation(case: PhysicsCaseSpec) -> tuple[list[str], Path]:
+    python_bin = _resolve_physics_python_bin(case)
     return (
         [
-            sys.executable,
+            python_bin,
             str(case.physics_pipeline_root / "benchmark_export.py"),
             "--benchmark-name",
             case.export_benchmark_name,
@@ -234,8 +306,9 @@ def _benchmark_eval_invocation(
     output_path: Path,
     pred_world_root: Path | None = None,
 ) -> tuple[list[str], Path]:
+    python_bin = _resolve_physics_python_bin(case)
     command = [
-        sys.executable,
+        python_bin,
         str(case.physics_pipeline_root / "benchmark_eval.py"),
         "--manifest",
         str(manifest_path),
@@ -251,9 +324,10 @@ def _benchmark_eval_invocation(
 
 
 def _main_part2_invocation(case: PhysicsCaseSpec) -> tuple[list[str], Path]:
+    python_bin = _resolve_physics_python_bin(case)
     return (
         [
-            sys.executable,
+            python_bin,
             str(case.physics_pipeline_root / "main_part2.py"),
             "--video",
             case.source_sample_id,
@@ -310,15 +384,42 @@ def ensure_submission_staged(
     sample: BenchmarkSample | Mapping[str, Any],
     generated_video_path: str | Path,
 ) -> PhysicsCaseSpec:
+    payload = _sample_payload(sample)
     case = parse_case_spec(sample)
     case.simulator_root.mkdir(parents=True, exist_ok=True)
     case.submitted_video_path.parent.mkdir(parents=True, exist_ok=True)
     generated_video_path = Path(generated_video_path).expanduser().resolve()
-    shutil.copy2(generated_video_path, case.submitted_video_path)
+    if generated_video_path != case.submitted_video_path:
+        shutil.copy2(generated_video_path, case.submitted_video_path)
 
     metadata = {}
     if case.metadata_template_path.exists():
         metadata = json.loads(case.metadata_template_path.read_text(encoding="utf-8"))
+    if not metadata:
+        physics_case = dict(payload.get("physics_case") or {})
+        inline_template = physics_case.get("metadata_template")
+        if isinstance(inline_template, Mapping):
+            metadata = dict(inline_template)
+    if not metadata:
+        physics_spec = dict(payload.get("physics_spec") or {})
+        inline_template = physics_spec.get("metadata_template")
+        if isinstance(inline_template, Mapping):
+            metadata = dict(inline_template)
+    if not metadata:
+        physics_case = dict(payload.get("physics_case") or {})
+        physics_spec = dict(payload.get("physics_spec") or {})
+        case_taxonomy = dict(physics_spec.get("case_taxonomy") or physics_case.get("case_taxonomy") or {})
+        conditioning_tracks = ["i2v"] if str(payload.get("track") or "").strip() == "physics_i2v" else ["t2v"]
+        metadata = {
+            "conditioning_tracks": conditioning_tracks,
+            "video_prompt": str(
+                payload.get("prompt_current") or payload.get("prompt_target") or ""
+            ).strip(),
+            "fg_prompt": str(physics_spec.get("fg_prompt") or "").strip(),
+            "primary": str(physics_spec.get("primary_object") or "").strip(),
+            "secondary": str(physics_spec.get("secondary_object") or "").strip(),
+        }
+        metadata.update(case_taxonomy)
     metadata["submitted_video_path"] = str(case.submitted_video_path)
     case.metadata_template_path.write_text(
         json.dumps(metadata, indent=2, ensure_ascii=False) + "\n",
@@ -1161,11 +1262,27 @@ def evaluate_generated_video(
     payload = _sample_payload(sample)
     case = ensure_submission_staged(sample, generated_video_path)
     generated_video_path = Path(generated_video_path).expanduser().resolve()
+    reports_root = (
+        Path(output_root).expanduser().resolve()
+        if output_root is not None
+        else case.case_root / "evaluation"
+    )
+    reports_root.mkdir(parents=True, exist_ok=True)
 
     export_error = None
+    pipeline_run: dict[str, Any] | None = None
     diagnostics = inspect_physics_case(sample)
     if not diagnostics["local_world_gt"]["full_metrics_ready"]:
         _, export_error = try_export_world_gt(case)
+        diagnostics = inspect_physics_case(sample)
+    if not diagnostics["local_world_gt"]["full_metrics_ready"]:
+        pipeline_run = _run_online_physics_pipeline(
+            case=case,
+            generated_video_path=generated_video_path,
+            reports_root=reports_root,
+        )
+        if not pipeline_run.get("success"):
+            export_error = str(pipeline_run.get("error") or export_error or "")
         diagnostics = inspect_physics_case(sample)
 
     if not diagnostics["local_world_gt"]["video_ready"]:
@@ -1179,20 +1296,41 @@ def evaluate_generated_video(
             "physics_status": diagnostics["status"],
             "physics_diagnostics": diagnostics,
             "physics_remediation": diagnostics["remediation"],
+            "pipeline_run": pipeline_run,
             "success": False,
         }
 
-    reports_root = (
-        Path(output_root).expanduser().resolve()
-        if output_root is not None
-        else case.case_root / "evaluation"
-    )
-    reports_root.mkdir(parents=True, exist_ok=True)
-    pred_world_info = _generate_pred_world_artifacts(
-        case=case,
-        generated_video_path=generated_video_path,
-        reports_root=reports_root,
-    )
+    if pipeline_run and pipeline_run.get("success"):
+        pred_world_root = reports_root / "pred_world" / case.benchmark_sample_id
+        if pred_world_ready(pred_world_root):
+            pred_world_info = {
+                "enabled": True,
+                "success": True,
+                "cache_hit": True,
+                "pred_world_root": str(pred_world_root),
+                "runtime_data_root": pipeline_run.get("runtime_data_root"),
+            }
+        else:
+            export_info = export_pred_world_from_runtime(
+                sample_id=case.source_sample_id,
+                runtime_data_root=Path(str(pipeline_run["runtime_data_root"])).expanduser().resolve(),
+                generated_video_path=generated_video_path,
+                output_root=pred_world_root,
+            )
+            pred_world_info = {
+                "enabled": True,
+                "success": bool(export_info.get("success")),
+                "cache_hit": False,
+                "pred_world_root": str(pred_world_root),
+                "runtime_data_root": pipeline_run.get("runtime_data_root"),
+                "error": export_info.get("error"),
+            }
+    else:
+        pred_world_info = _generate_pred_world_artifacts(
+            case=case,
+            generated_video_path=generated_video_path,
+            reports_root=reports_root,
+        )
     pred_world_root = (
         Path(pred_world_info["pred_world_root"]).expanduser().resolve()
         if pred_world_info.get("success")
@@ -1217,6 +1355,8 @@ def evaluate_generated_video(
     result["report_path"] = str(report_path.resolve())
     result["physics_pipeline_root"] = str(case.physics_pipeline_root)
     result["physics_status"] = diagnostics["status"]
+    if pipeline_run is not None:
+        result["pipeline_run"] = pipeline_run
     result["pred_world_status"] = {
         "enabled": bool(pred_world_info.get("enabled")),
         "success": bool(pred_world_info.get("success")),
@@ -1274,10 +1414,12 @@ def build_online_physics_sample(
     image_path: str | Path,
     output_root: str | Path,
     physics_pipeline_root: str | Path,
+    benchmark_sample_id: str | None = None,
     fg_prompt: str | None = None,
     primary_object: str | None = None,
     secondary_object: str | None = None,
     primary_obj_rot_axis: Any = None,
+    metadata_overrides: Mapping[str, Any] | None = None,
 ) -> BenchmarkSample:
     prompt = prompt.strip()
     if not prompt:
@@ -1286,7 +1428,7 @@ def build_online_physics_sample(
     if not image_path.exists():
         raise FileNotFoundError(f"reference image not found: {image_path}")
 
-    benchmark_sample_id = f"online_physics__{_utc_timestamp_slug()}"
+    benchmark_sample_id = benchmark_sample_id or f"online_physics__{_utc_timestamp_slug()}"
     output_root = Path(output_root).expanduser().resolve()
     case_root = output_root / "cases" / benchmark_sample_id
     simulator_root = case_root / "simulator"
@@ -1295,27 +1437,32 @@ def build_online_physics_sample(
     world_gt_root.mkdir(parents=True, exist_ok=True)
     submitted_video_path = simulator_root / "submitted_video.mp4"
     metadata_template_path = simulator_root / "metadata_template.json"
+    raw_metadata_overrides = dict(metadata_overrides or {})
+    cleaned_overrides = _clean_metadata_overrides(metadata_overrides)
+    case_taxonomy = cleaned_overrides.copy()
+    resolved_fg_prompt = fg_prompt or prompt.split(",", 1)[0].strip()
+    resolved_primary_object = primary_object or "object"
+    resolved_secondary_object = secondary_object or ""
+    metadata_template = {
+        "conditioning_tracks": _conditioning_tracks_from_metadata(raw_metadata_overrides),
+        "video_prompt": prompt,
+        "fg_prompt": resolved_fg_prompt,
+        "primary": resolved_primary_object,
+        "secondary": resolved_secondary_object,
+        "submitted_video_path": str(submitted_video_path.resolve()),
+    }
+    if primary_obj_rot_axis is not None:
+        metadata_template["primary_obj_rot_axis"] = primary_obj_rot_axis
+    metadata_template.update(cleaned_overrides)
     metadata_template_path.write_text(
-        json.dumps(
-            {
-                "conditioning_tracks": ["i2v"],
-                "video_prompt": prompt,
-                "fg_prompt": fg_prompt or prompt.split(",", 1)[0].strip(),
-                "primary": primary_object or "object",
-                "secondary": secondary_object or "",
-                "primary_obj_rot_axis": primary_obj_rot_axis,
-                "submitted_video_path": str(submitted_video_path.resolve()),
-            },
-            indent=2,
-            ensure_ascii=False,
-        )
+        json.dumps(metadata_template, indent=2, ensure_ascii=False)
         + "\n",
         encoding="utf-8",
     )
     return BenchmarkSample(
         sample_id=benchmark_sample_id,
         suite="experimental",
-        split="dev_public",
+        split=benchmark_split(),
         asset_level="video_nonformal",
         modality="video",
         is_formal=False,
@@ -1329,9 +1476,11 @@ def build_online_physics_sample(
         prompt_current=prompt,
         prompt_target=prompt,
         style=None,
-        environment=None,
-        scene=None,
-        motion_category=primary_object or "physics",
+        environment=_coalesce_metadata_str(cleaned_overrides, "environment", "environment_family", "surface_family"),
+        scene=_coalesce_metadata_str(cleaned_overrides, "scene", "scene_family", "camera_family"),
+        motion_category=_coalesce_metadata_str(cleaned_overrides, "motion_family", "interaction_family")
+        or primary_object
+        or "physics",
         source_name="worldarena_online_physics",
         source_type="generated_case",
         source_group_id=benchmark_sample_id,
@@ -1360,11 +1509,16 @@ def build_online_physics_sample(
             "benchmark_family": "worldarena_physics",
             "backend": "simulator_reference",
             "source_sample_id": ONLINE_PHYSICS_INTERNAL_SAMPLE_ID,
+            "fg_prompt": resolved_fg_prompt,
+            "primary_object": resolved_primary_object,
+            "secondary_object": resolved_secondary_object,
+            "metadata_template": metadata_template,
             "metric_contract": {
                 "required_core_metrics": list(REQUIRED_CORE_METRICS),
                 "require_full_frame_coverage": True,
                 "require_pred_world_artifacts": True,
             },
+            "case_taxonomy": case_taxonomy,
         },
         physics_case={
             "physics_pipeline_root": str(Path(physics_pipeline_root).expanduser().resolve()),
@@ -1375,9 +1529,11 @@ def build_online_physics_sample(
             "simulator_root": str(simulator_root.resolve()),
             "submitted_video_path": str(submitted_video_path.resolve()),
             "metadata_template_path": str(metadata_template_path.resolve()),
+            "metadata_template": metadata_template,
             "world_gt_root": str(world_gt_root.resolve()),
             "physics_export_benchmark_name": f"worldarena_online_physics_{benchmark_sample_id}",
             "physics_render_split": "original_length",
+            "case_taxonomy": case_taxonomy,
         },
     )
 
@@ -1393,6 +1549,7 @@ def evaluate_online_physics_i2v(
     primary_object: str | None = None,
     secondary_object: str | None = None,
     primary_obj_rot_axis: Any = None,
+    metadata_overrides: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     sample = build_online_physics_sample(
         prompt=prompt,
@@ -1403,6 +1560,7 @@ def evaluate_online_physics_i2v(
         primary_object=primary_object,
         secondary_object=secondary_object,
         primary_obj_rot_axis=primary_obj_rot_axis,
+        metadata_overrides=metadata_overrides,
     )
     reports_root = Path(output_root).expanduser().resolve() / "reports" / sample.sample_id
     reports_root.mkdir(parents=True, exist_ok=True)

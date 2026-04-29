@@ -8,6 +8,7 @@ from typing import Any
 
 import pandas as pd
 
+from worldarena.common.annotation_index import build_annotation_reference, load_annotation_entry
 from worldarena.common.media import probe_media
 from worldarena.common.serialization import ensure_dir, write_json
 from worldarena.datasets.scanners import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
@@ -29,6 +30,31 @@ def _should_skip_hidden(relative_path: Path) -> bool:
     return any(part.startswith(".") for part in relative_path.parts)
 
 
+def _image_annotation_dir(path: Path) -> Path:
+    return path.parent / "annotations" / f"{path.stem}_ann"
+
+
+def _image_annotation_index_path(image_root: Path) -> Path:
+    return image_root / "image_annotations.json"
+
+
+def _image_annotation_state(path: Path, image_root: Path) -> tuple[str | None, bool, bool, bool]:
+    relative_path = path.relative_to(image_root)
+    index_path = _image_annotation_index_path(image_root)
+    entry = load_annotation_entry(index_path, relative_path)
+    if entry is not None:
+        has_annotation = isinstance(entry.get("caption"), dict)
+        has_instruction = isinstance(entry.get("instructions"), dict)
+        has_pose = False
+        annotation_path = build_annotation_reference(index_path, relative_path) if has_annotation else None
+        return annotation_path, has_annotation, has_instruction, has_pose
+
+    annotation_dir = _image_annotation_dir(path)
+    has_annotation, has_instruction, has_pose = _annotation_flags(annotation_dir)
+    annotation_path = str(annotation_dir) if has_annotation else None
+    return annotation_path, has_annotation, has_instruction, has_pose
+
+
 def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | None:
     relative_path = path.relative_to(image_root)
     if _should_skip_hidden(relative_path):
@@ -40,6 +66,7 @@ def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | Non
     if parts[0] == "static" and len(parts) >= 5:
         _, style, environment, scene, _ = parts[:5]
         category_path = "/".join(parts[:-1])
+        annotation_path, has_annotation, has_instruction, has_pose = _image_annotation_state(path, image_root)
         return DiscoveredAsset(
             asset_level="image_static",
             modality="image",
@@ -56,6 +83,10 @@ def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | Non
             environment=environment,
             scene=scene,
             fine_class=scene,
+            annotation_path=annotation_path,
+            has_annotation=has_annotation,
+            has_instruction=has_instruction,
+            has_pose=has_pose,
             size_bytes=path.stat().st_size,
         )
 
@@ -66,6 +97,7 @@ def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | Non
             category_path = "/".join(parts[:-1])
             mask_dir = image_root / "dynamic" / style / "masks" / motion_category / path.stem
             mask_count = _count_mask_images(mask_dir)
+            annotation_path, has_annotation, has_instruction, has_pose = _image_annotation_state(path, image_root)
             return DiscoveredAsset(
                 asset_level="image_dynamic",
                 modality="image",
@@ -81,7 +113,11 @@ def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | Non
                 style=style,
                 motion_category=motion_category,
                 fine_class=motion_category,
+                annotation_path=annotation_path,
                 mask_path=str(mask_dir) if mask_dir.exists() else None,
+                has_annotation=has_annotation,
+                has_instruction=has_instruction,
+                has_pose=has_pose,
                 has_mask=mask_count > 0,
                 mask_count=mask_count,
                 size_bytes=path.stat().st_size,
@@ -89,6 +125,7 @@ def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | Non
         if parts[2].startswith("_backup") and len(parts) >= 6 and parts[3] == "images":
             motion_category = parts[4]
             category_path = "/".join(parts[:-1])
+            annotation_path, has_annotation, has_instruction, has_pose = _image_annotation_state(path, image_root)
             return DiscoveredAsset(
                 asset_level="image_nonformal",
                 modality="image",
@@ -104,6 +141,10 @@ def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | Non
                 style=style,
                 motion_category=motion_category,
                 fine_class=motion_category,
+                annotation_path=annotation_path,
+                has_annotation=has_annotation,
+                has_instruction=has_instruction,
+                has_pose=has_pose,
                 size_bytes=path.stat().st_size,
             )
     return None
@@ -114,6 +155,29 @@ def _annotation_flags(annotation_dir: Path) -> tuple[bool, bool, bool]:
     has_instruction = (annotation_dir / "instructions.json").exists()
     has_pose = (annotation_dir / "poses.npy").exists() and (annotation_dir / "intrinsics.npy").exists()
     return has_annotation, has_instruction, has_pose
+
+
+def _has_annotation_payload(annotation_dir: Path) -> bool:
+    if not annotation_dir.is_dir():
+        return False
+    return any(
+        (annotation_dir / name).exists()
+        for name in (
+            "caption.json",
+            "instructions.json",
+            "generation_spec.json",
+            "poses.npy",
+            "intrinsics.npy",
+            "dyn_masks.npz",
+        )
+    )
+
+
+def _annotation_dir_with_payload(default_dir: Path, *candidate_dirs: Path) -> Path:
+    for annotation_dir in (default_dir, *candidate_dirs):
+        if _has_annotation_payload(annotation_dir):
+            return annotation_dir
+    return default_dir
 
 
 def _discover_video_asset(path: Path, video_root: Path) -> DiscoveredAsset | None:
@@ -159,7 +223,11 @@ def _discover_video_asset(path: Path, video_root: Path) -> DiscoveredAsset | Non
     if parts[0] == "dynamic" and len(parts) >= 5 and parts[2] == "videos":
         _, style, _, motion_category, _ = parts[:5]
         category_path = "/".join(parts[:-1])
-        annotation_dir = video_root / "dynamic" / "annotations" / motion_category / f"{path.stem}_ann"
+        annotation_dir = _annotation_dir_with_payload(
+            video_root / "dynamic" / "annotations" / motion_category / f"{path.stem}_ann",
+            path.parent / "annotations_vipe" / path.stem,
+            path.parent / "annotations_vipe" / f"{path.stem}_ann",
+        )
         mask_dir = video_root / "dynamic" / style / "masks" / motion_category / path.stem / "masks"
         mask_count = _count_mask_images(mask_dir)
         has_annotation, has_instruction, has_pose = _annotation_flags(annotation_dir)

@@ -5,8 +5,8 @@ from typing import Any
 
 from worldarena.benchmark.annotations import derive_object_prompts
 from worldarena.benchmark.schemas import BenchmarkSample
-from worldarena.models.adapters.base import ModelAdapter
-from worldarena.models.adapters.common import build_env, run_command
+from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
+from worldarena.models.adapters.common import build_env, run_command, run_sequential_generate_batch
 
 
 def _normalize_label_list(value: object) -> list[str]:
@@ -66,6 +66,15 @@ def _label_groups_for_sample(
 
 
 class HunyuanWorldAdapter(ModelAdapter):
+    def supports_batch_generation(self) -> bool:
+        return True
+
+    def generate_batch(
+        self,
+        requests: list[PreparedGenerationRequest],
+    ) -> dict[str, dict[str, Any]]:
+        return run_sequential_generate_batch(self, requests)
+
     def generate(
         self,
         sample: BenchmarkSample,
@@ -75,6 +84,8 @@ class HunyuanWorldAdapter(ModelAdapter):
     ) -> dict[str, Any]:
         if self.config.repo_root is None:
             raise ValueError("HunyuanWorld adapter requires repo_root")
+        if self.config.checkpoint_dir is None:
+            raise ValueError("HunyuanWorld adapter requires checkpoint_dir")
 
         generation = self.config.generation
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -102,6 +113,8 @@ class HunyuanWorldAdapter(ModelAdapter):
             "worldarena.models.adapters.hunyuanworld_runner",
             "--repo_root",
             str(self.config.repo_root),
+            "--checkpoint_dir",
+            str(self.config.checkpoint_dir),
             "--output_path",
             str(output_path),
             "--prompt",

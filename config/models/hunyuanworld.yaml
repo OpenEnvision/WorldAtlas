@@ -7,11 +7,10 @@ model:
   control_signals: [text, image]
   roles: [candidate]
   # HunyuanWorld's published environment targets Python 3.10 with a dedicated CUDA stack.
-  python_bin: .runtime310/bin/python
-  # Open-source default: clone the upstream repo under third_party/ or link it with `worldarena prepare-layout --repo-link`.
-  repo_root: third_party/HunyuanWorld-1.0
-  # The upstream code downloads multiple base models through Hugging Face; keep them under the shared cache root.
-  checkpoint_dir: cache/hfd/tencent--HunyuanWorld-1
+  # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
+  repo_root: thirdparty/HunyuanWorld-1.0
+  # Keep all HunyuanWorld weights under the unified ckpt root.
+  checkpoint_dir: ckpt/HunyuanWorld-1
   # The adapter orchestrates both demo_panogen.py and demo_scenegen.py through a dedicated runner.
   entrypoint: demo_panogen.py
   output_ext: .zip
@@ -20,10 +19,6 @@ model:
     - video_static
   prompt_mode: prompt_current
   reference_mode: first_frame
-  env:
-    HF_HOME: cache/hfd
-    HF_HUB_CACHE: cache/hfd/huggingface/hub
-    TRANSFORMERS_CACHE: cache/hfd/transformers
   generation:
     classes: null
     labels_fg1_limit: 1

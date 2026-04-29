@@ -1,22 +1,98 @@
 from __future__ import annotations
 
 
+TOP_LEVEL_DIMENSIONS: tuple[str, ...] = (
+    "long_sequence",
+    "action_control",
+    "consistency_3d_4d",
+    "physics",
+    "quality",
+    "real_time",
+)
+
+DIMENSION_LABELS: dict[str, str] = {
+    "long_sequence": "Long Sequence",
+    "action_control": "Action Control",
+    "consistency_3d_4d": "3D/4D Consistency",
+    "physics": "Physics",
+    "quality": "Quality",
+    "real_time": "Real Time",
+}
+
+
 METRIC_DIMENSIONS: dict[str, str] = {
-    "prompt_alignment": "content_alignment",
-    "style_consistency": "style_consistency",
-    "perceptual_quality": "perceptual_quality",
-    "reference_appearance_alignment": "appearance_alignment",
-    "anchor_consistency": "appearance_alignment",
-    "camera_error": "camera_control",
-    "object_detection": "object_control",
-    "reprojection_error": "geometry_consistency",
-    "optical_flow_aepe": "photometric_consistency",
-    "motion_accuracy": "motion_control",
-    "motion_magnitude": "motion_dynamics",
-    "motion_smoothness": "motion_dynamics",
-    "physical_fps_error": "temporal_calibration",
-    "physical_fps_pct_error": "temporal_calibration",
-    "physical_fps_intra_video_cv": "temporal_calibration",
+    # Long sequence (memory)
+    "anchor_consistency": "long_sequence",
+    "subject_consistency": "long_sequence",
+    "background_consistency": "long_sequence",
+    "seen_region_preservation": "long_sequence",
+    "object_permanence": "long_sequence",
+    "memory_revisit_consistency": "long_sequence",
+    "long_sequence_subject_consistency": "long_sequence",
+    "long_sequence_background_consistency": "long_sequence",
+    "long_sequence_motion_smoothness": "long_sequence",
+    # Action control
+    "prompt_alignment": "action_control",
+    "semantic_alignment": "action_control",
+    "camera_error": "action_control",
+    "object_detection": "action_control",
+    "motion_accuracy": "action_control",
+    # 3D/4D consistency
+    "novel_region_fidelity": "consistency_3d_4d",
+    "met3r_consistency": "consistency_3d_4d",
+    "reprojection_error": "consistency_3d_4d",
+    "depth_accuracy": "consistency_3d_4d",
+    "depth_collision": "consistency_3d_4d",
+    "optical_flow_aepe": "consistency_3d_4d",
+    "reconstruction_consistency": "consistency_3d_4d",
+    # Physics
+    "pmf": "physics",
+    "motion_magnitude": "physics",
+    "motion_smoothness": "physics",
+    "long_sequence_dynamic_degree": "physics",
+    "mse": "physics",
+    "st_iou": "physics",
+    "s_iou": "physics",
+    "ws_iou": "physics",
+    "abs_rel": "physics",
+    "rmse": "physics",
+    "delta1": "physics",
+    "delta2": "physics",
+    "delta3": "physics",
+    "depth_warp_l1": "physics",
+    "depth_warp_charb": "physics",
+    "rgb_warp_charb": "physics",
+    "epe": "physics",
+    "fl_all": "physics",
+    "one_px_out": "physics",
+    "chamfer_4d": "physics",
+    "worldline_l2_error": "physics",
+    "worldline_mean_drift": "physics",
+    "worldline_final_drift": "physics",
+    "worldline_fail_rate": "physics",
+    "worldline_length": "physics",
+    "rgb_warp_lpips": "physics",
+    "novel_time_depth_l1": "physics",
+    "novel_time_depth_charb": "physics",
+    "novel_time_rgb_l1": "physics",
+    "novel_time_rgb_charb": "physics",
+    "physics_judge_overall": "physics",
+    "physics_judge_phenomenon": "physics",
+    "physics_judge_causality": "physics",
+    "physics_judge_material": "physics",
+    "physics_judge_temporal": "physics",
+    "physics_judge_prompt": "physics",
+    # Quality
+    "style_consistency": "quality",
+    "perceptual_quality": "quality",
+    "long_sequence_aesthetic_quality": "quality",
+    "long_sequence_imaging_quality": "quality",
+    "psnr": "quality",
+    "ssim": "quality",
+    # Real time
+    "physical_fps_error": "real_time",
+    "physical_fps_pct_error": "real_time",
+    "physical_fps_intra_video_cv": "real_time",
 }
 
 
@@ -28,4 +104,9 @@ def group_metrics_by_dimension(metric_names: list[str]) -> dict[str, list[str]]:
     return grouped
 
 
-__all__ = ["METRIC_DIMENSIONS", "group_metrics_by_dimension"]
+__all__ = [
+    "TOP_LEVEL_DIMENSIONS",
+    "DIMENSION_LABELS",
+    "METRIC_DIMENSIONS",
+    "group_metrics_by_dimension",
+]

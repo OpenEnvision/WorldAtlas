@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import os
 from typing import Any
 
 import numpy as np
@@ -14,11 +15,13 @@ from worldarena.benchmark.metrics.base import (
 )
 from worldarena.benchmark.reference_runtime import compute_reference_style_consistency
 from worldarena.benchmark.schemas import BenchmarkSample, MetricOutput
+from worldarena.common.checkpoints import checkpoint_env
 
 
 @lru_cache(maxsize=1)
 def _load_vgg_backend() -> tuple[Any, Any, Any] | None:
     try:
+        os.environ.update(checkpoint_env())
         import torch
         from torchvision import transforms
         from torchvision.models import VGG19_Weights, vgg19

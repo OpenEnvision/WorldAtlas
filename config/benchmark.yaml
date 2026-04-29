@@ -1,99 +1,243 @@
 paths:
-  image_root: /bench-workspace/yesliu/hjd/data/image
-  video_root: /bench-workspace/yesliu/hjd/data/videos
+  image_root: /bench-workspace/yesliu/hjd/data/image_test_balanced_5000
+  video_root: /bench-workspace/yesliu/hjd/data/videos_test_split_4971
   inventory_dir: artifacts/benchmark/inventory
   manifest_dir: artifacts/benchmark/manifest
   reports_dir: artifacts/benchmark/reports
   cache_dir: .cache/worldarena/benchmark
-
 benchmark:
   snapshot_name: worldarena_freeze_candidate
   target_fps: 24
-  anchor_positions: [0.0, 0.3333, 0.6667, 1.0]
+  anchor_positions:
+  - 0.0
+  - 0.3333
+  - 0.6667
+  - 1.0
   motion_frame_count: 12
+  dynamic_prefix_ratio: 0.25
+  dynamic_prefix_min_frames: 4
   protocol:
     official: segment_random
     compatibility: anchor_compat
     seed: 17
     segment_count: 4
-  split_ratios:
-    dev_public: 0.2
-    dev_private: 0.1
-    test_hidden: 0.7
   planned_counts: {}
   metrics_by_suite:
     image_static:
-      - prompt_alignment
-      - style_consistency
-      - perceptual_quality
+    - prompt_alignment
+    - semantic_alignment
+    - style_consistency
+    - perceptual_quality
+    - camera_error
+    - seen_region_preservation
+    - novel_region_fidelity
+    - object_detection
+    - object_permanence
+    - pmf
+    - motion_accuracy
+    - motion_magnitude
+    - motion_smoothness
+    - reprojection_error
+    - optical_flow_aepe
+    - subject_consistency
+    - background_consistency
+    - depth_accuracy
+    - depth_collision
+    - psnr
+    - ssim
+    - physical_fps_error
+    - physical_fps_pct_error
+    - physical_fps_intra_video_cv
+    - met3r_consistency
+    - reconstruction_consistency
+    - long_sequence_subject_consistency
+    - long_sequence_background_consistency
+    - long_sequence_motion_smoothness
+    - long_sequence_dynamic_degree
+    - long_sequence_aesthetic_quality
+    - long_sequence_imaging_quality
     image_dynamic:
-      - prompt_alignment
-      - style_consistency
-      - perceptual_quality
+    - prompt_alignment
+    - semantic_alignment
+    - style_consistency
+    - perceptual_quality
+    - camera_error
+    - seen_region_preservation
+    - novel_region_fidelity
+    - object_detection
+    - object_permanence
+    - pmf
+    - motion_accuracy
+    - motion_magnitude
+    - motion_smoothness
+    - reprojection_error
+    - optical_flow_aepe
+    - subject_consistency
+    - background_consistency
+    - depth_accuracy
+    - depth_collision
+    - psnr
+    - ssim
+    - physical_fps_error
+    - physical_fps_pct_error
+    - physical_fps_intra_video_cv
+    - met3r_consistency
+    - reconstruction_consistency
+    - long_sequence_subject_consistency
+    - long_sequence_background_consistency
+    - long_sequence_motion_smoothness
+    - long_sequence_dynamic_degree
+    - long_sequence_aesthetic_quality
+    - long_sequence_imaging_quality
     video_static:
-      - prompt_alignment
-      - style_consistency
-      - perceptual_quality
-      - camera_error
-      - object_detection
-      - reprojection_error
-      - optical_flow_aepe
+    - prompt_alignment
+    - semantic_alignment
+    - style_consistency
+    - perceptual_quality
+    - camera_error
+    - seen_region_preservation
+    - novel_region_fidelity
+    - object_detection
+    - reprojection_error
+    - optical_flow_aepe
+    - subject_consistency
+    - background_consistency
+    - depth_accuracy
+    - depth_collision
+    - psnr
+    - ssim
+    - met3r_consistency
+    - reconstruction_consistency
     video_dynamic:
-      - prompt_alignment
-      - style_consistency
-      - perceptual_quality
-      - motion_accuracy
-      - motion_magnitude
-      - motion_smoothness
-      - physical_fps_error
-      - physical_fps_pct_error
-      - physical_fps_intra_video_cv
+    - prompt_alignment
+    - semantic_alignment
+    - style_consistency
+    - perceptual_quality
+    - object_permanence
+    - pmf
+    - motion_accuracy
+    - motion_magnitude
+    - motion_smoothness
+    - subject_consistency
+    - background_consistency
+    - depth_accuracy
+    - depth_collision
+    - psnr
+    - ssim
+    - physical_fps_error
+    - physical_fps_pct_error
+    - physical_fps_intra_video_cv
+    - met3r_consistency
+    - reconstruction_consistency
+    - long_sequence_subject_consistency
+    - long_sequence_background_consistency
+    - long_sequence_motion_smoothness
+    - long_sequence_dynamic_degree
+    - long_sequence_aesthetic_quality
+    - long_sequence_imaging_quality
     auxiliary:
-      - reference_appearance_alignment
-      - anchor_consistency
+    - anchor_consistency
     experimental:
-      - reference_appearance_alignment
-      - anchor_consistency
-      - motion_magnitude
-      - motion_smoothness
+    - anchor_consistency
+    - motion_magnitude
+    - motion_smoothness
+    - memory_revisit_consistency
   metric_backends:
     prompt_alignment: reference
-    reference_appearance_alignment: clip
+    semantic_alignment: clip
     style_consistency: reference
     perceptual_quality: reference
     camera_error: droid_slam
+    seen_region_preservation: flow_dino
+    novel_region_fidelity: flow_dino
     object_detection: grounding_dino
+    object_permanence: mask_dino
+    pmf: numpy_fft
     reprojection_error: droid_slam
     optical_flow_aepe: sea_raft
     motion_accuracy: sam2_sea_raft
     motion_magnitude: sea_raft
     motion_smoothness: vfi_mamba
+    subject_consistency: dinov2
+    background_consistency: clip
+    depth_accuracy: depth_anything
+    depth_collision: video_depth_anything
+    psnr: framewise
+    ssim: framewise
     physical_fps_error: pulse_of_motion
     physical_fps_pct_error: pulse_of_motion
     physical_fps_intra_video_cv: pulse_of_motion
     anchor_consistency: clip
+    met3r_consistency: met3r
+    reconstruction_consistency: world_r1_lpips
+    long_sequence_subject_consistency: long_sequence
+    long_sequence_background_consistency: long_sequence
+    long_sequence_motion_smoothness: long_sequence
+    long_sequence_dynamic_degree: long_sequence
+    long_sequence_aesthetic_quality: long_sequence
+    long_sequence_imaging_quality: long_sequence
+    memory_revisit_consistency: dinov2
   metric_runtime:
     official_source:
-      python_bin: auto
     motion_accuracy:
       sam2_offload_video_to_cpu: true
       sam2_offload_state_to_cpu: true
-      # Optional on multi-GPU hosts:
-      # sam2_device: cuda:0
-      # flow_device: cuda:1
-      # grounding_dino_device: cuda:2
+    depth_accuracy:
+      model_name: depth-anything/Depth-Anything-V2-Small-hf
+    depth_collision:
+      repo_root: thirdparty/Video-Depth-Anything
+      checkpoint_path: ckpt/Video-Depth-Anything/metric_video_depth_anything_vits.pth
+      encoder: vits
+      depth_threshold: 1.0
+      center_crop_ratio: 0.2
+      frame_source: sampled
+      input_size: 256
+    met3r_consistency:
+      distance: cosine
+      backbone: mast3r
+      batch_size: 1
+      feature_backbone_weights: ckpt/mhamilton723--FeatUp
+    reconstruction_consistency:
+      model_name: depth-anything/DA3-GIANT
+      repo_root: thirdparty/Depth-Anything-3/src
+      scorer: lpips
+      lpips_net: alex
+      frame_source: sampled
+      process_res: 504
+      gs_render_size:
+      - 512
+      - 512
+      trj_mode: extend
+      chunk_size: 4
     temporal_calibration:
-      # Optional on multi-GPU hosts:
-      # device: cuda:2
       clip_length: 30
       stride: 4
       resolution: 216
+      checkpoint_path: ckpt/Pulse-of-Motion/vc_common_10_60fps.ckpt
+    long_sequence:
+      amt_checkpoint_path: ckpt/amt_model/amt-s.pth
+      raft_model_path: ckpt/raft_model/models/raft-things.pth
+      musiq_model_path: ckpt/musiq/musiq_spaq_ckpt-358bb6af.pth
+      bg_clip2clip_feat_extractor: clip
+    memory_revisit_consistency:
+      mse_tau: 0.08
+      progress_lower: 0.03
+      progress_upper: 0.18
+      progress_gate_weight: 0.35
+      closure_weights:
+        dino: 0.55
+        ssim: 0.25
+        mse: 0.20
   normalization:
     prompt_alignment:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
-    reference_appearance_alignment:
+    semantic_alignment:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    memory_revisit_consistency:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
@@ -110,21 +254,62 @@ benchmark:
       std: 3.4505
       z_max: 2.7498
       z_min: -0.8638
-      range: [0.25, 0.75]
+      range:
+      - 0.25
+      - 0.75
       higher_is_better: true
     motion_smoothness:
-      empirical_min: [0.0, 0.9224, 0.0]
-      empirical_max: [82.4014, 1.0, 0.0228]
-      higher_is_better: [false, true, false]
+      empirical_min:
+      - 0.0
+      - 0.9224
+      - 0.0
+      empirical_max:
+      - 82.4014
+      - 1.0
+      - 0.0228
+      higher_is_better:
+      - false
+      - true
+      - false
       reducer: arithmetic_mean
+    subject_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    background_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
     camera_error:
-      empirical_min: [0.0, 0.0]
-      empirical_max: [15.0, 0.5]
-      higher_is_better: [false, false]
+      empirical_min:
+      - 0.0
+      - 0.0
+      empirical_max:
+      - 15.0
+      - 0.5
+      higher_is_better:
+      - false
+      - false
       reducer: geometric_mean
+    seen_region_preservation:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    novel_region_fidelity:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
     object_detection:
       empirical_min: 0.0
       empirical_max: 1.0
+      higher_is_better: true
+    object_permanence:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    pmf:
+      lower: 0.0
+      upper: 6.0
       higher_is_better: true
     reprojection_error:
       empirical_min: 0.0
@@ -139,7 +324,33 @@ benchmark:
       std: 2.3687
       z_max: 1.518
       z_min: -1.6147
-      range: [0.25, 0.75]
+      range:
+      - 0.25
+      - 0.75
+      higher_is_better: true
+    depth_accuracy:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: false
+    depth_collision:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: false
+    psnr:
+      lower: 10.0
+      upper: 40.0
+      higher_is_better: true
+    ssim:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    met3r_consistency:
+      lower: 0.0
+      upper: 2.0
+      higher_is_better: false
+    reconstruction_consistency:
+      lower: 0.0
+      upper: 1.0
       higher_is_better: true
     physical_fps_error:
       lower: 0.0
@@ -154,6 +365,30 @@ benchmark:
       upper: 1.0
       higher_is_better: false
     anchor_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    long_sequence_subject_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    long_sequence_background_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    long_sequence_motion_smoothness:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    long_sequence_dynamic_degree:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    long_sequence_aesthetic_quality:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    long_sequence_imaging_quality:
       lower: 0.0
       upper: 1.0
       higher_is_better: true

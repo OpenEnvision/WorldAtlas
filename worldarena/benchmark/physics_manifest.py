@@ -12,7 +12,7 @@ from PIL import Image
 from worldarena.benchmark.schemas import BenchmarkSample
 from worldarena.benchmark.taxonomy import (
     artifact_type_for_modality,
-    assign_split,
+    benchmark_split,
     control_signals_for_sample,
     task_family_for_suite,
 )
@@ -71,6 +71,17 @@ def flatten_metric_groups(metric_groups: dict[str, Sequence[str]]) -> list[str]:
 REQUIRED_CORE_METRICS: tuple[str, ...] = tuple(flatten_metric_groups(CORE_METRICS_BY_GROUP))
 OPTIONAL_PHYSICS_METRICS: tuple[str, ...] = tuple(
     flatten_metric_groups(OPTIONAL_METRICS_BY_GROUP)
+)
+CORE_PHYSICS_METADATA_KEYS: frozenset[str] = frozenset(
+    {
+        "conditioning_tracks",
+        "video_prompt",
+        "fg_prompt",
+        "primary",
+        "secondary",
+        "submitted_video_path",
+        "notes",
+    }
 )
 
 
@@ -143,23 +154,318 @@ def _case_paths(output_root: Path, benchmark_sample_id: str) -> dict[str, Path]:
     }
 
 
+def _present_metadata(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple, dict, set)):
+        return bool(value)
+    return True
+
+
+def _extra_case_metadata(meta: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: value
+        for key, value in meta.items()
+        if key not in CORE_PHYSICS_METADATA_KEYS and _present_metadata(value)
+    }
+
+
+def _coalesce_meta_str(meta: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = meta.get(key)
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text
+    return None
+
+
+def _generation_prompt(meta: dict[str, Any]) -> str:
+    return (
+        _coalesce_meta_str(
+            meta,
+            "generation_prompt",
+            "detailed_generation_prompt",
+            "detailed_video_prompt",
+            "video_prompt",
+        )
+        or ""
+    )
+
+
+def _conditioning_tracks(meta: dict[str, Any]) -> list[str]:
+    value = meta.get("conditioning_tracks")
+    if isinstance(value, str):
+        text = value.strip()
+        return [text] if text else ["i2v"]
+    if isinstance(value, Sequence):
+        tracks = [str(item).strip() for item in value if str(item).strip()]
+        return tracks or ["i2v"]
+    return ["i2v"]
+
+
 def _build_metadata_template(
     meta: dict[str, Any],
     *,
     submitted_video_path: Path,
 ) -> dict[str, Any]:
-    return {
-        "conditioning_tracks": ["i2v"],
+    payload = {
+        "conditioning_tracks": _conditioning_tracks(meta),
         "video_prompt": str(meta.get("video_prompt", "")).strip(),
         "fg_prompt": str(meta.get("fg_prompt", "")).strip(),
         "primary": str(meta.get("primary", "")).strip(),
         "secondary": str(meta.get("secondary", "")).strip(),
-        "primary_obj_rot_axis": meta.get("primary_obj_rot_axis"),
         "submitted_video_path": str(submitted_video_path.resolve()),
         "notes": (
             "WorldArena simulator-backed physics case. "
             "Populate submitted_video.mp4 with a generated rollout before evaluation."
         ),
+    }
+    payload.update(_extra_case_metadata(meta))
+    return payload
+
+
+def _seed_manifest_record_selected(
+    record: dict[str, Any],
+    *,
+    requested_case_ids: set[str] | None,
+) -> bool:
+    case_id = str(record.get("case_id", "")).strip()
+    if not case_id:
+        return False
+    if requested_case_ids is not None and case_id not in requested_case_ids:
+        return False
+    status = str(record.get("status", "")).strip().lower()
+    if status:
+        return status == "ok"
+    return any(
+        str(record.get(key, "")).strip()
+        for key in ("image_path", "final_image_path", "source_image_path")
+    )
+
+
+def _resolve_seed_image_path(image_manifest_path: Path, record: dict[str, Any]) -> Path:
+    raw_path = next(
+        (
+            str(record.get(key, "")).strip()
+            for key in ("image_path", "final_image_path", "source_image_path")
+            if str(record.get(key, "")).strip()
+        ),
+        "",
+    )
+    if not raw_path:
+        raise ValueError(f"seed image record {record.get('case_id', '<unknown>')} is missing image_path")
+    image_path = Path(raw_path).expanduser()
+    candidates: list[Path]
+    if image_path.is_absolute():
+        candidates = [image_path.resolve()]
+    else:
+        candidates = [
+            (image_manifest_path.parent / image_path).resolve(),
+            (Path.cwd() / image_path).resolve(),
+            image_path.resolve(),
+        ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(candidates[0])
+
+
+def _seed_benchmark_sample_id(case_id: str) -> str:
+    return f"physics_seed__{case_id}__i2v"
+
+
+def _seed_fg_prompt(record: dict[str, Any]) -> str:
+    objects = [str(record.get("primary", "")).strip(), str(record.get("secondary", "")).strip()]
+    objects = [value for value in objects if value]
+    if objects:
+        return " and ".join(objects)
+    return str(record.get("phenomenon", "object")).strip() or "object"
+
+
+def _seed_benchmark_tags(record: dict[str, Any]) -> list[str]:
+    tags = [
+        "seed_image",
+        "simulator_friendly",
+        str(record.get("difficulty_tier", "")).strip(),
+        str(record.get("support_geometry_family", "")).strip(),
+        str(record.get("interaction_family", "")).strip(),
+    ]
+    if str(record.get("secondary", "")).strip():
+        tags.append("two_body")
+    else:
+        tags.append("single_body")
+    motion_family = str(record.get("motion_family", "")).strip()
+    if motion_family:
+        tags.append(motion_family)
+    return [tag for tag in tags if tag]
+
+
+def _incline_from_support_geometry(support_geometry_family: str) -> dict[str, Any] | None:
+    mapping = {
+        "incline_low": {"degrees": 8.0, "direction": "+x"},
+        "incline_mid": {"degrees": 14.0, "direction": "+x"},
+        "incline_high": {"degrees": 20.0, "direction": "+x"},
+    }
+    return mapping.get(str(support_geometry_family).strip().lower())
+
+
+def _seed_metadata_overrides(record: dict[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+    for key in (
+        "motion_family",
+        "interaction_family",
+        "difficulty_tier",
+        "environment_family",
+        "camera_family",
+        "support_geometry_family",
+        "support_feature_family",
+        "initial_state_family",
+        "layout_family",
+        "scene_variant_role",
+        "simulator_hints",
+        "primary_obj_rot_axis",
+        "secondary_obj_rot_axis",
+        "support_planes",
+        "sphere_colliders",
+        "primary_linear_velocity",
+        "secondary_linear_velocity",
+        "primary_initial_transform",
+        "secondary_initial_transform",
+        "simulation_overrides",
+        "generation_prompt",
+        "generation_negative_prompt",
+        "generation_prompt_source",
+    ):
+        value = record.get(key)
+        if _present_metadata(value):
+            payload[key] = value
+    if _present_metadata(record.get("generation_prompt")) and _present_metadata(record.get("video_prompt")):
+        payload["reference_video_prompt"] = str(record.get("video_prompt", "")).strip()
+    payload["benchmark_tags"] = _seed_benchmark_tags(record)
+    incline = record.get("incline")
+    if not _present_metadata(incline):
+        incline = _incline_from_support_geometry(
+            str(record.get("support_geometry_family", "")).strip()
+        )
+    if incline is not None:
+        payload["incline"] = incline
+    return payload
+
+
+def _load_seed_catalog_lookup(
+    catalog_path: str | Path | None,
+) -> dict[str, dict[str, Any]]:
+    if catalog_path is None:
+        return {}
+    catalog_path = Path(catalog_path).expanduser().resolve()
+    if not catalog_path.is_file():
+        raise FileNotFoundError(catalog_path)
+    payload = json.loads(catalog_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, list):
+        raise ValueError(f"seed catalog must contain a JSON list: {catalog_path}")
+    lookup: dict[str, dict[str, Any]] = {}
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        case_id = str(item.get("case_id", "")).strip()
+        if case_id:
+            lookup[case_id] = item
+    return lookup
+
+
+def _merge_seed_record(
+    record: dict[str, Any],
+    *,
+    catalog_lookup: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    case_id = str(record.get("case_id", "")).strip()
+    base = dict(catalog_lookup.get(case_id, {}))
+    base.update(record)
+    return base
+
+
+def build_worldarena_physics_seed_manifest(
+    *,
+    image_manifest_path: str | Path,
+    physics_pipeline_root: str | Path,
+    output_root: str | Path,
+    catalog_path: str | Path | None = None,
+    case_ids: Sequence[str] | None = None,
+) -> dict[str, Any]:
+    from worldarena.benchmark.physics_backend import build_online_physics_sample
+
+    image_manifest_path = Path(image_manifest_path).expanduser().resolve()
+    if not image_manifest_path.is_file():
+        raise FileNotFoundError(image_manifest_path)
+
+    physics_pipeline_root = Path(physics_pipeline_root).expanduser().resolve()
+    if not physics_pipeline_root.exists():
+        raise FileNotFoundError(f"physics pipeline root not found: {physics_pipeline_root}")
+
+    output_root = Path(output_root).expanduser().resolve()
+    requested_case_ids = {str(case_id).strip() for case_id in case_ids or () if str(case_id).strip()} or None
+    image_records = json.loads(image_manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(image_records, list):
+        raise ValueError(f"seed image manifest must contain a JSON list: {image_manifest_path}")
+    catalog_lookup = _load_seed_catalog_lookup(catalog_path)
+
+    manifest: list[BenchmarkSample] = []
+    selected_case_ids: list[str] = []
+    skipped_records: list[str] = []
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    for raw_record in image_records:
+        if not isinstance(raw_record, dict):
+            continue
+        record = _merge_seed_record(
+            raw_record,
+            catalog_lookup=catalog_lookup,
+        )
+        if not _seed_manifest_record_selected(
+            record,
+            requested_case_ids=requested_case_ids,
+        ):
+            skipped_records.append(str(record.get("case_id", "<unknown>")))
+            continue
+        case_id = str(record["case_id"]).strip()
+        image_path = _resolve_seed_image_path(image_manifest_path, record)
+        metadata_overrides = _seed_metadata_overrides(record)
+        sample = build_online_physics_sample(
+            prompt=_generation_prompt(record),
+            image_path=image_path,
+            output_root=output_root,
+            physics_pipeline_root=physics_pipeline_root,
+            benchmark_sample_id=_seed_benchmark_sample_id(case_id),
+            fg_prompt=_seed_fg_prompt(record),
+            primary_object=str(record.get("primary", "")).strip() or None,
+            secondary_object=str(record.get("secondary", "")).strip() or None,
+            primary_obj_rot_axis=record.get("primary_obj_rot_axis"),
+            metadata_overrides=metadata_overrides,
+        )
+        sample.source_name = "worldarena_physics_seed"
+        sample.source_type = "generated_seed_image"
+        sample.source_group_id = f"physics_seed::{case_id}"
+        with Image.open(image_path) as image:
+            sample.width, sample.height = image.size
+        manifest.append(sample)
+        selected_case_ids.append(case_id)
+
+    manifest_path = write_physics_manifest_artifacts(manifest, output_root)
+    return {
+        "manifest": manifest,
+        "manifest_path": str(manifest_path),
+        "image_manifest_path": str(image_manifest_path),
+        "catalog_path": str(Path(catalog_path).expanduser().resolve()) if catalog_path else None,
+        "physics_pipeline_root": str(physics_pipeline_root),
+        "output_root": str(output_root),
+        "items": len(manifest),
+        "selected_case_ids": selected_case_ids,
+        "skipped_records": skipped_records,
+        "required_core_metrics": list(REQUIRED_CORE_METRICS),
     }
 
 
@@ -174,7 +480,6 @@ def _build_sample(
     meta: dict[str, Any],
     video_path: Path,
     video_info: dict[str, Any],
-    split_ratios: dict[str, float],
 ) -> BenchmarkSample:
     benchmark_sample_id = f"physics__{source_sample_id}__i2v"
     paths = _case_paths(output_root, benchmark_sample_id)
@@ -194,15 +499,16 @@ def _build_sample(
         encoding="utf-8",
     )
 
-    prompt = str(meta.get("video_prompt", "")).strip()
+    prompt = _generation_prompt(meta)
     if not prompt:
-        raise ValueError(f"physics asset {source_sample_id} is missing video_prompt")
+        raise ValueError(f"physics asset {source_sample_id} is missing generation/video prompt")
 
     source_group_id = f"physics::{source_sample_id}"
+    case_taxonomy = _extra_case_metadata(meta)
     return BenchmarkSample(
         sample_id=benchmark_sample_id,
         suite="experimental",
-        split=assign_split(source_group_id, split_ratios),
+        split=benchmark_split(),
         asset_level="video_nonformal",
         modality="video",
         is_formal=False,
@@ -216,9 +522,10 @@ def _build_sample(
         prompt_current=prompt,
         prompt_target=prompt,
         style=None,
-        environment=None,
-        scene=None,
-        motion_category=str(meta.get("primary", "")).strip() or "physics",
+        environment=_coalesce_meta_str(meta, "environment", "environment_family", "surface_family"),
+        scene=_coalesce_meta_str(meta, "scene", "scene_family", "camera_family"),
+        motion_category=_coalesce_meta_str(meta, "motion_family", "interaction_family", "primary")
+        or "physics",
         source_name="worldarena_physics",
         source_type="simulator_video",
         source_group_id=source_group_id,
@@ -247,6 +554,10 @@ def _build_sample(
             "benchmark_family": "worldarena_physics",
             "backend": "simulator_reference",
             "source_sample_id": source_sample_id,
+            "fg_prompt": str(meta.get("fg_prompt", "")).strip(),
+            "primary_object": str(meta.get("primary", "")).strip(),
+            "secondary_object": str(meta.get("secondary", "")).strip(),
+            "metadata_template": metadata_template,
             "frame_count": int(video_info["frame_count"]),
             "resolution": [int(video_info["width"]), int(video_info["height"])],
             "metrics_design": {
@@ -265,6 +576,7 @@ def _build_sample(
                 "require_full_frame_coverage": True,
                 "require_pred_world_artifacts": True,
             },
+            "case_taxonomy": case_taxonomy,
         },
         physics_case={
             "physics_pipeline_root": str(physics_pipeline_root.resolve()),
@@ -275,10 +587,12 @@ def _build_sample(
             "simulator_root": str(paths["simulator_root"].resolve()),
             "submitted_video_path": str(paths["submitted_video_path"].resolve()),
             "metadata_template_path": str(paths["metadata_template_path"].resolve()),
+            "metadata_template": metadata_template,
             "world_gt_root": str(paths["world_gt_root"].resolve()),
             "track": "i2v",
             "physics_export_benchmark_name": "worldarena_physics",
             "physics_render_split": "original_length",
+            "case_taxonomy": case_taxonomy,
         },
     )
 
@@ -315,7 +629,6 @@ def build_worldarena_physics_manifest(
     physics_pipeline_root: str | Path,
     output_root: str | Path,
     sample_ids: Sequence[str] | None = None,
-    split_ratios: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     physics_pipeline_root = Path(physics_pipeline_root).expanduser().resolve()
     if not physics_pipeline_root.exists():
@@ -329,11 +642,6 @@ def build_worldarena_physics_manifest(
     conditioning_root = ensure_dir(output_root / "conditioning")
     ensure_dir(output_root / "cases")
 
-    resolved_split_ratios = split_ratios or {
-        "dev_public": 0.2,
-        "dev_private": 0.1,
-        "test_hidden": 0.7,
-    }
     resolved_sample_ids = _discover_sample_ids(assets_root, sample_ids)
     manifest: list[BenchmarkSample] = []
 
@@ -358,7 +666,6 @@ def build_worldarena_physics_manifest(
                 meta=meta,
                 video_path=video_path,
                 video_info=video_info,
-                split_ratios=resolved_split_ratios,
             )
         )
 

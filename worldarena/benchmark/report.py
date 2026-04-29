@@ -19,6 +19,7 @@ def write_run_outputs(
     ensure_dir(output_dir)
     write_json(output_dir / "run_manifest.json", run_manifest)
     write_json(output_dir / "per_metric_summary.json", aggregate_payload["per_metric_summary"])
+    write_json(output_dir / "per_dimension_summary.json", aggregate_payload.get("per_dimension_summary", {}))
 
     diagnostic_summary = aggregate_payload.get("diagnostic_metric_summary", {})
     diagnostic_path = output_dir / "diagnostic_metric_summary.json"
@@ -33,6 +34,13 @@ def write_run_outputs(
         write_json(failure_path, failure_summary)
     elif failure_path.exists():
         failure_path.unlink()
+
+    not_applicable_summary = aggregate_payload.get("not_applicable_summary", {})
+    not_applicable_path = output_dir / "not_applicable_summary.json"
+    if not_applicable_summary:
+        write_json(not_applicable_path, not_applicable_summary)
+    elif not_applicable_path.exists():
+        not_applicable_path.unlink()
 
     write_json(output_dir / "domain_breakdown.json", aggregate_payload["domain_breakdown"])
 

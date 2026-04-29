@@ -20,15 +20,11 @@ from typing import Any, Iterator
 import cv2
 import numpy as np
 
+from worldarena.common.checkpoints import apply_checkpoint_env, filter_checkpoint_env_overrides
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-OFFICIAL_RUNTIME_ENV = "WORLDARENA_METRIC_SOURCE_ROOT"
 OFFICIAL_RUNTIME_WORKER_ENV = "WORLDARENA_OFFICIAL_RUNTIME_WORKER"
-DEFAULT_OFFICIAL_RUNTIME_PYTHONS = (
-    PROJECT_ROOT / ".runtime312" / "bin" / "python",
-    PROJECT_ROOT / ".runtime310" / "bin" / "python",
-    PROJECT_ROOT / ".runtime" / "bin" / "python",
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,13 +139,10 @@ def _prepare_overlay_root(
 
 @lru_cache(maxsize=1)
 def resolve_metric_source_layout() -> MetricSourceLayout:
-    configured_root = os.getenv(OFFICIAL_RUNTIME_ENV)
     candidate_roots: list[Path] = []
-    if configured_root:
-        candidate_roots.append(Path(configured_root).expanduser().resolve())
-    third_party_root = PROJECT_ROOT / "third_party"
-    if third_party_root.exists():
-        candidate_roots.append(third_party_root)
+    thirdparty_root = PROJECT_ROOT / "thirdparty"
+    if thirdparty_root.exists():
+        candidate_roots.append(thirdparty_root)
 
     source_root: Path | None = None
     for root in candidate_roots:
@@ -159,8 +152,8 @@ def resolve_metric_source_layout() -> MetricSourceLayout:
             break
     if source_root is None:
         raise FileNotFoundError(
-            "official metric source tree not found; set "
-            f"{OFFICIAL_RUNTIME_ENV} or symlink a compatible checkout under third_party/"
+            "official metric source tree not found under thirdparty/; "
+            "place a compatible checkout there"
         )
 
     metric_file = next(source_root.rglob("benchmark/metrics/third_party/camera_error_metrics.py"))
@@ -249,11 +242,6 @@ def _resolve_runtime_python_bin(runtime: dict[str, Any] | None) -> str | None:
     raw = str(payload.get("python_bin") or "").strip()
     if not raw:
         return None
-    if raw == "auto":
-        for candidate in DEFAULT_OFFICIAL_RUNTIME_PYTHONS:
-            if candidate.exists():
-                return str(candidate.absolute())
-        return None
     path = Path(raw).expanduser()
     if path.is_absolute():
         return str(path)
@@ -267,14 +255,14 @@ def resolve_official_runtime_python(runtime: dict[str, Any] | None = None) -> st
 
 
 def _subprocess_runtime_env(runtime: dict[str, Any] | None) -> dict[str, str]:
-    env = os.environ.copy()
+    env = apply_checkpoint_env()
     env[OFFICIAL_RUNTIME_WORKER_ENV] = "1"
     pythonpath_entries = [str(PROJECT_ROOT)]
     existing_pythonpath = env.get("PYTHONPATH")
     if existing_pythonpath:
         pythonpath_entries.append(existing_pythonpath)
     env["PYTHONPATH"] = os.pathsep.join(pythonpath_entries)
-    for key, value in dict((runtime or {}).get("env", {})).items():
+    for key, value in filter_checkpoint_env_overrides(dict((runtime or {}).get("env", {}))).items():
         env[str(key)] = str(value)
     return env
 
@@ -687,12 +675,10 @@ def inspect_metric_source_layout() -> dict[str, Any]:
         return {
             "ready": False,
             "error": str(exc),
-            "configured_env": os.getenv(OFFICIAL_RUNTIME_ENV),
         }
 
     return {
         "ready": True,
-        "configured_env": os.getenv(OFFICIAL_RUNTIME_ENV),
         "source_root": str(layout.source_root),
         "package_name": layout.package_name,
         "overlay_root": str(layout.overlay_root),
@@ -1052,7 +1038,6 @@ def compute_motion_accuracy(
 
 
 __all__ = [
-    "OFFICIAL_RUNTIME_ENV",
     "OFFICIAL_METRIC_NAMES",
     "compute_camera_error",
     "compute_motion_accuracy",

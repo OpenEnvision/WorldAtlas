@@ -1,10 +1,38 @@
 from __future__ import annotations
 
-import hashlib
-
 
 def artifact_type_for_modality(modality: str) -> str:
     return "video" if modality == "video" else "image"
+
+
+BENCHMARK_SPLIT = "test"
+
+
+def benchmark_split() -> str:
+    return BENCHMARK_SPLIT
+
+
+def prediction_modality_for_task(
+    *,
+    suite: str | None,
+    source_modality: str | None,
+    task_family: str | None = None,
+    artifact_type: str | None = None,
+) -> str:
+    suite_token = str(suite or "").strip().lower()
+    task_token = str(task_family or "").strip().lower()
+    artifact_token = str(artifact_type or "").strip().lower()
+    source_token = str(source_modality or "").strip().lower()
+
+    if task_token in {"video_generation", "world_model"}:
+        return "video"
+    if suite_token.startswith("image_") or suite_token.startswith("video_"):
+        return "video"
+    if artifact_token == "video":
+        return "video"
+    if artifact_token == "image":
+        return "image"
+    return "video" if source_token == "video" else "image"
 
 
 def task_family_for_suite(suite: str, *, track: str | None = None) -> str:
@@ -52,29 +80,25 @@ def build_prompts(
         scene_text = humanize_label(scene)
         current = f"A {style_text} {environment_text} {scene_text} scene."
         if asset_level == "image_static":
-            target = f"Generate a {style_text} still image of a {environment_text} {scene_text} scene."
+            target = (
+                f"Generate a {style_text} video rollout from the reference image of a "
+                f"{environment_text} {scene_text} scene with stable scene identity."
+            )
         else:
             target = f"Generate a {style_text} video of a coherent {environment_text} {scene_text} scene."
         return current, target
 
     motion_text = humanize_label(motion_category)
-    current = f"A {style_text} scene with {motion_text} motion."
+    motion_control = motion_text if motion_text.endswith("motion") else f"{motion_text} motion"
+    current = f"A {style_text} scene with {motion_control}."
     if asset_level in {"image_dynamic", "image_nonformal"}:
-        target = f"Generate a {style_text} image that clearly conveys {motion_text} motion."
+        target = (
+            f"Generate a {style_text} video rollout from the reference image with "
+            f"clear {motion_control} and coherent appearance."
+        )
     else:
-        target = f"Generate a {style_text} video with {motion_text} motion and coherent appearance."
+        target = f"Generate a {style_text} video with {motion_control} and coherent appearance."
     return current, target
-
-
-def assign_split(source_group_id: str, split_ratios: dict[str, float]) -> str:
-    token = hashlib.md5(source_group_id.encode("utf-8")).hexdigest()[:8]
-    value = int(token, 16) / 0xFFFFFFFF
-    cumulative = 0.0
-    for split_name in ("dev_public", "dev_private", "test_hidden"):
-        cumulative += split_ratios.get(split_name, 0.0)
-        if value <= cumulative or split_name == "test_hidden":
-            return split_name
-    return "test_hidden"
 
 
 def suite_for_asset(
@@ -106,12 +130,14 @@ def build_sample_id(asset_level: str, style: str | None, fine_class: str | None,
 
 __all__ = [
     "artifact_type_for_modality",
-    "assign_split",
+    "BENCHMARK_SPLIT",
+    "benchmark_split",
     "build_prompts",
     "build_sample_id",
     "control_signals_for_sample",
     "humanize_label",
     "prediction_extensions",
+    "prediction_modality_for_task",
     "suite_for_asset",
     "task_family_for_suite",
 ]
