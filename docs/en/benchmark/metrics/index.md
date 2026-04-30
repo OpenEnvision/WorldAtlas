@@ -2,8 +2,6 @@
 
 This page follows the public benchmark surface declared in `config/benchmark.yaml`. The four formal suites are the public benchmark surface; `experimental` is a supplemental slice and should not be merged into a single headline benchmark total.
 
-Dataset coverage and collection statistics stay on [Dataset Analytics](../../overview.md).
-
 ## Reading Rules
 
 | Field | Meaning |
@@ -37,16 +35,6 @@ The Metrics navigation is organized by these six top-level dimensions, which als
 | `physics` | Physics | physical motion realism and simulator-backed physics metrics | [Physics](dimensions/physics.md) |
 | `quality` | Quality | style, perceptual quality, low-level appearance stability, and reconstruction-style fidelity | [Quality](dimensions/quality.md) |
 | `real_time` | Real time | tempo and FPS calibration | [Real Time](dimensions/real_time.md) |
-
-Action control is intentionally broader than the current text-only prompt setting:
-
-- camera control includes text instruction and interactive camera input such as keyboard or mouse control
-- object control includes text instruction plus action streams such as keyboard input
-- scene control focuses on text instruction over scene layout and semantic targets
-
-The current public benchmark mostly instantiates this dimension through text prompts, structured object annotations, masks, pose metadata, and rollout prefixes. Keyboard and mouse traces belong to the same taxonomy, but are more naturally exercised in interactive or simulator-backed tracks.
-
-This taxonomy is intentionally coarse-grained. The six pillars describe benchmark-level capability coverage; they do not imply that the current public benchmark already exhausts every control mode or every future metric family.
 
 ## Complete Metric Inventory
 
@@ -87,16 +75,4 @@ This taxonomy is intentionally coarse-grained. The six pillars describe benchmar
 
 ## Separate Physics Track
 
-`config/benchmark_physics.yaml` defines a simulator-backed physics configuration. It is not the same evaluation surface as the `experimental` suite in the default `config/benchmark.yaml`. It carries metrics such as `mse`, `st_iou`, `depth_warp_charb`, `rgb_warp_charb`, `chamfer_4d`, and `worldline_*`, and all of them roll up into the top-level `physics` dimension for that physics-only track.
-
-See [Physics](dimensions/physics.md), [Simulator-Backed Physics](physics/index.md), and [Physics Metrics & Contracts](physics/metrics.md) for scope, reporting behavior, normalization ranges, and artifact requirements.
-
-## How To Read A Metric Page
-
-Each metric page answers the same practical questions:
-
-1. what the metric is trying to capture
-2. which inputs it actually uses
-3. what the raw output looks like
-4. how it is normalized into `[0, 1]`
-5. when the score is `official`, `diagnostic`, or `not_applicable`
+`config/benchmark_physics.yaml` is the simulator-backed physics configuration, and it is not the same evaluation surface as the `experimental` suite in the default `config/benchmark.yaml`. It carries `mse`, `st_iou`, `depth_warp_charb`, `rgb_warp_charb`, `chamfer_4d`, `worldline_*`, and related metrics, and rolls them up into the top-level `physics` dimension. It uses the same report contract, but metric semantics, artifact requirements, and comparability are governed by [Physics](dimensions/physics.md), [Simulator-Backed Physics](physics/index.md), and [Physics Metrics & Contracts](physics/metrics.md).

@@ -1,10 +1,10 @@
 # Benchmark Overview
 
-WorldArena reports a suite-specific metric vector for controllable world generation. The contract stays intentionally narrow: fixed manifest shape, fixed evaluation protocol, explicit sample-level eligibility rules, and no benchmark-wide total score.
+WorldArena reports suite-specific metric vectors for controllable world generation. The current default config declares `32` unique metrics; the benchmark contract stays intentionally narrow: fixed manifest shape, fixed evaluation protocol, explicit sample-level eligibility rules, and no benchmark-wide total score.
 
-The repository architecture is broader than the current public benchmark surface. Model configs and manifests already carry task metadata for future 3D, 4D, reconstruction, and simulator-backed tracks, but the current headline benchmark still centers on the four formal image/video suites below. See [Architecture](../architecture.md).
+The repository architecture is broader than the current formal benchmark surface. Model configs and manifests already carry task metadata, so the same framework can later host 3D, 4D, reconstruction, and simulator-backed world-model evaluation without a second configuration system. See [Architecture](../architecture.md).
 
-## Formal Suites
+## Suite Metric Vectors
 
 | Suite | Modality | Conditioning contract | Official metrics when eligible | Diagnostic metrics and notes |
 | --- | --- | --- | --- | --- |
@@ -43,9 +43,9 @@ WorldArena now groups benchmark metrics into six intentionally broad evaluation 
 - A configured metric is not automatically a headline metric. It must both run successfully and satisfy the relevant eligibility gate for that sample.
 - WorldArena does not define a benchmark-wide scalar and does not define an official single-number suite score.
 
-## Separate Physics Configuration
+## Simulator-Backed Configuration In The Physics Dimension
 
-`config/benchmark_physics.yaml` defines a simulator-backed physics config under track `physics_i2v`. It reuses the suite label `experimental`, but it is not the same thing as the diagnostic-only `experimental` slice in the default `config/benchmark.yaml`.
+`config/benchmark_physics.yaml` defines a simulator-backed physics configuration under track `physics_i2v`. It also reuses the suite name `experimental`, but this is not the same thing as the diagnostic-only `experimental` slice in the default `config/benchmark.yaml`.
 
 - physics runs still write their own `per_metric_summary.json`, `leaderboard.csv`, `per_sample_scores.jsonl`, and failure reports
 - the reported metrics are simulator-backed quantities such as `mse`, `st_iou`, `depth_warp_charb`, `chamfer_4d`, and `worldline_*`

@@ -1,6 +1,6 @@
 # 基准评测总览
 
-WorldArena 为可控 world generation 报告按 suite 划分的指标向量。当前默认配置声明 `34` 个去重指标；benchmark 契约保持收敛：固定 manifest 结构、固定评测协议、显式样本级资格规则，并且不定义 benchmark 级总分。
+WorldArena 为可控 world generation 报告按 suite 划分的指标向量。当前默认配置声明 `32` 个去重指标；benchmark 契约保持收敛：固定 manifest 结构、固定评测协议、显式样本级资格规则，并且不定义 benchmark 级总分。
 
 仓库级架构比当前正式 benchmark 面更广。模型配置和 manifest 已经显式携带任务元数据，因此同一套框架未来可以承载 3D、4D、重建和 simulator-backed world-model 评测，而不需要第二套配置系统。参见 [架构](../architecture.md)。
 
