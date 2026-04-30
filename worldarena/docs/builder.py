@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import plotly.express as px
 import plotly.io as pio
+from PIL import Image, ImageOps
 
 from worldarena.common.serialization import ensure_dir
 from worldarena.datasets.config import load_project_config
@@ -94,6 +98,244 @@ def _artifact_path(prefix: str, filename: str) -> str:
     return f"{prefix.rstrip('/')}/{filename}"
 
 
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", value.strip().lower()).strip("-")
+    return slug or "sample"
+
+
+def _sample_rows(frame: pd.DataFrame, columns: list[str], limit: int) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    samples = frame.copy().sort_values([column for column in ["collection", "path"] if column in frame.columns])
+    key_columns = [column for column in columns if column in samples.columns]
+    if key_columns:
+        samples["_sample_key"] = samples[key_columns].fillna("Unspecified").astype(str).agg("|".join, axis=1)
+        if "collection" in samples.columns:
+            base = samples.drop_duplicates("collection").head(limit)
+            remaining = samples.loc[~samples.index.isin(base.index)]
+            remaining = remaining.loc[~remaining["_sample_key"].isin(set(base["_sample_key"]))]
+            diverse = remaining.drop_duplicates("_sample_key")
+            chosen = pd.concat([base, diverse]).head(limit)
+        else:
+            chosen = samples.drop_duplicates("_sample_key").head(limit)
+        if chosen.shape[0] < limit:
+            extra = samples.loc[~samples.index.isin(chosen.index)].head(limit - chosen.shape[0])
+            chosen = pd.concat([chosen, extra])
+    else:
+        chosen = samples.head(limit)
+    return chosen.drop(columns=["_sample_key"], errors="ignore")
+
+
+def _write_thumbnail(source: Path, target: Path, max_size: tuple[int, int] = (720, 480)) -> bool:
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with Image.open(source) as image:
+            image = ImageOps.exif_transpose(image).convert("RGB")
+            image.thumbnail(max_size)
+            image.save(target, "JPEG", quality=84, optimize=True)
+        return True
+    except OSError:
+        return False
+
+
+def _run_ffmpeg(command: list[str]) -> bool:
+    try:
+        result = subprocess.run(
+            command,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=45,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0
+
+
+def _write_video_assets(source: Path, poster: Path, preview: Path) -> tuple[bool, bool]:
+    poster.parent.mkdir(parents=True, exist_ok=True)
+    preview.parent.mkdir(parents=True, exist_ok=True)
+    poster_ok = _run_ffmpeg(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(source),
+            "-frames:v",
+            "1",
+            "-vf",
+            "scale=w='min(720,iw)':h=-2",
+            str(poster),
+        ]
+    )
+    preview_ok = _run_ffmpeg(
+        [
+            "ffmpeg",
+            "-y",
+            "-t",
+            "3",
+            "-i",
+            str(source),
+            "-vf",
+            "scale=w='min(720,iw)':h=-2",
+            "-an",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            str(preview),
+        ]
+    )
+    return poster_ok, preview_ok
+
+
+def _sample_title(row: pd.Series, columns: list[str]) -> str:
+    values = []
+    for column in columns:
+        value = row.get(column)
+        if value is None or pd.isna(value):
+            continue
+        values.append(str(value).replace("_", " ").title())
+    return " / ".join(values[:3]) or str(row.get("filename") or "Sample")
+
+
+def _build_sample_assets(summary: dict[str, Any], output_dir: Path) -> dict[str, list[dict[str, str]]]:
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    assets: dict[str, list[dict[str, str]]] = {"image": [], "video": [], "physics": []}
+    sample_specs = [
+        ("image", summary["images"], ["collection", "motion_regime", "style", "scene", "motion_category"], 36),
+        ("video", summary["videos"], ["collection", "motion_regime", "scene", "motion_category"], 24),
+        (
+            "physics",
+            summary["physics"].sort_values("has_physics_metadata", ascending=False),
+            ["physics_group", "physics_dimension"],
+            32,
+        ),
+    ]
+
+    for kind, frame, key_columns, limit in sample_specs:
+        for index, (_, row) in enumerate(_sample_rows(frame, key_columns, limit).iterrows(), start=1):
+            source = Path(str(row["path"]))
+            slug = _slugify(f"{index:02d}-{row.get('collection', kind)}-{row.get('stem', source.stem)}")
+            title_columns = [column for column in key_columns if column != "collection"]
+            item = {
+                "title": _sample_title(row, title_columns or key_columns),
+                "subtitle": str(row.get("relative_path") or row.get("filename") or source.name),
+                "poster": "",
+                "preview": "",
+                "kind": kind,
+            }
+            if kind == "image":
+                target = output_dir / "images" / f"{slug}.jpg"
+                if not _write_thumbnail(source, target):
+                    continue
+                item["poster"] = f"samples/images/{target.name}"
+            else:
+                poster = output_dir / "posters" / f"{slug}.jpg"
+                preview = output_dir / "previews" / f"{slug}.mp4"
+                first_frame = row.get("first_frame_path")
+                poster_ok = _write_thumbnail(Path(str(first_frame)), poster) if first_frame else False
+                if not poster_ok:
+                    poster_ok, preview_ok = _write_video_assets(source, poster, preview)
+                else:
+                    _, preview_ok = _write_video_assets(source, poster, preview)
+                if not poster_ok and not preview_ok:
+                    continue
+                item["poster"] = f"samples/posters/{poster.name}" if poster.exists() else ""
+                item["preview"] = f"samples/previews/{preview.name}" if preview.exists() else ""
+            assets[kind].append(item)
+    return assets
+
+
+def _sample_gallery(title: str, items: list[dict[str, str]], asset_prefix: str) -> str:
+    if not items:
+        return ""
+    cards: list[str] = []
+    for item in items:
+        poster = f"{asset_prefix.rstrip('/')}/{item['poster']}" if item.get("poster") else ""
+        preview = f"{asset_prefix.rstrip('/')}/{item['preview']}" if item.get("preview") else ""
+        if preview:
+            media = (
+                f'<video class="sample-media" controls muted preload="metadata" poster="{poster}">'
+                f'<source src="{preview}" type="video/mp4"></video>'
+            )
+        elif poster:
+            media = f'<img class="sample-media" src="{poster}" alt="{item["title"]}" loading="lazy">'
+        else:
+            continue
+        cards.append(
+            f"""
+<figure class="sample-card">
+  {media}
+  <figcaption>
+    <strong>{item["title"]}</strong>
+    <span>{item["subtitle"]}</span>
+  </figcaption>
+</figure>
+""".strip()
+        )
+    if not cards:
+        return ""
+    gallery_kind = items[0].get("kind", "mixed") if items else "mixed"
+    return (
+        f"## {title}\n\n"
+        + f'<div class="sample-grid sample-grid--{gallery_kind}">\n'
+        + "\n".join(cards)
+        + "\n</div>"
+    )
+
+
+ZH_REPLACEMENTS = {
+    "# Dataset Overview": "# 数据概览",
+    "# Image Analytics": "# 图像统计",
+    "# Video Analytics": "# 视频统计",
+    "# Physics Analytics": "# Physics 统计",
+    "# Caption Analytics": "# Caption 统计",
+    "# Collection Details": "# 集合明细",
+    "!!! info \"Generated\"": "!!! info \"生成内容\"",
+    "Run `worldarena build-docs --config config/datasets.yaml` after adding, deleting, or reorganizing source assets.": "当你新增、删除或重组源数据资产后，请运行 `worldarena build-docs --config config/datasets.yaml`。",
+    "Benchmark Items": "基准条目数",
+    "Image Rows": "图像条目",
+    "Video Rows": "视频条目",
+    "Physics Rows": "Physics 条目",
+    "Static Images": "静态图像",
+    "Dynamic Images": "动态图像",
+    "Benchmark Videos": "基准视频",
+    "AAA Game Videos": "AAA 游戏视频",
+    "Annotated": "已标注",
+    "Exact Duration Available": "可读取时长",
+    "Physics Metadata": "Physics 元数据",
+    "Physics Groups": "Physics 组",
+    "Physics Dimensions": "Physics 维度",
+    "Captioned Media": "带 Caption 的媒体",
+    "Topology": "拓扑",
+    "Collection Summary": "集合汇总",
+    "Downloadable Artifacts": "可下载产物",
+    "Sample Image Gallery": "图像样例",
+    "Sample Video Gallery": "视频样例",
+    "Sample Physics Gallery": "Physics 样例",
+    "Static Scene Summary": "静态场景汇总",
+    "Dynamic Mask Summary": "动态 Mask 汇总",
+    "Annotation Summary": "标注汇总",
+    "Resolution Summary": "分辨率汇总",
+    "Physics Dimension Summary": "Physics 维度汇总",
+    "Quality And Motion Summary": "质量与运动汇总",
+    "Coverage Summary": "覆盖率汇总",
+    "Artifacts": "产物",
+}
+
+
+def _localize_zh(content: str) -> str:
+    for source, target in ZH_REPLACEMENTS.items():
+        content = content.replace(source, target)
+    return content
+
+
 def _taxonomy_diagram(collection_summary: pd.DataFrame) -> str:
     counts = {
         row["collection"]: int(row["items"])
@@ -102,23 +344,29 @@ def _taxonomy_diagram(collection_summary: pd.DataFrame) -> str:
     return f"""```mermaid
 graph TD
   root[WorldArena]
-  root --> benchmark[Benchmark]
-  root --> auxiliary[Auxiliary]
-  benchmark --> images[Images]
-  benchmark --> videos[Videos]
+  root --> images[Image]
+  root --> videos[Video]
+  root --> physics[Physics]
   images --> static_images[Static Images • {counts.get('static_images', 0)}]
   images --> dynamic_images[Dynamic Images • {counts.get('dynamic_images', 0)}]
   videos --> static_videos[Static Videos • {counts.get('static_videos', 0)}]
   videos --> dynamic_videos[Dynamic Videos • {counts.get('dynamic_videos', 0)}]
   videos --> aaa_games[AAA Games • {counts.get('aaa_games', 0)}]
-  auxiliary --> review_assets[Review Assets • {counts.get('review_assets', 0)}]
+  physics --> physics_videos[Physics Videos • {counts.get('physics_videos', 0)}]
 ```"""
 
 
-def _overview_page(summary: dict[str, Any], charts: ChartWriter, data_prefix: str) -> str:
+def _overview_page(
+    summary: dict[str, Any],
+    charts: ChartWriter,
+    data_prefix: str,
+    sample_assets: dict[str, list[dict[str, str]]],
+    asset_prefix: str,
+) -> str:
     frame = summary["frame"]
     images = summary["images"]
     videos = summary["videos"]
+    physics = summary["physics"]
     collection_summary = summary["collection_summary"]
 
     benchmark_frame = frame[frame["group"] == "benchmark"]
@@ -126,12 +374,8 @@ def _overview_page(summary: dict[str, Any], charts: ChartWriter, data_prefix: st
         [
             ("Benchmark Items", _format_number(int(benchmark_frame.shape[0])), "Primary benchmark rows"),
             ("Images", _format_number(int(images.shape[0])), "Static and dynamic image assets"),
-            ("Videos", _format_number(int(videos.shape[0])), "Benchmark and auxiliary video assets"),
-            (
-                "Annotated Videos",
-                _format_number(int(videos["has_annotation"].sum())),
-                "Rows with SpatialVID-style metadata",
-            ),
+            ("Videos", _format_number(int(videos.shape[0])), "Static, dynamic, and gameplay videos"),
+            ("Physics", _format_number(int(physics.shape[0])), "Physics-focused video assets"),
         ]
     )
 
@@ -148,6 +392,7 @@ def _overview_page(summary: dict[str, Any], charts: ChartWriter, data_prefix: st
 
     hierarchy_frame = benchmark_frame.copy()
     hierarchy_frame["style"] = hierarchy_frame["style"].fillna("Unspecified")
+    hierarchy_frame["motion_regime"] = hierarchy_frame["motion_regime"].fillna("Unspecified")
     hierarchy_fig = _styled_figure(
         px.sunburst(
             hierarchy_frame,
@@ -183,16 +428,28 @@ def _overview_page(summary: dict[str, Any], charts: ChartWriter, data_prefix: st
 
 {chart_sections}
 
+{_sample_gallery("Sample Image Gallery", sample_assets.get("image", [])[:12], asset_prefix)}
+
+{_sample_gallery("Sample Video Gallery", sample_assets.get("video", [])[:8], asset_prefix)}
+
+{_sample_gallery("Sample Physics Gallery", sample_assets.get("physics", [])[:10], asset_prefix)}
+
 ## Downloadable Artifacts
 
 - [`summary.json`]({_artifact_path(data_prefix, "summary.json")})
 - [`all_records.csv`]({_artifact_path(data_prefix, "all_records.csv")})
 - [`image_records.csv`]({_artifact_path(data_prefix, "image_records.csv")})
 - [`video_records.csv`]({_artifact_path(data_prefix, "video_records.csv")})
+- [`physics_records.csv`]({_artifact_path(data_prefix, "physics_records.csv")})
 """
 
 
-def _images_page(summary: dict[str, Any], charts: ChartWriter) -> str:
+def _images_page(
+    summary: dict[str, Any],
+    charts: ChartWriter,
+    sample_assets: dict[str, list[dict[str, str]]],
+    asset_prefix: str,
+) -> str:
     images = summary["images"].copy()
     if images.empty:
         return "# Images\n\n_No image records found._"
@@ -295,11 +552,18 @@ def _images_page(summary: dict[str, Any], charts: ChartWriter) -> str:
 
 {_frame_table(mask_coverage, ["style", "motion_category", "items", "masked", "mask_rate"], limit=15)}
 
+{_sample_gallery("Sample Image Gallery", sample_assets.get("image", []), asset_prefix)}
+
 {chart_sections}
 """
 
 
-def _videos_page(summary: dict[str, Any], charts: ChartWriter) -> str:
+def _videos_page(
+    summary: dict[str, Any],
+    charts: ChartWriter,
+    sample_assets: dict[str, list[dict[str, str]]],
+    asset_prefix: str,
+) -> str:
     videos = summary["videos"].copy()
     if videos.empty:
         return "# Videos\n\n_No video records found._"
@@ -375,7 +639,7 @@ def _videos_page(summary: dict[str, Any], charts: ChartWriter) -> str:
         [
             ("Video Rows", _format_number(int(videos.shape[0])), "All scanned videos"),
             ("Benchmark Videos", _format_number(int(benchmark_videos.shape[0])), "Primary benchmark video rows"),
-            ("Annotated", _format_number(int(videos["has_annotation"].sum())), "Rows with annotation bundles"),
+            ("AAA Game Videos", _format_number(int((videos["collection"] == "aaa_games").sum())), "Gameplay subset rows"),
             ("Exact Duration Available", _format_number(int(videos["duration_seconds"].notna().sum())), "Rows with ffprobe duration"),
         ]
     )
@@ -413,7 +677,157 @@ def _videos_page(summary: dict[str, Any], charts: ChartWriter) -> str:
 
 {_frame_table(top_resolutions, ["collection", "resolution_label", "items"], limit=15)}
 
+{_sample_gallery("Sample Video Gallery", sample_assets.get("video", []), asset_prefix)}
+
 {chart_sections}
+"""
+
+
+def _physics_page(
+    summary: dict[str, Any],
+    charts: ChartWriter,
+    sample_assets: dict[str, list[dict[str, str]]],
+    asset_prefix: str,
+    data_prefix: str,
+) -> str:
+    physics = summary["physics"].copy()
+    if physics.empty:
+        return "# Physics Analytics\n\n_No physics records found._"
+
+    dimension_summary = (
+        physics.groupby(["physics_group", "physics_dimension"], dropna=False)
+        .agg(
+            items=("path", "count"),
+            metadata=("has_physics_metadata", "sum"),
+            avg_duration_seconds=("duration_seconds", "mean"),
+            avg_visual_quality=("visual_quality_score", "mean"),
+            avg_motion_score=("motion_score_v2", "mean"),
+        )
+        .reset_index()
+        .sort_values(["physics_group", "items"], ascending=[True, False])
+    )
+
+    group_summary = (
+        physics.groupby("physics_group", dropna=False)
+        .agg(
+            items=("path", "count"),
+            dimensions=("physics_dimension", "nunique"),
+            metadata=("has_physics_metadata", "sum"),
+        )
+        .reset_index()
+        .sort_values("items", ascending=False)
+    )
+
+    group_fig = _styled_figure(
+        px.bar(group_summary, x="physics_group", y="items", color="physics_group"),
+        "Physics Videos by Group",
+    )
+    dimension_fig = _styled_figure(
+        px.bar(
+            dimension_summary,
+            x="physics_dimension",
+            y="items",
+            color="physics_group",
+            barmode="group",
+        ),
+        "Physics Dimension Coverage",
+    )
+    duration_frame = physics.dropna(subset=["duration_seconds"]).copy()
+    duration_fig = _styled_figure(
+        px.histogram(
+            duration_frame,
+            x="duration_seconds",
+            color="physics_group",
+            nbins=30,
+        ),
+        "Physics Duration Distribution",
+    ) if not duration_frame.empty else None
+
+    quality_frame = physics.dropna(subset=["visual_quality_score", "motion_score_v2"]).copy()
+    quality_fig = _styled_figure(
+        px.scatter(
+            quality_frame,
+            x="motion_score_v2",
+            y="visual_quality_score",
+            color="physics_group",
+            hover_data=["physics_dimension", "physics_label"],
+        ),
+        "Visual Quality vs Motion Score",
+    ) if not quality_frame.empty else None
+
+    cards = _metric_cards(
+        [
+            ("Physics Rows", _format_number(int(physics.shape[0])), "All scanned physics videos"),
+            (
+                "Physics Metadata",
+                _format_number(int(physics["has_physics_metadata"].sum())),
+                "Rows matched to the curated subset CSV",
+            ),
+            ("Physics Groups", _format_number(int(physics["physics_group"].nunique())), "Top-level physics families"),
+            ("Physics Dimensions", _format_number(int(physics["physics_dimension"].nunique())), "Fine-grained physics labels"),
+        ]
+    )
+
+    quality_summary = (
+        physics.dropna(subset=["visual_quality_score", "motion_score_v2"])
+        .groupby(["physics_group"], dropna=False)
+        .agg(
+            items=("path", "count"),
+            avg_visual_quality=("visual_quality_score", "mean"),
+            avg_motion_score=("motion_score_v2", "mean"),
+            avg_selection_score=("selection_score", "mean"),
+        )
+        .reset_index()
+        .sort_values("items", ascending=False)
+    )
+
+    chart_sections = "\n\n".join(
+        filter(
+            None,
+            [
+                charts.render("physics", "group-mix", "Physics Group Mix", group_fig),
+                charts.render("physics", "dimension-coverage", "Dimension Coverage", dimension_fig),
+                charts.render("physics", "duration", "Duration Distribution", duration_fig),
+                charts.render("physics", "quality-motion", "Quality And Motion Scores", quality_fig),
+            ],
+        )
+    )
+
+    return f"""# Physics Analytics
+
+{cards}
+
+## Physics Dimension Summary
+
+{_frame_table(
+    dimension_summary,
+    [
+        "physics_group",
+        "physics_dimension",
+        "items",
+        "metadata",
+        "avg_duration_seconds",
+        "avg_visual_quality",
+        "avg_motion_score",
+    ],
+    limit=30,
+)}
+
+## Quality And Motion Summary
+
+{_frame_table(
+    quality_summary,
+    ["physics_group", "items", "avg_visual_quality", "avg_motion_score", "avg_selection_score"],
+    limit=10,
+)}
+
+{_sample_gallery("Sample Physics Gallery", sample_assets.get("physics", []), asset_prefix)}
+
+{chart_sections}
+
+## Artifacts
+
+- [`physics_records.csv`]({_artifact_path(data_prefix, "physics_records.csv")})
 """
 
 
@@ -440,7 +854,7 @@ def _captions_page(summary: dict[str, Any], charts: ChartWriter, data_prefix: st
 
     cards = _metric_cards(
         [
-            ("Captioned Videos", _format_number(int(caption_videos.shape[0])), "Videos with caption metadata"),
+            ("Captioned Media", _format_number(int(caption_videos.shape[0])), "Video and physics rows with captions"),
             (
                 "Weather Tagged",
                 _format_number(int(caption_videos["caption_weather"].notna().sum())),
@@ -641,6 +1055,7 @@ def _collections_page(summary: dict[str, Any], data_prefix: str) -> str:
             styles=("style", lambda values: values.dropna().nunique()),
             scenes=("scene", lambda values: values.dropna().nunique()),
             motion_categories=("motion_category", lambda values: values.dropna().nunique()),
+            physics_dimensions=("physics_dimension", lambda values: values.dropna().nunique()),
             avg_size_mb=("size_mb", "mean"),
         )
         .reset_index()
@@ -654,7 +1069,7 @@ def _collections_page(summary: dict[str, Any], data_prefix: str) -> str:
 
 ## Dimension Cardinality
 
-{_frame_table(dimension_summary, ["collection", "items", "styles", "scenes", "motion_categories", "avg_size_mb"], limit=20)}
+    {_frame_table(dimension_summary, ["collection", "items", "styles", "scenes", "motion_categories", "physics_dimensions", "avg_size_mb"], limit=20)}
 
 ## Mask Summary
 
@@ -687,21 +1102,71 @@ def build_docs_site(
     if write_docs:
         ensure_dir(project.paths.docs_generated_dir)
         docs_root = project.paths.docs_generated_dir.parent
-        chart_writer = ChartWriter(
+        sample_assets = _build_sample_assets(summary, project.paths.docs_generated_dir / "samples")
+
+        chart_writer_en = ChartWriter(
             project.paths.docs_generated_dir / "charts",
             src_prefix="../generated/charts",
         )
-        chart_writer.reset()
+        chart_writer_en.reset()
+        chart_writer_zh = ChartWriter(
+            project.paths.docs_generated_dir / "charts",
+            src_prefix="../../generated/charts",
+        )
         for path in project.paths.docs_generated_dir.glob("*.md"):
             path.unlink()
-        pages = {
-            "overview.md": _overview_page(summary, chart_writer, "generated/data"),
-            "images.md": _images_page(summary, chart_writer),
-            "videos.md": _videos_page(summary, chart_writer),
-            "captions.md": _captions_page(summary, chart_writer, "generated/data"),
-            "collections.md": _collections_page(summary, "generated/data"),
+
+        pages_en = {
+            "overview.md": _overview_page(
+                summary,
+                chart_writer_en,
+                "../generated/data",
+                sample_assets,
+                "../generated",
+            ),
+            "images.md": _images_page(summary, chart_writer_en, sample_assets, "../generated"),
+            "videos.md": _videos_page(summary, chart_writer_en, sample_assets, "../generated"),
+            "physics.md": _physics_page(
+                summary,
+                chart_writer_en,
+                sample_assets,
+                "../generated",
+                "../generated/data",
+            ),
+            "captions.md": _captions_page(summary, chart_writer_en, "../generated/data"),
+            "collections.md": _collections_page(summary, "../generated/data"),
         }
-        for filename, content in pages.items():
-            (docs_root / filename).write_text(content, encoding="utf-8")
+        pages_zh = {
+            "overview.md": _localize_zh(
+                _overview_page(
+                    summary,
+                    chart_writer_zh,
+                    "../generated/data",
+                    sample_assets,
+                    "../../generated",
+                )
+            ),
+            "images.md": _localize_zh(
+                _images_page(summary, chart_writer_zh, sample_assets, "../../generated")
+            ),
+            "videos.md": _localize_zh(
+                _videos_page(summary, chart_writer_zh, sample_assets, "../../generated")
+            ),
+            "physics.md": _localize_zh(
+                _physics_page(
+                    summary,
+                    chart_writer_zh,
+                    sample_assets,
+                    "../../generated",
+                    "../generated/data",
+                )
+            ),
+            "captions.md": _localize_zh(_captions_page(summary, chart_writer_zh, "../generated/data")),
+            "collections.md": _localize_zh(_collections_page(summary, "../generated/data")),
+        }
+        for locale, pages in [("en", pages_en), ("zh", pages_zh)]:
+            locale_dir = ensure_dir(docs_root / locale)
+            for filename, content in pages.items():
+                (locale_dir / filename).write_text(content, encoding="utf-8")
 
     return summary

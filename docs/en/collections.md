@@ -4,34 +4,34 @@
 
 | group     | collection     | modality   |   items |   annotated |   masked |
 |:----------|:---------------|:-----------|--------:|------------:|---------:|
-| auxiliary | review_assets  | video      |      88 |           0 |        0 |
-| benchmark | dynamic_images | image      |    2478 |           0 |      248 |
-| benchmark | static_images  | image      |    7040 |           0 |        0 |
+| benchmark | dynamic_images | image      |    1628 |        1628 |     1628 |
+| benchmark | static_images  | image      |    3372 |        3372 |        0 |
+| benchmark | physics_videos | physics    |    1400 |           0 |        0 |
 | benchmark | aaa_games      | video      |     500 |         500 |      500 |
-| benchmark | dynamic_videos | video      |     971 |         319 |      319 |
-| benchmark | static_videos  | video      |    8991 |        5431 |     5431 |
+| benchmark | dynamic_videos | video      |     798 |         798 |      307 |
+| benchmark | static_videos  | video      |    4000 |        4000 |     2949 |
 
 ## Dimension Cardinality
 
-| collection     |   items |   styles |   scenes |   motion_categories |   avg_size_mb |
-|:---------------|--------:|---------:|---------:|--------------------:|--------------:|
-| aaa_games      |     500 |        1 |        1 |                   0 |      13.976   |
-| dynamic_images |    2478 |        2 |        0 |                   5 |       1.35137 |
-| dynamic_videos |     971 |        2 |        0 |                   5 |      27.881   |
-| review_assets  |      88 |        0 |        0 |                   0 |      26.5409  |
-| static_images  |    7040 |        2 |       10 |                   0 |       1.05243 |
-| static_videos  |    8991 |        2 |       10 |                   0 |       7.95079 |
+    | collection     |   items |   styles |   scenes |   motion_categories |   physics_dimensions |   avg_size_mb |
+|:---------------|--------:|---------:|---------:|--------------------:|---------------------:|--------------:|
+| aaa_games      |     500 |        1 |        1 |                   0 |                    0 |      13.976   |
+| dynamic_images |    1628 |        2 |        0 |                   5 |                    0 |       1.41373 |
+| dynamic_videos |     798 |        2 |        0 |                   5 |                    0 |      10.8621  |
+| physics_videos |    1400 |        2 |       28 |                   0 |                   28 |       7.00255 |
+| static_images  |    3372 |        2 |       10 |                   0 |                    0 |       1.08393 |
+| static_videos  |    4000 |        2 |       10 |                   0 |                    0 |       7.65937 |
 
 ## Mask Summary
 
 | collection     | modality   |   items |   masked |   mask_files |   mask_rate |
 |:---------------|:-----------|--------:|---------:|-------------:|------------:|
-| dynamic_images | image      |    2478 |      248 |          257 |      0.1001 |
-| static_images  | image      |    7040 |        0 |            0 |      0      |
+| dynamic_images | image      |    1628 |     1628 |         2262 |      1      |
+| static_images  | image      |    3372 |        0 |            0 |      0      |
+| physics_videos | physics    |    1400 |        0 |            0 |      0      |
 | aaa_games      | video      |     500 |      500 |          500 |      1      |
-| dynamic_videos | video      |     971 |      319 |       181000 |      0.3285 |
-| review_assets  | video      |      88 |        0 |            0 |      0      |
-| static_videos  | video      |    8991 |     5431 |         5431 |      0.604  |
+| dynamic_videos | video      |     798 |      307 |          307 |      0.3847 |
+| static_videos  | video      |    4000 |     2949 |         2949 |      0.7372 |
 
 ## Artifacts
 

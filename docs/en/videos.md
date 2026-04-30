@@ -3,22 +3,22 @@
 <div class="metric-grid">
 <div class="metric-card">
   <div class="metric-label">Video Rows</div>
-  <div class="metric-value">10,550</div>
+  <div class="metric-value">5,298</div>
   <div class="metric-note">All scanned videos</div>
 </div>
 <div class="metric-card">
   <div class="metric-label">Benchmark Videos</div>
-  <div class="metric-value">10,462</div>
+  <div class="metric-value">5,298</div>
   <div class="metric-note">Primary benchmark video rows</div>
 </div>
 <div class="metric-card">
-  <div class="metric-label">Annotated</div>
-  <div class="metric-value">6,250</div>
-  <div class="metric-note">Rows with annotation bundles</div>
+  <div class="metric-label">AAA Game Videos</div>
+  <div class="metric-value">500</div>
+  <div class="metric-note">Gameplay subset rows</div>
 </div>
 <div class="metric-card">
   <div class="metric-label">Exact Duration Available</div>
-  <div class="metric-value">10,550</div>
+  <div class="metric-value">5,298</div>
   <div class="metric-note">Rows with ffprobe duration</div>
 </div>
 </div>
@@ -27,30 +27,202 @@
 
 | collection     |   items |   annotated |   complete_annotations |   annotation_rate |
 |:---------------|--------:|------------:|-----------------------:|------------------:|
-| static_videos  |    8991 |        5431 |                   5431 |            0.604  |
-| dynamic_videos |     971 |         319 |                    319 |            0.3285 |
-| aaa_games      |     500 |         500 |                    500 |            1      |
-| review_assets  |      88 |           0 |                      0 |            0      |
+| static_videos  |    4000 |        4000 |                   2949 |                 1 |
+| dynamic_videos |     798 |         798 |                    307 |                 1 |
+| aaa_games      |     500 |         500 |                    500 |                 1 |
 
 ## Resolution Summary
 
 | collection     | resolution_label   |   items |
 |:---------------|:-------------------|--------:|
-| static_videos  | 1280x720           |    7669 |
-| static_videos  | 1920x1080          |    1114 |
+| static_videos  | 1280x720           |    3527 |
 | aaa_games      | 1920x1080          |     493 |
-| dynamic_videos | 640x360            |     283 |
-| dynamic_videos | 1280x720           |     256 |
-| dynamic_videos | 3840x2160          |     172 |
-| static_videos  | 3840x2160          |     124 |
-| dynamic_videos | 1920x1080          |     117 |
-| review_assets  | 1920x1080          |      65 |
-| static_videos  | 1920x960           |      34 |
-| dynamic_videos | 7680x4320          |      34 |
-| dynamic_videos | 2048x1080          |      29 |
-| static_videos  | 7680x4320          |      25 |
+| static_videos  | 1920x1080          |     461 |
+| dynamic_videos | 640x360            |     267 |
+| dynamic_videos | 1280x720           |     243 |
+| dynamic_videos | 1920x1080          |     115 |
+| dynamic_videos | 3840x2160          |      73 |
+| dynamic_videos | 2048x1080          |      26 |
 | dynamic_videos | 640x338            |      22 |
 | dynamic_videos | 426x240            |      22 |
+| aaa_games      | 3840x2160          |       6 |
+| static_videos  | 1920x960           |       6 |
+| dynamic_videos | 426x226            |       5 |
+| dynamic_videos | 640x310            |       4 |
+| dynamic_videos | 1366x720           |       3 |
+
+## Sample Video Gallery
+
+<div class="sample-grid sample-grid--video">
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/01-aaa_games-000.jpg"><source src="../generated/samples/previews/01-aaa_games-000.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Gameplay / Aaa Games</strong>
+    <span>videos/000.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/02-dynamic_videos-004787088a21__pexels_7486504-hd_1920_1080_30fps.jpg"><source src="../generated/samples/previews/02-dynamic_videos-004787088a21__pexels_7486504-hd_1920_1080_30fps.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Dynamic / Articulated</strong>
+    <span>photorealistic/videos/articulated/004787088a21__pexels_7486504-hd_1920_1080_30fps.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/03-static_videos-002b00c5-12a7-5b15-bbae-f05ad3544d7e.jpg"><source src="../generated/samples/previews/03-static_videos-002b00c5-12a7-5b15-bbae-f05ad3544d7e.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Static / Dining Spaces</strong>
+    <span>photorealistic/indoor/dining_spaces/0-5s/002b00c5-12a7-5b15-bbae-f05ad3544d7e.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/04-dynamic_videos-0003028c30e6__2414312-sd_640_360_30fps.jpg"><source src="../generated/samples/previews/04-dynamic_videos-0003028c30e6__2414312-sd_640_360_30fps.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Dynamic / Deformable</strong>
+    <span>photorealistic/videos/deformable/0003028c30e6__2414312-sd_640_360_30fps.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/05-dynamic_videos-00f1d568f881__pexels_9722325-hd_2048_872_25fps.jpg"><source src="../generated/samples/previews/05-dynamic_videos-00f1d568f881__pexels_9722325-hd_2048_872_25fps.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Dynamic / Fluid</strong>
+    <span>photorealistic/videos/fluid/00f1d568f881__pexels_9722325-hd_2048_872_25fps.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/06-dynamic_videos-0427f9886ee5__pexels_35844496-hd_3840_2160_30fps.jpg"><source src="../generated/samples/previews/06-dynamic_videos-0427f9886ee5__pexels_35844496-hd_3840_2160_30fps.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Dynamic / Multi Motion</strong>
+    <span>photorealistic/videos/multi_motion/0427f9886ee5__pexels_35844496-hd_3840_2160_30fps.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/07-dynamic_videos-011845f3-2474-4b15-9151-157a5a1d95b5.jpg"><source src="../generated/samples/previews/07-dynamic_videos-011845f3-2474-4b15-9151-157a5a1d95b5.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Dynamic / Rigid</strong>
+    <span>photorealistic/videos/rigid/011845f3-2474-4b15-9151-157a5a1d95b5.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/08-static_videos-0092084d-dd8d-57fd-9b9e-fdf66b21e09e.jpg"><source src="../generated/samples/previews/08-static_videos-0092084d-dd8d-57fd-9b9e-fdf66b21e09e.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Static / Living Spaces</strong>
+    <span>photorealistic/indoor/living_spaces/0-5s/0092084d-dd8d-57fd-9b9e-fdf66b21e09e.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/09-static_videos-01fb867e-ea5b-5bd3-b6cb-75eb76ca105f.jpg"><source src="../generated/samples/previews/09-static_videos-01fb867e-ea5b-5bd3-b6cb-75eb76ca105f.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Static / Passageways</strong>
+    <span>photorealistic/indoor/passageways/0-5s/01fb867e-ea5b-5bd3-b6cb-75eb76ca105f.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/10-static_videos-00c108912e__de5d834d-b513-526d-9e11-20753f027531__supp__4p9s.jpg"><source src="../generated/samples/previews/10-static_videos-00c108912e__de5d834d-b513-526d-9e11-20753f027531__supp__4p9s.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Static / Workspaces</strong>
+    <span>photorealistic/indoor/workspaces/0-5s/00c108912e__de5d834d-b513-526d-9e11-20753f027531__supp__4p9s.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/11-static_videos-016718ab0d__d11903c0-ae54-580e-ba24-c6dd2963ccfc__supp__4p9s.jpg"><source src="../generated/samples/previews/11-static_videos-016718ab0d__d11903c0-ae54-580e-ba24-c6dd2963ccfc__supp__4p9s.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Static / Aquatic Landscape</strong>
+    <span>photorealistic/outdoor/aquatic_landscape/0-5s/016718ab0d__d11903c0-ae54-580e-ba24-c6dd2963ccfc__supp__4p9s.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/12-static_videos-00048c89-aa61-5d72-8ccb-016168c5733c.jpg"><source src="../generated/samples/previews/12-static_videos-00048c89-aa61-5d72-8ccb-016168c5733c.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Static / City</strong>
+    <span>photorealistic/outdoor/city/0-5s/00048c89-aa61-5d72-8ccb-016168c5733c.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/13-static_videos-0006f2e720__989d0856-15b5-5ac3-8f52-29eb47365820__supp__4p9s.jpg"><source src="../generated/samples/previews/13-static_videos-0006f2e720__989d0856-15b5-5ac3-8f52-29eb47365820__supp__4p9s.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Static / Public Spaces</strong>
+    <span>photorealistic/outdoor/public_spaces/0-5s/0006f2e720__989d0856-15b5-5ac3-8f52-29eb47365820__supp__4p9s.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/14-static_videos-0007d92b-c93d-5f56-8c54-b9c208695f64.jpg"><source src="../generated/samples/previews/14-static_videos-0007d92b-c93d-5f56-8c54-b9c208695f64.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Static / Suburb</strong>
+    <span>photorealistic/outdoor/suburb/0-5s/0007d92b-c93d-5f56-8c54-b9c208695f64.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/15-static_videos-000121a0-5d97-5dd8-96a2-0e19299f1bfe.jpg"><source src="../generated/samples/previews/15-static_videos-000121a0-5d97-5dd8-96a2-0e19299f1bfe.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Static / Terrestrial Landscape</strong>
+    <span>photorealistic/outdoor/terrestrial_landscape/0-5s/000121a0-5d97-5dd8-96a2-0e19299f1bfe.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/16-static_videos-0011a54b-799d-5bd6-bcd5-3795f8eb8953__supp__4p9s.jpg"><source src="../generated/samples/previews/16-static_videos-0011a54b-799d-5bd6-bcd5-3795f8eb8953__supp__4p9s.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Static / Verdant Landscape</strong>
+    <span>photorealistic/outdoor/verdant_landscape/0-5s/0011a54b-799d-5bd6-bcd5-3795f8eb8953__supp__4p9s.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/17-aaa_games-001.jpg"><source src="../generated/samples/previews/17-aaa_games-001.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Gameplay / Aaa Games</strong>
+    <span>videos/001.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/18-aaa_games-002.jpg"><source src="../generated/samples/previews/18-aaa_games-002.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Gameplay / Aaa Games</strong>
+    <span>videos/002.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/19-aaa_games-003.jpg"><source src="../generated/samples/previews/19-aaa_games-003.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Gameplay / Aaa Games</strong>
+    <span>videos/003.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/20-aaa_games-004.jpg"><source src="../generated/samples/previews/20-aaa_games-004.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Gameplay / Aaa Games</strong>
+    <span>videos/004.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/21-aaa_games-005.jpg"><source src="../generated/samples/previews/21-aaa_games-005.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Gameplay / Aaa Games</strong>
+    <span>videos/005.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/22-aaa_games-006.jpg"><source src="../generated/samples/previews/22-aaa_games-006.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Gameplay / Aaa Games</strong>
+    <span>videos/006.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/23-aaa_games-007.jpg"><source src="../generated/samples/previews/23-aaa_games-007.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Gameplay / Aaa Games</strong>
+    <span>videos/007.mp4</span>
+  </figcaption>
+</figure>
+<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/24-aaa_games-008.jpg"><source src="../generated/samples/previews/24-aaa_games-008.mp4" type="video/mp4"></video>
+  <figcaption>
+    <strong>Gameplay / Aaa Games</strong>
+    <span>videos/008.mp4</span>
+  </figcaption>
+</figure>
+</div>
 
 ## Video Collection Mix
 

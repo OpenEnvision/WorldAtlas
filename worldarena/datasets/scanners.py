@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import re
 from pathlib import Path
@@ -399,6 +400,94 @@ def scan_review_video(collection: CollectionConfig) -> list[dict[str, Any]]:
     return records
 
 
+def _load_physics_subset_metadata(root: Path) -> dict[str, dict[str, Any]]:
+    metadata_path = root / "benchmark_physics_subset_extended.csv"
+    if not metadata_path.exists():
+        return {}
+
+    def number(value: str | None) -> int | float | None:
+        if value is None or value == "":
+            return None
+        try:
+            numeric = float(value)
+        except ValueError:
+            return None
+        return int(numeric) if numeric.is_integer() else numeric
+
+    rows: dict[str, dict[str, Any]] = {}
+    with metadata_path.open(newline="", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            video_name = row.get("video_name")
+            if not video_name:
+                continue
+            subset_stem = Path(row.get("symlink_path") or video_name).with_suffix(".jpg").name
+            first_frame_path = root / "first_frame" / subset_stem
+            rows[video_name] = {
+                "physics_subset_order": number(row.get("order")),
+                "physics_rank_within_dimension": number(row.get("rank_within_dimension")),
+                "physics_quota": number(row.get("quota")),
+                "physics_label": row.get("label") or None,
+                "caption_text": row.get("captions") or None,
+                "visual_quality_score": number(row.get("visual_quality_score")),
+                "motion_score_v2": number(row.get("motion_score_v2")),
+                "text_bbox_ratio": number(row.get("text_bbox_ratio")),
+                "selection_score": number(row.get("selection_score")),
+                "match_type": row.get("match_type") or None,
+                "annotation_labels": row.get("annotation_labels") or None,
+                "family_id": row.get("family_id") or None,
+                "all_matching_dimensions": row.get("all_matching_dimensions") or None,
+                "selection_note": row.get("selection_note") or None,
+                "metadata_width": number(row.get("width")),
+                "metadata_height": number(row.get("height")),
+                "metadata_duration_seconds": number(row.get("duration")),
+                "metadata_fps": number(row.get("fps")),
+                "first_frame_path": str(first_frame_path) if first_frame_path.exists() else None,
+            }
+    return rows
+
+
+def scan_physics_video(collection: CollectionConfig) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    metadata_by_video = _load_physics_subset_metadata(collection.root)
+    videos_root = collection.root / "videos_by_category"
+
+    for path in sorted(videos_root.rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in VIDEO_EXTENSIONS:
+            continue
+        relative_path = path.relative_to(collection.root)
+        if should_skip_path(relative_path, collection.exclude_dir_prefixes):
+            continue
+        parts = relative_path.parts
+        if len(parts) < 4 or parts[0] != "videos_by_category":
+            continue
+
+        physics_group, physics_dimension = parts[1], parts[2]
+        metadata = metadata_by_video.get(path.name, {})
+        record = _base_record(collection, path)
+        record.update(
+            {
+                "source_type": "physics_video",
+                "motion_regime": "physics",
+                "style": physics_group,
+                "scene": physics_dimension,
+                "physics_group": physics_group,
+                "physics_dimension": physics_dimension,
+                "has_physics_metadata": bool(metadata),
+                "has_caption": bool(metadata.get("caption_text")),
+                "has_annotation": False,
+                "annotation_complete": False,
+                "annotation_present_count": 0,
+                "annotation_missing_files": None,
+                "has_mask": False,
+                "mask_count": 0,
+                "mask_kind": None,
+            }
+        )
+        record.update(metadata)
+        records.append(record)
+    return records
+
+
 SCANNERS: dict[str, Callable[[CollectionConfig], list[dict[str, Any]]]] = {
     "static_image": scan_static_image,
     "dynamic_image": scan_dynamic_image,
@@ -406,6 +495,7 @@ SCANNERS: dict[str, Callable[[CollectionConfig], list[dict[str, Any]]]] = {
     "dynamic_video": scan_dynamic_video,
     "aaa_games": scan_aaa_games,
     "review_video": scan_review_video,
+    "physics_video": scan_physics_video,
 }
 
 

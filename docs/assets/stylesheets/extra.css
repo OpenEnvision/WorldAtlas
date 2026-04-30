@@ -1,6 +1,8 @@
 :root {
-  --wa-card-bg: linear-gradient(180deg, rgba(14, 116, 144, 0.08), rgba(245, 158, 11, 0.08));
-  --wa-card-border: rgba(14, 116, 144, 0.2);
+  --wa-card-bg: #ffffff;
+  --wa-card-border: rgba(15, 23, 42, 0.12);
+  --wa-accent: #0f766e;
+  --wa-warm: #b45309;
 }
 
 .metric-grid {
@@ -12,17 +14,18 @@
 
 .metric-card {
   border: 1px solid var(--wa-card-border);
-  border-radius: 16px;
+  border-top: 3px solid var(--wa-accent);
+  border-radius: 8px;
   padding: 1rem 1rem 0.9rem;
   background: var(--wa-card-bg);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
 }
 
 .metric-label {
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: #0f766e;
+  color: var(--wa-accent);
   font-weight: 700;
 }
 
@@ -44,7 +47,106 @@
   width: 100%;
   min-height: 620px;
   border: 1px solid rgba(14, 116, 144, 0.14);
-  border-radius: 16px;
+  border-radius: 8px;
   background: white;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+}
+
+.sample-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-auto-flow: dense;
+  gap: 0.65rem;
+  margin: 1rem 0 2rem;
+}
+
+.sample-grid--video,
+.sample-grid--physics {
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.8rem;
+}
+
+.sample-card {
+  margin: 0;
+  border: 1px solid var(--wa-card-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.sample-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.11);
+}
+
+.sample-media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #0f172a;
+}
+
+.sample-grid--video .sample-media,
+.sample-grid--physics .sample-media {
+  aspect-ratio: 16 / 9;
+}
+
+.sample-card figcaption {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem 0.65rem 0.62rem;
+}
+
+.sample-card strong {
+  color: #0f172a;
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.sample-card span {
+  color: #64748b;
+  font-size: 0.64rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 900px) {
+  .sample-card:nth-child(1),
+  .sample-card:nth-child(8),
+  .sample-card:nth-child(17),
+  .sample-card:nth-child(28) {
+    grid-column: span 2;
+  }
+
+  .sample-card:nth-child(1) .sample-media,
+  .sample-card:nth-child(8) .sample-media,
+  .sample-card:nth-child(17) .sample-media,
+  .sample-card:nth-child(28) .sample-media {
+    aspect-ratio: 16 / 9;
+  }
+
+  .sample-grid--video .sample-card:nth-child(1),
+  .sample-grid--video .sample-card:nth-child(6),
+  .sample-grid--video .sample-card:nth-child(13),
+  .sample-grid--video .sample-card:nth-child(20),
+  .sample-grid--physics .sample-card:nth-child(1),
+  .sample-grid--physics .sample-card:nth-child(6),
+  .sample-grid--physics .sample-card:nth-child(13),
+  .sample-grid--physics .sample-card:nth-child(20) {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .sample-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  .sample-grid--video,
+  .sample-grid--physics {
+    grid-template-columns: 1fr;
+  }
 }

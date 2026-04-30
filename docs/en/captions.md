@@ -2,23 +2,23 @@
 
 <div class="metric-grid">
 <div class="metric-card">
-  <div class="metric-label">Captioned Videos</div>
-  <div class="metric-value">6,250</div>
-  <div class="metric-note">Videos with caption metadata</div>
+  <div class="metric-label">Captioned Media</div>
+  <div class="metric-value">5,675</div>
+  <div class="metric-note">Video and physics rows with captions</div>
 </div>
 <div class="metric-card">
   <div class="metric-label">Weather Tagged</div>
-  <div class="metric-value">6,248</div>
+  <div class="metric-value">5,297</div>
   <div class="metric-note">Videos with normalized weather labels</div>
 </div>
 <div class="metric-card">
   <div class="metric-label">Time-Of-Day Tagged</div>
-  <div class="metric-value">6,248</div>
+  <div class="metric-value">5,297</div>
   <div class="metric-note">Videos with normalized time-of-day labels</div>
 </div>
 <div class="metric-card">
   <div class="metric-label">Primary Scene Types</div>
-  <div class="metric-value">89</div>
+  <div class="metric-value">128</div>
   <div class="metric-note">Unique normalized primary scene labels</div>
 </div>
 </div>
@@ -27,56 +27,64 @@
 
 | collection     |   items |   captions | caption_rate   | weather_rate   | time_of_day_rate   | brightness_rate   | crowd_density_rate   | scene_primary_rate   |
 |:---------------|--------:|-----------:|:---------------|:---------------|:-------------------|:------------------|:---------------------|:---------------------|
-| static_videos  |    8991 |       5431 | 60.40%         | 60.39%         | 60.39%             | 60.39%            | 60.39%               | 60.40%               |
-| dynamic_videos |     971 |        319 | 32.85%         | 32.75%         | 32.75%             | 32.75%            | 32.75%               | 32.85%               |
+| static_videos  |    4000 |       4000 | 100.00%        | 100.00%        | 100.00%            | 100.00%           | 100.00%              | 100.00%              |
+| physics_videos |    1400 |        377 | 26.93%         | 0.00%          | 0.00%              | 0.00%             | 0.00%                | 0.00%                |
+| dynamic_videos |     798 |        798 | 100.00%        | 99.87%         | 99.87%             | 99.87%            | 99.87%               | 100.00%              |
 | aaa_games      |     500 |        500 | 100.00%        | 100.00%        | 100.00%            | 100.00%           | 100.00%              | 100.00%              |
-| review_assets  |      88 |          0 | 0.00%          | 0.00%          | 0.00%              | 0.00%             | 0.00%                | 0.00%                |
 
 ## Top Weather Labels
 
 | value              |   items | share   |
 |:-------------------|--------:|:--------|
-| Clear              |    2607 | 41.73%  |
-| Sunny              |    1293 | 20.69%  |
-| Unknown            |     991 | 15.86%  |
-| Cloudy             |     821 | 13.14%  |
-| Rainy              |     261 | 4.18%   |
-| Snowy              |     188 | 3.01%   |
-| Foggy              |      77 | 1.23%   |
-| Stormy             |       9 | 0.14%   |
-| Indoor/Unspecified |       1 | 0.02%   |
+| Clear              |    2670 | 50.41%  |
+| Sunny              |     883 | 16.67%  |
+| Cloudy             |     599 | 11.31%  |
+| Unknown            |     536 | 10.12%  |
+| Snowy              |     176 | 3.32%   |
+| Rainy              |     165 | 3.11%   |
+| Indoor/Unspecified |     110 | 2.08%   |
+| Foggy              |      71 | 1.34%   |
+| Overcast           |      36 | 0.68%   |
+| Indeterminate      |      17 | 0.32%   |
+| Stormy             |      10 | 0.19%   |
+| Empty              |       8 | 0.15%   |
 
 ## Top Time-Of-Day Labels
 
 | value                  |   items | share   |
 |:-----------------------|--------:|:--------|
-| Daytime                |    4400 | 70.42%  |
-| Unknown                |    1070 | 17.13%  |
-| Dusk/Evening           |     358 | 5.73%   |
-| Night                  |     282 | 4.51%   |
-| Dawn                   |     126 | 2.02%   |
-| Morning                |       7 | 0.11%   |
-| Transition (Dawn/Dusk) |       5 | 0.08%   |
+| Daytime                |    3867 | 73.00%  |
+| Unknown                |     745 | 14.06%  |
+| Dusk/Evening           |     277 | 5.23%   |
+| Night                  |     214 | 4.04%   |
+| Dawn                   |      89 | 1.68%   |
+| Indeterminate          |      46 | 0.87%   |
+| Sunset                 |      38 | 0.72%   |
+| Morning                |       9 | 0.17%   |
+| Transition (Dawn/Dusk) |       6 | 0.11%   |
+| Indoor                 |       3 | 0.06%   |
+| N/A                    |       1 | 0.02%   |
+| Sunrise                |       1 | 0.02%   |
 
 ## Top Primary Scene Types
 
 | value             |   items | share   |
 |:------------------|--------:|:--------|
-| Indoor            |    1785 | 28.56%  |
-| Urban             |     764 | 12.22%  |
-| Landscape         |     557 | 8.91%   |
-| Interior          |     536 | 8.58%   |
-| Natural Landscape |     414 | 6.62%   |
-| Outdoor           |     344 | 5.50%   |
-| Suburban          |     340 | 5.44%   |
-| Natural           |     207 | 3.31%   |
-| Public Space      |     153 | 2.45%   |
-| Rural             |     130 | 2.08%   |
-| Forest            |     118 | 1.89%   |
-| Nature            |     109 | 1.74%   |
-| Animal            |      83 | 1.33%   |
-| Aquatic           |      74 | 1.18%   |
-| Waterfront        |      73 | 1.17%   |
+| Indoor            |    1089 | 20.55%  |
+| Urban             |     687 | 12.97%  |
+| Landscape         |     588 | 11.10%  |
+| Interior          |     391 | 7.38%   |
+| Nature            |     309 | 5.83%   |
+| Natural Landscape |     288 | 5.44%   |
+| Outdoor           |     225 | 4.25%   |
+| Suburban          |     212 | 4.00%   |
+| Natural           |     150 | 2.83%   |
+| Forest            |     125 | 2.36%   |
+| Rural             |     102 | 1.93%   |
+| Village           |      78 | 1.47%   |
+| Wildlife          |      77 | 1.45%   |
+| Animal            |      76 | 1.43%   |
+| Public Space      |      64 | 1.21%   |
 
 ## Caption Coverage
 

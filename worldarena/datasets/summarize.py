@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -188,7 +189,21 @@ def _normalize_frame(frame: pd.DataFrame) -> pd.DataFrame:
         if column in frame.columns:
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
 
-    for column in ["width", "height", "fps", "duration_seconds", "aspect_ratio"]:
+    for column in [
+        "width",
+        "height",
+        "fps",
+        "duration_seconds",
+        "aspect_ratio",
+        "metadata_width",
+        "metadata_height",
+        "metadata_duration_seconds",
+        "metadata_fps",
+        "visual_quality_score",
+        "motion_score_v2",
+        "text_bbox_ratio",
+        "selection_score",
+    ]:
         if column in frame.columns:
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
 
@@ -244,7 +259,10 @@ def build_dataset_frame(project: ProjectConfig, max_workers: int = 8) -> pd.Data
         return frame
 
     image_paths = [Path(path) for path in frame.loc[frame["modality"] == "image", "path"].tolist()]
-    video_paths = [Path(path) for path in frame.loc[frame["modality"] == "video", "path"].tolist()]
+    video_paths = [
+        Path(path)
+        for path in frame.loc[frame["modality"].isin(["video", "physics"]), "path"].tolist()
+    ]
     media_lookup = probe_media(
         image_paths=image_paths,
         video_paths=video_paths,
@@ -273,6 +291,9 @@ def build_summary_tables(frame: pd.DataFrame) -> dict[str, Any]:
         "width": pd.NA,
         "height": pd.NA,
         "instruction_labels": None,
+        "motion_category": None,
+        "physics_group": None,
+        "physics_dimension": None,
         "resolution_label": "Unknown",
         "has_caption": False,
         "caption_weather": None,
@@ -288,8 +309,14 @@ def build_summary_tables(frame: pd.DataFrame) -> dict[str, Any]:
 
     images = frame[frame["modality"] == "image"].copy()
     videos = frame[frame["modality"] == "video"].copy()
-    has_caption = videos["has_caption"] if "has_caption" in videos.columns else pd.Series(False, index=videos.index)
-    caption_videos = videos[has_caption.fillna(False)].copy()
+    physics = frame[frame["modality"] == "physics"].copy()
+    video_like = frame[frame["modality"].isin(["video", "physics"])].copy()
+    has_caption = (
+        video_like["has_caption"]
+        if "has_caption" in video_like.columns
+        else pd.Series(False, index=video_like.index)
+    )
+    caption_videos = video_like[has_caption.fillna(False)].copy()
 
     collection_summary = (
         frame.groupby(["group", "collection", "modality"], dropna=False)
@@ -334,9 +361,9 @@ def build_summary_tables(frame: pd.DataFrame) -> dict[str, Any]:
     if not mask_summary.empty:
         mask_summary["mask_rate"] = (mask_summary["masked"] / mask_summary["items"]).round(4)
 
-    if {"caption_scene_type_primary", "caption_scene_type_secondary"}.issubset(videos.columns):
+    if {"caption_scene_type_primary", "caption_scene_type_secondary"}.issubset(video_like.columns):
         scene_tag_summary = (
-            videos.dropna(subset=["caption_scene_type_primary"])
+            video_like.dropna(subset=["caption_scene_type_primary"])
             .groupby(["caption_scene_type_primary", "caption_scene_type_secondary"], dropna=False)
             .size()
             .reset_index(name="items")
@@ -387,7 +414,7 @@ def build_summary_tables(frame: pd.DataFrame) -> dict[str, Any]:
         caption_dimension_columns,
     )
 
-    if videos.empty:
+    if video_like.empty:
         caption_coverage_summary = pd.DataFrame(
             columns=[
                 "collection",
@@ -402,7 +429,7 @@ def build_summary_tables(frame: pd.DataFrame) -> dict[str, Any]:
         )
     else:
         caption_coverage_summary = (
-            videos.groupby(["collection"], dropna=False)
+            video_like.groupby(["collection"], dropna=False)
             .agg(
                 items=("path", "count"),
                 captions=("has_caption", "sum"),
@@ -486,6 +513,8 @@ def build_summary_tables(frame: pd.DataFrame) -> dict[str, Any]:
         "frame": frame,
         "images": images,
         "videos": videos,
+        "physics": physics,
+        "video_like": video_like,
         "caption_videos": caption_videos,
         "collection_summary": collection_summary,
         "annotation_summary": annotation_summary,
@@ -506,7 +535,7 @@ def _round_records(frame: pd.DataFrame) -> list[dict[str, Any]]:
     serializable = frame.copy()
     float_columns = serializable.select_dtypes(include=["float64", "float32"]).columns
     serializable[float_columns] = serializable[float_columns].round(4)
-    return serializable.to_dict(orient="records")
+    return json.loads(serializable.to_json(orient="records"))
 
 
 def write_artifacts(summary: dict[str, Any], output_dir: Path, docs_data_dir: Path) -> None:
@@ -516,6 +545,7 @@ def write_artifacts(summary: dict[str, Any], output_dir: Path, docs_data_dir: Pa
     frame = summary["frame"]
     images = summary["images"]
     videos = summary["videos"]
+    physics = summary["physics"]
     collection_summary = summary["collection_summary"]
     annotation_summary = summary["annotation_summary"]
     mask_summary = summary["mask_summary"]
@@ -529,6 +559,7 @@ def write_artifacts(summary: dict[str, Any], output_dir: Path, docs_data_dir: Pa
         "all_records.csv": frame,
         "image_records.csv": images,
         "video_records.csv": videos,
+        "physics_records.csv": physics,
         "collection_summary.csv": collection_summary,
         "annotation_summary.csv": annotation_summary,
         "mask_summary.csv": mask_summary,
@@ -552,11 +583,12 @@ def write_artifacts(summary: dict[str, Any], output_dir: Path, docs_data_dir: Pa
                 "records": int(frame.shape[0]),
                 "images": int(images.shape[0]),
                 "videos": int(videos.shape[0]),
+                "physics": int(physics.shape[0]),
             },
-            "collections": collection_summary.to_dict(orient="records"),
-            "annotations": annotation_summary.to_dict(orient="records"),
-            "masks": mask_summary.to_dict(orient="records"),
-            "caption_coverage": caption_coverage_summary.to_dict(orient="records"),
+            "collections": _round_records(collection_summary),
+            "annotations": _round_records(annotation_summary),
+            "masks": _round_records(mask_summary),
+            "caption_coverage": _round_records(caption_coverage_summary),
         },
     )
     write_json(output_dir / "all_records.json", _round_records(frame))
@@ -568,6 +600,7 @@ def write_artifacts(summary: dict[str, Any], output_dir: Path, docs_data_dir: Pa
                 "records": int(frame.shape[0]),
                 "images": int(images.shape[0]),
                 "videos": int(videos.shape[0]),
+                "physics": int(physics.shape[0]),
             },
         },
     )

@@ -41,14 +41,14 @@ collections:
     scanner: aaa_games
     modality: video
     group: benchmark
-    root: /bench-workspace/yesliu/hjd/data/videos/AAA_Games
+    root: /bench-workspace/yesliu/hjd/data/videos_test_split_4971/AAA_Games
     description: AAA game footage subset with SpatialVID-style annotations.
     exclude_dir_prefixes: [".", "_backup"]
 
-  - name: review_assets
-    scanner: review_video
-    modality: video
-    group: auxiliary
-    root: /bench-workspace/yesliu/hjd/data/videos_test_split_4971/_review
-    description: Review and curation assets that should not be mixed into benchmark totals.
+  - name: physics_videos
+    scanner: physics_video
+    modality: physics
+    group: benchmark
+    root: /bench-workspace/yesliu/hjd/data/physics
+    description: Physics benchmark videos grouped by physics family and dimension.
     exclude_dir_prefixes: [".", "_backup"]

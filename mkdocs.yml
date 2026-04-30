@@ -112,6 +112,7 @@ plugins:
             Dataset Analytics: 数据分析
             Images: 图像
             Videos: 视频
+            Physics Dataset: Physics 数据集
             Captions: Caption
             Collections: 集合明细
             Development: 开发
@@ -179,6 +180,7 @@ nav:
       - Overview: overview.md
       - Images: images.md
       - Videos: videos.md
+      - Physics Dataset: physics.md
       - Captions: captions.md
       - Collections: collections.md
   - Development: development.md

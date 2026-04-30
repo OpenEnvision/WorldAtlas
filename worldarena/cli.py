@@ -415,7 +415,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "records": int(result["frame"].shape[0]),
             "images": int(result["images"].shape[0]),
             "videos": int(result["videos"].shape[0]),
-            "collections": result["collection_summary"].to_dict(orient="records"),
+            "physics": int(result["physics"].shape[0]),
+            "collections": json.loads(result["collection_summary"].to_json(orient="records")),
         }
         print(json.dumps(summary, indent=2, ensure_ascii=False))
 
