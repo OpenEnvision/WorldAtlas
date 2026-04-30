@@ -20,7 +20,6 @@ def test_inspect_long_sequence_layout_reports_native_assets_ready() -> None:
     layout = inspect_long_sequence_layout()
 
     assert layout["config_mode"] == "builtin"
-    assert "worldarena/benchmark/long_sequence_params.py" in layout["params_path"]
     assert "thirdparty/AMT" in layout["amt_root"]
     assert "thirdparty/RAFT" in layout["raft_root"]
     assert layout["ready"] is (layout["amt_ready"] and layout["raft_ready"])

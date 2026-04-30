@@ -22,14 +22,9 @@ DIMENSION_LABELS: dict[str, str] = {
 
 METRIC_DIMENSIONS: dict[str, str] = {
     # Long sequence (memory)
-    "anchor_consistency": "long_sequence",
-    "subject_consistency": "long_sequence",
-    "background_consistency": "long_sequence",
     "seen_region_preservation": "long_sequence",
     "object_permanence": "long_sequence",
     "memory_revisit_consistency": "long_sequence",
-    "long_sequence_subject_consistency": "long_sequence",
-    "long_sequence_background_consistency": "long_sequence",
     "long_sequence_motion_smoothness": "long_sequence",
     # Action control
     "prompt_alignment": "action_control",
@@ -85,6 +80,9 @@ METRIC_DIMENSIONS: dict[str, str] = {
     # Quality
     "style_consistency": "quality",
     "perceptual_quality": "quality",
+    "brightness_consistency": "quality",
+    "color_temperature_consistency": "quality",
+    "sharpness_retention": "quality",
     "long_sequence_aesthetic_quality": "quality",
     "long_sequence_imaging_quality": "quality",
     "psnr": "quality",

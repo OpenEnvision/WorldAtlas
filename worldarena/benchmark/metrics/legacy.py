@@ -11,7 +11,6 @@ from worldarena.benchmark.annotations import annotation_text, flatten_instructio
 from worldarena.benchmark.clip_backend import clip_image_features, clip_text_features
 from worldarena.benchmark.consistency_backends import (
     dinov2_image_features as _shared_dinov2_image_features,
-    transition_scores as _shared_transition_scores,
 )
 from worldarena.benchmark.media import LoadedMedia
 from worldarena.benchmark.metrics.base import Metric, clamp01, cosine_similarity, normalize_score, resolve_metric_backend
@@ -20,8 +19,6 @@ from worldarena.common.checkpoints import hf_local_dir, resolve_checkpoint_path
 
 
 SEMANTIC_ALIGNMENT_BACKENDS = {"clip"}
-SUBJECT_CONSISTENCY_BACKENDS = {"dinov2"}
-BACKGROUND_CONSISTENCY_BACKENDS = {"clip"}
 DEPTH_ACCURACY_BACKENDS = {"depth_anything"}
 BASIC_FRAME_METRIC_BACKENDS = {"framewise"}
 
@@ -128,10 +125,6 @@ def _resolved_depth_model_name(value: object | None) -> str:
     if "/" in token:
         return str(hf_local_dir(token, required=True))
     return token
-
-
-def _transition_scores(features: np.ndarray) -> list[float]:
-    return _shared_transition_scores(features)
 
 
 def _reference_semantic_text(sample: BenchmarkSample) -> tuple[str, str]:
@@ -241,119 +234,6 @@ class SemanticAlignmentMetric(Metric):
                     "frame_scores": [round(value, 4) for value in frame_scores],
                 }
             )
-            return MetricOutput(
-                raw=raw,
-                normalized=_normalize_or_identity(raw, self.normalization),
-                backend=backend,
-                details=details,
-                eligibility_status="diagnostic",
-            )
-        except Exception as exc:  # pragma: no cover - backend-specific runtime failures
-            return MetricOutput(
-                raw=None,
-                normalized=None,
-                backend=backend,
-                details=details,
-                eligibility_status="diagnostic",
-                error=str(exc),
-            )
-
-
-class SubjectConsistencyMetric(Metric):
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
-        super().__init__("subject_consistency", backend, normalization)
-        self._resolve_backend()
-
-    def _resolve_backend(self) -> str:
-        return resolve_metric_backend(
-            metric_name=self.name,
-            configured_backend=self.backend,
-            auto_backend="dinov2",
-            supported_backends=SUBJECT_CONSISTENCY_BACKENDS,
-        )
-
-    def compute(
-        self,
-        sample: BenchmarkSample,
-        prediction: LoadedMedia,
-        reference: LoadedMedia,
-    ) -> MetricOutput:
-        del sample
-        del reference
-
-        backend = self._resolve_backend()
-        details = _protocol_details(prediction)
-        if len(prediction.frames) < 2:
-            return MetricOutput(
-                raw=None,
-                normalized=None,
-                backend=backend,
-                details=details,
-                eligibility_status="diagnostic",
-                error="not enough frames for subject consistency",
-            )
-        try:
-            features = _dinov2_image_features(prediction.frames)
-            transition_scores = _transition_scores(features)
-            raw = float(np.mean(transition_scores)) if transition_scores else None
-            details["transition_scores"] = [round(value, 4) for value in transition_scores]
-            return MetricOutput(
-                raw=raw,
-                normalized=_normalize_or_identity(raw, self.normalization),
-                backend=backend,
-                details=details,
-                eligibility_status="diagnostic",
-            )
-        except Exception as exc:  # pragma: no cover - backend-specific runtime failures
-            return MetricOutput(
-                raw=None,
-                normalized=None,
-                backend=backend,
-                details=details,
-                eligibility_status="diagnostic",
-                error=str(exc),
-            )
-
-
-class BackgroundConsistencyMetric(Metric):
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
-        super().__init__("background_consistency", backend, normalization)
-        self._resolve_backend()
-
-    def _resolve_backend(self) -> str:
-        return resolve_metric_backend(
-            metric_name=self.name,
-            configured_backend=self.backend,
-            auto_backend="clip",
-            supported_backends=BACKGROUND_CONSISTENCY_BACKENDS,
-        )
-
-    def compute(
-        self,
-        sample: BenchmarkSample,
-        prediction: LoadedMedia,
-        reference: LoadedMedia,
-    ) -> MetricOutput:
-        del sample
-        del reference
-
-        backend = self._resolve_backend()
-        details = _protocol_details(prediction)
-        if len(prediction.frames) < 2:
-            return MetricOutput(
-                raw=None,
-                normalized=None,
-                backend=backend,
-                details=details,
-                eligibility_status="diagnostic",
-                error="not enough frames for background consistency",
-            )
-        try:
-            features, loader_name = clip_image_features(prediction.frames)
-            transition_scores = _transition_scores(features)
-            raw = float(np.mean(transition_scores)) if transition_scores else None
-            details["transition_scores"] = [round(value, 4) for value in transition_scores]
-            details["clip_loader"] = loader_name
             return MetricOutput(
                 raw=raw,
                 normalized=_normalize_or_identity(raw, self.normalization),
@@ -537,10 +417,8 @@ class SsimMetric(Metric):
 
 
 __all__ = [
-    "BackgroundConsistencyMetric",
     "DepthAccuracyMetric",
     "PsnrMetric",
     "SemanticAlignmentMetric",
     "SsimMetric",
-    "SubjectConsistencyMetric",
 ]

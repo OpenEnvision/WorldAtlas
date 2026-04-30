@@ -12,76 +12,6 @@ def _frame(value: int) -> np.ndarray:
     return np.full((2, 2, 3), value, dtype=np.uint8)
 
 
-def test_compute_long_subject_consistency_native_fuses_inclip_and_clip2clip(
-    monkeypatch,
-    tmp_path: Path,
-) -> None:
-    manifest_path = tmp_path / "manifest.json"
-    clip_a = tmp_path / "split_clip" / "forest" / "forest_000.mp4"
-    clip_b = tmp_path / "split_clip" / "forest" / "forest_001.mp4"
-    clip_a.parent.mkdir(parents=True)
-    clip_a.write_bytes(b"")
-    clip_b.write_bytes(b"")
-    manifest_path.write_text(
-        json.dumps(
-            [
-                {
-                    "prompt_en": "forest",
-                    "dimension": ["subject_consistency"],
-                    "video_list": [str(clip_a), str(clip_b)],
-                }
-            ]
-        ),
-        encoding="utf-8",
-    )
-
-    slow_fast_path = tmp_path / "slow_fast.yaml"
-    slow_fast_path.write_text("w_inclip_sb: 0.5\nw_clip2clip_sb: 0.5\n", encoding="utf-8")
-    mapping_path = tmp_path / "subject_mapping.yaml"
-    mapping_path.write_text("0.0: 0.0\n1.0: 1.0\n", encoding="utf-8")
-
-    frame_map = {
-        str(clip_a): [_frame(1), _frame(2)],
-        str(clip_b): [_frame(10), _frame(20)],
-    }
-    feature_map = {
-        1: np.array([1.0, 0.0], dtype=np.float32),
-        2: np.array([0.0, 1.0], dtype=np.float32),
-        10: np.array([1.0, 0.0], dtype=np.float32),
-        20: np.array([1.0, 0.0], dtype=np.float32),
-    }
-
-    monkeypatch.setattr(
-        long_sequence_native,
-        "read_video_frames",
-        lambda path: frame_map[str(path)],
-    )
-    monkeypatch.setattr(
-        long_sequence_native,
-        "dinov2_image_features",
-        lambda frames: np.stack([feature_map[int(frame[0, 0, 0])] for frame in frames]),
-    )
-
-    raw, clip_results, video_results = long_sequence_native.compute_long_subject_consistency(
-        str(manifest_path),
-        "cpu",
-        None,
-        slow_fast_eval_config=str(slow_fast_path),
-        sb_mapping_file_path=str(mapping_path),
-        dev_flag=True,
-    )
-
-    assert raw == 0.75
-    assert len(clip_results) == 2
-    assert clip_results[0]["video_results"] == 0.0
-    assert clip_results[1]["video_results"] == 1.0
-    assert len(video_results) == 1
-    assert video_results[0]["inclip_score"] == 0.5
-    assert video_results[0]["clip2clip_score"] == 1.0
-    assert video_results[0]["mapped_clip2clip_score"] == 1.0
-    assert video_results[0]["video_results"] == 0.75
-
-
 def test_compute_long_aesthetic_quality_native_aggregates_clip_scores(
     monkeypatch,
     tmp_path: Path,
@@ -315,8 +245,6 @@ def test_compute_long_dynamic_degree_native_aggregates_clip_scores(
 
 
 def test_long_sequence_runtime_specs_route_native_dimensions_to_worldarena() -> None:
-    subject_module = long_sequence_native.compute_long_subject_consistency.__module__
-    background_module = long_sequence_native.compute_long_background_consistency.__module__
     motion_module = long_sequence_native.compute_long_motion_smoothness.__module__
     dynamic_module = long_sequence_native.compute_long_dynamic_degree.__module__
     aesthetic_module = long_sequence_native.compute_long_aesthetic_quality.__module__
@@ -324,8 +252,6 @@ def test_long_sequence_runtime_specs_route_native_dimensions_to_worldarena() -> 
 
     from worldarena.benchmark.long_sequence_dispatch import LONG_SEQUENCE_EVALUATOR_SPECS
 
-    assert LONG_SEQUENCE_EVALUATOR_SPECS["subject_consistency"][0] == subject_module
-    assert LONG_SEQUENCE_EVALUATOR_SPECS["background_consistency"][0] == background_module
     assert LONG_SEQUENCE_EVALUATOR_SPECS["motion_smoothness"][0] == motion_module
     assert LONG_SEQUENCE_EVALUATOR_SPECS["dynamic_degree"][0] == dynamic_module
     assert LONG_SEQUENCE_EVALUATOR_SPECS["aesthetic_quality"][0] == aesthetic_module

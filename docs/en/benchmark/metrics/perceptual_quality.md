@@ -44,3 +44,16 @@
 - Why it is relatively strong: the algorithm is implemented in-repo, the component stack is explicit, and the aggregation logic is straightforward.
 - Why it still is not enough on its own: it does not know whether the content is correct. A beautiful but wrong sample can still score highly.
 - Recommended use: acceptable for the main perceptual-quality dimension, but pair it with semantic and control metrics before drawing model-level conclusions.
+
+## Reference
+
+`clipiqa+` follows this work:
+
+```bibtex
+@inproceedings{wang2022exploring,
+    author = {Wang, Jianyi and Chan, Kelvin CK and Loy, Chen Change},
+    title = {Exploring CLIP for Assessing the Look and Feel of Images},
+    booktitle = {AAAI},
+    year = {2023}
+}
+```

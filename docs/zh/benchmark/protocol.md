@@ -46,8 +46,7 @@ manifest 会把这个契约写到每个样本里，因此下游生成和评测�
 | `depth_collision` | 永远不属于 official；仅诊断。需要 video prediction 和 Video-Depth-Anything runtime |
 | `reconstruction_consistency` | 永远不属于 official；仅诊断。需要 video prediction、Depth-Anything-3 和 LPIPS |
 | `memory_revisit_consistency` | 永远不属于 official；仅诊断。只适合回访/闭环类 experimental 样本 |
-| `semantic_alignment`、`subject_consistency`、`background_consistency`、`depth_accuracy`、`psnr`、`ssim`、`met3r_consistency`、`long_sequence_*` | 永远不属于 official；仅诊断 |
-| `anchor_consistency` | 永远不属于 official；仅诊断 |
+| `semantic_alignment`、`depth_accuracy`、`psnr`、`ssim`、`met3r_consistency`、`long_sequence_*` | 永远不属于 official；仅诊断 |
 | formal suite 中其余指标 | 只要成功返回数值，就属于 official |
 
 三个常见后果：

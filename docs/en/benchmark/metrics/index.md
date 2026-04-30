@@ -1,19 +1,33 @@
 # Metrics Overview
 
-This section maps the metric surface declared in `config/benchmark.yaml`. Each metric page explains the runtime inputs, backend, score shape, and interpretation details for one metric or metric family.
+This page follows the public benchmark surface declared in `config/benchmark.yaml`. The four formal suites are the public benchmark surface; `experimental` is a supplemental slice and should not be merged into a single headline benchmark total.
 
 Dataset coverage and collection statistics stay on [Dataset Analytics](../../overview.md).
 
-## Status Labels
+## Reading Rules
 
-- `official`: enters `per_metric_summary.json` when a numeric score is produced.
-- `diagnostic`: never enters official aggregation.
-- `not_applicable`: strong supervision is absent; no score is computed or aggregated.
-- `raw = null`, `normalized = null`: the metric could not produce a usable score for that sample.
+| Field | Meaning |
+| --- | --- |
+| `raw` | backend-native value; may be a scalar or a component dictionary |
+| `normalized` | `[0, 1]` score written into aggregation; higher is always better |
+| `official` | enters `per_metric_summary.json` and `per_dimension_summary.json` |
+| `diagnostic` | diagnostics only; never enters headline aggregation |
+| `not_applicable` | strong supervision is absent, so no score is computed or aggregated; recorded in `not_applicable_summary.json` |
+| `normalized = null` | runtime failure or missing input; it is not automatically treated as zero |
+
+## Suite Vectors
+
+| Suite | Metrics | Official / conditionally official | Diagnostic / not applicable |
+| --- | ---: | --- | --- |
+| `image_static` | 31 | image-to-video predictions are evaluated with the video-output metric superset where inputs allow it. `style_consistency`, `perceptual_quality`, `reprojection_error`, `optical_flow_aepe`, `motion_magnitude`, `motion_smoothness`, and `physical_fps_*` are official when they produce numeric scores. `prompt_alignment`, `object_detection`, `camera_error`, and `motion_accuracy` are gated by supervision. `seen_region_preservation`, `novel_region_fidelity`, `object_permanence`, and `pmf` require compatible reference video or masks and are often empty for pure image references. | `semantic_alignment`, `brightness_consistency`, `color_temperature_consistency`, `sharpness_retention`, `depth_accuracy`, `depth_collision`, `psnr`, `ssim`, `met3r_consistency`, `reconstruction_consistency`, `long_sequence_motion_smoothness`, `long_sequence_dynamic_degree`, `long_sequence_aesthetic_quality`, `long_sequence_imaging_quality` |
+| `image_dynamic` | 31 | same as `image_static`, usually with broader motion-prompt and object-prompt coverage | same as `image_static` |
+| `video_static` | 19 | `style_consistency`, `perceptual_quality`, `seen_region_preservation`, `novel_region_fidelity`, `reprojection_error`, and `optical_flow_aepe`; `prompt_alignment`, `object_detection`, and `camera_error` are supervision-gated | `semantic_alignment`, `brightness_consistency`, `color_temperature_consistency`, `sharpness_retention`, `depth_accuracy`, `depth_collision`, `psnr`, `ssim`, `met3r_consistency`, `reconstruction_consistency` |
+| `video_dynamic` | 25 | `style_consistency`, `perceptual_quality`, `object_permanence`, `pmf`, `motion_magnitude`, `motion_smoothness`, and `physical_fps_*`; `prompt_alignment` and `motion_accuracy` are supervision-gated | `semantic_alignment`, `brightness_consistency`, `color_temperature_consistency`, `sharpness_retention`, `depth_accuracy`, `depth_collision`, `psnr`, `ssim`, `met3r_consistency`, `reconstruction_consistency`, `long_sequence_motion_smoothness`, `long_sequence_dynamic_degree`, `long_sequence_aesthetic_quality`, `long_sequence_imaging_quality` |
+| `experimental` | 3 | in the current implementation, `motion_magnitude` and `motion_smoothness` become official when they produce numeric scores; this suite is not part of the formal headline benchmark | `memory_revisit_consistency` |
 
 ## Six Evaluation Pillars
 
-`per_dimension_summary.json` uses six top-level keys, and the Metrics navigation is now organized by the same six dimensions:
+The Metrics navigation is organized by these six top-level dimensions, which also appear in `per_dimension_summary.json`.
 
 | Key | Label | Practical meaning | Dimension page |
 | --- | --- | --- | --- |
@@ -21,10 +35,10 @@ Dataset coverage and collection statistics stay on [Dataset Analytics](../../ove
 | `action_control` | Action control | scene control, camera control, and object/action control | [Action Control](dimensions/action_control.md) |
 | `consistency_3d_4d` | 3D/4D consistency | geometry, multiview, reprojection, and motion-field consistency | [3D/4D Consistency](dimensions/consistency_3d_4d.md) |
 | `physics` | Physics | physical motion realism and simulator-backed physics metrics | [Physics](dimensions/physics.md) |
-| `quality` | Quality | style, perceptual quality, and reconstruction-style fidelity | [Quality](dimensions/quality.md) |
+| `quality` | Quality | style, perceptual quality, low-level appearance stability, and reconstruction-style fidelity | [Quality](dimensions/quality.md) |
 | `real_time` | Real time | tempo and FPS calibration | [Real Time](dimensions/real_time.md) |
 
-Action control is intentionally broader than today's text-only prompt setting:
+Action control is intentionally broader than the current text-only prompt setting:
 
 - camera control includes text instruction and interactive camera input such as keyboard or mouse control
 - object control includes text instruction plus action streams such as keyboard input
@@ -34,28 +48,48 @@ The current public benchmark mostly instantiates this dimension through text pro
 
 This taxonomy is intentionally coarse-grained. The six pillars describe benchmark-level capability coverage; they do not imply that the current public benchmark already exhausts every control mode or every future metric family.
 
-`image_static` and `image_dynamic` are image-conditioned video-generation suites. Their predictions are parsed as videos, so they now run the video-output metric superset where inputs permit. Prediction-only video metrics score normally; metrics that require reference video, pose, or masks return unavailable when those sidecars are absent.
+## Complete Metric Inventory
 
-## Current Metric Map
+| Metric | Dimension | Backend | Suites | Raw value and normalization | Aggregation |
+| --- | --- | --- | --- | --- | --- |
+| [`prompt_alignment`](prompt_alignment.md) | `action_control` | `reference` | formal 4 suites | CLIPScore-like `[0, 1]` scalar on video-prediction anchor frames; identity scaling | official only with explicit instruction supervision and non-self-conditioned inputs; non-video predictions are submission errors |
+| [`semantic_alignment`](semantic_alignment.md) | `action_control` | `clip` | formal 4 suites | CLIP similarity between prediction frames and reference caption/instruction | diagnostic |
+| [`object_detection`](object_detection.md) | `action_control` | `grounding_dino` | image 2 suites, `video_static` | object-prompt detection success rate in `[0, 1]` | official with explicit object annotations; caption-derived objects are `not_applicable` |
+| [`camera_error`](camera_error.md) | `action_control` | `droid_slam` | `image_static`, `image_dynamic`, `video_static` | `{rotation_error, translation_error}` reduced by geometric mean; lower is better | official when pose annotations exist and the backend succeeds |
+| [`motion_accuracy`](motion_accuracy.md) | `action_control` | `sam2_sea_raft` | `image_static`, `image_dynamic`, `video_dynamic` | mask-local motion accuracy mapped by z-score | official when dynamic masks exist and the backend succeeds |
+| [`style_consistency`](style_consistency.md) | `quality` | `reference` | formal 4 suites | VGG Gram style similarity in `[0, 1]` | official |
+| [`perceptual_quality`](perceptual_quality.md) | `quality` | `reference` | formal 4 suites | reference IQA backend scalar in `[0, 1]` | official |
+| [`brightness_consistency`](brightness_consistency.md) | `quality` | `luminance_temporal` | formal 4 suites | luminance temporal-stability proxy in `[0, 1]` | diagnostic |
+| [`color_temperature_consistency`](color_temperature_consistency.md) | `quality` | `hsv_hue_drift` | formal 4 suites | HSV hue-drift stability proxy in `[0, 1]` | diagnostic |
+| [`sharpness_retention`](sharpness_retention.md) | `quality` | `tenengrad_brisque` | formal 4 suites | Tenengrad retention gated by BRISQUE in `[0, 1]` | diagnostic |
+| [`psnr`](psnr.md) | `quality` | `framewise` | formal 4 suites | paired-frame PSNR; forward scaling over `[10, 40]` | diagnostic |
+| [`ssim`](ssim.md) | `quality` | `framewise` | formal 4 suites | paired-frame SSIM in `[0, 1]` | diagnostic |
+| [`long_sequence_aesthetic_quality`](long_sequence.md) | `quality` | `long_sequence` | `image_static`, `image_dynamic`, `video_dynamic` | Long-Sequence aesthetic quality in `[0, 1]` | diagnostic |
+| [`long_sequence_imaging_quality`](long_sequence.md) | `quality` | `long_sequence` | `image_static`, `image_dynamic`, `video_dynamic` | Long-Sequence imaging quality in `[0, 1]` | diagnostic |
+| [`seen_region_preservation`](seen_region_preservation.md) | `long_sequence` | `flow_dino` | `image_static`, `image_dynamic`, `video_static` | PSNR/DINO composite inside first-frame seen mask | official when successful; pure image references are usually empty |
+| [`object_permanence`](object_permanence.md) | `long_sequence` | `mask_dino` | `image_static`, `image_dynamic`, `video_dynamic` | dynamic-mask identity-curve match between reference and prediction | official with compatible video reference and mask |
+| [`memory_revisit_consistency`](memory_revisit_consistency.md) | `long_sequence` | `dinov2` | `experimental` | loop-closure similarity times mid-rollout progress gate in `[0, 1]` | diagnostic |
+| [`long_sequence_motion_smoothness`](long_sequence.md) | `long_sequence` | `long_sequence` | `image_static`, `image_dynamic`, `video_dynamic` | Long-Sequence motion smoothness in `[0, 1]` | diagnostic |
+| [`novel_region_fidelity`](novel_region_fidelity.md) | `consistency_3d_4d` | `flow_dino` | `image_static`, `image_dynamic`, `video_static` | PSNR/DINO composite inside novel mask | official when successful; pure image references are usually empty |
+| [`reprojection_error`](reprojection_error.md) | `consistency_3d_4d` | `droid_slam` | `image_static`, `image_dynamic`, `video_static` | DROID reprojection error; reverse scaling over `[0, 1.0719]` | official when successful |
+| [`optical_flow_aepe`](optical_flow_aepe.md) | `consistency_3d_4d` | `sea_raft` | `image_static`, `image_dynamic`, `video_static` | prediction optical-flow AEPE backend score; reverse scaling over `[0, 1.192]` | official when successful |
+| [`depth_accuracy`](depth_accuracy.md) | `consistency_3d_4d` | `depth_anything` | formal 4 suites | paired-frame AbsRel; reverse scaling over `[0, 1]` | diagnostic |
+| [`depth_collision`](depth_collision.md) | `consistency_3d_4d` | `video_depth_anything` | formal 4 suites | center-region near-depth collision flag `0/1`; reverse scaling | diagnostic |
+| [`met3r_consistency`](met3r_consistency.md) | `consistency_3d_4d` | `met3r` | formal 4 suites | paired-anchor MEt3R distance; reverse scaling over `[0, 2]` | diagnostic |
+| [`reconstruction_consistency`](reconstruction_consistency.md) | `consistency_3d_4d` | reconstruction LPIPS backend | formal 4 suites | `S_recon = clip(1 - mean LPIPS, 0, 1)` | diagnostic |
+| [`pmf`](pmf.md) | `physics` | `numpy_fft` | `image_static`, `image_dynamic`, `video_dynamic` | prediction/reference 3D FFT energy-distribution similarity; scaling over `[0, 6]` | official when successful; requires at least two reference frames |
+| [`motion_magnitude`](motion_magnitude.md) | `physics` | `sea_raft` | `image_static`, `image_dynamic`, `video_dynamic`, `experimental` | optical-flow magnitude mapped by z-score into `[0.25, 0.75]` | official when successful |
+| [`motion_smoothness`](motion_smoothness.md) | `physics` | `vfi_mamba` | `image_static`, `image_dynamic`, `video_dynamic`, `experimental` | normalized `{MSE, SSIM, LPIPS}` components reduced by arithmetic mean | official when successful |
+| [`long_sequence_dynamic_degree`](long_sequence.md) | `physics` | `long_sequence` | `image_static`, `image_dynamic`, `video_dynamic` | Long-Sequence dynamic degree in `[0, 1]` | diagnostic |
+| [`physical_fps_error`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`, `image_dynamic`, `video_dynamic` | `abs(avg_phyfps - meta_fps)`; reverse scaling over `[0, 30]` | official when successful |
+| [`physical_fps_pct_error`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`, `image_dynamic`, `video_dynamic` | relative FPS error; reverse scaling over `[0, 1]` | official when successful |
+| [`physical_fps_intra_video_cv`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`, `image_dynamic`, `video_dynamic` | intra-video physical-FPS coefficient of variation; reverse scaling over `[0, 1]` | official when successful |
 
-| Top-level dimension | Representative sub-problems | Representative metrics today | Typical suites | Current behavior |
-| --- | --- | --- | --- | --- |
-| Long sequence (memory) | scene and appearance memory | [`seen_region_preservation`](seen_region_preservation.md), [`anchor_consistency`](anchor_consistency.md), [`subject_consistency`](subject_consistency.md), [`background_consistency`](background_consistency.md), [`object_permanence`](object_permanence.md), [`long_sequence_subject_consistency`](long_sequence.md), [`long_sequence_background_consistency`](long_sequence.md), [`long_sequence_motion_smoothness`](long_sequence.md) | all video-output formal suites, `auxiliary`, `experimental` | mix of official, unavailable, not-applicable, and diagnostic signals depending on side inputs |
-| Action control | scene control (text instruction) | [`prompt_alignment`](prompt_alignment.md), [`semantic_alignment`](semantic_alignment.md) | all formal suites | `prompt_alignment` is computed on video-prediction anchor frames and is official only with explicit instruction supervision; `semantic_alignment` is diagnostic |
-| Action control | camera control (text instruction, keyboard/mouse input) | [`camera_error`](camera_error.md) | `video_static` | `official` when pose annotations exist |
-| Action control | object control (text instruction, keyboard input) | [`object_detection`](object_detection.md), [`motion_accuracy`](motion_accuracy.md) | image suites, `video_static`, `video_dynamic` | `object_detection` is official only with explicit object annotations; `motion_accuracy` is official when masks exist |
-| 3D/4D consistency | geometry, multiview, and motion-field consistency | [`novel_region_fidelity`](novel_region_fidelity.md), [`reprojection_error`](reprojection_error.md), [`depth_accuracy`](depth_accuracy.md), [`depth_collision`](depth_collision.md), [`optical_flow_aepe`](optical_flow_aepe.md), [`met3r_consistency`](met3r_consistency.md), [`reconstruction_consistency`](reconstruction_consistency.md) | all formal suites | `reprojection_error` and `optical_flow_aepe` are official when numeric; reference-video metrics can be unavailable on pure image references; `reconstruction_consistency` is diagnostic |
-| Physics | motion realism in the public benchmark | [`pmf`](pmf.md), [`motion_magnitude`](motion_magnitude.md), [`motion_smoothness`](motion_smoothness.md), [`long_sequence_dynamic_degree`](long_sequence.md) | image-to-video suites, `video_dynamic`, `experimental` | prediction-only motion metrics are official when numeric; `pmf` needs a multi-frame reference |
-| Quality | appearance, perceptual quality, and reconstruction fidelity | [`style_consistency`](style_consistency.md), [`perceptual_quality`](perceptual_quality.md), [`psnr`](psnr.md), [`ssim`](ssim.md), [`long_sequence_aesthetic_quality`](long_sequence.md), [`long_sequence_imaging_quality`](long_sequence.md) | all formal suites, `video_dynamic` | `style_consistency` and `perceptual_quality` are official; the rest are diagnostic |
-| Real time | FPS and tempo calibration | [`physical_fps_error`](temporal_calibration.md), [`physical_fps_pct_error`](temporal_calibration.md), [`physical_fps_intra_video_cv`](temporal_calibration.md) | `video_dynamic` | official when the side runtime and FPS metadata are available |
+## Separate Physics Track
 
-Read this table as the current public instantiation, not as a closed ontology. Future interactive tracks can add richer keyboard or mouse control, online latency, throughput, and denser world-state metrics while staying inside the same six pillars.
+`config/benchmark_physics.yaml` defines a simulator-backed physics configuration. It is not the same evaluation surface as the `experimental` suite in the default `config/benchmark.yaml`. It carries metrics such as `mse`, `st_iou`, `depth_warp_charb`, `rgb_warp_charb`, `chamfer_4d`, and `worldline_*`, and all of them roll up into the top-level `physics` dimension for that physics-only track.
 
-## Separate Physics-Only Metrics
-
-`config/benchmark_physics.yaml` defines a simulator-backed physics config that also uses the suite label `experimental`. It carries metrics such as `mse`, `st_iou`, `depth_warp_charb`, `rgb_warp_charb`, `chamfer_4d`, and `worldline_*`, and all of them roll up into the top-level `physics` dimension for that physics-only track.
-
-See [Physics](dimensions/physics.md) and [Simulator-Backed Physics](physics/index.md) for scope and reporting behavior, and [Physics Metrics & Contracts](physics/metrics.md) for the grouped metric contract, normalization ranges, and artifact requirements.
+See [Physics](dimensions/physics.md), [Simulator-Backed Physics](physics/index.md), and [Physics Metrics & Contracts](physics/metrics.md) for scope, reporting behavior, normalization ranges, and artifact requirements.
 
 ## How To Read A Metric Page
 

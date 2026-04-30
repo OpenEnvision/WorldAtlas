@@ -44,3 +44,16 @@
 - 相对更强的原因：算法在仓内实现，组件堆栈明确，聚合逻辑直接。
 - 仍然不能单独下结论的原因：它并不知道内容对不对。一个漂亮但语义错误的样本也可能得高分。
 - 建议用法：可以作为主表里的感知质量维度，但必须和语义、控制类指标一起报告。
+
+## 参考文献
+
+`clipiqa+` 参考以下工作：
+
+```bibtex
+@inproceedings{wang2022exploring,
+    author = {Wang, Jianyi and Chan, Kelvin CK and Loy, Chen Change},
+    title = {Exploring CLIP for Assessing the Look and Feel of Images},
+    booktitle = {AAAI},
+    year = {2023}
+}
+```

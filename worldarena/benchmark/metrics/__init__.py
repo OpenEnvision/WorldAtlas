@@ -1,3 +1,8 @@
+from worldarena.benchmark.metrics.appearance import (
+    BrightnessConsistencyMetric,
+    ColorTemperatureConsistencyMetric,
+    SharpnessRetentionMetric,
+)
 from worldarena.benchmark.metrics.consistency import (
     OpticalFlowAepeMetric,
     ReprojectionErrorMetric,
@@ -10,12 +15,10 @@ from worldarena.benchmark.metrics.control import (
 from worldarena.benchmark.metrics.depth_collision import DepthCollisionMetric
 from worldarena.benchmark.metrics.catalog import METRIC_DIMENSIONS, group_metrics_by_dimension
 from worldarena.benchmark.metrics.legacy import (
-    BackgroundConsistencyMetric,
     DepthAccuracyMetric,
     PsnrMetric,
     SemanticAlignmentMetric,
     SsimMetric,
-    SubjectConsistencyMetric,
 )
 from worldarena.benchmark.metrics.met3r import Met3RConsistencyMetric
 from worldarena.benchmark.metrics.memory import MemoryRevisitConsistencyMetric
@@ -33,8 +36,9 @@ from worldarena.benchmark.metrics.long_sequence import LongSequenceMetric
 from worldarena.benchmark.metrics.registry import build_metrics
 
 __all__ = [
-    "BackgroundConsistencyMetric",
+    "BrightnessConsistencyMetric",
     "CameraErrorMetric",
+    "ColorTemperatureConsistencyMetric",
     "DepthAccuracyMetric",
     "DepthCollisionMetric",
     "METRIC_DIMENSIONS",
@@ -54,8 +58,8 @@ __all__ = [
     "ReprojectionErrorMetric",
     "SeenRegionPreservationMetric",
     "SemanticAlignmentMetric",
+    "SharpnessRetentionMetric",
     "SsimMetric",
-    "SubjectConsistencyMetric",
     "TemporalCalibrationMetric",
     "LongSequenceMetric",
     "build_metrics",

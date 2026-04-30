@@ -27,13 +27,13 @@ def test_build_long_video_manifest_groups_split_variants(tmp_path: Path) -> None
         split_root,
         output_path=tmp_path / "output",
         name="demo",
-        dimension_list=["subject_consistency", "background_consistency"],
+        dimension_list=["motion_smoothness", "dynamic_degree"],
     )
 
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     assert len(payload) == 1
     assert payload[0]["prompt_en"] == "forest"
-    assert payload[0]["dimension"] == ["subject_consistency", "background_consistency"]
+    assert payload[0]["dimension"] == ["motion_smoothness", "dynamic_degree"]
     assert payload[0]["video_list"] == [
         str(forest_split / "forest-0_000.mp4"),
         str(forest_scene / "forest-Scene-1_000.mp4"),

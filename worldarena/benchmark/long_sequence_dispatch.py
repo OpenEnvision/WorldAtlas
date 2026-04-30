@@ -9,14 +9,6 @@ from worldarena.benchmark.long_video import build_long_video_manifest, prepare_l
 
 
 LONG_SEQUENCE_EVALUATOR_SPECS: dict[str, tuple[str, str]] = {
-    "subject_consistency": (
-        "worldarena.benchmark.long_sequence_native",
-        "compute_long_subject_consistency",
-    ),
-    "background_consistency": (
-        "worldarena.benchmark.long_sequence_native",
-        "compute_long_background_consistency",
-    ),
     "motion_smoothness": (
         "worldarena.benchmark.long_sequence_native",
         "compute_long_motion_smoothness",

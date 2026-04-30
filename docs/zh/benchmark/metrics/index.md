@@ -1,6 +1,6 @@
 # 指标总览
 
-本文以 `config/benchmark.yaml` 为准：当前默认配置声明 `6` 个 suite、`34` 个去重指标。四个 formal suite 是公开 benchmark 主体；`auxiliary` 和 `experimental` 是补充切片，不应混成 benchmark 总分。
+本文按 `config/benchmark.yaml` 中的公开 benchmark 面组织。四个 formal suite 是公开 benchmark 主体；`experimental` 是补充切片，不应混成 benchmark 总分。
 
 ## 读数规则
 
@@ -17,12 +17,11 @@
 
 | Suite | 指标数 | official / 条件 official | diagnostic / not applicable |
 | --- | ---: | --- | --- |
-| `image_static` | 32 | image-to-video 输出按 video prediction 扩展评测：`style_consistency`、`perceptual_quality`、`reprojection_error`、`optical_flow_aepe`、`motion_magnitude`、`motion_smoothness`、`physical_fps_*` 成功即 official；`prompt_alignment`、`object_detection`、`camera_error`、`motion_accuracy` 受监督门槛约束；`seen_region_preservation`、`novel_region_fidelity`、`object_permanence`、`pmf` 需要兼容 reference video / mask，否则通常为空 | `semantic_alignment`、`subject_consistency`、`background_consistency`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_*` |
-| `image_dynamic` | 32 | 同 `image_static`，但 motion prompt / object prompt 覆盖通常更高 | 同 `image_static` |
-| `video_static` | 18 | `style_consistency`、`perceptual_quality`、`seen_region_preservation`、`novel_region_fidelity`、`reprojection_error`、`optical_flow_aepe`；`prompt_alignment`、`object_detection`、`camera_error` 受监督门槛约束 | `semantic_alignment`、`subject_consistency`、`background_consistency`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency` |
-| `video_dynamic` | 26 | `style_consistency`、`perceptual_quality`、`object_permanence`、`pmf`、`motion_magnitude`、`motion_smoothness`、`physical_fps_*`；`prompt_alignment`、`motion_accuracy` 受监督门槛约束 | `semantic_alignment`、`subject_consistency`、`background_consistency`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_*` |
-| `auxiliary` | 1 | 无 | `anchor_consistency` |
-| `experimental` | 4 | 当前实现中 `motion_magnitude`、`motion_smoothness` 成功即写入 official；该 suite 非 formal headline | `anchor_consistency`、`memory_revisit_consistency` |
+| `image_static` | 31 | image-to-video 输出按 video prediction 扩展评测：`style_consistency`、`perceptual_quality`、`reprojection_error`、`optical_flow_aepe`、`motion_magnitude`、`motion_smoothness`、`physical_fps_*` 成功即 official；`prompt_alignment`、`object_detection`、`camera_error`、`motion_accuracy` 受监督门槛约束；`seen_region_preservation`、`novel_region_fidelity`、`object_permanence`、`pmf` 需要兼容 reference video / mask，否则通常为空 | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_motion_smoothness`、`long_sequence_dynamic_degree`、`long_sequence_aesthetic_quality`、`long_sequence_imaging_quality` |
+| `image_dynamic` | 31 | 同 `image_static`，但 motion prompt / object prompt 覆盖通常更高 | 同 `image_static` |
+| `video_static` | 19 | `style_consistency`、`perceptual_quality`、`seen_region_preservation`、`novel_region_fidelity`、`reprojection_error`、`optical_flow_aepe`；`prompt_alignment`、`object_detection`、`camera_error` 受监督门槛约束 | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency` |
+| `video_dynamic` | 25 | `style_consistency`、`perceptual_quality`、`object_permanence`、`pmf`、`motion_magnitude`、`motion_smoothness`、`physical_fps_*`；`prompt_alignment`、`motion_accuracy` 受监督门槛约束 | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_motion_smoothness`、`long_sequence_dynamic_degree`、`long_sequence_aesthetic_quality`、`long_sequence_imaging_quality` |
+| `experimental` | 3 | 当前实现中 `motion_magnitude`、`motion_smoothness` 成功即写入 official；该 suite 非 formal headline | `memory_revisit_consistency` |
 
 ## 六个评测支柱
 
@@ -34,7 +33,7 @@ Metrics 导航现在按这六个顶层维度组织；每个维度都有自己的
 | `action_control` | Action control | scene control、camera control、object/action control | [Action Control](dimensions/action_control.md) |
 | `consistency_3d_4d` | 3D/4D consistency | 几何、多视角、重投影与运动场一致性 | [3D/4D Consistency](dimensions/consistency_3d_4d.md) |
 | `physics` | Physics | 运动物理真实性与 simulator-backed physics 指标 | [Physics](dimensions/physics.md) |
-| `quality` | Quality | 风格、感知质量与重建式保真 | [Quality](dimensions/quality.md) |
+| `quality` | Quality | 风格、感知质量、低层外观稳定性与重建式保真 | [Quality](dimensions/quality.md) |
 | `real_time` | Real time | 节奏与 FPS 标定 | [Real Time](dimensions/real_time.md) |
 
 ## 完整指标清单
@@ -48,18 +47,16 @@ Metrics 导航现在按这六个顶层维度组织；每个维度都有自己的
 | [`motion_accuracy`](motion_accuracy.md) | `action_control` | `sam2_sea_raft` | `image_static`、`image_dynamic`、`video_dynamic` | mask 内 motion accuracy z-score 映射 | 有动态 mask 且成功时 official |
 | [`style_consistency`](style_consistency.md) | `quality` | `reference` | formal 4 suite | VGG Gram style similarity；`[0,1]` | official |
 | [`perceptual_quality`](perceptual_quality.md) | `quality` | `reference` | formal 4 suite | 参考质量后端标量；`[0,1]` | official |
+| [`brightness_consistency`](brightness_consistency.md) | `quality` | `luminance_temporal` | formal 4 suite | 亮度时序稳定性代理分数；`[0,1]` | diagnostic |
+| [`color_temperature_consistency`](color_temperature_consistency.md) | `quality` | `hsv_hue_drift` | formal 4 suite | HSV hue drift 稳定性代理分数；`[0,1]` | diagnostic |
+| [`sharpness_retention`](sharpness_retention.md) | `quality` | `tenengrad_brisque` | formal 4 suite | BRISQUE gate 约束下的 Tenengrad 清晰度保持；`[0,1]` | diagnostic |
 | [`psnr`](psnr.md) | `quality` | `framewise` | formal 4 suite | paired-frame PSNR；`[10,40]` 正向缩放 | diagnostic |
 | [`ssim`](ssim.md) | `quality` | `framewise` | formal 4 suite | paired-frame SSIM；`[0,1]` | diagnostic |
 | [`long_sequence_aesthetic_quality`](long_sequence.md) | `quality` | `long_sequence` | `image_static`、`image_dynamic`、`video_dynamic` | Long-Sequence aesthetic quality；`[0,1]` | diagnostic |
 | [`long_sequence_imaging_quality`](long_sequence.md) | `quality` | `long_sequence` | `image_static`、`image_dynamic`、`video_dynamic` | Long-Sequence imaging quality；`[0,1]` | diagnostic |
-| [`anchor_consistency`](anchor_consistency.md) | `long_sequence` | `clip` | `auxiliary`、`experimental` | paired anchor 相似度均值 + late/early drift | diagnostic |
-| [`subject_consistency`](subject_consistency.md) | `long_sequence` | `dinov2` | formal 4 suite | 预测内部 DINOv2 跨帧相似度 | diagnostic |
-| [`background_consistency`](background_consistency.md) | `long_sequence` | `clip` | formal 4 suite | 预测内部 CLIP 跨帧相似度 | diagnostic |
 | [`seen_region_preservation`](seen_region_preservation.md) | `long_sequence` | `flow_dino` | `image_static`、`image_dynamic`、`video_static` | first-frame seen mask 内 PSNR/DINO 组合分 | 成功时 official；纯 image reference 通常为空 |
 | [`object_permanence`](object_permanence.md) | `long_sequence` | `mask_dino` | `image_static`、`image_dynamic`、`video_dynamic` | dynamic mask 内 reference/pred identity 曲线匹配 | 有 video reference + mask 且成功时 official |
 | [`memory_revisit_consistency`](memory_revisit_consistency.md) | `long_sequence` | `dinov2` | `experimental` | 闭环相似度 × 中途进展门控；`[0,1]` | diagnostic |
-| [`long_sequence_subject_consistency`](long_sequence.md) | `long_sequence` | `long_sequence` | `image_static`、`image_dynamic`、`video_dynamic` | Long-Sequence subject consistency；`[0,1]` | diagnostic |
-| [`long_sequence_background_consistency`](long_sequence.md) | `long_sequence` | `long_sequence` | `image_static`、`image_dynamic`、`video_dynamic` | Long-Sequence background consistency；`[0,1]` | diagnostic |
 | [`long_sequence_motion_smoothness`](long_sequence.md) | `long_sequence` | `long_sequence` | `image_static`、`image_dynamic`、`video_dynamic` | Long-Sequence motion smoothness；`[0,1]` | diagnostic |
 | [`novel_region_fidelity`](novel_region_fidelity.md) | `consistency_3d_4d` | `flow_dino` | `image_static`、`image_dynamic`、`video_static` | novel mask 内 PSNR/DINO 组合分 | 成功时 official；纯 image reference 通常为空 |
 | [`reprojection_error`](reprojection_error.md) | `consistency_3d_4d` | `droid_slam` | `image_static`、`image_dynamic`、`video_static` | DROID reprojection error；`[0,1.0719]` 反向缩放 | 成功时 official |

@@ -1,16 +1,14 @@
 # Long Sequence (Memory)
 
-The `long_sequence` dimension covers state memory, appearance preservation, and long-rollout stability. It asks whether the model keeps subjects, backgrounds, seen regions, object presence, and revisited places consistent over time.
+The `long_sequence` dimension covers state memory, appearance preservation, and long-rollout stability. It asks whether the model preserves seen regions, object presence, revisit behavior, and long-horizon motion or quality over time.
 
 ## Scope
 
 | Layer | Metrics |
 | --- | --- |
-| anchor memory and revisit stability | [`anchor_consistency`](../anchor_consistency.md), [`memory_revisit_consistency`](../memory_revisit_consistency.md) |
-| prediction-internal long-term consistency | [`subject_consistency`](../subject_consistency.md), [`background_consistency`](../background_consistency.md) |
+| revisit stability | [`memory_revisit_consistency`](../memory_revisit_consistency.md) |
 | seen regions and object persistence | [`seen_region_preservation`](../seen_region_preservation.md), [`object_permanence`](../object_permanence.md) |
-| loop revisit | [`memory_revisit_consistency`](../memory_revisit_consistency.md) |
-| Long-Sequence backend diagnostics | [`long_sequence_subject_consistency`](../long_sequence.md), [`long_sequence_background_consistency`](../long_sequence.md), [`long_sequence_motion_smoothness`](../long_sequence.md) |
+| Long-Sequence backend diagnostics | [`long_sequence_motion_smoothness`](../long_sequence.md) |
 
 ## Reading Notes
 

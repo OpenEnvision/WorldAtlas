@@ -51,19 +51,13 @@ def test_evaluate_long_sequence_dimensions_uses_worldarena_dispatch(
         videos_path=tmp_path / "input",
         output_path=output_root,
         name="demo",
-        dimensions=["subject_consistency", "motion_smoothness", "dynamic_degree"],
+        dimensions=["motion_smoothness", "dynamic_degree"],
         device="cpu",
         dev_flag=True,
     )
 
-    assert set(result) == {"subject_consistency", "motion_smoothness", "dynamic_degree"}
+    assert set(result) == {"motion_smoothness", "dynamic_degree"}
     assert calls == [
-        (
-            "subject_consistency",
-            str(manifest_path),
-            None,
-            True,
-        ),
         (
             "motion_smoothness",
             str(manifest_path),

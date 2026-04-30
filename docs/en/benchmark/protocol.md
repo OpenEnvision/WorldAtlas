@@ -46,8 +46,7 @@ The manifest stores this contract per sample, so downstream generation and evalu
 | `depth_collision` | never official; diagnostic only. Requires a video prediction and Video-Depth-Anything runtime |
 | `reconstruction_consistency` | never official; diagnostic only. Requires a video prediction, Depth-Anything-3, and LPIPS |
 | `memory_revisit_consistency` | never official; diagnostic only. Intended for revisit / loop-closing experimental samples |
-| `semantic_alignment`, `subject_consistency`, `background_consistency`, `depth_accuracy`, `psnr`, `ssim`, `met3r_consistency`, `long_sequence_*` | never official; diagnostic only |
-| `anchor_consistency` | never official; diagnostic only |
+| `semantic_alignment`, `depth_accuracy`, `psnr`, `ssim`, `met3r_consistency`, `long_sequence_*` | never official; diagnostic only |
 | all remaining metrics in the formal suites | official whenever the metric returns a numeric value |
 
 Two common consequences:

@@ -15,8 +15,6 @@ from worldarena.benchmark.long_sequence_assets import inspect_long_sequence_layo
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LONG_SEQUENCE_RUNTIME_WORKER_ENV = "WORLDARENA_LONG_SEQUENCE_RUNTIME_WORKER"
 LONG_SEQUENCE_DIMENSION_MAP = {
-    "long_sequence_subject_consistency": "subject_consistency",
-    "long_sequence_background_consistency": "background_consistency",
     "long_sequence_motion_smoothness": "motion_smoothness",
     "long_sequence_dynamic_degree": "dynamic_degree",
     "long_sequence_aesthetic_quality": "aesthetic_quality",
@@ -122,18 +120,9 @@ def _metric_runtime_kwargs(runtime: dict[str, Any] | None) -> dict[str, Any]:
         "imaging_quality_preprocessing_mode": str(
             payload.get("imaging_quality_preprocessing_mode") or "longer"
         ),
-        "bg_clip2clip_feat_extractor": str(
-            payload.get("bg_clip2clip_feat_extractor") or "clip"
-        ),
-        "sb_clip2clip_feat_extractor": str(
-            payload.get("sb_clip2clip_feat_extractor") or "dinov2"
-        ),
-        "w_inclip": float(payload.get("w_inclip", 1.0)),
-        "w_clip2clip": float(payload.get("w_clip2clip", 0.0)),
         "clip_duration_seconds": float(payload.get("clip_duration_seconds", 2.0)),
         "clip_fps": int(payload.get("clip_fps", 8)),
         "clip_length_config": str(payload.get("clip_length_config") or "clip_length_mix.yaml"),
-        "slow_fast_eval_config": payload.get("slow_fast_eval_config"),
         "dev_flag": _coerce_runtime_bool(payload.get("dev_flag"), default=True),
     }
 
@@ -211,12 +200,7 @@ def _run_local_long_sequence(
             clip_duration=options["clip_duration_seconds"],
             clip_fps=options["clip_fps"],
             imaging_quality_preprocessing_mode=options["imaging_quality_preprocessing_mode"],
-            bg_clip2clip_feat_extractor=options["bg_clip2clip_feat_extractor"],
-            sb_clip2clip_feat_extractor=options["sb_clip2clip_feat_extractor"],
-            w_inclip=options["w_inclip"],
-            w_clip2clip=options["w_clip2clip"],
             clip_length_config=options["clip_length_config"],
-            slow_fast_eval_config=options["slow_fast_eval_config"],
             dev_flag=bool(options["dev_flag"]),
             static_filter_flag=False,
             num_of_samples_per_prompt=1,

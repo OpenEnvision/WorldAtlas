@@ -84,9 +84,9 @@ plugins:
             Semantic Alignment: 语义对齐
             Style Consistency: 风格一致性
             Perceptual Quality: 感知质量
-            Anchor Consistency: 锚点一致性
-            Subject Consistency: 主体一致性
-            Background Consistency: 背景一致性
+            Brightness Consistency: 亮度一致性
+            Color Temperature Consistency: 色温一致性
+            Sharpness Retention: 清晰度保持
             Camera Error: 相机误差
             Object Detection: 目标检测
             Seen Region Preservation: 已见区域保真
@@ -128,9 +128,6 @@ nav:
           - Overview: benchmark/metrics/index.md
           - Long Sequence (Memory):
               - Overview: benchmark/metrics/dimensions/long_sequence.md
-              - Anchor Consistency: benchmark/metrics/anchor_consistency.md
-              - Subject Consistency: benchmark/metrics/subject_consistency.md
-              - Background Consistency: benchmark/metrics/background_consistency.md
               - Seen Region Preservation: benchmark/metrics/seen_region_preservation.md
               - Object Permanence: benchmark/metrics/object_permanence.md
               - Memory Revisit Consistency: benchmark/metrics/memory_revisit_consistency.md
@@ -170,6 +167,9 @@ nav:
               - Overview: benchmark/metrics/dimensions/quality.md
               - Style Consistency: benchmark/metrics/style_consistency.md
               - Perceptual Quality: benchmark/metrics/perceptual_quality.md
+              - Brightness Consistency: benchmark/metrics/brightness_consistency.md
+              - Color Temperature Consistency: benchmark/metrics/color_temperature_consistency.md
+              - Sharpness Retention: benchmark/metrics/sharpness_retention.md
               - PSNR: benchmark/metrics/psnr.md
               - SSIM: benchmark/metrics/ssim.md
           - Real Time:

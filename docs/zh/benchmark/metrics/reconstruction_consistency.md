@@ -1,6 +1,6 @@
 # 重建一致性
 
-`reconstruction_consistency` 将 World-R1 的 `S_recon` 信号接入 WorldArena，作为诊断性的 3D/4D consistency 指标。它关注生成视频能否被重建成一个 3D Gaussian 表征，并沿输入视角路径重新渲染出一致的外观。
+`reconstruction_consistency` 关注生成视频能否被重建成一个 3D Gaussian 表征，并沿输入视角路径重新渲染出一致的外观。
 
 ## 它测什么
 
@@ -32,9 +32,9 @@
 | 预测输入 | prediction video 的采样帧或完整帧 |
 | 参考输入 | 不使用 |
 | 标注输入 | 不使用 |
-| 后端 | `world_r1_lpips` |
+| 后端 | 重建 LPIPS 后端 |
 | 运行时默认 | `repo_root = thirdparty/Depth-Anything-3/src`、`model_name = depth-anything/DA3-GIANT`、`scorer = lpips`、`lpips_net = alex`、`process_res = 504`、`gs_render_size = [512, 512]` |
-| 原始输出 | `[0,1]` 内的 World-R1 `S_recon` 标量 |
+| 原始输出 | `[0,1]` 内的 `S_recon` 标量 |
 | 归一化输出 | `[0,1]`，越高越好 |
 | 细节字段 | `source_metric`、`frame_count`、`rendered_frame_count`、`render_size`、`process_res`、`trj_mode`、`model_name`、`source_root`、`package_name`、`lpips_mean`、`lpips_frame_distances`、`frame_scores` |
 
@@ -46,4 +46,4 @@
 | 聚合 | 永远 `diagnostic` |
 | 维度 | `consistency_3d_4d` |
 
-运行时同时支持 WorldArena 自带的 `thirdparty/Depth-Anything-3/src/depth_anything_3` 布局，以及 World-R1 的 `reward_server.depth_anything_3` 包布局。
+运行时同时支持 WorldArena 自带的 `thirdparty/Depth-Anything-3/src/depth_anything_3` 布局，以及外部重建后端的 `reward_server.depth_anything_3` 包布局。

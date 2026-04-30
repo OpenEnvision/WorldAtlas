@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 from worldarena.benchmark.config import BenchmarkConfig
+from worldarena.benchmark.metrics.appearance import (
+    BrightnessConsistencyMetric,
+    ColorTemperatureConsistencyMetric,
+    SharpnessRetentionMetric,
+)
 from worldarena.benchmark.metrics.consistency import (
     OpticalFlowAepeMetric,
     ReprojectionErrorMetric,
@@ -11,18 +16,13 @@ from worldarena.benchmark.metrics.control import (
     ObjectDetectionMetric,
 )
 from worldarena.benchmark.metrics.depth_collision import DepthCollisionMetric
-from worldarena.benchmark.metrics.alignment import (
-    AnchorConsistencyMetric,
-    PromptAlignmentMetric,
-)
+from worldarena.benchmark.metrics.alignment import PromptAlignmentMetric
 from worldarena.benchmark.metrics.base import Metric
 from worldarena.benchmark.metrics.legacy import (
-    BackgroundConsistencyMetric,
     DepthAccuracyMetric,
     PsnrMetric,
     SemanticAlignmentMetric,
     SsimMetric,
-    SubjectConsistencyMetric,
 )
 from worldarena.benchmark.metrics.motion import MotionMagnitudeMetric, MotionSmoothnessMetric
 from worldarena.benchmark.metrics.met3r import Met3RConsistencyMetric
@@ -46,7 +46,6 @@ METRIC_ALIASES: dict[str, str] = {
     "scene_alignment": "prompt_alignment",
     "dynamic_alignment": "prompt_alignment",
     "subjective_quality": "perceptual_quality",
-    "rollout_quality": "anchor_consistency",
     "camera_control": "camera_error",
     "object_control": "object_detection",
     "content_alignment": "prompt_alignment",
@@ -66,8 +65,6 @@ TEMPORAL_CALIBRATION_METRICS = {
     "physical_fps_intra_video_cv",
 }
 LONG_SEQUENCE_METRICS = {
-    "long_sequence_subject_consistency",
-    "long_sequence_background_consistency",
     "long_sequence_motion_smoothness",
     "long_sequence_dynamic_degree",
     "long_sequence_aesthetic_quality",
@@ -111,10 +108,30 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
             metrics.append(StyleConsistencyMetric(backend=backend, normalization=normalization))
         elif metric_name == "perceptual_quality":
             metrics.append(PerceptualQualityMetric(backend=backend, normalization=normalization))
-        elif metric_name == "subject_consistency":
-            metrics.append(SubjectConsistencyMetric(backend=backend, normalization=normalization))
-        elif metric_name == "background_consistency":
-            metrics.append(BackgroundConsistencyMetric(backend=backend, normalization=normalization))
+        elif metric_name == "brightness_consistency":
+            metrics.append(
+                BrightnessConsistencyMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
+        elif metric_name == "color_temperature_consistency":
+            metrics.append(
+                ColorTemperatureConsistencyMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
+        elif metric_name == "sharpness_retention":
+            metrics.append(
+                SharpnessRetentionMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
         elif metric_name == "motion_magnitude":
             metrics.append(
                 MotionMagnitudeMetric(
@@ -219,8 +236,6 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
             metrics.append(PsnrMetric(backend=backend, normalization=normalization))
         elif metric_name == "ssim":
             metrics.append(SsimMetric(backend=backend, normalization=normalization))
-        elif metric_name == "anchor_consistency":
-            metrics.append(AnchorConsistencyMetric(backend=backend, normalization=normalization))
         elif metric_name == "met3r_consistency":
             metrics.append(
                 Met3RConsistencyMetric(

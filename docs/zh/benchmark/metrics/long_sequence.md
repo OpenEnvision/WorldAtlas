@@ -1,18 +1,17 @@
 # Long-Sequence 诊断指标
 
-WorldArena 内置了 `Long-Sequence` backend，用来从完整 prediction video 中提取长时稳定性、运动和画质诊断信号。
-这组指标不是只看单帧，也不是只看相邻两帧，而是把一段生成视频切成多个短 clip，再同时分析 clip 内稳定性和 clip 之间的长时漂移。
-它主要回答的问题是：生成视频在更长 horizon 上是否还能保持主体、背景、运动和视觉质量的连续性。
+WorldArena 内置了 `Long-Sequence` backend，用来从完整 prediction video 中提取长时运动和画质诊断信号。
+这组指标不是只看单帧，也不是只看相邻两帧，而是把一段生成视频切成多个短 clip，再分析更长 horizon 上的运动连续性和视觉质量。
+
+它主要回答的问题是：生成视频在更长 horizon 上是否还能保持运动连续性和画质。
 
 这组指标是 prediction-only 诊断信号，不使用 benchmark reference rollout，也不需要标注。
-因此它们更适合解释长视频退化模式，例如主体逐渐变形、背景慢慢漂移、运动突然停滞、画质随时间下降等。
+因此它们更适合解释长视频退化模式，例如运动停滞、突兀时间伪影、画质随时间下降等。
 
 ## 覆盖的指标
 
 | 指标名 | 包装后的 Long-Sequence 维度 | 在 WorldArena 中的角色 |
 | --- | --- | --- |
-| `long_sequence_subject_consistency` | `subject_consistency` | 长时主体、身份和前景语义稳定性 |
-| `long_sequence_background_consistency` | `background_consistency` | 长时背景、场景布局和全局外观稳定性 |
 | `long_sequence_motion_smoothness` | `motion_smoothness` | 基于视频插帧误差的运动平滑度 |
 | `long_sequence_dynamic_degree` | `dynamic_degree` | 基于光流强度的运动是否充分发生 |
 | `long_sequence_aesthetic_quality` | `aesthetic_quality` | 基于无参考美学模型的视觉审美质量 |
@@ -20,68 +19,27 @@ WorldArena 内置了 `Long-Sequence` backend，用来从完整 prediction video 
 
 ## 原理说明
 
-普通短程一致性指标通常只比较相邻帧，容易漏掉“前面看起来稳定、但几十秒后逐渐漂移”的问题。
-Long-Sequence backend 会先把完整视频切成多个短 clip，然后在两个层面上打分：
+普通短程指标容易漏掉只在更长 rollout 后出现的问题。
+Long-Sequence backend 会先把完整视频切成多个短 clip，然后把原生 long-video 例程用于运动和画质维度。
 
-- clip 内分数：衡量同一个短 clip 内连续帧是否稳定。
-- clip 间分数：取每个 clip 的代表帧，衡量不同时间段之间是否仍然保持一致。
-
-对主体和背景一致性，WorldArena 使用特征空间中的相似度来描述长时稳定性。
-主体路径默认使用 DINOv2 特征，背景路径默认使用 CLIP 图像特征；clip 间对比可以按配置切换到 DINOv2、CLIP 或 DreamSim。
-每个 clip 内会计算帧特征的 transition scores，既比较当前帧与上一帧，也比较当前帧与第一个锚点帧，从而同时捕捉短程抖动和相对初始状态的漂移。
-
-对运动和质量维度，WorldArena 复用原生 long-video 后端：
-`motion_smoothness` 用 AMT-S 做中间帧插值，比较插值结果和真实中间帧的差异；`dynamic_degree` 用 RAFT 估计光流强度，判断视频是否有足够运动；`aesthetic_quality` 和 `imaging_quality` 分别使用质量模型对每个 clip 的帧进行无参考打分。
+`motion_smoothness` 用 AMT-S 做中间帧插值，比较插值结果和真实中间帧的差异。
+`dynamic_degree` 用 RAFT 估计光流强度，判断视频是否有足够运动。
+`aesthetic_quality` 和 `imaging_quality` 分别使用质量模型对每个 clip 的帧进行无参考打分。
 
 ## 具体算法
 
 1. WorldArena 读取完整 prediction video，并在临时 workspace 中准备 Long-Sequence 输入目录。
 2. `worldarena.benchmark.long_video` 会把长视频切成 `split_clip/`，并生成每个维度需要的最小 manifest。
 3. dispatcher 根据请求维度调用对应实现：
-    - `subject_consistency`：DINOv2 clip 内特征稳定性 + 可选 DINOv2/DreamSim clip 间稳定性。
-    - `background_consistency`：CLIP clip 内特征稳定性 + 可选 CLIP/DreamSim clip 间稳定性。
     - `motion_smoothness`：AMT-S 插帧后比较预测中间帧和真实中间帧。
     - `dynamic_degree`：RAFT 估计光流，并统计高运动 transition 是否达到阈值。
     - `aesthetic_quality`：无参考 aesthetic scorer 对 clip 帧打分。
     - `imaging_quality`：MUSIQ 对 clip 帧打分。
-4. 每个 WorldArena 指标只读取自己对应的 wrapped dimension，例如 `long_sequence_subject_consistency` 只读取 `subject_consistency` 结果。
+4. 每个 WorldArena 指标只读取自己对应的 wrapped dimension。
 5. wrapper 会记录运行时元数据，包括实际 device、source root、clip 数量、per-video scores 和维度特定细节。
-6. 最后每个指标按 `config/benchmark.yaml` 中的 `[0,1]` 范围独立归一化；这六个指标都是越高越好。
+6. 最后每个指标按 `config/benchmark.yaml` 中的 `[0,1]` 范围独立归一化；这四个指标都是越高越好。
 
 ## 关键公式
-
-对主体和背景一致性，先把某个 clip 内的帧编码为特征序列 \(\{f_1,\ldots,f_T\}\)。
-WorldArena 的 transition score 同时考虑相邻稳定性和相对首帧的长期漂移：
-
-!!! info "clip 内 transition score"
-
-    \[
-    s_t
-    =
-    \frac{
-        \max(0,\operatorname{cos}(f_{t-1},f_t))
-        +
-        \max(0,\operatorname{cos}(f_1,f_t))
-    }{2},
-    \qquad t=2,\ldots,T
-    \]
-
-clip 内分数为所有 \(s_t\) 的平均值。
-如果启用 clip 间分数，backend 会取每个 clip 的第一帧形成代表帧序列，再用同样的 transition 逻辑计算跨 clip 稳定性，并通过 mapping table 映射到 Long-Sequence 的分数尺度。
-
-融合后的长时一致性分数为：
-
-!!! info "长时一致性融合"
-
-    \[
-    s_{\mathrm{long}}
-    =
-    w_{\mathrm{inclip}} s_{\mathrm{inclip}}
-    +
-    w_{\mathrm{clip2clip}} s_{\mathrm{clip2clip}}
-    \]
-
-当前默认运行时中，`w_inclip = 1.0`、`w_clip2clip = 0.0`，但在 `dev_flag=true` 时可以从 slow-fast 参数表中读取维度专属权重。
 
 对 `motion_smoothness`，AMT-S 会用偶数采样帧插值得到中间帧，并和真实中间帧比较平均绝对差：
 
@@ -118,17 +76,16 @@ clip 内分数为所有 \(s_t\) 的平均值。
 ## 运行时说明
 
 - 当前 wrapper 通过 `benchmark.metric_runtime.long_sequence` 读取旁路运行时配置。
-- 原生 mapping / slow-fast 默认参数位于 `worldarena/benchmark/long_sequence_params.py`。
 - AMT / RAFT 源码固定在 `thirdparty/AMT` 和 `thirdparty/RAFT`。
 - long-sequence checkpoint 现在统一从 `benchmark.metric_runtime.long_sequence` 解析到唯一 checkpoint 根目录：
   `ckpt/amt_model/amt-s.pth`、`ckpt/raft_model/models/raft-things.pth`、`ckpt/musiq/musiq_spaq_ckpt-358bb6af.pth`。
 - 共享的 HF/Torch cache 固定在 `ckpt/huggingface`、`ckpt/transformers` 和 `ckpt/torch`。
 - 原生路径已经不再依赖 `decord`、`moviepy` 和 `easydict`。但 quality 相关路径仍然依赖 `pyiqa`，并需要兼容的 `timm` 版本。
 - 如果启用 `use_semantic_splitting=true`，运行环境里还需要安装 `scenedetect`。
-- 常见运行时参数包括 `device`、`use_semantic_splitting`、`clip_duration_seconds`、`clip_fps`、`clip_length_config`、`bg_clip2clip_feat_extractor`、`sb_clip2clip_feat_extractor`、`w_inclip`、`w_clip2clip` 和 `imaging_quality_preprocessing_mode`。
+- 常见运行时参数包括 `device`、`use_semantic_splitting`、`clip_duration_seconds`、`clip_fps`、`clip_length_config` 和 `imaging_quality_preprocessing_mode`。
 
 ## 集成说明
 
 - 当前聚合状态：在 `image_static`、`image_dynamic` 和 `video_dynamic` 中以 `diagnostic` 形式产出。
 - 这组指标对长时 horizon 分析很有价值，但当前不进入 official headline 向量。
-- 解读时应和 `style_consistency`、`perceptual_quality`、`motion_magnitude`、`motion_smoothness` 等主指标一起看：Long-Sequence 分数高说明长时统计更稳定，不等价于 prompt 完全正确，也不等价于物理运动真实。
+- 解读时应和 `style_consistency`、`perceptual_quality`、`motion_magnitude`、`motion_smoothness` 等主指标一起看：Long-Sequence 分数高说明长时运动和画质统计更稳定，不等价于 prompt 完全正确，也不等价于物理运动真实。

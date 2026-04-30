@@ -1,6 +1,6 @@
 # Reconstruction Consistency
 
-`reconstruction_consistency` ports the World-R1 `S_recon` signal into WorldArena as a diagnostic 3D/4D consistency metric. It asks whether the generated video can be reconstructed into a 3D Gaussian representation that renders back consistently along the input view path.
+`reconstruction_consistency` asks whether the generated video can be reconstructed into a 3D Gaussian representation that renders back consistently along the input view path.
 
 ## What It Measures
 
@@ -32,9 +32,9 @@
 | Prediction input | sampled or full prediction video frames |
 | Reference input | unused |
 | Annotation input | unused |
-| Backend | `world_r1_lpips` |
+| Backend | reconstruction LPIPS backend |
 | Default runtime | `repo_root = thirdparty/Depth-Anything-3/src`, `model_name = depth-anything/DA3-GIANT`, `scorer = lpips`, `lpips_net = alex`, `process_res = 504`, `gs_render_size = [512, 512]` |
-| Raw output | World-R1 `S_recon` scalar in `[0, 1]` |
+| Raw output | `S_recon` scalar in `[0, 1]` |
 | Normalized output | `[0, 1]`, higher is better |
 | Detail fields | `source_metric`, `frame_count`, `rendered_frame_count`, `render_size`, `process_res`, `trj_mode`, `model_name`, `source_root`, `package_name`, `lpips_mean`, `lpips_frame_distances`, `frame_scores` |
 
@@ -46,4 +46,4 @@
 | Aggregation | always `diagnostic` |
 | Dimension | `consistency_3d_4d` |
 
-The runtime supports both the bundled `thirdparty/Depth-Anything-3/src/depth_anything_3` layout and the World-R1 `reward_server.depth_anything_3` layout.
+The runtime supports both the bundled `thirdparty/Depth-Anything-3/src/depth_anything_3` layout and the external reconstruction-backend `reward_server.depth_anything_3` package layout.

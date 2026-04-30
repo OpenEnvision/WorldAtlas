@@ -11,12 +11,11 @@ WorldArena 为可控 world generation 报告按 suite 划分的指标向量。�
 
 | Suite | 模态 | 条件输入契约 | 满足资格时进入官方聚合的指标 | 诊断指标与备注 |
 | --- | --- | --- | --- | --- |
-| `image_static` | image -> video | `reference_image`，1 帧；prediction 是 I2V rollout | video-output 指标并集。常见 official：`prompt_alignment`*、`object_detection`*、`style_consistency`、`perceptual_quality`、`reprojection_error`、`optical_flow_aepe`、`motion_magnitude`、`motion_smoothness`、`physical_fps_*`；有 pose/mask/reference-video sidecar 时还会启用对应条件指标 | `semantic_alignment`、`subject_consistency`、`background_consistency`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_*`；依赖 reference video 的指标在纯 image reference 上通常为空 |
+| `image_static` | image -> video | `reference_image`，1 帧；prediction 是 I2V rollout | video-output 指标并集。常见 official：`prompt_alignment`*、`object_detection`*、`style_consistency`、`perceptual_quality`、`reprojection_error`、`optical_flow_aepe`、`motion_magnitude`、`motion_smoothness`、`physical_fps_*`；有 pose/mask/reference-video sidecar 时还会启用对应条件指标 | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_*`；依赖 reference video 的指标在纯 image reference 上通常为空 |
 | `image_dynamic` | image -> video | `reference_image`，1 帧；prediction 是 I2V rollout | 同 `image_static`，但 motion/object 相关监督通常更有机会覆盖 | 同 `image_static` |
-| `video_static` | video | `first_frame`，1 帧 | `prompt_alignment`*、`style_consistency`、`perceptual_quality`、`camera_error`、`seen_region_preservation`、`novel_region_fidelity`、`object_detection`*、`reprojection_error`、`optical_flow_aepe` | `semantic_alignment`、`subject_consistency`、`background_consistency`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency` |
-| `video_dynamic` | video | `reference_video`，prefix continuation | `prompt_alignment`*、`style_consistency`、`perceptual_quality`、`object_permanence`、`pmf`、`motion_accuracy`、`motion_magnitude`、`motion_smoothness`、`physical_fps_error`、`physical_fps_pct_error`、`physical_fps_intra_video_cv` | `semantic_alignment`、`subject_consistency`、`background_consistency`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_*` |
-| `auxiliary` | mixed | mixed | 无 | `anchor_consistency` |
-| `experimental` | mixed | mixed | `motion_magnitude`、`motion_smoothness`（仅显式评估该 suite；非 formal headline） | `anchor_consistency`、`memory_revisit_consistency` |
+| `video_static` | video | `first_frame`，1 帧 | `prompt_alignment`*、`style_consistency`、`perceptual_quality`、`camera_error`、`seen_region_preservation`、`novel_region_fidelity`、`object_detection`*、`reprojection_error`、`optical_flow_aepe` | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency` |
+| `video_dynamic` | video | `reference_video`，prefix continuation | `prompt_alignment`*、`style_consistency`、`perceptual_quality`、`object_permanence`、`pmf`、`motion_accuracy`、`motion_magnitude`、`motion_smoothness`、`physical_fps_error`、`physical_fps_pct_error`、`physical_fps_intra_video_cv` | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_*` |
+| `experimental` | mixed | mixed | `motion_magnitude`、`motion_smoothness`（仅显式评估该 suite；非 formal headline） | `memory_revisit_consistency` |
 
 \* 仍然要通过样本级 eligibility gate。`prompt_alignment` 只在显式 instruction 且非 self-conditioned 时计算；`object_detection` 只在 object prompt 来自显式结构化标注时计算。其他情况记为 `not_applicable`，不产生分数。详见 [协议与资格](protocol.md)。
 
@@ -32,7 +31,7 @@ WorldArena 现在把 benchmark 指标归入六个有意保持宽口径的评测�
 | `action_control` | Action control | scene control、camera control、object/action control |
 | `consistency_3d_4d` | 3D/4D consistency | 几何、多视角、重投影与运动场一致性 |
 | `physics` | Physics | 运动物理真实性与 simulator-backed physics 指标 |
-| `quality` | Quality | 风格、感知质量与重建式保真 |
+| `quality` | Quality | 风格、感知质量、低层外观稳定性与重建式保真 |
 | `real_time` | Real time | 节奏与 FPS 标定 |
 
 `per_dimension_summary.json` 会基于这六个评测支柱输出官方 suite-level 汇总。详见 [指标总览](metrics/index.md)。

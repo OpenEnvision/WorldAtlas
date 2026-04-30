@@ -26,14 +26,7 @@ def _clip_image_text_similarity(frame: np.ndarray, text: str) -> tuple[float, st
     return score, loader_name
 
 
-def _clip_image_image_similarity(left: np.ndarray, right: np.ndarray) -> tuple[float, str]:
-    image_features, loader_name = clip_image_features([left, right])
-    score = clamp01((cosine_similarity(image_features[0], image_features[1]) + 1.0) / 2.0)
-    return score, loader_name
-
-
 PROMPT_ALIGNMENT_BACKENDS = {"reference", "clip", "reference_proxy"}
-IMAGE_ALIGNMENT_BACKENDS = {"clip", "reference_proxy"}
 DISABLED_ALIGNMENT_BACKENDS = {"reference_proxy"}
 PROMPT_NOT_APPLICABLE_REASON = (
     "prompt_alignment requires explicit instruction supervision and non-self conditioning"
@@ -45,15 +38,6 @@ class AlignmentMetric(Metric):
     def __init__(self, name: str, backend: str, normalization: dict[str, Any]) -> None:
         super().__init__(name, backend, normalization)
         self._resolve_backend()
-
-    def _resolve_backend(self) -> str:
-        return resolve_metric_backend(
-            metric_name=self.name,
-            configured_backend=self.backend,
-            auto_backend="clip",
-            supported_backends=IMAGE_ALIGNMENT_BACKENDS,
-            disabled_backends=DISABLED_ALIGNMENT_BACKENDS,
-        )
 
     def _protocol_details(self, prediction: LoadedMedia) -> dict[str, Any]:
         return {
@@ -187,47 +171,6 @@ class PromptAlignmentMetric(AlignmentMetric):
             )
 
 
-class AnchorConsistencyMetric(AlignmentMetric):
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
-        super().__init__("anchor_consistency", backend, normalization)
-
-    def compute(
-        self,
-        sample: BenchmarkSample,
-        prediction: LoadedMedia,
-        reference: LoadedMedia,
-    ) -> MetricOutput:
-        del sample
-
-        backend = self._resolve_backend()
-        try:
-            paired = list(zip(prediction.anchor_frames, reference.anchor_frames))
-            scores = [_clip_image_image_similarity(left, right) for left, right in paired]
-            score_values = [score for score, _ in scores]
-            raw = float(np.mean(score_values)) if score_values else None
-            details = self._protocol_details(prediction)
-            details["frame_scores"] = [round(value, 4) for value in score_values]
-            details["late_minus_early"] = round(score_values[-1] - score_values[0], 4) if score_values else None
-            if scores:
-                details["clip_loader"] = scores[0][1]
-            return MetricOutput(
-                raw=raw,
-                normalized=normalize_score(raw, self.normalization),
-                backend=backend,
-                details=details,
-                eligibility_status="diagnostic",
-            )
-        except Exception as exc:  # pragma: no cover - backend-specific runtime failures
-            return MetricOutput(
-                raw=None,
-                normalized=None,
-                backend=backend,
-                details=self._protocol_details(prediction),
-                eligibility_status="diagnostic",
-                error=str(exc),
-            )
-
-
 class SceneAlignmentMetric(PromptAlignmentMetric):
     def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
         super().__init__(backend=backend, normalization=normalization)
@@ -238,9 +181,3 @@ class DynamicAlignmentMetric(PromptAlignmentMetric):
     def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
         super().__init__(backend=backend, normalization=normalization)
         self.name = "dynamic_alignment"
-
-
-class RolloutQualityMetric(AnchorConsistencyMetric):
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
-        super().__init__(backend=backend, normalization=normalization)
-        self.name = "rollout_quality"
