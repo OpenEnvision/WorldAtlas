@@ -43,7 +43,7 @@ Physics samples add two important metadata blocks on top of the standard benchma
 
 - benchmark family and backend name
 - source sample id and prompt metadata
-- `metrics_design` grouped into `video_physics`, `geometry_3d`, `temporal_consistency`, and `world_4d`
+- `metrics_design` grouped into `video_physics`, `geometry_3d`, `temporal_consistency`, `world_4d`, and `trajectory_dynamics`
 - `optional_metrics_design` for backend outputs that are recognized but not enabled by default
 - `metric_contract` such as `required_core_metrics`, `require_full_frame_coverage`, and `require_pred_world_artifacts`
 - case taxonomy and simulator hints copied from the source metadata

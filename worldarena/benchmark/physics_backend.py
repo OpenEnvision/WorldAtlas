@@ -17,6 +17,10 @@ import cv2
 import numpy as np
 
 from worldarena.benchmark.physics_manifest import REQUIRED_CORE_METRICS
+from worldarena.benchmark.physics_simulator_derived import (
+    append_derived_simulator_metrics,
+    ensure_pred_worldlines,
+)
 from worldarena.benchmark.schemas import BenchmarkSample
 from worldarena.benchmark.taxonomy import (
     artifact_type_for_modality,
@@ -1336,6 +1340,20 @@ def evaluate_generated_video(
         if pred_world_info.get("success")
         else None
     )
+    if pred_world_root is not None:
+        try:
+            pred_worldline_info = ensure_pred_worldlines(
+                world_gt_root=case.world_gt_root,
+                pred_world_root=pred_world_root,
+            )
+        except Exception as exc:
+            pred_worldline_info = {
+                "created": False,
+                "path": str(pred_world_root / "worldlines.npz"),
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+    else:
+        pred_worldline_info = None
     pred_world_eval_root = pred_world_root.parent if pred_world_root is not None else None
     report_path = reports_root / f"{generated_video_path.stem}_physics_report.json"
     payload_out = _run_eval_script(
@@ -1363,6 +1381,7 @@ def evaluate_generated_video(
         "cache_hit": bool(pred_world_info.get("cache_hit")),
         "pred_world_root": pred_world_info.get("pred_world_root"),
         "runtime_data_root": pred_world_info.get("runtime_data_root"),
+        "worldlines": pred_worldline_info,
     }
     result["world_gt_status"] = {
         "video_ready": diagnostics["local_world_gt"]["video_ready"],
@@ -1380,6 +1399,12 @@ def evaluate_generated_video(
         result["world_gt_sync_message"] = export_error
     if pred_world_info.get("error"):
         result["pred_world_error"] = str(pred_world_info["error"])
+    append_derived_simulator_metrics(
+        result,
+        sample=sample,
+        world_gt_root=case.world_gt_root,
+        pred_world_root=pred_world_root,
+    )
 
     contract_violations = _metric_contract_violations(sample, result)
     result["metric_contract"] = contract_violations
@@ -1593,6 +1618,20 @@ def evaluate_online_physics_i2v(
         generated_video_path=staged_case.submitted_video_path.resolve(),
         output_root=pred_world_root,
     )
+    if pred_world_info.get("success"):
+        try:
+            pred_worldline_info = ensure_pred_worldlines(
+                world_gt_root=staged_case.world_gt_root,
+                pred_world_root=pred_world_root,
+            )
+        except Exception as exc:
+            pred_worldline_info = {
+                "created": False,
+                "path": str(pred_world_root / "worldlines.npz"),
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+    else:
+        pred_worldline_info = None
     pred_world_eval_root = pred_world_root.parent if pred_world_info.get("success") else None
     report_path = reports_root / f"{staged_case.benchmark_sample_id}_physics_report.json"
     payload = _run_eval_script(
@@ -1612,7 +1651,14 @@ def evaluate_online_physics_i2v(
     result["world_gt_root"] = str(staged_case.world_gt_root.resolve())
     result["pipeline_run"] = pipeline_run
     result["pred_world_status"] = inspect_pred_world_root(pred_world_root)
+    result["pred_world_status"]["worldlines"] = pred_worldline_info
     result["world_gt_status"] = inspect_world_gt_root(staged_case.world_gt_root)
+    append_derived_simulator_metrics(
+        result,
+        sample=sample,
+        world_gt_root=staged_case.world_gt_root,
+        pred_world_root=pred_world_root if pred_world_info.get("success") else None,
+    )
     contract_violations = _metric_contract_violations(sample, result)
     result["metric_contract"] = contract_violations
     if contract_violations["messages"]:

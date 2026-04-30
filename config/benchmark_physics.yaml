@@ -39,6 +39,12 @@ benchmark:
       - worldline_final_drift
       - worldline_fail_rate
       - worldline_length
+      - trajectory_rmse
+      - final_position_error
+      - speed_similarity
+      - acceleration_similarity
+      - directional_consistency
+      - final_state_accuracy
   metric_backends:
     mse: simulator_reference
     st_iou: simulator_reference
@@ -61,6 +67,12 @@ benchmark:
     worldline_final_drift: simulator_reference
     worldline_fail_rate: simulator_reference
     worldline_length: simulator_reference
+    trajectory_rmse: simulator_reference
+    final_position_error: simulator_reference
+    speed_similarity: simulator_reference
+    acceleration_similarity: simulator_reference
+    directional_consistency: simulator_reference
+    final_state_accuracy: simulator_reference
   normalization:
     mse:
       lower: 0.0
@@ -143,6 +155,30 @@ benchmark:
       upper: 1.0
       higher_is_better: false
     worldline_length:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    trajectory_rmse:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: false
+    final_position_error:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: false
+    speed_similarity:
+      lower: -1.0
+      upper: 1.0
+      higher_is_better: true
+    acceleration_similarity:
+      lower: -1.0
+      upper: 1.0
+      higher_is_better: true
+    directional_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    final_state_accuracy:
       lower: 0.0
       upper: 1.0
       higher_is_better: true

@@ -25,6 +25,8 @@ TRACK_TO_METRIC_GROUPS: dict[str, list[str]] = {
         "geometry_3d",
         "temporal_consistency",
         "world_4d",
+        "trajectory_dynamics",
+        "final_state",
     ],
 }
 
@@ -47,6 +49,13 @@ CORE_METRICS_BY_GROUP: dict[str, tuple[str, ...]] = {
         "worldline_fail_rate",
         "worldline_length",
     ),
+    "trajectory_dynamics": (
+        "trajectory_rmse",
+        "final_position_error",
+        "speed_similarity",
+        "acceleration_similarity",
+        "directional_consistency",
+    ),
 }
 
 OPTIONAL_METRICS_BY_GROUP: dict[str, tuple[str, ...]] = {
@@ -57,6 +66,7 @@ OPTIONAL_METRICS_BY_GROUP: dict[str, tuple[str, ...]] = {
         "novel_time_rgb_l1",
         "novel_time_rgb_charb",
     ),
+    "final_state": ("final_state_accuracy",),
 }
 
 

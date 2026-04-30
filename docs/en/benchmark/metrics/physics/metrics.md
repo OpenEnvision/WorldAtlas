@@ -6,7 +6,7 @@ For reporting purposes, configured and optional simulator-backed metrics in the 
 
 ## Simulator Based Physics Evaluation Metric Groups
 
-`physics_spec.metrics_design` groups required simulator-backed metrics into four groups. Each group's detailed inputs, computation semantics, score direction, and failure behavior live on a dedicated page:
+`physics_spec.metrics_design` groups required simulator-backed metrics into five core groups, plus a scenario-conditional final-state group. Each group's detailed inputs, computation semantics, score direction, and failure behavior live on a dedicated page:
 
 | simulator-backed group | Metrics | Detail page |
 | --- | --- | --- |
@@ -14,6 +14,8 @@ For reporting purposes, configured and optional simulator-backed metrics in the 
 | `geometry_3d` | `abs_rel`, `rmse`, `delta1`, `delta2`, `delta3` | [Geometry 3D](geometry_3d.md) |
 | `temporal_consistency` | `depth_warp_l1`, `depth_warp_charb`, `rgb_warp_charb`, `epe`, `fl_all`, `one_px_out`, plus optional `rgb_warp_lpips` | [Temporal Consistency](temporal_consistency.md) |
 | `world_4d` | `chamfer_4d`, `worldline_l2_error`, `worldline_mean_drift`, `worldline_final_drift`, `worldline_fail_rate`, `worldline_length`, plus optional `novel_time_*` | [World 4D](world_4d.md) |
+| `trajectory_dynamics` | `trajectory_rmse`, `final_position_error`, `speed_similarity`, `acceleration_similarity`, `directional_consistency` | [Trajectory Dynamics](trajectory_dynamics.md) |
+| `final_state` | optional `final_state_accuracy` when the sample declares a final-state rule or labels | [Final State](final_state.md) |
 
 These groups flatten into the current `required_core_metrics` contract carried inside each physics sample. Custom configs that enable optional metrics should also declare matching backend and normalization entries.
 
@@ -64,6 +66,12 @@ where \(x\) is the raw metric, \(l\) is `lower`, and \(u\) is `upper`. If \(u\ap
 | `worldline_final_drift` | `world_4d` | lower is better | `[0.0, 1.0]` |
 | `worldline_fail_rate` | `world_4d` | lower is better | `[0.0, 1.0]` |
 | `worldline_length` | `world_4d` | higher is better | `[0.0, 1.0]` |
+| `trajectory_rmse` | `trajectory_dynamics` | lower is better | `[0.0, 1.0]` |
+| `final_position_error` | `trajectory_dynamics` | lower is better | `[0.0, 1.0]` |
+| `speed_similarity` | `trajectory_dynamics` | higher is better | `[-1.0, 1.0]` |
+| `acceleration_similarity` | `trajectory_dynamics` | higher is better | `[-1.0, 1.0]` |
+| `directional_consistency` | `trajectory_dynamics` | higher is better | `[0.0, 1.0]` |
+| `final_state_accuracy` | `final_state` | higher is better | `[0.0, 1.0]` |
 | `physics_judge_*` | `physics_judge` | higher is better | `[0.0, 1.0]` |
 
 ## Artifact Contract
@@ -84,6 +92,8 @@ Physics evaluation distinguishes between local ground-truth exports and predicte
 | --- | --- |
 | required for the current core contract | `depth.npz`, `mask.npz`, `flow.npz`, `cameras.npz` |
 | optional extras | `occlusion.npz`, `points4d.npz`, `worldlines.npz`, `novel_time_depth.npz`, `novel_time_rgb.npz` |
+
+For `trajectory_dynamics`, WorldArena will reuse `pred_world/worldlines.npz` when present. If it is absent, WorldArena reconstructs `pred_world/worldlines.npz` from `pred_world/depth.npz`, `pred_world/cameras.npz`, and `world_gt/worldlines.npz` pixel tracks before calling the evaluator.
 
 The current sample contract sets:
 

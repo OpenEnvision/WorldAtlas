@@ -6,7 +6,7 @@
 
 ## Simulator Based Physics evaluation 指标分组
 
-`physics_spec.metrics_design` 会把必需指标分成四个 simulator-backed group。每个 group 的详细输入、计算语义、方向和失败模式拆在单独页面里：
+`physics_spec.metrics_design` 会把必需指标分成五个 core simulator-backed group，另加一个场景条件 final-state group。每个 group 的详细输入、计算语义、方向和失败模式拆在单独页面里：
 
 | simulator-backed group | 指标 | 详细页面 |
 | --- | --- | --- |
@@ -14,6 +14,8 @@
 | `geometry_3d` | `abs_rel`、`rmse`、`delta1`、`delta2`、`delta3` | [Geometry 3D](geometry_3d.md) |
 | `temporal_consistency` | `depth_warp_l1`、`depth_warp_charb`、`rgb_warp_charb`、`epe`、`fl_all`、`one_px_out`，以及可选 `rgb_warp_lpips` | [Temporal Consistency](temporal_consistency.md) |
 | `world_4d` | `chamfer_4d`、`worldline_l2_error`、`worldline_mean_drift`、`worldline_final_drift`、`worldline_fail_rate`、`worldline_length`，以及可选 `novel_time_*` | [World 4D](world_4d.md) |
+| `trajectory_dynamics` | `trajectory_rmse`、`final_position_error`、`speed_similarity`、`acceleration_similarity`、`directional_consistency` | [Trajectory Dynamics](trajectory_dynamics.md) |
+| `final_state` | 样本声明 final-state 规则或标签时启用的 optional `final_state_accuracy` | [Final State](final_state.md) |
 
 这些分组会被展平成每个 physics 样本中携带的 `required_core_metrics` 契约。自定义配置如果启用了 optional metric，也要同步声明 backend 和 normalization。
 
@@ -64,6 +66,12 @@ WorldArena 的通用归一化公式是：
 | `worldline_final_drift` | `world_4d` | 越低越好 | `[0.0, 1.0]` |
 | `worldline_fail_rate` | `world_4d` | 越低越好 | `[0.0, 1.0]` |
 | `worldline_length` | `world_4d` | 越高越好 | `[0.0, 1.0]` |
+| `trajectory_rmse` | `trajectory_dynamics` | 越低越好 | `[0.0, 1.0]` |
+| `final_position_error` | `trajectory_dynamics` | 越低越好 | `[0.0, 1.0]` |
+| `speed_similarity` | `trajectory_dynamics` | 越高越好 | `[-1.0, 1.0]` |
+| `acceleration_similarity` | `trajectory_dynamics` | 越高越好 | `[-1.0, 1.0]` |
+| `directional_consistency` | `trajectory_dynamics` | 越高越好 | `[0.0, 1.0]` |
+| `final_state_accuracy` | `final_state` | 越高越好 | `[0.0, 1.0]` |
 | `physics_judge_*` | `physics_judge` | 越高越好 | `[0.0, 1.0]` |
 
 ## Artifact 契约
@@ -84,6 +92,8 @@ physics 评测会区分本地 ground-truth 导出和 predicted world 导出。
 | --- | --- |
 | 当前 core contract 的必需项 | `depth.npz`、`mask.npz`、`flow.npz`、`cameras.npz` |
 | 可选附加项 | `occlusion.npz`、`points4d.npz`、`worldlines.npz`、`novel_time_depth.npz`、`novel_time_rgb.npz` |
+
+对于 `trajectory_dynamics`，若 `pred_world/worldlines.npz` 已存在，WorldArena 会直接复用；若缺失，则会先用 `pred_world/depth.npz`、`pred_world/cameras.npz` 和 `world_gt/worldlines.npz` 中的 pixel tracks 重建 `pred_world/worldlines.npz`，再调用 evaluator。
 
 当前样本契约会设置：
 

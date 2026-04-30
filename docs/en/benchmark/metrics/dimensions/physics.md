@@ -18,7 +18,7 @@ The `physics` dimension covers physical motion realism and simulator-backed phys
 | reference motion dynamics | [`pmf`](../pmf.md) |
 | motion magnitude and smoothness | [`motion_magnitude`](../motion_magnitude.md), [`motion_smoothness`](../motion_smoothness.md) |
 | Long-Sequence dynamics diagnostic | [`long_sequence_dynamic_degree`](../long_sequence.md) |
-| Simulator Based Physics evaluation metric groups | [Video Physics](../physics/video_physics.md), [Geometry 3D](../physics/geometry_3d.md), [Temporal Consistency](../physics/temporal_consistency.md), [World 4D](../physics/world_4d.md) |
+| Simulator Based Physics evaluation metric groups | [Video Physics](../physics/video_physics.md), [Geometry 3D](../physics/geometry_3d.md), [Temporal Consistency](../physics/temporal_consistency.md), [World 4D](../physics/world_4d.md), [Trajectory Dynamics](../physics/trajectory_dynamics.md), [Final State](../physics/final_state.md) |
 | standalone VLM physics judge | [Physics Judge](../physics/physics_judge.md) |
 
 ## Reading Notes

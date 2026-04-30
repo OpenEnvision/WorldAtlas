@@ -75,4 +75,4 @@ Metrics 导航现在按这六个顶层维度组织；每个维度都有自己的
 
 ## 独立 Physics Track
 
-`config/benchmark_physics.yaml` 是 simulator-backed physics 配置，和默认 `config/benchmark.yaml` 的 `experimental` 不是同一个评测面。它携带 `mse`、`st_iou`、`depth_warp_charb`、`rgb_warp_charb`、`chamfer_4d`、`worldline_*` 等指标，并统一汇总到顶层 `physics` 维度。它使用同一套 report contract，但指标语义、artifact 需求和可比性都以 [Physics](dimensions/physics.md)、[Simulator-Backed Physics](physics/index.md) 与 [Physics Metrics & Contracts](physics/metrics.md) 为准。
+`config/benchmark_physics.yaml` 是 simulator-backed physics 配置，和默认 `config/benchmark.yaml` 的 `experimental` 不是同一个评测面。它携带 `mse`、`st_iou`、`depth_warp_charb`、`rgb_warp_charb`、`chamfer_4d`、`worldline_*`、`trajectory_*`、`final_state_accuracy` 等指标，并统一汇总到顶层 `physics` 维度。它使用同一套 report contract，但指标语义、artifact 需求和可比性都以 [Physics](dimensions/physics.md)、[Simulator-Backed Physics](physics/index.md) 与 [Physics Metrics & Contracts](physics/metrics.md) 为准。

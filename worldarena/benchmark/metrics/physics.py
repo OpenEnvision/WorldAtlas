@@ -83,6 +83,8 @@ class PhysicsMetric(Metric):
             )
 
         raw_value = payload.get(self.name)
+        not_applicable = dict(payload.get("not_applicable_metrics") or {})
+        metric_errors = dict(payload.get("simulator_metric_errors") or {})
         raw = float(raw_value) if isinstance(raw_value, (int, float)) and not isinstance(raw_value, bool) else None
         details = {
             "prediction_path": prediction.path,
@@ -97,11 +99,24 @@ class PhysicsMetric(Metric):
         }
         if "missing_required_metrics" in payload:
             details["missing_required_metrics"] = payload["missing_required_metrics"]
+        metric_details = dict(payload.get("simulator_metric_details") or {})
+        if self.name in metric_details:
+            details["simulator_metric"] = metric_details[self.name]
+
+        if self.name in not_applicable:
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=details,
+                eligibility_status="not_applicable",
+                error=str(not_applicable[self.name]),
+            )
 
         return MetricOutput(
             raw=raw,
             normalized=normalize_score(raw, self.normalization),
             backend=backend,
             details=details,
-            error=payload.get("error"),
+            error=metric_errors.get(self.name) or payload.get("error"),
         )

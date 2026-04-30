@@ -48,7 +48,7 @@ WorldArena now groups benchmark metrics into six intentionally broad evaluation 
 `config/benchmark_physics.yaml` defines a simulator-backed physics configuration under track `physics_i2v`. It also reuses the suite name `experimental`, but this is not the same thing as the diagnostic-only `experimental` slice in the default `config/benchmark.yaml`.
 
 - physics runs still write their own `per_metric_summary.json`, `leaderboard.csv`, `per_sample_scores.jsonl`, and failure reports
-- the reported metrics are simulator-backed quantities such as `mse`, `st_iou`, `depth_warp_charb`, `chamfer_4d`, and `worldline_*`
+- the reported metrics are simulator-backed quantities such as `mse`, `st_iou`, `depth_warp_charb`, `chamfer_4d`, `worldline_*`, `trajectory_*`, and `final_state_accuracy`
 - those results stay outside the four-suite public vectors above and should not be mixed with them
 
 See [Metrics / Physics](metrics/dimensions/physics.md) and [Simulator-Backed Physics](metrics/physics/index.md).

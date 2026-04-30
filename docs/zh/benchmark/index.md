@@ -51,7 +51,7 @@ WorldArena 现在把 benchmark 指标归入六个有意保持宽口径的评测�
 `config/benchmark_physics.yaml` 定义了一套 simulator-backed physics 配置，track 名为 `physics_i2v`。它同样复用了 suite 名称 `experimental`，但这和默认 `config/benchmark.yaml` 中那个仅用于诊断的 `experimental` 切片不是一回事。
 
 - physics run 仍然会输出自己的 `per_metric_summary.json`、`leaderboard.csv`、`per_sample_scores.jsonl` 和 failure report
-- 其中汇总的是 simulator-backed 指标，例如 `mse`、`st_iou`、`depth_warp_charb`、`chamfer_4d`、`worldline_*`
+- 其中汇总的是 simulator-backed 指标，例如 `mse`、`st_iou`、`depth_warp_charb`、`chamfer_4d`、`worldline_*`、`trajectory_*` 和 `final_state_accuracy`
 - 这些结果位于独立的 physics namespace 中，不应和上面四个 formal suite 的公开向量混合解释
 
 详见 Metrics 下的 [Physics](metrics/dimensions/physics.md) 与 [Simulator-Backed Physics](metrics/physics/index.md)。

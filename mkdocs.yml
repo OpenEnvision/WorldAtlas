@@ -72,6 +72,8 @@ plugins:
             Geometry 3D: 3D 几何
             Temporal Consistency: 时间一致性
             World 4D: 4D 世界
+            Trajectory Dynamics: 轨迹动力学
+            Final State: 最终状态
             Physics Judge: Physics Judge
             Metrics: 指标
             Long Sequence (Memory): Long Sequence（Memory）
@@ -162,6 +164,8 @@ nav:
                   - Geometry 3D: benchmark/metrics/physics/geometry_3d.md
                   - Temporal Consistency: benchmark/metrics/physics/temporal_consistency.md
                   - World 4D: benchmark/metrics/physics/world_4d.md
+                  - Trajectory Dynamics: benchmark/metrics/physics/trajectory_dynamics.md
+                  - Final State: benchmark/metrics/physics/final_state.md
               - Physics Judge: benchmark/metrics/physics/physics_judge.md
           - Quality:
               - Overview: benchmark/metrics/dimensions/quality.md

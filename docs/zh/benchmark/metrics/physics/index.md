@@ -43,7 +43,7 @@ physics 样本会在标准 benchmark schema 之上新增两个关键元数据块
 
 - benchmark family 和 backend 名称
 - source sample id 与 prompt 元数据
-- 按 `video_physics`、`geometry_3d`、`temporal_consistency`、`world_4d` 分组的 `metrics_design`
+- 按 `video_physics`、`geometry_3d`、`temporal_consistency`、`world_4d`、`trajectory_dynamics` 分组的 `metrics_design`
 - 对应的 `optional_metrics_design`，用于声明 backend 能识别但默认未启用的输出
 - `metric_contract`，例如 `required_core_metrics`、`require_full_frame_coverage`、`require_pred_world_artifacts`
 - 从源元数据复制过来的 case taxonomy 与 simulator hints

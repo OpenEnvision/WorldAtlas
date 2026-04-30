@@ -18,7 +18,7 @@
 | 参考运动动态 | [`pmf`](../pmf.md) |
 | 运动幅度与平滑 | [`motion_magnitude`](../motion_magnitude.md)、[`motion_smoothness`](../motion_smoothness.md) |
 | Long-Sequence 动态诊断 | [`long_sequence_dynamic_degree`](../long_sequence.md) |
-| Simulator Based Physics evaluation 指标分组 | [Video Physics](../physics/video_physics.md)、[Geometry 3D](../physics/geometry_3d.md)、[Temporal Consistency](../physics/temporal_consistency.md)、[World 4D](../physics/world_4d.md) |
+| Simulator Based Physics evaluation 指标分组 | [Video Physics](../physics/video_physics.md)、[Geometry 3D](../physics/geometry_3d.md)、[Temporal Consistency](../physics/temporal_consistency.md)、[World 4D](../physics/world_4d.md)、[Trajectory Dynamics](../physics/trajectory_dynamics.md)、[Final State](../physics/final_state.md) |
 | 独立 VLM physics judge | [Physics Judge](../physics/physics_judge.md) |
 
 ## 解读重点
