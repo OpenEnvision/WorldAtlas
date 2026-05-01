@@ -1,6 +1,6 @@
 # Showcase 可视化
 
-WorldArena 现在带一个轻量的 showcase 可视化工具，用来在评分前后检查生成结果。它借鉴 WorldLens README 里列出的三类可视化工作流：多视角浏览、方法之间对比、GIF/图片对比。
+WorldArena 现在带一个轻量的 showcase 可视化工具，用来在评分前后检查生成结果。它支持三类可视化工作流：多视角浏览、方法之间对比、GIF/图片对比。
 
 这个工具生成静态页面。它会扫描 prediction 目录，写出 `showcase_manifest.json`，把媒体文件链接到本地 `media/` 目录，并渲染 `index.html`。不依赖 Dash、Gradio 或远程服务。
 
@@ -19,7 +19,7 @@ python scripts/showcase/video_method_compare_app.py \
 
 ## 多视角浏览
 
-对 WorldLens 风格目录，例如 `generated_results/<method>/<sample>/<camera>.mp4`：
+对 `generated_results/<method>/<sample>/<camera>.mp4` 这类目录：
 
 ```bash
 python scripts/showcase/video_multi_view_app.py \

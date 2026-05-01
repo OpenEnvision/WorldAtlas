@@ -10,6 +10,7 @@ import re
 import shutil
 import sys
 import tempfile
+import time
 from typing import Any
 
 
@@ -234,6 +235,7 @@ class PersistentYumeSample5B:
         if isinstance(self.caption_model, _DirectPromptCaptionModel):
             self.caption_model.current_prompt = prompt
         self.sample_mod.export_to_video = export_wrapper
+        generation_started_at: float | None = None
         try:
             self.sample_mod.sample_one(
                 self.transformer,
@@ -389,17 +391,27 @@ def main() -> None:
             if prediction_path.exists() and not args.overwrite:
                 record["status"] = "skipped_existing"
             else:
+                generation_started_at = time.perf_counter()
                 payload = runtime.generate(
                     conditioning_image=conditioning_image,
                     output_path=prediction_path,
                     prompt=prompt,
                     caption_path=caption_path,
                 )
+                payload.setdefault(
+                    "generation_wall_time_seconds",
+                    round(time.perf_counter() - generation_started_at, 6),
+                )
                 record.update(payload)
                 record["status"] = "generated"
         except Exception as exc:
             record["status"] = "failed"
             record["error"] = str(exc)
+            if generation_started_at is not None:
+                record["generation_wall_time_seconds"] = round(
+                    time.perf_counter() - generation_started_at,
+                    6,
+                )
         records.append(record)
         _write_record(records_path, record)
 

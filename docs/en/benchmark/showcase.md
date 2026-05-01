@@ -1,6 +1,6 @@
 # Showcase Viewer
 
-WorldArena includes a lightweight showcase viewer for inspecting generated media before or after scoring. It follows the three visualization workflows described by WorldLens: multi-view browsing, method-to-method comparison, and GIF/image comparison.
+WorldArena includes a lightweight showcase viewer for inspecting generated media before or after scoring. It supports three visualization workflows: multi-view browsing, method-to-method comparison, and GIF/image comparison.
 
 The viewer is static. It scans prediction folders, writes `showcase_manifest.json`, links media into a local `media/` folder, and renders `index.html`. No Dash, Gradio, or remote service is required.
 
@@ -19,7 +19,7 @@ Open `.cache/showcase/astra_yume/index.html` in a browser, or add `--serve --por
 
 ## Multi-View Browsing
 
-For WorldLens-style folders such as `generated_results/<method>/<sample>/<camera>.mp4`, run:
+For folders such as `generated_results/<method>/<sample>/<camera>.mp4`, run:
 
 ```bash
 python scripts/showcase/video_multi_view_app.py \

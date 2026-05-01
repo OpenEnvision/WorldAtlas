@@ -8,8 +8,6 @@
 - 采样预测帧上的整体曝光稳定性
 - 语义或控制指标不一定能捕捉到的低层视觉质量问题
 
-该指标参考 iWorld-Bench 的 Brightness Consistency 指标槽位，但当前是 WorldArena 本地诊断实现。由于 iWorld-Bench 官方指标代码尚未公开，不应声称它复现了官方数值。
-
 ## 计算流程
 
 1. 读取预测视频的采样帧。

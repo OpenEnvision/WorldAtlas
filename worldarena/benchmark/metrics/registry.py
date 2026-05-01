@@ -7,6 +7,8 @@ from worldarena.benchmark.metrics.appearance import (
     SharpnessRetentionMetric,
 )
 from worldarena.benchmark.metrics.consistency import (
+    GVGC_GEOMETRY_METRICS,
+    GvgcGeometryMetric,
     OpticalFlowAepeMetric,
     ReprojectionErrorMetric,
 )
@@ -31,6 +33,7 @@ from worldarena.benchmark.metrics.physics_judge import PhysicsJudgeMetric
 from worldarena.benchmark.metrics.pmf import PhysicalMotionFidelityMetric
 from worldarena.benchmark.metrics.quality import PerceptualQualityMetric
 from worldarena.benchmark.metrics.reconstruction import ReconstructionConsistencyMetric
+from worldarena.benchmark.metrics.realtime import REALTIME_METRICS, build_realtime_metric
 from worldarena.benchmark.metrics.regions import (
     NovelRegionFidelityMetric,
     ObjectPermanenceMetric,
@@ -88,7 +91,12 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
     metrics: list[Metric] = []
     seen: set[str] = set()
     shared_official_runtime = dict(config.metric_runtime.get("official_source", {}))
+    shared_gvgc_geometry_runtime = dict(config.metric_runtime.get("gvgc_geometry", {}))
     shared_temporal_runtime = dict(config.metric_runtime.get("temporal_calibration", {}))
+    shared_realtime_runtime = {
+        "target_fps": config.target_fps,
+        **dict(config.metric_runtime.get("real_time", {})),
+    }
     shared_long_sequence_runtime = dict(config.metric_runtime.get("long_sequence", {}))
     shared_physics_judge_runtime = dict(config.metric_runtime.get("physics_judge", {}))
     for raw_metric_name in metric_names:
@@ -208,6 +216,15 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
                     runtime=official_runtime,
                 )
             )
+        elif metric_name in GVGC_GEOMETRY_METRICS:
+            metrics.append(
+                GvgcGeometryMetric(
+                    metric_name=metric_name,
+                    backend=backend,
+                    normalization=normalization,
+                    runtime={**shared_gvgc_geometry_runtime, **runtime},
+                )
+            )
         elif metric_name == "motion_accuracy":
             metrics.append(
                 MotionAccuracyMetric(
@@ -259,6 +276,15 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
                     backend=backend,
                     normalization=normalization,
                     runtime={**shared_temporal_runtime, **runtime},
+                )
+            )
+        elif metric_name in REALTIME_METRICS:
+            metrics.append(
+                build_realtime_metric(
+                    metric_name=metric_name,
+                    backend=backend,
+                    normalization=normalization,
+                    runtime={**shared_realtime_runtime, **runtime},
                 )
             )
         elif metric_name in LONG_SEQUENCE_METRICS:

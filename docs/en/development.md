@@ -10,6 +10,26 @@ worldarena build-docs --config config/datasets.yaml
 
 This command scans the configured dataset roots, refreshes `artifacts/dataset_stats/`, and rewrites `docs/generated/`.
 
+## Documentation Site
+
+Install the MkDocs toolchain from the dedicated docs requirements file:
+
+```bash
+python -m pip install -r requirements/docs.txt
+```
+
+Preview the bilingual documentation site locally:
+
+```bash
+mkdocs serve
+```
+
+Build the site with strict validation:
+
+```bash
+mkdocs build --strict
+```
+
 ## Benchmark
 
 ```bash

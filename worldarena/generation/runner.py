@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import time
 from typing import Any
 
 from worldarena.common.video_io import extract_video_window, freeze_frame_to_video
@@ -112,15 +113,20 @@ def _apply_batch_generation_results(
     pending_requests: list[PreparedGenerationRequest],
     records_by_sample_id: dict[str, dict[str, Any]],
 ) -> None:
+    started_at = time.perf_counter()
     try:
         batch_results = adapter.generate_batch(pending_requests)
     except Exception as exc:
         error_text = str(exc)
+        elapsed = round(time.perf_counter() - started_at, 6)
         for request in pending_requests:
             record = records_by_sample_id[request.sample.sample_id]
             record["status"] = "failed"
             record["error"] = error_text
+            record["generation_wall_time_seconds"] = elapsed
         return
+    elapsed = round(time.perf_counter() - started_at, 6)
+    per_request_elapsed = round(elapsed / max(len(pending_requests), 1), 6)
 
     for request in pending_requests:
         record = records_by_sample_id[request.sample.sample_id]
@@ -143,6 +149,9 @@ def _apply_batch_generation_results(
         if "prediction_path" not in payload and request.output_path.exists():
             payload["prediction_path"] = str(request.output_path)
         payload.setdefault("prompt", request.prompt)
+        payload.setdefault("generation_wall_time_seconds", per_request_elapsed)
+        payload.setdefault("generation_batch_wall_time_seconds", elapsed)
+        payload.setdefault("generation_batch_size", len(pending_requests))
         record.update(payload)
         record["status"] = status
         record["error"] = error
@@ -208,6 +217,7 @@ def generate_predictions(
             records_by_sample_id[sample.sample_id] = record
             prompt_map[str(prediction_path)] = prompt
             continue
+        generation_started_at: float | None = None
         try:
             if overwrite or not prediction_path.exists():
                 if use_batch_generation:
@@ -220,11 +230,16 @@ def generate_predictions(
                         )
                     )
                 else:
+                    generation_started_at = time.perf_counter()
                     payload = adapter.generate(
                         sample=sample,
                         conditioning_image=conditioning_image,
                         output_path=prediction_path,
                         prompt=prompt,
+                    )
+                    payload.setdefault(
+                        "generation_wall_time_seconds",
+                        round(time.perf_counter() - generation_started_at, 6),
                     )
                     record.update(payload)
                     record["status"] = "generated"
@@ -233,6 +248,11 @@ def generate_predictions(
         except Exception as exc:
             record["status"] = "failed"
             record["error"] = str(exc)
+            if generation_started_at is not None:
+                record["generation_wall_time_seconds"] = round(
+                    time.perf_counter() - generation_started_at,
+                    6,
+                )
         records.append(record)
         records_by_sample_id[sample.sample_id] = record
         prompt_map[str(prediction_path)] = prompt

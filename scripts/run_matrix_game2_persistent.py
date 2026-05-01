@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 from typing import Any
 
 import numpy as np
@@ -455,10 +456,16 @@ def main() -> int:
 
     for start in range(0, len(pending), args.batch_size):
         batch = pending[start : start + args.batch_size]
+        started_at = time.perf_counter()
         try:
             results = _generate_with_oom_split(runtime, batch)
+            elapsed = round(time.perf_counter() - started_at, 6)
+            per_item_elapsed = round(elapsed / max(len(batch), 1), 6)
             for item, payload in zip(batch, results, strict=True):
                 record = item["record"]
+                payload.setdefault("generation_wall_time_seconds", per_item_elapsed)
+                payload.setdefault("generation_batch_wall_time_seconds", elapsed)
+                payload.setdefault("generation_batch_size", len(batch))
                 record.update(payload)
                 record["action_spec_path"] = str(item["action_spec_path"])
                 record["status"] = "generated"
@@ -466,11 +473,13 @@ def main() -> int:
                 _write_record(records_path, record)
         except Exception as exc:
             error_text = str(exc) or repr(exc)
+            elapsed = round(time.perf_counter() - started_at, 6)
             for item in batch:
                 record = item["record"]
                 record["status"] = "failed"
                 record["error"] = error_text
                 record["action_spec_path"] = str(item["action_spec_path"])
+                record["generation_wall_time_seconds"] = elapsed
                 records.append(record)
                 _write_record(records_path, record)
 

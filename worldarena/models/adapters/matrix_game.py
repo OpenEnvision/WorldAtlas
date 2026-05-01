@@ -1020,6 +1020,7 @@ class MatrixGameAdapter(ModelAdapter):
             "control_source": action_payload.get("control_source"),
             "prompt_control_note": action_payload.get("prompt_control_note"),
             "command": command,
+            "action_spec_path": str(action_spec_path),
             "prediction_path": str(output_path),
             "prompt": prompt,
             "variant": variant,

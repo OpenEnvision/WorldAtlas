@@ -791,7 +791,7 @@ def add_showcase_arguments(parser: argparse.ArgumentParser, *, default_mode: str
     parser.add_argument(
         "--generated-results",
         default="generated_results",
-        help="WorldLens-style parent directory whose children are method roots.",
+        help="Parent directory whose children are method roots.",
     )
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--title", default=None)

@@ -99,6 +99,7 @@ plugins:
             Depth Collision: 深度碰撞
             MEt3R Consistency: MEt3R 一致性
             Reconstruction Consistency: 重建一致性
+            Epipolar Geometry Diagnostics: 极线几何诊断
             Optical Flow AEPE: 光流 AEPE
             Motion Accuracy: 运动准确性
             Physical Motion Fidelity: 物理运动保真度
@@ -146,6 +147,7 @@ nav:
               - Novel Region Fidelity: benchmark/metrics/novel_region_fidelity.md
               - MEt3R Consistency: benchmark/metrics/met3r_consistency.md
               - Reconstruction Consistency: benchmark/metrics/reconstruction_consistency.md
+              - Epipolar Geometry Diagnostics: benchmark/metrics/gvgc_geometry.md
               - Reprojection Error: benchmark/metrics/reprojection_error.md
               - Depth Accuracy: benchmark/metrics/depth_accuracy.md
               - Depth Collision: benchmark/metrics/depth_collision.md

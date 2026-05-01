@@ -17,10 +17,10 @@
 
 | Suite | 指标数 | official / 条件 official | diagnostic / not applicable |
 | --- | ---: | --- | --- |
-| `image_static` | 31 | image-to-video 输出按 video prediction 扩展评测：`style_consistency`、`perceptual_quality`、`reprojection_error`、`optical_flow_aepe`、`motion_magnitude`、`motion_smoothness`、`physical_fps_*` 成功即 official；`prompt_alignment`、`object_detection`、`camera_error`、`motion_accuracy` 受监督门槛约束；`seen_region_preservation`、`novel_region_fidelity`、`object_permanence`、`pmf` 需要兼容 reference video / mask，否则通常为空 | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_motion_smoothness`、`long_sequence_dynamic_degree`、`long_sequence_aesthetic_quality`、`long_sequence_imaging_quality` |
-| `image_dynamic` | 31 | 同 `image_static`，但 motion prompt / object prompt 覆盖通常更高 | 同 `image_static` |
-| `video_static` | 19 | `style_consistency`、`perceptual_quality`、`seen_region_preservation`、`novel_region_fidelity`、`reprojection_error`、`optical_flow_aepe`；`prompt_alignment`、`object_detection`、`camera_error` 受监督门槛约束 | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency` |
-| `video_dynamic` | 25 | `style_consistency`、`perceptual_quality`、`object_permanence`、`pmf`、`motion_magnitude`、`motion_smoothness`、`physical_fps_*`；`prompt_alignment`、`motion_accuracy` 受监督门槛约束 | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_motion_smoothness`、`long_sequence_dynamic_degree`、`long_sequence_aesthetic_quality`、`long_sequence_imaging_quality` |
+| `image_static` | 38 | image-to-video 输出按 video prediction 扩展评测：`style_consistency`、`perceptual_quality`、`reprojection_error`、`optical_flow_aepe`、`motion_magnitude`、`motion_smoothness`、`physical_fps_*`、`effective_generation_fps`、`realtime_factor` 成功即 official；`action_response_latency` 和 `latency_budget_pass_rate` 需要 action spec；`prompt_alignment`、`object_detection`、`camera_error`、`motion_accuracy` 受监督门槛约束；`seen_region_preservation`、`novel_region_fidelity`、`object_permanence`、`pmf` 需要兼容 reference video / mask，否则通常为空 | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`epipolar_error`、`epipolar_inlier_rate`、`feature_match_coverage`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_motion_smoothness`、`long_sequence_dynamic_degree`、`long_sequence_aesthetic_quality`、`long_sequence_imaging_quality`；无 action spec 时 action-latency 指标记为 `not_applicable` |
+| `image_dynamic` | 38 | 同 `image_static`，但 motion prompt / object prompt 覆盖通常更高 | 同 `image_static` |
+| `video_static` | 26 | `style_consistency`、`perceptual_quality`、`seen_region_preservation`、`novel_region_fidelity`、`reprojection_error`、`optical_flow_aepe`、`effective_generation_fps`、`realtime_factor`；`action_response_latency` 和 `latency_budget_pass_rate` 需要 action spec；`prompt_alignment`、`object_detection`、`camera_error` 受监督门槛约束 | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`epipolar_error`、`epipolar_inlier_rate`、`feature_match_coverage`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency` |
+| `video_dynamic` | 32 | `style_consistency`、`perceptual_quality`、`object_permanence`、`pmf`、`motion_magnitude`、`motion_smoothness`、`physical_fps_*`、`effective_generation_fps`、`realtime_factor`；`action_response_latency` 和 `latency_budget_pass_rate` 需要 action spec；`prompt_alignment`、`motion_accuracy` 受监督门槛约束 | `semantic_alignment`、`brightness_consistency`、`color_temperature_consistency`、`sharpness_retention`、`epipolar_error`、`epipolar_inlier_rate`、`feature_match_coverage`、`depth_accuracy`、`depth_collision`、`psnr`、`ssim`、`met3r_consistency`、`reconstruction_consistency`、`long_sequence_motion_smoothness`、`long_sequence_dynamic_degree`、`long_sequence_aesthetic_quality`、`long_sequence_imaging_quality` |
 | `experimental` | 3 | 当前实现中 `motion_magnitude`、`motion_smoothness` 成功即写入 official；该 suite 非 formal headline | `memory_revisit_consistency` |
 
 ## 六个评测支柱
@@ -31,10 +31,10 @@ Metrics 导航现在按这六个顶层维度组织；每个维度都有自己的
 | --- | --- | --- | --- |
 | `long_sequence` | Long sequence（memory） | 状态记忆、外观保持与长时序 rollout 稳定性 | [Long Sequence（Memory）](dimensions/long_sequence.md) |
 | `action_control` | Action control | scene control、camera control、object/action control | [Action Control](dimensions/action_control.md) |
-| `consistency_3d_4d` | 3D/4D consistency | 几何、多视角、重投影与运动场一致性 | [3D/4D Consistency](dimensions/consistency_3d_4d.md) |
+| `consistency_3d_4d` | 3D/4D consistency | 几何、多视角、重投影、运动场与经典 epipolar 一致性 | [3D/4D Consistency](dimensions/consistency_3d_4d.md) |
 | `physics` | Physics | 运动物理真实性与 simulator-backed physics 指标 | [Physics](dimensions/physics.md) |
 | `quality` | Quality | 风格、感知质量、低层外观稳定性与重建式保真 | [Quality](dimensions/quality.md) |
-| `real_time` | Real time | 节奏与 FPS 标定 | [Real Time](dimensions/real_time.md) |
+| `real_time` | Real time | 生成吞吐、动作延迟与物理 FPS 标定 | [Real Time](dimensions/real_time.md) |
 
 ## 完整指标清单
 
@@ -61,6 +61,9 @@ Metrics 导航现在按这六个顶层维度组织；每个维度都有自己的
 | [`novel_region_fidelity`](novel_region_fidelity.md) | `consistency_3d_4d` | `flow_dino` | `image_static`、`image_dynamic`、`video_static` | novel mask 内 PSNR/DINO 组合分 | 成功时 official；纯 image reference 通常为空 |
 | [`reprojection_error`](reprojection_error.md) | `consistency_3d_4d` | `droid_slam` | `image_static`、`image_dynamic`、`video_static` | DROID reprojection error；`[0,1.0719]` 反向缩放 | 成功时 official |
 | [`optical_flow_aepe`](optical_flow_aepe.md) | `consistency_3d_4d` | `sea_raft` | `image_static`、`image_dynamic`、`video_static` | prediction optical-flow AEPE 后端分数；`[0,1.192]` 反向缩放 | 成功时 official |
+| [`epipolar_error`](gvgc_geometry.md#epipolar-error) | `consistency_3d_4d` | `opencv_epipolar` | formal 4 suite | 特征匹配 + F-matrix RANSAC 后的 inlier Sampson/epipolar error 中位数；`[0,5]` 反向缩放 | diagnostic |
+| [`epipolar_inlier_rate`](gvgc_geometry.md#epipolar-inlier-rate) | `consistency_3d_4d` | `opencv_epipolar` | formal 4 suite | RANSAC inliers / good feature matches；`[0,1]` | diagnostic |
+| [`feature_match_coverage`](gvgc_geometry.md#feature-match-coverage) | `consistency_3d_4d` | `opencv_epipolar` | formal 4 suite | epipolar inliers / pair 内较小的 detected keypoint 数；`[0,1]` | diagnostic |
 | [`depth_accuracy`](depth_accuracy.md) | `consistency_3d_4d` | `depth_anything` | formal 4 suite | paired-frame AbsRel；`[0,1]` 反向缩放 | diagnostic |
 | [`depth_collision`](depth_collision.md) | `consistency_3d_4d` | `video_depth_anything` | formal 4 suite | 中心区域近距离碰撞 flag；`0/1` 反向缩放 | diagnostic |
 | [`met3r_consistency`](met3r_consistency.md) | `consistency_3d_4d` | `met3r` | formal 4 suite | paired anchor MEt3R distance；`[0,2]` 反向缩放 | diagnostic |
@@ -72,6 +75,10 @@ Metrics 导航现在按这六个顶层维度组织；每个维度都有自己的
 | [`physical_fps_error`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`、`image_dynamic`、`video_dynamic` | `abs(avg_phyfps - meta_fps)`；`[0,30]` 反向缩放 | 成功时 official |
 | [`physical_fps_pct_error`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`、`image_dynamic`、`video_dynamic` | FPS 相对误差；`[0,1]` 反向缩放 | 成功时 official |
 | [`physical_fps_intra_video_cv`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`、`image_dynamic`、`video_dynamic` | 片段物理 FPS 变异系数；`[0,1]` 反向缩放 | 成功时 official |
+| `effective_generation_fps` | `real_time` | `generation_metadata` | formal 4 suite | `generated_frame_count / generation_wall_time_seconds`；按 target FPS 归一化 | 有 generation timing metadata 时 official |
+| `realtime_factor` | `real_time` | `generation_metadata` | formal 4 suite | `output_duration_seconds / generation_wall_time_seconds`；`[0,1]` 正向缩放 | 有 generation timing metadata 时 official |
+| `action_response_latency` | `real_time` | `action_flow` | formal 4 suite | action 到可见响应的平均延迟；`[0,0.1s]` 反向缩放 | 有 action spec 时 official，否则 `not_applicable` |
+| `latency_budget_pass_rate` | `real_time` | `action_flow` | formal 4 suite | 在配置延迟预算内响应的 action transition 占比 | 有 action spec 时 official，否则 `not_applicable` |
 
 ## 独立 Physics Track
 

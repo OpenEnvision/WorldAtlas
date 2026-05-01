@@ -8,8 +8,6 @@
 - global exposure stability over sampled prediction frames
 - a low-level quality failure that can be missed by semantic or control metrics
 
-It is inspired by the iWorld-Bench brightness-consistency slot, but it is a WorldArena-local diagnostic implementation. It should not be reported as an official reproduction of the unpublished iWorld-Bench metric code.
-
 ## Detailed Algorithm
 
 1. WorldArena reads the prediction's sampled video frames.

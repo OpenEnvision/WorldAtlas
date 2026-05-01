@@ -8,8 +8,6 @@
 - 会破坏视频观感一致性的全局 hue drift
 - HSV 空间里的色温代理指标，而不是校准后的 Kelvin 色温测量
 
-该指标参考 iWorld-Bench 的 Color Temperature 指标槽位；公开说明提到了 HSV hue drift 惩罚。由于官方实现尚未公开，这里只作为 WorldArena 本地诊断指标。
-
 ## 计算流程
 
 1. 读取预测视频的采样帧。

@@ -36,6 +36,9 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "novel_region_fidelity": "consistency_3d_4d",
     "met3r_consistency": "consistency_3d_4d",
     "reprojection_error": "consistency_3d_4d",
+    "epipolar_error": "consistency_3d_4d",
+    "epipolar_inlier_rate": "consistency_3d_4d",
+    "feature_match_coverage": "consistency_3d_4d",
     "depth_accuracy": "consistency_3d_4d",
     "depth_collision": "consistency_3d_4d",
     "optical_flow_aepe": "consistency_3d_4d",
@@ -97,6 +100,10 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "physical_fps_error": "real_time",
     "physical_fps_pct_error": "real_time",
     "physical_fps_intra_video_cv": "real_time",
+    "effective_generation_fps": "real_time",
+    "realtime_factor": "real_time",
+    "action_response_latency": "real_time",
+    "latency_budget_pass_rate": "real_time",
 }
 
 

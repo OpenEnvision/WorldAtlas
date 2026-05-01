@@ -4,6 +4,7 @@ import base64
 import io
 import os
 import subprocess
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping
 
@@ -96,6 +97,7 @@ def run_sequential_generate_batch(
 ) -> dict[str, dict[str, Any]]:
     results: dict[str, dict[str, Any]] = {}
     for request in requests:
+        started_at = time.perf_counter()
         try:
             payload = dict(
                 adapter.generate(
@@ -104,6 +106,10 @@ def run_sequential_generate_batch(
                     output_path=request.output_path,
                     prompt=request.prompt,
                 )
+            )
+            payload.setdefault(
+                "generation_wall_time_seconds",
+                round(time.perf_counter() - started_at, 6),
             )
             payload.setdefault("status", "generated")
             payload.setdefault("prediction_path", str(request.output_path))
@@ -114,6 +120,7 @@ def run_sequential_generate_batch(
                 "error": str(exc),
                 "prediction_path": str(request.output_path),
                 "prompt": request.prompt,
+                "generation_wall_time_seconds": round(time.perf_counter() - started_at, 6),
             }
         results[request.sample.sample_id] = payload
     return results

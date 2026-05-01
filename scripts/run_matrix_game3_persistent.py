@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 import traceback
 from types import SimpleNamespace
 from typing import Any
@@ -381,8 +382,13 @@ def main() -> int:
 
     for item in pending:
         record = item["record"]
+        started_at = time.perf_counter()
         try:
             payload = runtime.generate_one(item)
+            payload.setdefault(
+                "generation_wall_time_seconds",
+                round(time.perf_counter() - started_at, 6),
+            )
             record.update(payload)
             record["action_spec_path"] = str(item["action_spec_path"])
             record["status"] = "generated"
@@ -391,6 +397,7 @@ def main() -> int:
             record["error"] = str(exc) or repr(exc)
             record["traceback"] = traceback.format_exc()
             record["action_spec_path"] = str(item["action_spec_path"])
+            record["generation_wall_time_seconds"] = round(time.perf_counter() - started_at, 6)
         records.append(record)
         _write_record(records_path, record)
 

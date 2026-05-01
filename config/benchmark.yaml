@@ -42,6 +42,9 @@ benchmark:
     - motion_smoothness
     - reprojection_error
     - optical_flow_aepe
+    - epipolar_error
+    - epipolar_inlier_rate
+    - feature_match_coverage
     - depth_accuracy
     - depth_collision
     - psnr
@@ -49,6 +52,10 @@ benchmark:
     - physical_fps_error
     - physical_fps_pct_error
     - physical_fps_intra_video_cv
+    - effective_generation_fps
+    - realtime_factor
+    - action_response_latency
+    - latency_budget_pass_rate
     - met3r_consistency
     - reconstruction_consistency
     - long_sequence_motion_smoothness
@@ -74,6 +81,9 @@ benchmark:
     - motion_smoothness
     - reprojection_error
     - optical_flow_aepe
+    - epipolar_error
+    - epipolar_inlier_rate
+    - feature_match_coverage
     - depth_accuracy
     - depth_collision
     - psnr
@@ -81,6 +91,10 @@ benchmark:
     - physical_fps_error
     - physical_fps_pct_error
     - physical_fps_intra_video_cv
+    - effective_generation_fps
+    - realtime_factor
+    - action_response_latency
+    - latency_budget_pass_rate
     - met3r_consistency
     - reconstruction_consistency
     - long_sequence_motion_smoothness
@@ -101,10 +115,17 @@ benchmark:
     - object_detection
     - reprojection_error
     - optical_flow_aepe
+    - epipolar_error
+    - epipolar_inlier_rate
+    - feature_match_coverage
     - depth_accuracy
     - depth_collision
     - psnr
     - ssim
+    - effective_generation_fps
+    - realtime_factor
+    - action_response_latency
+    - latency_budget_pass_rate
     - met3r_consistency
     - reconstruction_consistency
     video_dynamic:
@@ -120,6 +141,9 @@ benchmark:
     - motion_accuracy
     - motion_magnitude
     - motion_smoothness
+    - epipolar_error
+    - epipolar_inlier_rate
+    - feature_match_coverage
     - depth_accuracy
     - depth_collision
     - psnr
@@ -127,6 +151,10 @@ benchmark:
     - physical_fps_error
     - physical_fps_pct_error
     - physical_fps_intra_video_cv
+    - effective_generation_fps
+    - realtime_factor
+    - action_response_latency
+    - latency_budget_pass_rate
     - met3r_consistency
     - reconstruction_consistency
     - long_sequence_motion_smoothness
@@ -154,6 +182,9 @@ benchmark:
     pmf: numpy_fft
     reprojection_error: droid_slam
     optical_flow_aepe: sea_raft
+    epipolar_error: opencv_epipolar
+    epipolar_inlier_rate: opencv_epipolar
+    feature_match_coverage: opencv_epipolar
     motion_accuracy: sam2_sea_raft
     motion_magnitude: sea_raft
     motion_smoothness: vfi_mamba
@@ -164,6 +195,10 @@ benchmark:
     physical_fps_error: pulse_of_motion
     physical_fps_pct_error: pulse_of_motion
     physical_fps_intra_video_cv: pulse_of_motion
+    effective_generation_fps: generation_metadata
+    realtime_factor: generation_metadata
+    action_response_latency: action_flow
+    latency_budget_pass_rate: action_flow
     met3r_consistency: met3r
     reconstruction_consistency: world_r1_lpips
     long_sequence_motion_smoothness: long_sequence
@@ -189,6 +224,17 @@ benchmark:
       texture_floor: 0.00001
       brisque_good: 30.0
       brisque_bad: 80.0
+    gvgc_geometry:
+      feature_detector: sift
+      max_features: 2000
+      ratio_test: 0.75
+      min_matches: 12
+      max_analysis_width: 640
+      ransac_reproj_threshold: 1.0
+      ransac_confidence: 0.999
+      ransac_max_iters: 10000
+      pair_stride: 1
+      max_pairs: 8
     depth_accuracy:
       model_name: depth-anything/Depth-Anything-V2-Small-hf
     depth_collision:
@@ -221,6 +267,12 @@ benchmark:
       stride: 4
       resolution: 216
       checkpoint_path: ckpt/Pulse-of-Motion/vc_common_10_60fps.ckpt
+    real_time:
+      latency_threshold_seconds: 0.1
+      latency_timeout_seconds: 1.0
+      max_analysis_width: 320
+      min_response_signal: 0.04
+      baseline_window_frames: 4
     long_sequence:
       amt_checkpoint_path: ckpt/amt_model/amt-s.pth
       raft_model_path: ckpt/raft_model/models/raft-things.pth
@@ -329,6 +381,18 @@ benchmark:
       empirical_min: 0.0
       empirical_max: 1.192
       higher_is_better: false
+    epipolar_error:
+      lower: 0.0
+      upper: 5.0
+      higher_is_better: false
+    epipolar_inlier_rate:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    feature_match_coverage:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
     motion_accuracy:
       avg: -0.1965
       std: 2.3687
@@ -374,6 +438,22 @@ benchmark:
       lower: 0.0
       upper: 1.0
       higher_is_better: false
+    effective_generation_fps:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    realtime_factor:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    action_response_latency:
+      lower: 0.0
+      upper: 0.1
+      higher_is_better: false
+    latency_budget_pass_rate:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
     long_sequence_motion_smoothness:
       lower: 0.0
       upper: 1.0

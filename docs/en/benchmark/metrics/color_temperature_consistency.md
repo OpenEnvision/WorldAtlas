@@ -8,8 +8,6 @@
 - global hue drift that can make a video look inconsistent
 - an HSV-space proxy for color-temperature consistency, not a calibrated Kelvin measurement
 
-It is inspired by the iWorld-Bench color-temperature slot, whose public description mentions HSV hue-drift penalization. Because the official implementation is not public, this metric is a WorldArena-local diagnostic.
-
 ## Detailed Algorithm
 
 1. WorldArena reads the prediction's sampled video frames.
