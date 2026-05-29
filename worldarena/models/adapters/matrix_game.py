@@ -393,6 +393,7 @@ def _matrix_game_2_worldarena_prompt_payload(
     spec: dict[str, Any],
     num_output_frames: int,
     total_frames: int,
+    action_source: str = "worldarena_prompt",
 ) -> dict[str, Any]:
     if sample is None:
         raise ValueError("Matrix-Game-2 worldarena_prompt action_source requires a BenchmarkSample")
@@ -419,7 +420,7 @@ def _matrix_game_2_worldarena_prompt_payload(
         {
             "mode": mode,
             "num_output_frames": num_output_frames,
-            "action_source": "worldarena_prompt",
+            "action_source": action_source,
             "control_source": control_source,
             "camera_token": camera_tokens[0],
             "camera_tokens": camera_tokens,
@@ -457,7 +458,13 @@ def _matrix_game_2_payload(
         payload["action_source"] = "official_bench"
         return payload
 
-    if action_source in {"worldarena_prompt", "prompt", "prompt_target", "camera_path"}:
+    if action_source in {
+        "worldarena_prompt",
+        "prompt",
+        "prompt_target",
+        "camera_path",
+        "worldarena_camera_path",
+    }:
         return _matrix_game_2_worldarena_prompt_payload(
             config=config,
             suite=suite,
@@ -466,6 +473,7 @@ def _matrix_game_2_payload(
             spec=spec,
             num_output_frames=num_output_frames,
             total_frames=total_frames,
+            action_source=action_source,
         )
 
     if sample is not None and action_source in {"worldarena", "worldarena_camera"}:
@@ -477,6 +485,7 @@ def _matrix_game_2_payload(
             spec=spec,
             num_output_frames=num_output_frames,
             total_frames=total_frames,
+            action_source=action_source,
         )
 
     payload = _build_fixed_length_action_payload(
@@ -677,7 +686,15 @@ def _matrix_game_3_payload(
     action_source = str(config.get("action_source", "worldarena_plan")).strip().lower()
     camera_tokens: list[str] | None = None
     control_source = None
-    if action_source in {"worldarena_prompt", "prompt", "prompt_target", "camera_path", "worldarena", "worldarena_camera"}:
+    if action_source in {
+        "worldarena_prompt",
+        "prompt",
+        "prompt_target",
+        "camera_path",
+        "worldarena",
+        "worldarena_camera",
+        "worldarena_camera_path",
+    }:
         if sample is None:
             raise ValueError("Matrix-Game-3 worldarena_prompt action_source requires a BenchmarkSample")
         camera_tokens, matrix_actions, control_source = _worldarena_matrix_game_actions(sample)

@@ -11,33 +11,17 @@ Temporal calibration 仍然属于这个维度，但它回答的是另一个问�
 
 | 层级 | 指标 |
 | --- | --- |
-| 生成吞吐 | `effective_generation_fps`、`realtime_factor` |
-| 动作延迟 | `action_response_latency`、`latency_budget_pass_rate` |
+| 生成吞吐 | [`effective_generation_fps`](../realtime_throughput_latency.md#effective-generation-fps)、[`realtime_factor`](../realtime_throughput_latency.md#realtime-factor) |
+| 动作延迟 | [`action_response_latency`](../realtime_throughput_latency.md#action-response-latency)、[`latency_budget_pass_rate`](../realtime_throughput_latency.md#latency-budget-pass-rate) |
 | 平均物理 FPS 误差 | [`physical_fps_error`](../temporal_calibration.md) |
 | 相对 FPS 误差 | [`physical_fps_pct_error`](../temporal_calibration.md) |
 | 视频内部节奏稳定性 | [`physical_fps_intra_video_cv`](../temporal_calibration.md) |
 
 ## 指标定义
 
-`effective_generation_fps` 衡量系统实际吞吐：
+`effective_generation_fps` 和 `realtime_factor` 的详细定义见 [实时吞吐与动作延迟](../realtime_throughput_latency.md)。它们衡量生成过程是否能追上播放速度。
 
-\[
-\mathrm{effective\_generation\_fps}
-=
-\frac{\mathrm{generated\_frame\_count}}{\mathrm{generation\_wall\_time\_seconds}}
-\]
-
-`realtime_factor` 比较输出视频时长和真实生成耗时：
-
-\[
-\mathrm{realtime\_factor}
-=
-\frac{\mathrm{output\_duration\_seconds}}{\mathrm{generation\_wall\_time\_seconds}}
-\]
-
-`1.0` 表示生成速度刚好追上播放速度；低于 `1.0` 则无法持续实时消费。
-
-`action_response_latency` 衡量 action transition 到首次可见响应帧之间的平均延迟。当前实现用 optical-flow 方向作为轻量 proxy，判断画面运动是否开始匹配动作。`latency_budget_pass_rate` 则统计有多少 action transition 能在配置的延迟预算内响应；默认预算是面向游戏式交互的 `0.1s`。
+`action_response_latency` 和 `latency_budget_pass_rate` 的详细定义也见 [实时吞吐与动作延迟](../realtime_throughput_latency.md)。它们在存在逐帧 action schedule 时衡量 action 到可见响应的延迟。
 
 ## 读分注意
 

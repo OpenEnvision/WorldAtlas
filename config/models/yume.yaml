@@ -41,6 +41,8 @@ model:
     shift: 5.0
     seed: 43
     resolution: 704x1280
+    action_source: worldarena_camera_path
+    worldarena_action_speed_cue: The motion speed is moderate.
     gpu_index: 0
     refine_from_image: false
     # Optional prompt-refinement model root. Needed only when refine_from_image or load_caption_model is enabled.

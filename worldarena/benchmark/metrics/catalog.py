@@ -25,6 +25,7 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "seen_region_preservation": "long_sequence",
     "object_permanence": "long_sequence",
     "memory_revisit_consistency": "long_sequence",
+    "memory_symmetry": "long_sequence",
     "long_sequence_motion_smoothness": "long_sequence",
     # Action control
     "prompt_alignment": "action_control",
@@ -45,6 +46,8 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "reconstruction_consistency": "consistency_3d_4d",
     # Physics
     "pmf": "physics",
+    "fvmd": "physics",
+    "jedi": "quality",
     "motion_magnitude": "physics",
     "motion_smoothness": "physics",
     "long_sequence_dynamic_degree": "physics",
@@ -89,9 +92,13 @@ METRIC_DIMENSIONS: dict[str, str] = {
     # Quality
     "style_consistency": "quality",
     "perceptual_quality": "quality",
+    "image_quality": "quality",
     "brightness_consistency": "quality",
+    "brightness_distribution_consistency": "quality",
     "color_temperature_consistency": "quality",
+    "color_temperature_constraint": "quality",
     "sharpness_retention": "quality",
+    "sharpness_vector_retention": "quality",
     "long_sequence_aesthetic_quality": "quality",
     "long_sequence_imaging_quality": "quality",
     "psnr": "quality",

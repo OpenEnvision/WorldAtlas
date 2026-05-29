@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
+import cv2
 
 from worldarena.benchmark.consistency_backends import dinov2_image_features
 from worldarena.benchmark.media import LoadedMedia
@@ -12,6 +13,7 @@ from worldarena.benchmark.schemas import BenchmarkSample, MetricOutput
 
 
 MEMORY_REVISIT_BACKENDS = {"dinov2"}
+MEMORY_SYMMETRY_BACKENDS = {"mse_symmetry"}
 
 
 def _protocol_details(prediction: LoadedMedia) -> dict[str, Any]:
@@ -30,6 +32,50 @@ def _mse_similarity(left: np.ndarray, right: np.ndarray, *, tau: float) -> tuple
     right_float = right.astype(np.float32) / 255.0
     mse = float(np.mean((left_float - right_float) ** 2))
     return mse, 1.0 - clamp01(mse / max(float(tau), 1e-6))
+
+
+def _frame_mse(left: np.ndarray, right: np.ndarray) -> float:
+    if left.shape[:2] != right.shape[:2]:
+        right = cv2.resize(right, (left.shape[1], left.shape[0]), interpolation=cv2.INTER_CUBIC)
+    left_float = left.astype(np.float32) / 255.0
+    right_float = right.astype(np.float32) / 255.0
+    return float(np.mean((left_float - right_float) ** 2))
+
+
+def compute_memory_symmetry(
+    frames: list[np.ndarray],
+    *,
+    mse_offset: float = 0.0,
+    value_decay: float = 12.0,
+    exp_power: float = 1.0,
+    temporal_decay: float = 0.20,
+) -> dict[str, Any]:
+    if len(frames) < 2:
+        raise ValueError("memory_symmetry requires at least two frames")
+
+    pair_count = len(frames) // 2
+    pair_mse = [_frame_mse(frames[index], frames[-index - 1]) for index in range(pair_count)]
+    pair_similarities = [
+        float(np.exp(-float(value_decay) * max(0.0, mse - float(mse_offset)) ** float(exp_power)))
+        for mse in pair_mse
+    ]
+    distances = np.arange(pair_count, 0, -1, dtype=np.float32)
+    weights = np.exp(-float(temporal_decay) * distances)
+    total = float(np.sum(weights))
+    weights = weights / total if total > 0.0 else np.full((pair_count,), 1.0 / pair_count)
+    raw = float(np.sum(weights * np.asarray(pair_similarities, dtype=np.float32)))
+    return {
+        "raw": clamp01(raw),
+        "details": {
+            "pair_mse": [round(value, 8) for value in pair_mse],
+            "pair_similarities": [round(value, 6) for value in pair_similarities],
+            "pair_weights": [round(float(value), 6) for value in weights],
+            "mse_offset": float(mse_offset),
+            "value_decay": float(value_decay),
+            "exp_power": float(exp_power),
+            "temporal_decay": float(temporal_decay),
+        },
+    }
 
 
 class MemoryRevisitConsistencyMetric(Metric):
@@ -153,4 +199,65 @@ class MemoryRevisitConsistencyMetric(Metric):
             )
 
 
-__all__ = ["MemoryRevisitConsistencyMetric"]
+class MemorySymmetryMetric(Metric):
+    def __init__(
+        self,
+        backend: str,
+        normalization: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__("memory_symmetry", backend, normalization)
+        self.runtime = dict(runtime or {})
+        self._resolve_backend()
+
+    def _resolve_backend(self) -> str:
+        return resolve_metric_backend(
+            metric_name=self.name,
+            configured_backend=self.backend,
+            auto_backend="mse_symmetry",
+            supported_backends=MEMORY_SYMMETRY_BACKENDS,
+        )
+
+    def compute(
+        self,
+        sample: BenchmarkSample,
+        prediction: LoadedMedia,
+        reference: LoadedMedia,
+    ) -> MetricOutput:
+        del sample
+        del reference
+        backend = self._resolve_backend()
+        details = _protocol_details(prediction)
+        try:
+            result = compute_memory_symmetry(
+                prediction.frames,
+                mse_offset=float(self.runtime.get("mse_offset", 0.0)),
+                value_decay=float(self.runtime.get("value_decay", 12.0)),
+                exp_power=float(self.runtime.get("exp_power", 1.0)),
+                temporal_decay=float(self.runtime.get("temporal_decay", 0.20)),
+            )
+            details.update(result["details"])
+            raw = float(result["raw"])
+            return MetricOutput(
+                raw=raw,
+                normalized=normalize_score(raw, self.normalization) if self.normalization else raw,
+                backend=backend,
+                details=details,
+                eligibility_status="diagnostic",
+            )
+        except Exception as exc:
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=details,
+                eligibility_status="diagnostic",
+                error=str(exc),
+            )
+
+
+__all__ = [
+    "MemoryRevisitConsistencyMetric",
+    "MemorySymmetryMetric",
+    "compute_memory_symmetry",
+]

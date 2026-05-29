@@ -34,7 +34,7 @@ model:
     use_int8: true
     fa_version: "2"
     visualize_ops: false
-    action_source: worldarena_prompt
+    action_source: worldarena_camera_path
     action_plan:
       default:
         - forward

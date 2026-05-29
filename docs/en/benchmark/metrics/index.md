@@ -75,10 +75,10 @@ The Metrics navigation is organized by these six top-level dimensions, which als
 | [`physical_fps_error`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`, `image_dynamic`, `video_dynamic` | `abs(avg_phyfps - meta_fps)`; reverse scaling over `[0, 30]` | official when successful |
 | [`physical_fps_pct_error`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`, `image_dynamic`, `video_dynamic` | relative FPS error; reverse scaling over `[0, 1]` | official when successful |
 | [`physical_fps_intra_video_cv`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`, `image_dynamic`, `video_dynamic` | intra-video physical-FPS coefficient of variation; reverse scaling over `[0, 1]` | official when successful |
-| `effective_generation_fps` | `real_time` | `generation_metadata` | formal 4 suites | `generated_frame_count / generation_wall_time_seconds`; normalized against target FPS | official when generation timing metadata is available |
-| `realtime_factor` | `real_time` | `generation_metadata` | formal 4 suites | `output_duration_seconds / generation_wall_time_seconds`; forward scaling over `[0, 1]` | official when generation timing metadata is available |
-| `action_response_latency` | `real_time` | `action_flow` | formal 4 suites | mean action-to-visible-response latency; reverse scaling over `[0, 0.1s]` | official when action specs are available; otherwise `not_applicable` |
-| `latency_budget_pass_rate` | `real_time` | `action_flow` | formal 4 suites | fraction of action transitions responding within the configured latency budget | official when action specs are available; otherwise `not_applicable` |
+| [`effective_generation_fps`](realtime_throughput_latency.md#effective-generation-fps) | `real_time` | `generation_metadata` | formal 4 suites | `generated_frame_count / generation_wall_time_seconds`; normalized against target FPS | official when generation timing metadata is available |
+| [`realtime_factor`](realtime_throughput_latency.md#realtime-factor) | `real_time` | `generation_metadata` | formal 4 suites | `output_duration_seconds / generation_wall_time_seconds`; forward scaling over `[0, 1]` | official when generation timing metadata is available |
+| [`action_response_latency`](realtime_throughput_latency.md#action-response-latency) | `real_time` | `action_flow` | formal 4 suites | mean action-to-visible-response latency; reverse scaling over `[0, 0.1s]` | official when action specs are available; otherwise `not_applicable` |
+| [`latency_budget_pass_rate`](realtime_throughput_latency.md#latency-budget-pass-rate) | `real_time` | `action_flow` | formal 4 suites | fraction of action transitions responding within the configured latency budget | official when action specs are available; otherwise `not_applicable` |
 
 ## Separate Physics Track
 

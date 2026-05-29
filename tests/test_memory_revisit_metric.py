@@ -4,7 +4,11 @@ import numpy as np
 import pytest
 
 from worldarena.benchmark.media import LoadedMedia
-from worldarena.benchmark.metrics.memory import MemoryRevisitConsistencyMetric
+from worldarena.benchmark.metrics.memory import (
+    MemoryRevisitConsistencyMetric,
+    MemorySymmetryMetric,
+    compute_memory_symmetry,
+)
 from worldarena.benchmark.schemas import BenchmarkSample
 
 
@@ -90,3 +94,30 @@ def test_memory_revisit_consistency_penalizes_no_rotation(monkeypatch) -> None:
     assert result.raw == pytest.approx(0.65)
     assert result.details["closure_score"] == 1.0
     assert result.details["progress_score"] == 0.0
+
+
+def test_memory_symmetry_rewards_symmetric_frame_pairs() -> None:
+    start = np.zeros((16, 16, 3), dtype=np.uint8)
+    middle = np.full((16, 16, 3), 128, dtype=np.uint8)
+
+    symmetric_score = compute_memory_symmetry([start, middle, middle.copy(), start.copy()])["raw"]
+    asymmetric_score = compute_memory_symmetry([start, middle, middle.copy(), np.full_like(start, 255)])["raw"]
+
+    assert symmetric_score == pytest.approx(1.0)
+    assert asymmetric_score < symmetric_score
+
+
+def test_memory_symmetry_metric_outputs_diagnostic() -> None:
+    start = np.zeros((16, 16, 3), dtype=np.uint8)
+    middle = np.full((16, 16, 3), 128, dtype=np.uint8)
+    prediction = _media([start, middle, middle.copy(), start.copy()])
+    metric = MemorySymmetryMetric(
+        backend="mse_symmetry",
+        normalization={"lower": 0.0, "upper": 1.0, "higher_is_better": True},
+    )
+
+    result = metric.compute(_sample(), prediction, prediction)
+
+    assert result.raw == pytest.approx(1.0)
+    assert result.normalized == pytest.approx(1.0)
+    assert result.eligibility_status == "diagnostic"

@@ -100,15 +100,15 @@ Current official metric dimensions are:
 - `photometric_consistency`: `optical_flow_aepe`
 - `motion_control`: `motion_accuracy`
 - `motion_dynamics`: `motion_magnitude`, `motion_smoothness`
-- `physics_fidelity`: `pmf`
+- `physics_fidelity`: `pmf`, `fvmd`
 - `temporal_calibration`: `physical_fps_error`, `physical_fps_pct_error`, `physical_fps_intra_video_cv`
 
 Current suite assignments are:
 
 - `image_static`: image-conditioned video rollout. It now runs the video-output metric superset where inputs permit: prompt/object/style/quality, prediction-only geometry and motion metrics, temporal calibration, depth-collision, self-consistency, and long-sequence diagnostics. Metrics requiring reference video, pose, or masks return unavailable when those sidecars are absent.
 - `image_dynamic`: same video-output metric superset as `image_static`, with dynamic prompts and masks used when available.
-- `video_static`: `style_consistency`, `perceptual_quality`, `camera_error`, `object_detection`, `reprojection_error`, `optical_flow_aepe`
-- `video_dynamic`: `style_consistency`, `perceptual_quality`, `object_permanence`, `pmf`, `motion_accuracy`, `motion_magnitude`, `motion_smoothness`, `physical_fps_error`, `physical_fps_pct_error`, `physical_fps_intra_video_cv`
+- `video_static`: `style_consistency`, `perceptual_quality`, `camera_error`, `object_detection`, `reprojection_error`, `optical_flow_aepe`, `fvmd`
+- `video_dynamic`: `style_consistency`, `perceptual_quality`, `object_permanence`, `pmf`, `fvmd`, `motion_accuracy`, `motion_magnitude`, `motion_smoothness`, `physical_fps_error`, `physical_fps_pct_error`, `physical_fps_intra_video_cv`
 
 The `image_static`, `image_dynamic`, and `video_dynamic` suites also emit diagnostic-only long-video metrics via the bundled native `Long-Sequence` backend: `long_sequence_subject_consistency`, `long_sequence_background_consistency`, `long_sequence_motion_smoothness`, `long_sequence_dynamic_degree`, `long_sequence_aesthetic_quality`, and `long_sequence_imaging_quality`.
 
@@ -117,6 +117,8 @@ All image and video formal suites also emit diagnostic `depth_collision`, which 
 All image and video formal suites also emit diagnostic `reconstruction_consistency`, the World-R1 `S_recon` signal. It reconstructs a Depth-Anything-3 Gaussian representation from the prediction, renders it back along the input path, and reports `clip(1 - mean LPIPS, 0, 1)` as a prediction-only consistency score.
 
 `prompt_alignment` is computed only when the sample has explicit instruction supervision and is not self-conditioned. It always evaluates video predictions: image suites are image-conditioned video rollouts, so their `prompt_target` must describe the intended video, not a still-image output. Otherwise the metric is reported as `not_applicable` and excluded from both official and diagnostic aggregates.
+
+`fvmd` is a suite-level Fréchet Video Motion Distance metric, so it is computed once per video suite from the set of valid prediction/reference video pairs and written to `distribution_metric_details.json` alongside the normal summary files. Its default source checkout is configured at `/share/project/bench/model/FVMD-frechet-video-motion-distance`.
 
 `semantic_alignment` is also emitted for image suites as a diagnostic caption-grounded signal. It remains outside the official aggregate.
 

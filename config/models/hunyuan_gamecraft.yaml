@@ -36,6 +36,7 @@ model:
     prompt_suffix: ""
     add_pos_prompt: ""
     add_neg_prompt: ""
+    action_source: worldarena_camera_path
     action_speed: 0.2
     image_start: true
     cpu_offload: true

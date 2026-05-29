@@ -11,33 +11,17 @@ Temporal calibration remains part of this dimension, but it answers a different 
 
 | Layer | Metrics |
 | --- | --- |
-| generation throughput | `effective_generation_fps`, `realtime_factor` |
-| action latency | `action_response_latency`, `latency_budget_pass_rate` |
+| generation throughput | [`effective_generation_fps`](../realtime_throughput_latency.md#effective-generation-fps), [`realtime_factor`](../realtime_throughput_latency.md#realtime-factor) |
+| action latency | [`action_response_latency`](../realtime_throughput_latency.md#action-response-latency), [`latency_budget_pass_rate`](../realtime_throughput_latency.md#latency-budget-pass-rate) |
 | average physical FPS error | [`physical_fps_error`](../temporal_calibration.md) |
 | relative FPS error | [`physical_fps_pct_error`](../temporal_calibration.md) |
 | intra-video rhythm stability | [`physical_fps_intra_video_cv`](../temporal_calibration.md) |
 
 ## Metric Definitions
 
-`effective_generation_fps` measures raw system throughput:
+`effective_generation_fps` and `realtime_factor` are detailed in [Realtime Throughput and Latency](../realtime_throughput_latency.md). They measure whether generation keeps up with playback.
 
-\[
-\mathrm{effective\_generation\_fps}
-=
-\frac{\mathrm{generated\_frame\_count}}{\mathrm{generation\_wall\_time\_seconds}}
-\]
-
-`realtime_factor` compares generated video duration with wall-clock generation time:
-
-\[
-\mathrm{realtime\_factor}
-=
-\frac{\mathrm{output\_duration\_seconds}}{\mathrm{generation\_wall\_time\_seconds}}
-\]
-
-A value of `1.0` means the model generates as fast as playback. Values below `1.0` cannot sustain real-time consumption.
-
-`action_response_latency` measures the average delay between an action transition and the first generated frame whose optical-flow direction matches that action. `latency_budget_pass_rate` reports the fraction of measured action transitions that respond within the configured latency budget, currently `0.1s` by default for game-like interaction.
+`action_response_latency` and `latency_budget_pass_rate` are also detailed in [Realtime Throughput and Latency](../realtime_throughput_latency.md). They measure action-to-visible-response delay when frame-level action schedules are available.
 
 ## Reading Notes
 

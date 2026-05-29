@@ -3,8 +3,11 @@ from __future__ import annotations
 from worldarena.benchmark.config import BenchmarkConfig
 from worldarena.benchmark.metrics.appearance import (
     BrightnessConsistencyMetric,
+    BrightnessDistributionConsistencyMetric,
+    ColorTemperatureConstraintMetric,
     ColorTemperatureConsistencyMetric,
     SharpnessRetentionMetric,
+    SharpnessVectorRetentionMetric,
 )
 from worldarena.benchmark.metrics.consistency import (
     GVGC_GEOMETRY_METRICS,
@@ -31,7 +34,7 @@ from worldarena.benchmark.metrics.met3r import Met3RConsistencyMetric
 from worldarena.benchmark.metrics.physics import PhysicsMetric, is_physics_metric
 from worldarena.benchmark.metrics.physics_judge import PhysicsJudgeMetric
 from worldarena.benchmark.metrics.pmf import PhysicalMotionFidelityMetric
-from worldarena.benchmark.metrics.quality import PerceptualQualityMetric
+from worldarena.benchmark.metrics.quality import ImageQualityMetric, PerceptualQualityMetric
 from worldarena.benchmark.metrics.reconstruction import ReconstructionConsistencyMetric
 from worldarena.benchmark.metrics.realtime import REALTIME_METRICS, build_realtime_metric
 from worldarena.benchmark.metrics.regions import (
@@ -42,7 +45,7 @@ from worldarena.benchmark.metrics.regions import (
 from worldarena.benchmark.metrics.style import StyleConsistencyMetric
 from worldarena.benchmark.metrics.temporal import TemporalCalibrationMetric
 from worldarena.benchmark.metrics.long_sequence import LongSequenceMetric
-from worldarena.benchmark.metrics.memory import MemoryRevisitConsistencyMetric
+from worldarena.benchmark.metrics.memory import MemoryRevisitConsistencyMetric, MemorySymmetryMetric
 
 
 METRIC_ALIASES: dict[str, str] = {
@@ -61,7 +64,17 @@ METRIC_ALIASES: dict[str, str] = {
     "S_recon": "reconstruction_consistency",
     "s_recon": "reconstruction_consistency",
     "score_reconstruction": "reconstruction_consistency",
+    "frechet_video_motion_distance": "fvmd",
+    "frechet_motion_distance": "fvmd",
+    "jepa_embedding_distance": "jedi",
+    "jedi_metric": "jedi",
+    "trajectory_accuracy": "camera_error",
+    "trajectory_tolerance": "camera_error",
+    "trajectory_alignment": "camera_error",
+    "color_temperature": "color_temperature_constraint",
+    "sharpness_vector_retention": "sharpness_vector_retention",
 }
+SUITE_LEVEL_METRICS = {"fvmd", "jedi"}
 TEMPORAL_CALIBRATION_METRICS = {
     "physical_fps_error",
     "physical_fps_pct_error",
@@ -87,6 +100,25 @@ def canonical_metric_name(metric_name: str) -> str:
     return METRIC_ALIASES.get(metric_name, metric_name)
 
 
+def is_suite_level_metric(metric_name: str) -> bool:
+    return canonical_metric_name(metric_name) in SUITE_LEVEL_METRICS
+
+
+def split_suite_level_metrics(metric_names: list[str]) -> tuple[list[str], list[str]]:
+    per_sample_metrics: list[str] = []
+    suite_level_metrics: list[str] = []
+    seen_suite_metrics: set[str] = set()
+    for raw_metric_name in metric_names:
+        metric_name = canonical_metric_name(raw_metric_name)
+        if metric_name in SUITE_LEVEL_METRICS:
+            if metric_name not in seen_suite_metrics:
+                suite_level_metrics.append(metric_name)
+                seen_suite_metrics.add(metric_name)
+            continue
+        per_sample_metrics.append(raw_metric_name)
+    return per_sample_metrics, suite_level_metrics
+
+
 def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metric]:
     metrics: list[Metric] = []
     seen: set[str] = set()
@@ -104,6 +136,8 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
         if metric_name in seen:
             continue
         seen.add(metric_name)
+        if metric_name in SUITE_LEVEL_METRICS:
+            continue
         backend = config.metric_backends.get(metric_name, config.metric_backends.get(raw_metric_name, "auto"))
         normalization = config.normalization.get(metric_name, config.normalization.get(raw_metric_name, {}))
         runtime = dict(config.metric_runtime.get(metric_name, config.metric_runtime.get(raw_metric_name, {})))
@@ -116,9 +150,25 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
             metrics.append(StyleConsistencyMetric(backend=backend, normalization=normalization))
         elif metric_name == "perceptual_quality":
             metrics.append(PerceptualQualityMetric(backend=backend, normalization=normalization))
+        elif metric_name == "image_quality":
+            metrics.append(
+                ImageQualityMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
         elif metric_name == "brightness_consistency":
             metrics.append(
                 BrightnessConsistencyMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
+        elif metric_name == "brightness_distribution_consistency":
+            metrics.append(
+                BrightnessDistributionConsistencyMetric(
                     backend=backend,
                     normalization=normalization,
                     runtime=runtime,
@@ -132,9 +182,25 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
                     runtime=runtime,
                 )
             )
+        elif metric_name == "color_temperature_constraint":
+            metrics.append(
+                ColorTemperatureConstraintMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
         elif metric_name == "sharpness_retention":
             metrics.append(
                 SharpnessRetentionMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
+        elif metric_name == "sharpness_vector_retention":
+            metrics.append(
+                SharpnessVectorRetentionMetric(
                     backend=backend,
                     normalization=normalization,
                     runtime=runtime,
@@ -299,6 +365,14 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
         elif metric_name == "memory_revisit_consistency":
             metrics.append(
                 MemoryRevisitConsistencyMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
+        elif metric_name == "memory_symmetry":
+            metrics.append(
+                MemorySymmetryMetric(
                     backend=backend,
                     normalization=normalization,
                     runtime=runtime,

@@ -110,6 +110,7 @@ plugins:
             Trajectory Accuracy: 轨迹准确性
             PSNR: PSNR
             SSIM: SSIM
+            Realtime Throughput and Latency: 实时吞吐与动作延迟
             Temporal Calibration: 时间校准
             Runtime Setup: 运行时布局
             Dataset Analytics: 数据分析
@@ -180,6 +181,7 @@ nav:
               - SSIM: benchmark/metrics/ssim.md
           - Real Time:
               - Overview: benchmark/metrics/dimensions/real_time.md
+              - Realtime Throughput and Latency: benchmark/metrics/realtime_throughput_latency.md
               - Temporal Calibration: benchmark/metrics/temporal_calibration.md
   - Runtime Setup: thirdparty.md
   - Dataset Analytics:

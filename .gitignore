@@ -43,6 +43,9 @@ Thumbs.db
 
 # Documentation build output
 docs/generated/
+.cache/site/
+/site/worldarena-site.log
+/site/worldarena-site.pid
 site/
 
 # Benchmark and experiment outputs

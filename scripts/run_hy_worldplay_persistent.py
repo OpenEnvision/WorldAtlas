@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import Future, ThreadPoolExecutor
 import hashlib
 import json
 import os
@@ -55,7 +56,7 @@ def _prepare_cuda_visibility(args: argparse.Namespace) -> None:
     os.environ.setdefault("WORLD_SIZE", "1")
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
     os.environ.setdefault("PYTHONUNBUFFERED", "1")
-    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+    os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "max_split_size_mb:512,garbage_collection_threshold:0.8")
 
 
 def _write_record(path: Path, record: dict[str, Any]) -> None:
@@ -63,11 +64,92 @@ def _write_record(path: Path, record: dict[str, Any]) -> None:
         handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, str(default)))
+    except ValueError:
+        return default
+
+
+def _rank() -> int:
+    return _env_int("RANK", 0)
+
+
+def _world_size() -> int:
+    return _env_int("WORLD_SIZE", 1)
+
+
+def _is_rank0() -> bool:
+    return _rank() == 0
+
+
+def _dist_barrier() -> None:
+    if _world_size() <= 1:
+        return
+    try:
+        import torch.distributed as dist
+
+        if dist.is_available() and dist.is_initialized():
+            dist.barrier()
+    except Exception:
+        return
+
+
 def _as_bool(value: object) -> bool:
     if isinstance(value, bool):
         return value
     text = str(value or "").strip().lower()
     return text in {"1", "true", "t", "yes", "y", "on"}
+
+
+def _is_fatal_cuda_error(exc: BaseException) -> bool:
+    text = (str(exc) or repr(exc)).lower()
+    markers = (
+        "cuda error: out of memory",
+        "cuda out of memory",
+        "out of memory",
+        "internal assert failed",
+        "cuda driver error",
+        "cusolver_status_internal_error",
+        "cublas_status",
+        "illegal memory access",
+    )
+    return any(marker in text for marker in markers)
+
+
+def _video_to_uint8_frames(video: Any) -> np.ndarray:
+    try:
+        import torch
+
+        if torch.is_tensor(video):
+            if video.ndim == 5:
+                if video.shape[0] != 1:
+                    raise ValueError(f"expected batch size 1 video tensor, got {tuple(video.shape)}")
+                video = video[0]
+            frames = (video.detach() * 255).clamp(0, 255).to(torch.uint8)
+            frames = frames.permute(1, 2, 3, 0).contiguous().cpu().numpy()
+            return np.ascontiguousarray(frames)
+    except ImportError:
+        pass
+
+    frames = np.asarray(video)
+    if frames.ndim == 5:
+        if frames.shape[0] != 1:
+            raise ValueError(f"expected batch size 1 video array, got {frames.shape}")
+        frames = frames[0]
+    if frames.ndim == 4 and frames.shape[0] in {1, 3, 4}:
+        frames = np.transpose(frames, (1, 2, 3, 0))
+    if frames.dtype != np.uint8:
+        frames = np.clip(frames * 255.0, 0, 255).astype(np.uint8)
+    return np.ascontiguousarray(frames)
+
+
+def _save_video_frames(frames: np.ndarray, temp_path: Path, output_path: Path, fps: int) -> None:
+    import imageio
+
+    temp_path.unlink(missing_ok=True)
+    imageio.mimwrite(str(temp_path), frames, fps=int(fps))
+    temp_path.replace(output_path)
 
 
 def _select_samples(
@@ -361,6 +443,9 @@ class HYWorldPlayRuntime:
         self.project_root = project_root
         self.repo_root = model_config.repo_root.expanduser().resolve()
         self.generation = dict(model_config.generation)
+        self._save_executor: ThreadPoolExecutor | None = None
+        self._save_futures: list[Future] = []
+        self._max_pending_saves = max(1, int(self.generation.get("async_save_queue", 2)))
         self.model_path = resolve_project_path(model_config.checkpoint_dir)
         if self.model_path is None or not self.model_path.is_dir():
             raise FileNotFoundError(f"HY-WorldPlay model path is missing: {model_config.checkpoint_dir}")
@@ -416,7 +501,43 @@ class HYWorldPlayRuntime:
             transformer_dtype=transformer_dtype,
             action_ckpt=str(self.action_ckpt),
         )
+        if _is_rank0() and _as_bool(self.generation.get("async_save", True)):
+            self._save_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="hy-worldplay-save")
         print("[hy-worldplay-persistent] pipeline ready", flush=True)
+
+    def _drain_save_futures(self, *, wait: bool) -> None:
+        if not _is_rank0():
+            return
+        remaining: list[Future] = []
+        for future in self._save_futures:
+            if wait or future.done():
+                future.result()
+            else:
+                remaining.append(future)
+        self._save_futures = remaining
+
+    def _submit_video_save(self, *, video: Any, output_path: Path, fps: int) -> None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = output_path.with_name(f".{output_path.name}.tmp.mp4")
+        frames = _video_to_uint8_frames(video)
+
+        if self._save_executor is None:
+            _save_video_frames(frames, temp_path, output_path, fps)
+            return
+
+        self._drain_save_futures(wait=False)
+        while len(self._save_futures) >= self._max_pending_saves:
+            self._save_futures.pop(0).result()
+            self._drain_save_futures(wait=False)
+        self._save_futures.append(
+            self._save_executor.submit(_save_video_frames, frames, temp_path, output_path, fps)
+        )
+
+    def close(self) -> None:
+        self._drain_save_futures(wait=True)
+        if self._save_executor is not None:
+            self._save_executor.shutdown(wait=True)
+            self._save_executor = None
 
     def generate(self, item: dict[str, Any]) -> dict[str, Any]:
         generation = dict(item["generation"])
@@ -451,19 +572,15 @@ class HYWorldPlayRuntime:
         )
 
         output_path = Path(item["prediction_path"])
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        temp_path = output_path.with_name(f".{output_path.name}.tmp.mp4")
-        temp_path.unlink(missing_ok=True)
-        video = out.sr_videos if enable_sr and hasattr(out, "sr_videos") else out.videos
-        self.mod.save_video(video, str(temp_path))
-        temp_path.replace(output_path)
-        if enable_sr and save_pre_sr and hasattr(out, "videos"):
-            pre_sr_path = output_path.with_name(f"{output_path.stem}.pre_sr{output_path.suffix}")
-            pre_sr_tmp = pre_sr_path.with_name(f".{pre_sr_path.name}.tmp.mp4")
-            pre_sr_tmp.unlink(missing_ok=True)
-            self.mod.save_video(out.videos, str(pre_sr_tmp))
-            pre_sr_tmp.replace(pre_sr_path)
-        self.torch.cuda.empty_cache()
+        if _is_rank0():
+            video = out.sr_videos if enable_sr and hasattr(out, "sr_videos") else out.videos
+            self._submit_video_save(video=video, output_path=output_path, fps=int(generation.get("fps", 24)))
+            if enable_sr and save_pre_sr and hasattr(out, "videos"):
+                pre_sr_path = output_path.with_name(f"{output_path.stem}.pre_sr{output_path.suffix}")
+                self._submit_video_save(video=out.videos, output_path=pre_sr_path, fps=int(generation.get("fps", 24)))
+        if _as_bool(generation.get("empty_cache_each_sample", False)):
+            self.torch.cuda.empty_cache()
+        _dist_barrier()
         return {
             "prediction_path": str(output_path),
             "output_path": str(output_path),
@@ -515,8 +632,9 @@ def main() -> int:
     records_path = output_dir / f"generation_records.shard{args.shard_index}.jsonl"
     summary_path = output_dir / f"generation_manifest.shard{args.shard_index}.json"
     prompt_map_path = output_dir / f"prompt_map.shard{args.shard_index}.json"
-    for path in (records_path, summary_path, prompt_map_path):
-        path.unlink(missing_ok=True)
+    if _is_rank0():
+        for path in (records_path, summary_path, prompt_map_path):
+            path.unlink(missing_ok=True)
 
     records: list[dict[str, Any]] = []
     prompt_map: dict[str, str] = {}
@@ -559,6 +677,23 @@ def main() -> int:
                 int(generation.get("video_length", WORLDPLAY_DEFAULT_VIDEO_LENGTH))
             )
             latent_count = _latent_frame_count(video_length)
+            record.update(
+                {
+                    "prompt": prompt,
+                    "prompt_source": model_config.prompt_mode,
+                    "action_ckpt": str(generation.get("action_ckpt", "")),
+                    "video_length": video_length,
+                    "fps": int(generation.get("fps", 24)),
+                    "num_inference_steps": int(generation.get("num_inference_steps", 4)),
+                }
+            )
+            prompt_map[str(prediction_path)] = prompt
+            if prediction_path.exists() and not args.overwrite:
+                record["status"] = "skipped_existing"
+                records.append(record)
+                if _is_rank0():
+                    _write_record(records_path, record)
+                continue
             conditioning_image = _image_conditioning_asset_for(sample)
             image_probe = probe_image(conditioning_image)
             width = int(generation.get("width", image_probe.get("width", WORLDPLAY_DEFAULT_WIDTH)))
@@ -584,20 +719,10 @@ def main() -> int:
                     "pose_source": pose_source,
                     "control_source": pose_source,
                     "camera_path": camera_path,
-                    "action_ckpt": str(generation.get("action_ckpt", "")),
                     "width": width,
                     "height": height,
-                    "video_length": video_length,
-                    "fps": int(generation.get("fps", 24)),
-                    "num_inference_steps": int(generation.get("num_inference_steps", 4)),
                 }
             )
-            prompt_map[str(prediction_path)] = prompt
-            if prediction_path.exists() and not args.overwrite:
-                record["status"] = "skipped_existing"
-                records.append(record)
-                _write_record(records_path, record)
-                continue
             pending.append(
                 {
                     "sample": sample,
@@ -619,11 +744,31 @@ def main() -> int:
             record["status"] = "failed"
             record["error"] = str(exc) or repr(exc)
             records.append(record)
-            _write_record(records_path, record)
+            if _is_rank0():
+                _write_record(records_path, record)
+
+    if not pending:
+        if _is_rank0():
+            prompt_map_path.write_text(json.dumps(prompt_map, indent=2, ensure_ascii=False), encoding="utf-8")
+            summary = {
+                "model_name": model_config.name,
+                "family": model_config.family,
+                "output_dir": str(output_dir),
+                "shard_index": args.shard_index,
+                "num_shards": args.num_shards,
+                "records": len(records),
+                "generated": sum(1 for item in records if item["status"] == "generated"),
+                "skipped_existing": sum(1 for item in records if item["status"] == "skipped_existing"),
+                "failed": sum(1 for item in records if item["status"] == "failed"),
+                "suites": sorted(suites) if suites else model_config.supported_suites,
+            }
+            summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        return 0
 
     runtime = HYWorldPlayRuntime(model_config=model_config, project_root=project_root)
     for item in pending:
         record = item["record"]
+        fatal_cuda_error = False
         try:
             print(
                 f"[hy-worldplay-persistent] generating {Path(item['prediction_path']).name}",
@@ -635,24 +780,42 @@ def main() -> int:
         except Exception as exc:
             record["status"] = "failed"
             record["error"] = str(exc) or repr(exc)
+            fatal_cuda_error = _is_fatal_cuda_error(exc)
+            print(
+                "[hy-worldplay-persistent] failed "
+                f"{Path(item['prediction_path']).name}: {record['error']}",
+                flush=True,
+            )
+            if fatal_cuda_error:
+                print(
+                    "[hy-worldplay-persistent] fatal CUDA error; exiting shard after current record",
+                    flush=True,
+                )
         records.append(record)
-        _write_record(records_path, record)
+        if _is_rank0():
+            _write_record(records_path, record)
+        if fatal_cuda_error:
+            break
 
-    prompt_map_path.write_text(json.dumps(prompt_map, indent=2, ensure_ascii=False), encoding="utf-8")
-    summary = {
-        "model_name": model_config.name,
-        "family": model_config.family,
-        "output_dir": str(output_dir),
-        "shard_index": args.shard_index,
-        "num_shards": args.num_shards,
-        "records": len(records),
-        "generated": sum(1 for item in records if item["status"] == "generated"),
-        "skipped_existing": sum(1 for item in records if item["status"] == "skipped_existing"),
-        "failed": sum(1 for item in records if item["status"] == "failed"),
-        "suites": sorted(suites) if suites else model_config.supported_suites,
-    }
-    summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
-    return 0 if summary["failed"] == 0 else 1
+    runtime.close()
+
+    if _is_rank0():
+        prompt_map_path.write_text(json.dumps(prompt_map, indent=2, ensure_ascii=False), encoding="utf-8")
+        summary = {
+            "model_name": model_config.name,
+            "family": model_config.family,
+            "output_dir": str(output_dir),
+            "shard_index": args.shard_index,
+            "num_shards": args.num_shards,
+            "records": len(records),
+            "generated": sum(1 for item in records if item["status"] == "generated"),
+            "skipped_existing": sum(1 for item in records if item["status"] == "skipped_existing"),
+            "failed": sum(1 for item in records if item["status"] == "failed"),
+            "suites": sorted(suites) if suites else model_config.supported_suites,
+        }
+        summary_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+        return 0 if summary["failed"] == 0 else 1
+    return 0
 
 
 if __name__ == "__main__":

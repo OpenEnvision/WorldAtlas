@@ -75,10 +75,10 @@ Metrics 导航现在按这六个顶层维度组织；每个维度都有自己的
 | [`physical_fps_error`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`、`image_dynamic`、`video_dynamic` | `abs(avg_phyfps - meta_fps)`；`[0,30]` 反向缩放 | 成功时 official |
 | [`physical_fps_pct_error`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`、`image_dynamic`、`video_dynamic` | FPS 相对误差；`[0,1]` 反向缩放 | 成功时 official |
 | [`physical_fps_intra_video_cv`](temporal_calibration.md) | `real_time` | `pulse_of_motion` | `image_static`、`image_dynamic`、`video_dynamic` | 片段物理 FPS 变异系数；`[0,1]` 反向缩放 | 成功时 official |
-| `effective_generation_fps` | `real_time` | `generation_metadata` | formal 4 suite | `generated_frame_count / generation_wall_time_seconds`；按 target FPS 归一化 | 有 generation timing metadata 时 official |
-| `realtime_factor` | `real_time` | `generation_metadata` | formal 4 suite | `output_duration_seconds / generation_wall_time_seconds`；`[0,1]` 正向缩放 | 有 generation timing metadata 时 official |
-| `action_response_latency` | `real_time` | `action_flow` | formal 4 suite | action 到可见响应的平均延迟；`[0,0.1s]` 反向缩放 | 有 action spec 时 official，否则 `not_applicable` |
-| `latency_budget_pass_rate` | `real_time` | `action_flow` | formal 4 suite | 在配置延迟预算内响应的 action transition 占比 | 有 action spec 时 official，否则 `not_applicable` |
+| [`effective_generation_fps`](realtime_throughput_latency.md#effective-generation-fps) | `real_time` | `generation_metadata` | formal 4 suite | `generated_frame_count / generation_wall_time_seconds`；按 target FPS 归一化 | 有 generation timing metadata 时 official |
+| [`realtime_factor`](realtime_throughput_latency.md#realtime-factor) | `real_time` | `generation_metadata` | formal 4 suite | `output_duration_seconds / generation_wall_time_seconds`；`[0,1]` 正向缩放 | 有 generation timing metadata 时 official |
+| [`action_response_latency`](realtime_throughput_latency.md#action-response-latency) | `real_time` | `action_flow` | formal 4 suite | action 到可见响应的平均延迟；`[0,0.1s]` 反向缩放 | 有 action spec 时 official，否则 `not_applicable` |
+| [`latency_budget_pass_rate`](realtime_throughput_latency.md#latency-budget-pass-rate) | `real_time` | `action_flow` | formal 4 suite | 在配置延迟预算内响应的 action transition 占比 | 有 action spec 时 official，否则 `not_applicable` |
 
 ## 独立 Physics Track
 

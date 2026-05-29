@@ -42,6 +42,13 @@ def write_run_outputs(
     elif not_applicable_path.exists():
         not_applicable_path.unlink()
 
+    distribution_details = aggregate_payload.get("distribution_metric_details", {})
+    distribution_path = output_dir / "distribution_metric_details.json"
+    if distribution_details:
+        write_json(distribution_path, distribution_details)
+    elif distribution_path.exists():
+        distribution_path.unlink()
+
     write_json(output_dir / "domain_breakdown.json", aggregate_payload["domain_breakdown"])
 
     per_sample_path = output_dir / "per_sample_scores.jsonl"

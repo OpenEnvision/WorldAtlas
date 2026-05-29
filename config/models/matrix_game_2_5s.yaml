@@ -29,7 +29,7 @@ model:
     output_fps: 12
     seed: 42
     compile_vae: true
-    action_source: worldarena_prompt
+    action_source: worldarena_camera_path
     action_plan:
       default:
         - forward

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -11,10 +12,37 @@ from worldarena.models.adapters.common import (
     run_command,
     run_sequential_generate_batch,
 )
+from worldarena.models.adapters.lingbot_world import _camera_path_for_sample
 
 
 _DEFAULT_ACTIONS = ["w", "d", "w", "a", "w"]
 _SUPPORTED_ACTIONS = {"w", "a", "s", "d", "left_rot", "right_rot", "up_rot", "down_rot"}
+_WORLD_ARENA_ACTION_SOURCE_VALUES = {
+    "worldarena",
+    "worldarena_camera",
+    "worldarena_camera_path",
+    "camera_path",
+    "prompt_target",
+}
+_WORLD_ARENA_GAMECRAFT_ACTIONS = {
+    "fixed": ("w", 0.0, "exact_no_motion"),
+    "push_in": ("w", 1.0, "exact_translation"),
+    "pull_out": ("s", 1.0, "exact_translation"),
+    "move_left": ("a", 1.0, "exact_translation"),
+    "move_right": ("d", 1.0, "exact_translation"),
+    "pan_left": ("left_rot", 1.0, "exact_rotation"),
+    "pan_right": ("right_rot", 1.0, "exact_rotation"),
+    "tilt_up": ("up_rot", 1.0, "exact_rotation"),
+    "tilt_down": ("down_rot", 1.0, "exact_rotation"),
+    "pedestal_up": ("up_rot", 1.0, "coarse_vertical_to_tilt"),
+    "pedestal_down": ("down_rot", 1.0, "coarse_vertical_to_tilt"),
+    "orbit_left": ("right_rot", 1.0, "coarse_orbit_to_counter_rotation"),
+    "orbit_right": ("left_rot", 1.0, "coarse_orbit_to_counter_rotation"),
+}
+
+
+def _normalize_camera_token(value: object) -> str:
+    return str(value or "").strip().lower().replace("-", "_").replace(" ", "_")
 
 
 def _normalize_action_list(value: object) -> list[str]:
@@ -75,6 +103,91 @@ def _action_plan_for_suite(generation: dict[str, Any], suite: str) -> tuple[list
     return actions, speeds
 
 
+def _worldarena_action_plan_for_sample(
+    generation: dict[str, Any],
+    sample: BenchmarkSample,
+) -> dict[str, Any]:
+    camera_tokens = [
+        _normalize_camera_token(token)
+        for token in _camera_path_for_sample(sample)
+        if str(token).strip()
+    ] or ["fixed"]
+    base_speed = float(generation.get("action_speed", 0.2))
+    speed_overrides = dict(generation.get("worldarena_action_speeds", {}))
+    unsupported_action = str(generation.get("unsupported_action", "w"))
+    if unsupported_action not in _SUPPORTED_ACTIONS:
+        unsupported_action = "w"
+
+    actions: list[str] = []
+    speeds: list[float] = []
+    approximations: list[dict[str, str]] = []
+    unsupported_tokens: list[str] = []
+    for camera_token in camera_tokens:
+        native = _WORLD_ARENA_GAMECRAFT_ACTIONS.get(camera_token)
+        if native is None:
+            actions.append(unsupported_action)
+            speeds.append(0.0)
+            unsupported_tokens.append(camera_token)
+            approximations.append(
+                {
+                    "camera_token": camera_token,
+                    "native_action": unsupported_action,
+                    "type": "unsupported_no_motion",
+                }
+            )
+            continue
+
+        action, speed_scale, approximation = native
+        actions.append(action)
+        token_speed = speed_overrides.get(camera_token)
+        speeds.append(float(token_speed) if token_speed is not None else base_speed * float(speed_scale))
+        if not approximation.startswith("exact"):
+            approximations.append(
+                {
+                    "camera_token": camera_token,
+                    "native_action": action,
+                    "type": approximation,
+                }
+            )
+
+    control_source = "camera_path"
+    if unsupported_tokens:
+        control_source = "unsupported_camera_path"
+    elif approximations:
+        control_source = "coarse_camera_path"
+
+    return {
+        "action_source": "worldarena_camera_path",
+        "control_source": control_source,
+        "camera_tokens": camera_tokens,
+        "camera_path": list(sample.camera_path),
+        "native_action_space": "hunyuan_gamecraft",
+        "actions": actions,
+        "action_speeds": speeds,
+        "approximations": approximations,
+        "unsupported_camera_tokens": unsupported_tokens,
+    }
+
+
+def _action_payload_for_sample(generation: dict[str, Any], sample: BenchmarkSample) -> dict[str, Any]:
+    action_source = str(generation.get("action_source", "worldarena_plan")).strip().lower()
+    if action_source in _WORLD_ARENA_ACTION_SOURCE_VALUES:
+        return _worldarena_action_plan_for_sample(generation, sample)
+
+    actions, action_speeds = _action_plan_for_suite(generation, sample.suite)
+    return {
+        "action_source": action_source,
+        "control_source": "config_action_plan",
+        "camera_tokens": [],
+        "camera_path": list(sample.camera_path),
+        "native_action_space": "hunyuan_gamecraft",
+        "actions": actions,
+        "action_speeds": action_speeds,
+        "approximations": [],
+        "unsupported_camera_tokens": [],
+    }
+
+
 class HunyuanGameCraftAdapter(ModelAdapter):
     def supports_batch_generation(self) -> bool:
         return True
@@ -101,7 +214,14 @@ class HunyuanGameCraftAdapter(ModelAdapter):
         generation = self.config.generation
         output_path.parent.mkdir(parents=True, exist_ok=True)
         project_root = Path(__file__).resolve().parents[3]
-        actions, action_speeds = _action_plan_for_suite(generation, sample.suite)
+        action_payload = _action_payload_for_sample(generation, sample)
+        actions = list(action_payload["actions"])
+        action_speeds = list(action_payload["action_speeds"])
+        action_spec_path = output_path.parent / f"{output_path.stem}_actions.json"
+        action_spec_path.write_text(
+            json.dumps(action_payload, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
 
         prompt_prefix = str(generation.get("prompt_prefix", ""))
         prompt_suffix = str(generation.get("prompt_suffix", ""))
@@ -166,10 +286,16 @@ class HunyuanGameCraftAdapter(ModelAdapter):
         return {
             "actions": actions,
             "action_speeds": action_speeds,
+            "action_source": action_payload["action_source"],
+            "control_source": action_payload["control_source"],
+            "camera_tokens": action_payload["camera_tokens"],
+            "camera_path": action_payload["camera_path"],
+            "action_spec_path": str(action_spec_path),
+            "action_alignment": action_payload,
             "command": command,
             "prediction_path": str(output_path),
             "prompt": prompt_text,
         }
 
 
-__all__ = ["HunyuanGameCraftAdapter", "_action_plan_for_suite"]
+__all__ = ["HunyuanGameCraftAdapter", "_action_payload_for_sample", "_action_plan_for_suite"]

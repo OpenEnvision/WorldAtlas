@@ -5,6 +5,7 @@ from pathlib import Path
 from worldarena.benchmark.schemas import BenchmarkSample
 from worldarena.models.adapters.hunyuan_gamecraft import (
     HunyuanGameCraftAdapter,
+    _action_payload_for_sample,
     _action_plan_for_suite,
 )
 from worldarena.models.config import ModelRuntimeConfig
@@ -47,7 +48,7 @@ def _make_config(tmp_path: Path) -> ModelRuntimeConfig:
     )
 
 
-def _make_sample(suite: str = "video_dynamic") -> BenchmarkSample:
+def _make_sample(suite: str = "video_dynamic", camera_path: list[str] | None = None) -> BenchmarkSample:
     return BenchmarkSample(
         sample_id=f"{suite}-001",
         suite=suite,
@@ -72,6 +73,7 @@ def _make_sample(suite: str = "video_dynamic") -> BenchmarkSample:
         source_type="synthetic",
         source_group_id="group-1",
         license_bucket="internal",
+        camera_path=list(camera_path or []),
     )
 
 
@@ -91,6 +93,29 @@ def test_action_plan_for_suite_uses_suite_specific_speeds() -> None:
 
     assert actions == ["w", "a", "w", "d"]
     assert speeds == [0.1, 0.2, 0.3, 0.4]
+
+
+def test_gamecraft_camera_path_maps_to_native_action_space(tmp_path: Path) -> None:
+    config = _make_config(tmp_path)
+    config.generation["action_source"] = "worldarena_camera_path"
+    sample = _make_sample(
+        suite="image_static",
+        camera_path=["push_in", "pan_right", "orbit_left", "fixed"],
+    )
+
+    payload = _action_payload_for_sample(config.generation, sample)
+
+    assert payload["actions"] == ["w", "right_rot", "right_rot", "w"]
+    assert payload["action_speeds"] == [0.3, 0.3, 0.3, 0.0]
+    assert payload["camera_tokens"] == ["push_in", "pan_right", "orbit_left", "fixed"]
+    assert payload["control_source"] == "coarse_camera_path"
+    assert payload["approximations"] == [
+        {
+            "camera_token": "orbit_left",
+            "native_action": "right_rot",
+            "type": "coarse_orbit_to_counter_rotation",
+        }
+    ]
 
 
 def test_registry_builds_hunyuan_gamecraft_adapter(tmp_path: Path) -> None:
@@ -133,4 +158,5 @@ def test_hunyuan_gamecraft_generate_builds_runner_command(monkeypatch, tmp_path:
     assert "--action_speed_list" in command
     assert result["actions"] == ["w", "a", "w", "d"]
     assert result["action_speeds"] == [0.1, 0.2, 0.3, 0.4]
+    assert Path(result["action_spec_path"]).exists()
     assert result["prediction_path"] == str(output_path)

@@ -211,3 +211,12 @@ def aggregate_results(sample_scores: list[SampleScore]) -> dict[str, Any]:
         "leaderboard_row": _flatten_metric_summary(per_metric_summary),
         "leaderboard_dimension_row": _flatten_dimension_summary(per_dimension_summary),
     }
+
+
+def refresh_aggregate_indexes(aggregate_payload: dict[str, Any]) -> dict[str, Any]:
+    per_metric_summary = aggregate_payload.get("per_metric_summary", {})
+    per_dimension_summary = _summarize_dimensions(per_metric_summary)
+    aggregate_payload["per_dimension_summary"] = per_dimension_summary
+    aggregate_payload["leaderboard_row"] = _flatten_metric_summary(per_metric_summary)
+    aggregate_payload["leaderboard_dimension_row"] = _flatten_dimension_summary(per_dimension_summary)
+    return aggregate_payload

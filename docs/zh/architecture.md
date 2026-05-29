@@ -15,6 +15,22 @@ WorldArena 应该坚持“**基准优先**”，而不是“pipeline 优先”�
 
 关键约束是：评测逻辑不应按模型家族分叉。无论是 3D 模型、4D 模型、API 视频模型，还是本地 world model，都应该通过同一套模型配置契约和报告契约进入系统。
 
+## 核心契约
+
+WorldArena 的公开接口应以数据契约为中心。内部 runner 和 adapter 可以演进，但下面这些产物决定了一次 run 是否可复现、可对比、可调试：
+
+| 契约 | 归属 | 稳定字段 | 扩展规则 |
+| --- | --- | --- | --- |
+| Manifest sample | `worldarena_manifest.jsonl`，对应 `BenchmarkSample` | `sample_id`、`suite`、`split`、`reference_path`、`prediction_stem`、条件输入字段、prompt、domain tag、任务元数据、监督 sidecar、媒体 probe 字段 | 新增监督或 artifact 元数据时优先加 nullable 字段。manifest 已生成后，不要再靠目录名反推 benchmark 语义。 |
+| Model runtime config | `config/models/*.yaml`，对应 `ModelRuntimeConfig` | 模型身份、`backend_type`、runtime entrypoint 或 API provider、`supported_suites`、`task_families`、`artifact_types`、`control_signals`、`roles`、`generation`、`metric_overrides` | 本地仓库、Python module、SDK API 和 HTTP API 共用一套 YAML 形状。provider 私有信息放进 `api` 或 `metadata`，不要改变顶层契约。 |
+| Prediction artifact | adapter / provider 写到 `predictions/` 的输出 | `<suite>/<prediction_stem>.<ext>` 或 `<prediction_stem>.<ext>`，扩展名由 prediction modality 决定 | prediction 是被评测的主产物。额外帧、mesh、depth map 或日志应作为显式 sidecar，不应改变必需 prediction 文件名。 |
+| Metric output | `per_sample_scores.jsonl` 中的 `MetricOutput` | `raw`、`normalized`、`backend`、`details`、`protocol_name`、`eligibility_status`、`error` | raw measurement 和 normalized score 分开存。用 `official`、`diagnostic`、`not_applicable` 表达聚合语义，不要把这些语义编码进指标名。 |
+| Report bundle | `run_manifest.json`、summary、breakdown 和 `leaderboard.csv` | run metadata、missing prediction 数量、reported metrics、官方 summary、诊断 summary、failure summary、domain breakdown | 保持 official、diagnostic、not-applicable 和 failure 四类输出分离。除非显式版本化权重契约，否则不要新增 benchmark 级总分。 |
+
+生命周期应保持单向：dataset scanner 生成 inventory，manifest 冻结样本语义，model adapter 按 `prediction_stem` 生成 prediction，metric 只读取 manifest 与 prediction artifact，report 只从 metric output 聚合。adapter 不应通过数据集目录结构判断资格，metric 也不应按模型家族分叉。
+
+扩展 benchmark 时，优先复用已有轴：新任务类别放进 `task_family`，新输出类型放进 `artifact_type`，新输入条件放进 `control_signals`，辅助模型身份放进 `roles`，新评分组挂到 metric dimension。确实需要新增 enum value 时，要同步更新 taxonomy、配置默认值、测试和文档。
+
 ## 任务家族
 
 当前代码已经在模型配置层和 manifest 层都显式携带任务元数据：

@@ -27,9 +27,9 @@ benchmark:
     - prompt_alignment
     - semantic_alignment
     - style_consistency
-    - perceptual_quality
-    - brightness_consistency
-    - color_temperature_consistency
+    - image_quality
+    - brightness_distribution_consistency
+    - color_temperature_constraint
     - sharpness_retention
     - camera_error
     - seen_region_preservation
@@ -49,14 +49,11 @@ benchmark:
     - depth_collision
     - psnr
     - ssim
-    - physical_fps_error
     - physical_fps_pct_error
     - physical_fps_intra_video_cv
-    - effective_generation_fps
     - realtime_factor
     - action_response_latency
     - latency_budget_pass_rate
-    - met3r_consistency
     - reconstruction_consistency
     - long_sequence_motion_smoothness
     - long_sequence_dynamic_degree
@@ -66,9 +63,9 @@ benchmark:
     - prompt_alignment
     - semantic_alignment
     - style_consistency
-    - perceptual_quality
-    - brightness_consistency
-    - color_temperature_consistency
+    - image_quality
+    - brightness_distribution_consistency
+    - color_temperature_constraint
     - sharpness_retention
     - camera_error
     - seen_region_preservation
@@ -88,14 +85,11 @@ benchmark:
     - depth_collision
     - psnr
     - ssim
-    - physical_fps_error
     - physical_fps_pct_error
     - physical_fps_intra_video_cv
-    - effective_generation_fps
     - realtime_factor
     - action_response_latency
     - latency_budget_pass_rate
-    - met3r_consistency
     - reconstruction_consistency
     - long_sequence_motion_smoothness
     - long_sequence_dynamic_degree
@@ -105,9 +99,9 @@ benchmark:
     - prompt_alignment
     - semantic_alignment
     - style_consistency
-    - perceptual_quality
-    - brightness_consistency
-    - color_temperature_consistency
+    - image_quality
+    - brightness_distribution_consistency
+    - color_temperature_constraint
     - sharpness_retention
     - camera_error
     - seen_region_preservation
@@ -115,6 +109,8 @@ benchmark:
     - object_detection
     - reprojection_error
     - optical_flow_aepe
+    - fvmd
+    - jedi
     - epipolar_error
     - epipolar_inlier_rate
     - feature_match_coverage
@@ -122,22 +118,22 @@ benchmark:
     - depth_collision
     - psnr
     - ssim
-    - effective_generation_fps
     - realtime_factor
     - action_response_latency
     - latency_budget_pass_rate
-    - met3r_consistency
     - reconstruction_consistency
     video_dynamic:
     - prompt_alignment
     - semantic_alignment
     - style_consistency
-    - perceptual_quality
-    - brightness_consistency
-    - color_temperature_consistency
+    - image_quality
+    - brightness_distribution_consistency
+    - color_temperature_constraint
     - sharpness_retention
     - object_permanence
     - pmf
+    - fvmd
+    - jedi
     - motion_accuracy
     - motion_magnitude
     - motion_smoothness
@@ -148,14 +144,11 @@ benchmark:
     - depth_collision
     - psnr
     - ssim
-    - physical_fps_error
     - physical_fps_pct_error
     - physical_fps_intra_video_cv
-    - effective_generation_fps
     - realtime_factor
     - action_response_latency
     - latency_budget_pass_rate
-    - met3r_consistency
     - reconstruction_consistency
     - long_sequence_motion_smoothness
     - long_sequence_dynamic_degree
@@ -163,23 +156,37 @@ benchmark:
     - long_sequence_imaging_quality
     auxiliary: []
     experimental:
+    - perceptual_quality
+    - brightness_consistency
+    - color_temperature_consistency
+    - sharpness_vector_retention
     - motion_magnitude
     - motion_smoothness
     - memory_revisit_consistency
+    - physical_fps_error
+    - effective_generation_fps
+    - met3r_consistency
+    - memory_symmetry
   metric_backends:
     prompt_alignment: reference
     semantic_alignment: clip
     style_consistency: reference
     perceptual_quality: reference
+    image_quality: musiq
     brightness_consistency: luminance_temporal
+    brightness_distribution_consistency: distribution
     color_temperature_consistency: hsv_hue_drift
+    color_temperature_constraint: hue_distribution
     sharpness_retention: tenengrad_brisque
+    sharpness_vector_retention: tenengrad_vector
     camera_error: droid_slam
     seen_region_preservation: flow_dino
     novel_region_fidelity: flow_dino
     object_detection: grounding_dino
     object_permanence: mask_dino
     pmf: numpy_fft
+    fvmd: fvmd
+    jedi: jedi
     reprojection_error: droid_slam
     optical_flow_aepe: sea_raft
     epipolar_error: opencv_epipolar
@@ -206,6 +213,7 @@ benchmark:
     long_sequence_aesthetic_quality: long_sequence
     long_sequence_imaging_quality: long_sequence
     memory_revisit_consistency: dinov2
+    memory_symmetry: mse_symmetry
   metric_runtime:
     official_source:
     motion_accuracy:
@@ -215,15 +223,27 @@ benchmark:
       absolute_tau: 0.20
       relative_tau: 0.35
       min_luminance: 0.02
+    brightness_distribution_consistency:
+      dark_threshold: 85
+      bright_threshold: 170
+      temporal_decay: 0.05
+      softmax_lambda: 4.0
     color_temperature_consistency:
       hue_tau: 0.12
       saturation_power: 1.0
       min_saturation_weight: 0.0001
+    color_temperature_constraint:
+      hue_bins: 7
+      temporal_decay: 0.10
+      softmax_lambda: 4.0
     sharpness_retention:
       baseline_frame_count: 2
       texture_floor: 0.00001
       brisque_good: 30.0
       brisque_bad: 80.0
+    sharpness_vector_retention:
+      log_factor: 12.0
+      temporal_decay: 0.05
     gvgc_geometry:
       feature_detector: sift
       max_features: 2000
@@ -286,6 +306,26 @@ benchmark:
         dino: 0.55
         ssim: 0.25
         mse: 0.20
+    memory_symmetry:
+      mse_offset: 0.0
+      value_decay: 12.0
+      exp_power: 1.0
+      temporal_decay: 0.20
+    fvmd:
+      repo_root: /share/project/bench/model/FVMD-frechet-video-motion-distance
+      clip_frame_count: 16
+      analysis_size: 256
+      max_clips_per_video: 1
+      min_clip_count: 2
+    jedi:
+      repo_root: /share/project/bench/model/JEDi
+      model_dir: /share/project/bench/model/JEDi
+      config_path: configs/vith16_ssv2_16x2x3.yaml
+      clip_frame_count: 16
+      analysis_size: 224
+      max_clips_per_video: 1
+      min_clip_count: 2
+      batch_size: 4
   normalization:
     prompt_alignment:
       lower: 0.0
@@ -299,6 +339,10 @@ benchmark:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
+    memory_symmetry:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
     style_consistency:
       lower: 0.0
       upper: 1.0
@@ -307,7 +351,15 @@ benchmark:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
+    image_quality:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
     brightness_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    brightness_distribution_consistency:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
@@ -315,7 +367,15 @@ benchmark:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
+    color_temperature_constraint:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
     sharpness_retention:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    sharpness_vector_retention:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
@@ -373,6 +433,14 @@ benchmark:
       lower: 0.0
       upper: 6.0
       higher_is_better: true
+    fvmd:
+      lower: 0.0
+      upper: 10000.0
+      higher_is_better: false
+    jedi:
+      lower: 0.0
+      upper: 100.0
+      higher_is_better: false
     reprojection_error:
       empirical_min: 0.0
       empirical_max: 1.0719
