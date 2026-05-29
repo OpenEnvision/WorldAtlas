@@ -40,6 +40,9 @@ junit.xml
 .vscode/
 .DS_Store
 Thumbs.db
+AGENTS.md
+Agent.md
+plan.md
 
 # Documentation build output
 docs/generated/
@@ -66,6 +69,7 @@ artifacts/v1/
 # Model weights and generated assets
 checkpoints/
 ckpt/
+ckpt
 pretrained/
 weights/
 *.ckpt
