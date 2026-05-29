@@ -78,7 +78,6 @@ weights/
 tmp/
 temp/
 cache
-ckpt
 runtimes/
 thirdparty/*
 !thirdparty/README.md
