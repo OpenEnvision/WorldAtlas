@@ -114,7 +114,11 @@ def main() -> None:
 
         if _use_transformer_engine_shim():
             _prepare_transformer_engine_shim(workspace_root)
-        _link_hf_repo_aliases(workspace_root, da3_model_name)
+        _link_hf_repo_aliases(
+            workspace_root,
+            da3_model_name,
+            use_moge_scale=args.use_moge_scale,
+        )
 
         (workspace_root / "lyra_2").symlink_to(repo_root / "lyra_2", target_is_directory=True)
         (workspace_root / "checkpoints").symlink_to(checkpoint_tree, target_is_directory=True)

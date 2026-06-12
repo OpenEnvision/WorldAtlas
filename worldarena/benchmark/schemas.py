@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
-@dataclass(slots=True)
+@dataclass()
 class DiscoveredAsset:
     asset_level: str
     modality: str
@@ -42,7 +42,7 @@ class DiscoveredAsset:
         return asdict(self)
 
 
-@dataclass(slots=True)
+@dataclass()
 class BenchmarkSample:
     sample_id: str
     suite: str
@@ -98,7 +98,7 @@ class BenchmarkSample:
         return asdict(self)
 
 
-@dataclass(slots=True)
+@dataclass()
 class MetricOutput:
     raw: Any | None
     normalized: float | None
@@ -112,7 +112,7 @@ class MetricOutput:
         return asdict(self)
 
 
-@dataclass(slots=True)
+@dataclass()
 class SampleScore:
     sample_id: str
     suite: str

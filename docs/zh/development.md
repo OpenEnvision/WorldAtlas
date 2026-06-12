@@ -70,7 +70,7 @@ ruff check .
 pytest -q tests/test_model_config.py tests/test_runtime_layout.py tests/test_environment_check.py
 ```
 
-如果你修改了重型运行时 wrapper 或 simulator-backed evaluation，建议再补跑对应的定向测试，例如 `tests/test_met3r_runtime.py`、`tests/test_long_sequence_runtime.py`、`tests/test_long_sequence_native.py` 和 `tests/test_physics_benchmark.py`。
+如果你修改了重型运行时 wrapper 或 simulator-backed evaluation，建议再补跑对应的定向测试，例如 `tests/test_long_sequence_backend_runtime.py`、`tests/test_long_sequence_runtime.py`、`tests/test_long_sequence_native.py` 和 `tests/test_physics_simulator_derived_metrics.py`。
 
 ## 清理
 

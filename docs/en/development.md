@@ -90,7 +90,7 @@ For a lighter pre-commit validation pass, at minimum run:
 pytest -q tests/test_model_config.py tests/test_runtime_layout.py tests/test_environment_check.py
 ```
 
-If you touched heavy runtime wrappers or simulator-backed evaluation, also run the targeted suites that cover those paths, such as `tests/test_met3r_runtime.py`, `tests/test_long_sequence_runtime.py`, `tests/test_long_sequence_native.py`, and `tests/test_physics_benchmark.py`.
+If you touched heavy runtime wrappers or simulator-backed evaluation, also run the targeted suites that cover those paths, such as `tests/test_long_sequence_backend_runtime.py`, `tests/test_long_sequence_runtime.py`, `tests/test_long_sequence_native.py`, and `tests/test_physics_simulator_derived_metrics.py`.
 
 ## Cleanup
 

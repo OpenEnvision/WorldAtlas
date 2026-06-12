@@ -20,10 +20,19 @@ from typing import Any, Iterator
 import cv2
 import numpy as np
 
-from worldarena.common.checkpoints import apply_checkpoint_env, filter_checkpoint_env_overrides
+from worldarena.common.checkpoints import (
+    apply_checkpoint_env,
+    checkpoint_env,
+    checkpoint_path,
+    filter_checkpoint_env_overrides,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+THIRDPARTY_ROOT = PROJECT_ROOT / "thirdparty"
+OFFICIAL_METRIC_SOURCE_ROOT = PROJECT_ROOT / "worldarena" / "benchmark" / "official_source"
+OFFICIAL_METRIC_PACKAGE = "worldarena_official_metrics"
+OFFICIAL_METRIC_CHECKPOINT_DIR = "official_metrics"
 OFFICIAL_RUNTIME_WORKER_ENV = "WORLDARENA_OFFICIAL_RUNTIME_WORKER"
 
 
@@ -76,10 +85,6 @@ def _runtime_cache_dir(name: str) -> Path:
     return path
 
 
-def _current_cpython_tag() -> str:
-    return f"cpython-{sys.version_info.major}{sys.version_info.minor}"
-
-
 def _ensure_symlink(link_path: Path, target_path: Path) -> None:
     if link_path.is_symlink() and link_path.resolve() == target_path.resolve():
         return
@@ -105,13 +110,25 @@ def _discover_metric_source_root_from(directory: Path) -> Path | None:
 
 
 def _select_candidate_path(candidates: list[Path], *, package_prefix: str | None = None) -> Path | None:
-    if not candidates:
+    unique_candidates = []
+    seen = set()
+    for candidate in candidates:
+        candidate = candidate.resolve()
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        unique_candidates.append(candidate)
+    if not unique_candidates:
         return None
     if package_prefix is not None:
-        for candidate in candidates:
+        for candidate in unique_candidates:
             if package_prefix in str(candidate):
                 return candidate
-    return sorted(candidates, key=lambda path: (len(path.parts), str(path)))[0]
+    return sorted(unique_candidates, key=lambda path: (len(path.parts), str(path)))[0]
+
+
+def _existing_paths(paths: list[Path]) -> list[Path]:
+    return [path for path in paths if path.exists()]
 
 
 def _prepare_overlay_root(
@@ -137,52 +154,74 @@ def _prepare_overlay_root(
     return overlay_root
 
 
+def _prepare_metric_checkpoint_link(package_dir: Path) -> None:
+    expected_path = package_dir / "benchmark" / "metrics" / "checkpoints"
+    checkpoint_dir = checkpoint_path(OFFICIAL_METRIC_CHECKPOINT_DIR, kind="dir", required=False)
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    if expected_path.is_symlink() and expected_path.resolve() == checkpoint_dir.resolve():
+        return
+    if expected_path.is_symlink():
+        expected_path.unlink()
+    elif expected_path.exists():
+        if expected_path.is_dir() and not expected_path.is_symlink() and not any(expected_path.iterdir()):
+            expected_path.rmdir()
+        else:
+            return
+    expected_path.symlink_to(checkpoint_dir, target_is_directory=True)
+
+
 @lru_cache(maxsize=1)
 def resolve_metric_source_layout() -> MetricSourceLayout:
-    candidate_roots: list[Path] = []
-    thirdparty_root = PROJECT_ROOT / "thirdparty"
-    if thirdparty_root.exists():
-        candidate_roots.append(thirdparty_root)
-
     source_root: Path | None = None
-    for root in candidate_roots:
-        discovered = _discover_metric_source_root_from(root)
-        if discovered is not None:
-            source_root = discovered
-            break
+    if (OFFICIAL_METRIC_SOURCE_ROOT / OFFICIAL_METRIC_PACKAGE).exists():
+        source_root = _discover_metric_source_root_from(OFFICIAL_METRIC_SOURCE_ROOT)
     if source_root is None:
         raise FileNotFoundError(
-            "official metric source tree not found under thirdparty/; "
-            "place a compatible checkout there"
+            "official metric source tree not found under "
+            f"{OFFICIAL_METRIC_SOURCE_ROOT}; expected "
+            f"{OFFICIAL_METRIC_PACKAGE}/benchmark/metrics/third_party/camera_error_metrics.py"
         )
 
     metric_file = next(source_root.rglob("benchmark/metrics/third_party/camera_error_metrics.py"))
     package_name = metric_file.relative_to(source_root).parts[0]
     package_dir = source_root / package_name
+    _prepare_metric_checkpoint_link(package_dir)
 
+    third_party_root = package_dir / "benchmark" / "metrics" / "third_party"
     droid_root = _select_candidate_path(
-        [path.parent for path in source_root.rglob("droid.py") if path.parent.name == "droid_slam"],
-        package_prefix=package_name,
-    )
-    droid_build_root = _select_candidate_path(
-        [path.parent for path in source_root.rglob("droid_backends*.so")],
-        package_prefix=_current_cpython_tag(),
-    )
-    lietorch_root = _select_candidate_path(
-        [path.parent.parent for path in source_root.rglob("lietorch/__init__.py")],
+        _existing_paths([THIRDPARTY_ROOT / "DROID-SLAM" / "droid_slam"])
+        + [path.parent for path in source_root.rglob("droid.py") if path.parent.name == "droid_slam"],
         package_prefix="DROID-SLAM",
     )
+    droid_build_root = _select_candidate_path(
+        [path.parent for path in (THIRDPARTY_ROOT / "DROID-SLAM").glob("droid_backends*.so")]
+        + [path.parent for path in source_root.rglob("droid_backends*.so")],
+        package_prefix="DROID-SLAM",
+    )
+    lietorch_root = _select_candidate_path(
+        _existing_paths([THIRDPARTY_ROOT / "DROID-SLAM" / "thirdparty" / "lietorch"])
+        + [path.parent.parent for path in source_root.rglob("lietorch/__init__.py")],
+        package_prefix="DROID-SLAM",
+    )
+    local_sea_raft_root = THIRDPARTY_ROOT / "SEA-RAFT"
+    local_sea_raft_candidates = [local_sea_raft_root] if (local_sea_raft_root / "core").exists() else []
     sea_raft_root = _select_candidate_path(
-        [path.parents[2] for path in source_root.rglob("config/eval/spring-M.json")],
+        local_sea_raft_candidates + [path.parents[2] for path in source_root.rglob("config/eval/spring-M.json")],
         package_prefix="SEA-RAFT",
     )
     grounding_package_dir = _select_candidate_path(
-        [path.parent for path in source_root.rglob("groundingdino/__init__.py")],
+        _existing_paths(
+            [
+                THIRDPARTY_ROOT / "GroundingDINO" / "groundingdino",
+                third_party_root / "groundingdino",
+            ]
+        )
+        + [path.parent for path in source_root.rglob("groundingdino/__init__.py")],
         package_prefix="GroundingDINO",
     )
     sam2_package_dir = _select_candidate_path(
-        [path.parent for path in source_root.rglob("sam2/__init__.py")],
-        package_prefix=package_name,
+        _existing_paths([THIRDPARTY_ROOT / "sam2" / "sam2", third_party_root / "sam2"])
+        + [path.parent for path in source_root.rglob("sam2/__init__.py")],
     )
     vfi_mamba_root = _select_candidate_path(
         [
@@ -214,6 +253,8 @@ def resolve_metric_source_layout() -> MetricSourceLayout:
 def metric_runtime_context() -> Iterator[MetricSourceLayout]:
     layout = resolve_metric_source_layout()
     previous_cwd = Path.cwd()
+    env_updates = checkpoint_env(create=True)
+    previous_env = {key: os.environ.get(key) for key in env_updates}
     inserted_paths = [
         path
         for path in (
@@ -225,12 +266,18 @@ def metric_runtime_context() -> Iterator[MetricSourceLayout]:
         if path is not None
     ]
     try:
+        os.environ.update(env_updates)
         for path in reversed(inserted_paths):
             sys.path.insert(0, str(path))
         os.chdir(layout.overlay_root)
         yield layout
     finally:
         os.chdir(previous_cwd)
+        for key, value in previous_env.items():
+            if value is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = value
         for path in inserted_paths:
             path_str = str(path)
             while path_str in sys.path:

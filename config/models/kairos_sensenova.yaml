@@ -1,0 +1,45 @@
+model:
+  name: kairos-sensenova-robot-4b-480p-distilled
+  family: kairos-sensenova
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  python_bin: python
+  repo_root: /mnt/workspace/yangboxue/visual_generation/juanxi/github_repos/kairos-sensenova
+  checkpoint_dir: /mnt/workspace/yangboxue/visual_generation/juanxi/ckpt/kairos-sensenova
+  entrypoint: examples/inference.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/workspace/yangboxue/visual_generation/juanxi/ckpt
+    TOKENIZERS_PARALLELISM: "false"
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  metadata:
+    upstream_repo: kairos-agi/kairos-sensenova
+    upstream_entrypoint: examples/inference.py
+    image_conditioning_contract: optional_first_frame_for_ti2v_or_i2v
+    note: Kairos official inference requires torchrun even for single-GPU execution.
+  generation:
+    variant: robot-480p-distilled
+    config_path: kairos/configs/kairos_4b_config_DMD.py
+    torchrun_executable: torchrun
+    nproc_per_node: 1
+    master_port: 29556
+    run_manage_libs: true
+    force_t2v: false
+    negative_prompt: "bright tones, overexposed, static, blurred details, subtitles, style, works, paintings, images, static, overall gray, worst quality, low quality, JPEG compression residue, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn faces, deformed, disfigured, deformed limbs, fused fingers, still picture, messy background, three legs, many people in the background, walking backwards, contorted human joints, objects floating against natural forces, abrupt shot changes"
+    seed: 0
+    tiled: true
+    height: 480
+    width: 640
+    num_frames: 81
+    cfg_scale: 5
+    use_prompt_rewriter: false

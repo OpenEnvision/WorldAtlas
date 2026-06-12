@@ -34,6 +34,8 @@ junit.xml
 .env
 .env.*
 !.env.example
+token
+*.token
 
 # IDE and OS files
 .idea/
@@ -47,11 +49,16 @@ plan.md
 # Documentation build output
 docs/generated/
 .cache/site/
+site/*.pid
+site/*.log
+site/._*
+site/**/._*
 
 # Benchmark and experiment outputs
 bench_output/
 bench_output
 bench_output.tar.gz
+data/
 artifacts/
 outputs/
 multirun/

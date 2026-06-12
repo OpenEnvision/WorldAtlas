@@ -7,10 +7,11 @@ import sys
 import types
 from typing import Any, Sequence
 
+os.environ.setdefault("SETUPTOOLS_USE_DISTUTILS", "stdlib")
+
 import numpy as np
 
 from worldarena.common.checkpoints import checkpoint_env, checkpoint_path, resolve_checkpoint_path
-from worldarena.benchmark.metrics.base import clamp01
 from worldarena.benchmark.pkg_resources_compat import (
     ensure_openai_clip_cache_compat,
     ensure_pkg_resources_compat,
@@ -24,6 +25,10 @@ QUALITY_COMPONENT_SPECS = {
 }
 REQUIRED_REFERENCE_QUALITY_COMPONENTS = ("clip_iqa", "aesthetic")
 MUSIQ_NATIVE_SCORE_SCALE = 100.0
+
+
+def clamp01(value: float) -> float:
+    return float(min(1.0, max(0.0, value)))
 
 
 def _mean(values: Sequence[float]) -> float | None:
@@ -119,6 +124,7 @@ def _to_float(value: Any) -> float:
 
 
 def _prepare_quality_runtime_compat(*, enable_clip_cache_compat: bool) -> None:
+    os.environ["SETUPTOOLS_USE_DISTUTILS"] = "stdlib"
     os.environ.update(checkpoint_env())
     torch_home = Path(os.environ["TORCH_HOME"])
     (torch_home / "hub").mkdir(parents=True, exist_ok=True)

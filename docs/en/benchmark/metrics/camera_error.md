@@ -45,7 +45,7 @@
 | Metric role | `core camera-control metric` |
 | Publication verdict | usable as a core camera-controllability metric, with the fixed-intrinsics and scale-invariant alignment assumptions stated |
 
-- The wrapped DROID-SLAM path follows the WorldScore setup and uses a **fixed synthetic intrinsics vector** (`[500, 500, 256, 256]`, scaled with frame size) inside the third-party metric.
+- The wrapped DROID-SLAM path follows the upstream setup and uses a **fixed synthetic intrinsics vector** (`[500, 500, 256, 256]`, scaled with frame size) inside the third-party metric.
 - This means the metric should be interpreted as an internally consistent camera controllability error under a fixed-intrinsics assumption, not as an absolute per-sample calibrated camera reconstruction error.
 - The translation component is post-aligned by a least-squares scalar, so the metric emphasizes camera-motion direction, rotation control, and scale-invariant trajectory agreement rather than strict metric-space scale fidelity.
 - Recommended reporting: use it as a core camera-control metric, while stating that it is DROID-SLAM-based and uses fixed synthetic intrinsics with scale-invariant alignment.

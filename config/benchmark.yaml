@@ -1,6 +1,6 @@
 paths:
-  image_root: /bench-workspace/yesliu/hjd/data/image_test_balanced_5000
-  video_root: /bench-workspace/yesliu/hjd/data/videos_test_split_4971
+  image_root: data/image_test_balanced_5000
+  video_root: data/videos_test_split_4971
   inventory_dir: artifacts/benchmark/inventory
   manifest_dir: artifacts/benchmark/manifest
   reports_dir: artifacts/benchmark/reports
@@ -269,7 +269,9 @@ benchmark:
       distance: cosine
       backbone: mast3r
       batch_size: 1
-      feature_backbone_weights: ckpt/mhamilton723--FeatUp
+      feature_backbone: dino_vits16
+      feature_backbone_weights: facebookresearch/dino:main
+      upsampler: bilinear
     reconstruction_consistency:
       model_name: depth-anything/DA3-GIANT
       repo_root: thirdparty/Depth-Anything-3/src
@@ -312,14 +314,14 @@ benchmark:
       exp_power: 1.0
       temporal_decay: 0.20
     fvmd:
-      repo_root: /share/project/bench/model/FVMD-frechet-video-motion-distance
+      repo_root: thirdparty/FVMD-frechet-video-motion-distance
       clip_frame_count: 16
       analysis_size: 256
       max_clips_per_video: 1
       min_clip_count: 2
     jedi:
-      repo_root: /share/project/bench/model/JEDi
-      model_dir: /share/project/bench/model/JEDi
+      repo_root: thirdparty/JEDi
+      model_dir: thirdparty/JEDi
       config_path: configs/vith16_ssv2_16x2x3.yaml
       clip_frame_count: 16
       analysis_size: 224

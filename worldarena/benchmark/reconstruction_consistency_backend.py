@@ -11,7 +11,7 @@ from typing import Any, Iterator, Sequence
 
 import numpy as np
 
-from worldarena.common.checkpoints import apply_checkpoint_env, resolve_project_path
+from worldarena.common.checkpoints import apply_checkpoint_env, hf_local_dir, resolve_project_path
 
 
 DEFAULT_RECONSTRUCTION_MODEL = "depth-anything/DA3-GIANT"
@@ -48,6 +48,20 @@ def _resolve_depth_anything3_source(
         if package_path.is_dir():
             return DepthAnything3Source(candidate.root.resolve(), candidate.package_name)
     raise FileNotFoundError(f"Depth-Anything-3 source root not found: {path}")
+
+
+def _resolve_model_name(model_name: str) -> str:
+    token = str(model_name).strip()
+    if not token:
+        return token
+    if token.startswith(("ckpt/", "./", "../", "/", "~")):
+        resolved = resolve_project_path(token)
+        return str(resolved if resolved is not None else Path(token).expanduser())
+    if "/" in token:
+        local = hf_local_dir(token, required=False)
+        if local.is_dir():
+            return str(local)
+    return token
 
 
 @contextmanager
@@ -246,7 +260,7 @@ def compute_reconstruction_consistency(
 
     device = str(payload.get("device") or _default_device())
     source = _resolve_depth_anything3_source(payload.get("repo_root"))
-    model_name = str(payload.get("model_name") or DEFAULT_RECONSTRUCTION_MODEL)
+    model_name = _resolve_model_name(str(payload.get("model_name") or DEFAULT_RECONSTRUCTION_MODEL))
     process_res = int(payload.get("process_res", 504))
     render_size = _render_size(payload)
     trj_mode = str(payload.get("trj_mode") or "extend")

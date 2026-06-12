@@ -166,7 +166,7 @@ def test_generate_builds_runner_command(monkeypatch, tmp_path: Path) -> None:
         recorded["cwd"] = cwd
         recorded["env"] = env
         output_path.write_bytes(b"mp4")
-        output_path.with_name(f"{output_path.stem}.worldscore.zip").write_bytes(b"zip")
+        output_path.with_name(f"{output_path.stem}.sidecar.zip").write_bytes(b"zip")
 
     monkeypatch.setattr("worldarena.models.adapters.wonderworld.run_command", fake_run_command)
 
@@ -180,7 +180,7 @@ def test_generate_builds_runner_command(monkeypatch, tmp_path: Path) -> None:
 
     command = recorded["command"]
     assert isinstance(command, list)
-    assert "worldarena.models.adapters.wonderworld_worldscore_runner" in command
+    assert "worldarena.models.adapters.wonderworld_batch_runner" in command
     assert "--annotation_path" in command
     assert "--prompt_sequence_json" in command
     assert "--repvit_checkpoint" in command
@@ -189,6 +189,6 @@ def test_generate_builds_runner_command(monkeypatch, tmp_path: Path) -> None:
     assert "--normal_model_repo" in command
     assert "--trajectory_frames" in command
     assert result["prediction_path"] == str(output_path)
-    assert result["archive_path"] == str(output_path.with_name("prediction.worldscore.zip"))
+    assert result["archive_path"] == str(output_path.with_name("prediction.sidecar.zip"))
     assert result["scene_name"] == "dining space"
     assert result["entities"] == []

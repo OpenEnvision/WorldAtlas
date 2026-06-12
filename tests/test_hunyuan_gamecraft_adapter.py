@@ -118,6 +118,27 @@ def test_gamecraft_camera_path_maps_to_native_action_space(tmp_path: Path) -> No
     ]
 
 
+def test_gamecraft_single_action_extends_to_min_duration(tmp_path: Path) -> None:
+    config = _make_config(tmp_path)
+    config.generation["action_source"] = "worldarena_camera_path"
+    config.generation["min_single_action_seconds"] = 5.0
+    sample = _make_sample(suite="image_static", camera_path=["push_in"])
+
+    payload = _action_payload_for_sample(config.generation, sample)
+
+    assert payload["original_actions"] == ["w"]
+    assert payload["actions"] == ["w", "w", "w", "w"]
+    assert payload["action_speeds"] == [0.3, 0.3, 0.3, 0.3]
+    assert payload["duration_extension"] == {
+        "type": "repeat_single_action",
+        "min_seconds": 5.0,
+        "repeat_count": 4,
+        "output_fps": 24,
+        "estimated_frame_count": 132,
+        "estimated_duration_seconds": 132 / 24,
+    }
+
+
 def test_registry_builds_hunyuan_gamecraft_adapter(tmp_path: Path) -> None:
     config = _make_config(tmp_path)
 

@@ -15,7 +15,6 @@ from worldarena.common.checkpoints import checkpoint_env, filter_checkpoint_env_
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 DEFAULT_JEDI_REPO_CANDIDATES = (
-    Path("/share/project/bench/model/JEDi"),
     Path(__file__).resolve().parents[2] / "thirdparty" / "JEDi",
 )
 

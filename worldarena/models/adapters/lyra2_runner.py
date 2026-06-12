@@ -19,9 +19,22 @@ from worldarena.common.checkpoints import (
 )
 
 
-HF_ALIAS_SPECS: dict[str, tuple[str, tuple[str, ...], bool]] = {
-    "google/umt5-xxl": ("google/umt5-xxl", ("spiece.model", "tokenizer_config.json"), False),
-    "Ruicheng/moge-vitl": ("Ruicheng/moge-vitl", ("model.pt",), True),
+HF_ALIAS_SPECS: dict[str, tuple[tuple[str, ...], tuple[str, ...], bool]] = {
+    "xlm-roberta-large": (
+        ("xlm-roberta-large", "FacebookAI/xlm-roberta-large", "FacebookAI--xlm-roberta-large"),
+        ("config.json", "sentencepiece.bpe.model"),
+        False,
+    ),
+    "google/umt5-xxl": (
+        ("google/umt5-xxl", "google--umt5-xxl", "umt5-xxl"),
+        ("spiece.model", "tokenizer_config.json"),
+        False,
+    ),
+    "Ruicheng/moge-vitl": (
+        ("Ruicheng/moge-vitl", "Ruicheng--moge-vitl", "moge-vitl"),
+        ("model.pt",),
+        True,
+    ),
 }
 UMT5_CONFIG_SHIM = '{"model_type": "umt5"}\n'
 TRANSFORMER_ENGINE_INIT_SHIM = textwrap.dedent(
@@ -104,22 +117,66 @@ TRANSFORMER_ENGINE_PYTORCH_SHIM = textwrap.dedent(
             super().__init__()
             self.weight = nn.Parameter(torch.ones(hidden_size))
             self.eps = float(eps)
+            self.fwd_rmsnorm_sm_margin = 0
+            self.bwd_rmsnorm_sm_margin = 0
+            self.inf_rmsnorm_sm_margin = 0
+            self.zero_centered_gamma = False
+            self.activation_dtype = None
 
         def forward(self, x):
             norm = torch.rsqrt(x.float().pow(2).mean(dim=-1, keepdim=True) + self.eps)
             return x * norm.to(dtype=x.dtype) * self.weight
 
 
+    class _RMSNorm(torch.autograd.Function):
+        @staticmethod
+        def forward(
+            ctx,
+            inp,
+            weight,
+            eps,
+            fwd_rmsnorm_sm_margin=0,
+            bwd_rmsnorm_sm_margin=0,
+            inf_rmsnorm_sm_margin=0,
+            zero_centered_gamma=False,
+            is_grad_enabled=False,
+            activation_dtype=None,
+        ):
+            del fwd_rmsnorm_sm_margin, bwd_rmsnorm_sm_margin, inf_rmsnorm_sm_margin
+            del zero_centered_gamma, is_grad_enabled, activation_dtype
+            if ctx is not None:
+                ctx.save_for_backward(inp, weight)
+                ctx.eps = eps
+            norm = torch.rsqrt(inp.float().pow(2).mean(dim=-1, keepdim=True) + float(eps))
+            return inp * norm.to(dtype=inp.dtype) * weight
+
+        @staticmethod
+        def backward(ctx, grad_output):
+            inp, weight = ctx.saved_tensors
+            grad_input = grad_output * weight
+            grad_weight = (grad_output * inp).sum(dim=tuple(range(grad_output.ndim - 1)))
+            return grad_input, grad_weight, None, None, None, None, None, None, None
+
+
     class Linear(nn.Linear):
         def __init__(
             self,
-            *,
-            in_features: int,
-            out_features: int,
+            *args: object,
+            in_features: int | None = None,
+            out_features: int | None = None,
             bias: bool = True,
             return_bias: bool = False,
             **_: object,
         ) -> None:
+            if args:
+                if len(args) < 2:
+                    raise TypeError("Linear fallback requires in_features and out_features")
+                in_features = int(args[0])
+                out_features = int(args[1])
+                if len(args) >= 3:
+                    bias = bool(args[2])
+            if in_features is None or out_features is None:
+                raise TypeError("Linear fallback requires in_features and out_features")
             super().__init__(in_features, out_features, bias=bias)
             self.return_bias = bool(return_bias)
 
@@ -128,6 +185,10 @@ TRANSFORMER_ENGINE_PYTORCH_SHIM = textwrap.dedent(
             if self.return_bias and self.bias is not None:
                 return output, self.bias
             return output
+
+
+    class Conv1d(nn.Conv1d):
+        pass
 
 
     class LayerNormLinear(nn.Module):
@@ -168,6 +229,17 @@ TRANSFORMER_ENGINE_PYTORCH_SHIM = textwrap.dedent(
             return x
 
 
+    class TransformerLayer(nn.Module):
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            super().__init__()
+            self.args = args
+            self.kwargs = kwargs
+
+        def forward(self, hidden_states, *args: object, **kwargs: object):
+            del args, kwargs
+            return hidden_states
+
+
     def fp8_autocast(*args: object, **kwargs: object):
         return nullcontext()
 
@@ -181,12 +253,70 @@ TRANSFORMER_ENGINE_PYTORCH_SHIM = textwrap.dedent(
         "DotProductAttention",
         "LayerNorm",
         "RMSNorm",
+        "_RMSNorm",
         "Linear",
+        "Conv1d",
         "LayerNormLinear",
         "GroupedLinear",
+        "TransformerLayer",
         "fp8_autocast",
         "fp8_model_init",
     ]
+    """
+)
+TRANSFORMER_ENGINE_MODULE_INIT_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+    from .. import Linear, RMSNorm, TransformerLayer, _RMSNorm
+    from .base import TransformerEngineBaseModule
+
+    __all__ = ["Linear", "RMSNorm", "_RMSNorm", "TransformerLayer", "TransformerEngineBaseModule"]
+    """
+)
+TRANSFORMER_ENGINE_MODULE_LINEAR_SHIM = "from .. import Linear\n"
+TRANSFORMER_ENGINE_MODULE_RMSNORM_SHIM = "from .. import RMSNorm, _RMSNorm\n"
+TRANSFORMER_ENGINE_MODULE_BASE_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+
+    class TransformerEngineBaseModule:
+        @staticmethod
+        def set_activation_dtype(module, inp) -> None:
+            module.activation_dtype = getattr(inp, "dtype", None)
+    """
+)
+TRANSFORMER_ENGINE_JIT_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+
+    def no_torch_dynamo(*decorator_args, **decorator_kwargs):
+        del decorator_kwargs
+        if decorator_args and callable(decorator_args[0]) and len(decorator_args) == 1:
+            return decorator_args[0]
+
+        def _decorator(func):
+            return func
+
+        return _decorator
+    """
+)
+TRANSFORMER_ENGINE_CONSTANTS_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+    AttnBiasTypes = ("no_bias", "pre_scale_bias", "post_scale_bias", "alibi")
+    """
+)
+TRANSFORMER_ENGINE_FLOAT8_TENSOR_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+
+    class Float8Tensor:
+        pass
     """
 )
 TRANSFORMER_ENGINE_ATTENTION_SHIM = textwrap.dedent(
@@ -196,6 +326,17 @@ TRANSFORMER_ENGINE_ATTENTION_SHIM = textwrap.dedent(
     import torch
     import torch.nn.functional as F
     from torch import nn
+
+
+    class _SplitAlongDim(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, tensor, split_size_or_sections, dim):
+            ctx.dim = dim
+            return torch.split(tensor, split_size_or_sections, dim=dim)
+
+        @staticmethod
+        def backward(ctx, *grad_outputs):
+            return torch.cat(grad_outputs, dim=ctx.dim), None, None
 
 
     class DotProductAttention(nn.Module):
@@ -211,7 +352,7 @@ TRANSFORMER_ENGINE_ATTENTION_SHIM = textwrap.dedent(
             **_: object,
         ) -> None:
             super().__init__()
-            if qkv_format != "bshd":
+            if qkv_format not in {"bshd", "sbhd"}:
                 raise NotImplementedError(f"unsupported qkv_format for fallback: {qkv_format}")
             if attn_mask_type != "no_mask":
                 raise NotImplementedError(f"unsupported attn_mask_type for fallback: {attn_mask_type}")
@@ -219,11 +360,17 @@ TRANSFORMER_ENGINE_ATTENTION_SHIM = textwrap.dedent(
             self.kv_channels = int(kv_channels)
             self.num_gqa_groups = int(num_gqa_groups or num_attention_heads)
             self.attention_dropout = float(attention_dropout)
+            self.qkv_format = qkv_format
 
         def forward(self, q_B_L_H_D, k_B_L_H_D, v_B_L_H_D, *_args, **_kwargs):
-            q = q_B_L_H_D.permute(0, 2, 1, 3).contiguous()
-            k = k_B_L_H_D.permute(0, 2, 1, 3).contiguous()
-            v = v_B_L_H_D.permute(0, 2, 1, 3).contiguous()
+            if self.qkv_format == "bshd":
+                q = q_B_L_H_D.permute(0, 2, 1, 3).contiguous()
+                k = k_B_L_H_D.permute(0, 2, 1, 3).contiguous()
+                v = v_B_L_H_D.permute(0, 2, 1, 3).contiguous()
+            else:
+                q = q_B_L_H_D.permute(1, 2, 0, 3).contiguous()
+                k = k_B_L_H_D.permute(1, 2, 0, 3).contiguous()
+                v = v_B_L_H_D.permute(1, 2, 0, 3).contiguous()
             output = F.scaled_dot_product_attention(
                 q,
                 k,
@@ -231,10 +378,59 @@ TRANSFORMER_ENGINE_ATTENTION_SHIM = textwrap.dedent(
                 dropout_p=self.attention_dropout if self.training else 0.0,
                 is_causal=False,
             )
-            return output.permute(0, 2, 1, 3).contiguous()
+            if self.qkv_format == "bshd":
+                output = output.permute(0, 2, 1, 3).contiguous()
+                return output.flatten(-2)
+            output = output.permute(2, 0, 1, 3).contiguous()
+            return output.flatten(-2)
 
         def set_context_parallel_group(self, *_args, **_kwargs) -> None:
             return None
+
+
+    def apply_rotary_pos_emb(tensor, rotary_pos_emb, tensor_format: str = "bshd", fused: bool = False):
+        del fused
+        if rotary_pos_emb is None:
+            return tensor
+        if isinstance(rotary_pos_emb, (tuple, list)):
+            cos, sin = rotary_pos_emb
+        else:
+            emb = rotary_pos_emb.to(device=tensor.device, dtype=tensor.dtype)
+            cos = torch.cos(emb)
+            sin = torch.sin(emb)
+
+        if tensor_format == "bshd":
+            seq_dim = 1
+        elif tensor_format == "sbhd":
+            seq_dim = 0
+        else:
+            raise NotImplementedError(f"unsupported tensor_format for rotary fallback: {tensor_format}")
+
+        def _match_shape(value):
+            value = value.to(device=tensor.device, dtype=tensor.dtype)
+            if value.shape[seq_dim] != tensor.shape[seq_dim]:
+                value = value.narrow(seq_dim, 0, tensor.shape[seq_dim])
+            while value.ndim < tensor.ndim:
+                value = value.unsqueeze(0)
+            return value
+
+        cos = _match_shape(cos)
+        sin = _match_shape(sin)
+        rotary_dim = min(tensor.shape[-1], cos.shape[-1])
+        x_rot = tensor[..., :rotary_dim]
+        x_pass = tensor[..., rotary_dim:]
+        x_even = x_rot[..., 0::2]
+        x_odd = x_rot[..., 1::2]
+        rotated = torch.stack((-x_odd, x_even), dim=-1).flatten(-2)
+        output = x_rot * cos[..., :rotary_dim] + rotated * sin[..., :rotary_dim]
+        if x_pass.numel() == 0:
+            return output
+        return torch.cat((output, x_pass), dim=-1)
+
+
+    def check_set_window_size(attn_mask_type, window_size):
+        del attn_mask_type
+        return window_size
     """
 )
 
@@ -348,30 +544,79 @@ def _resolve_local_da3_model_name(value: str) -> str:
     return token
 
 
-def _hf_repo_aliases(da3_model_name: str) -> dict[str, Path]:
-    aliases: dict[str, Path] = {}
-    for repo_id, (local_repo_id, required_files, link_file) in HF_ALIAS_SPECS.items():
-        source_path = hf_local_dir(local_repo_id, required=True)
-        missing = [filename for filename in required_files if not (source_path / filename).exists()]
+def _repo_id_candidates(repo_id: str) -> tuple[str, ...]:
+    token = str(repo_id).strip()
+    if not token:
+        return ()
+    candidates = [token]
+    if "/" in token:
+        candidates.append(token.replace("/", "--"))
+        candidates.append(token.split("/")[-1])
+    return tuple(dict.fromkeys(candidates))
+
+
+def _complete_local_hf_dir(
+    repo_ids: tuple[str, ...],
+    *,
+    required_files: tuple[str, ...],
+) -> Path:
+    errors: list[str] = []
+    for repo_id in repo_ids:
+        source_path = hf_local_dir(repo_id, required=False)
+        if not source_path.is_dir():
+            errors.append(f"{repo_id}: missing directory {source_path}")
+            continue
+        missing = []
+        empty = []
+        for filename in required_files:
+            candidate = source_path / filename
+            if not candidate.exists():
+                missing.append(filename)
+            elif candidate.is_file() and candidate.stat().st_size <= 0:
+                empty.append(filename)
+        if not missing and not empty:
+            return source_path
+        details = []
         if missing:
-            raise FileNotFoundError(
-                f"Lyra-2 dependency {local_repo_id} is incomplete under {source_path}: missing {', '.join(missing)}"
-            )
+            details.append(f"missing {', '.join(missing)}")
+        if empty:
+            details.append(f"empty {', '.join(empty)}")
+        errors.append(f"{repo_id}: {source_path} ({'; '.join(details)})")
+    raise FileNotFoundError(
+        "Unable to find a complete local Hugging Face dependency. Tried: "
+        + " | ".join(errors)
+    )
+
+
+def _hf_repo_aliases(da3_model_name: str, *, use_moge_scale: bool = True) -> dict[str, Path]:
+    aliases: dict[str, Path] = {}
+    for repo_id, (local_repo_ids, required_files, link_file) in HF_ALIAS_SPECS.items():
+        if repo_id == "Ruicheng/moge-vitl" and not use_moge_scale:
+            continue
+        source_path = _complete_local_hf_dir(
+            local_repo_ids,
+            required_files=required_files,
+        )
         aliases[repo_id] = (source_path / required_files[0]) if link_file else source_path
     if "/" in da3_model_name and not Path(da3_model_name).exists():
-        source_path = hf_local_dir(da3_model_name, required=True)
-        missing = [filename for filename in ("config.json", "model.safetensors") if not (source_path / filename).exists()]
-        if missing:
-            raise FileNotFoundError(
-                f"Lyra-2 DA3 dependency {da3_model_name} is incomplete under {source_path}: "
-                f"missing {', '.join(missing)}"
-            )
+        source_path = _complete_local_hf_dir(
+            _repo_id_candidates(da3_model_name),
+            required_files=("config.json", "model.safetensors"),
+        )
         aliases[da3_model_name] = source_path
     return aliases
 
 
-def _link_hf_repo_aliases(workspace_root: Path, da3_model_name: str) -> None:
-    for repo_id, source_path in _hf_repo_aliases(da3_model_name).items():
+def _link_hf_repo_aliases(
+    workspace_root: Path,
+    da3_model_name: str,
+    *,
+    use_moge_scale: bool = True,
+) -> None:
+    for repo_id, source_path in _hf_repo_aliases(
+        da3_model_name,
+        use_moge_scale=use_moge_scale,
+    ).items():
         link_path = workspace_root / repo_id
         link_path.parent.mkdir(parents=True, exist_ok=True)
         if repo_id == "google/umt5-xxl":
@@ -401,17 +646,26 @@ def _prepare_transformer_engine_shim(workspace_root: Path) -> None:
     package_root = workspace_root / "transformer_engine"
     pytorch_root = package_root / "pytorch"
     common_root = package_root / "common"
+    module_root = pytorch_root / "module"
     pytorch_root.mkdir(parents=True, exist_ok=True)
     common_root.mkdir(parents=True, exist_ok=True)
+    module_root.mkdir(parents=True, exist_ok=True)
     (package_root / "__init__.py").write_text(TRANSFORMER_ENGINE_INIT_SHIM, encoding="utf-8")
     (common_root / "__init__.py").write_text("from . import recipe\n", encoding="utf-8")
     (common_root / "recipe.py").write_text(TRANSFORMER_ENGINE_RECIPE_SHIM, encoding="utf-8")
     (pytorch_root / "__init__.py").write_text(TRANSFORMER_ENGINE_PYTORCH_SHIM, encoding="utf-8")
     (pytorch_root / "attention.py").write_text(TRANSFORMER_ENGINE_ATTENTION_SHIM, encoding="utf-8")
+    (pytorch_root / "constants.py").write_text(TRANSFORMER_ENGINE_CONSTANTS_SHIM, encoding="utf-8")
     (pytorch_root / "distributed.py").write_text(
         TRANSFORMER_ENGINE_DISTRIBUTED_SHIM,
         encoding="utf-8",
     )
+    (pytorch_root / "float8_tensor.py").write_text(TRANSFORMER_ENGINE_FLOAT8_TENSOR_SHIM, encoding="utf-8")
+    (pytorch_root / "jit.py").write_text(TRANSFORMER_ENGINE_JIT_SHIM, encoding="utf-8")
+    (module_root / "__init__.py").write_text(TRANSFORMER_ENGINE_MODULE_INIT_SHIM, encoding="utf-8")
+    (module_root / "base.py").write_text(TRANSFORMER_ENGINE_MODULE_BASE_SHIM, encoding="utf-8")
+    (module_root / "linear.py").write_text(TRANSFORMER_ENGINE_MODULE_LINEAR_SHIM, encoding="utf-8")
+    (module_root / "rmsnorm.py").write_text(TRANSFORMER_ENGINE_MODULE_RMSNORM_SHIM, encoding="utf-8")
 
 
 def _use_transformer_engine_shim() -> bool:
@@ -468,7 +722,11 @@ def main() -> None:
 
         if _use_transformer_engine_shim():
             _prepare_transformer_engine_shim(workspace_root)
-        _link_hf_repo_aliases(workspace_root, da3_model_name)
+        _link_hf_repo_aliases(
+            workspace_root,
+            da3_model_name,
+            use_moge_scale=args.use_moge_scale,
+        )
 
         (workspace_root / "lyra_2").symlink_to(repo_root / "lyra_2", target_is_directory=True)
         (workspace_root / "checkpoints").symlink_to(checkpoint_tree, target_is_directory=True)

@@ -5,15 +5,92 @@ import contextlib
 import os
 from pathlib import Path
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import textwrap
+import time
 from typing import Iterator
 
+import cv2
+
 from worldarena.common.checkpoints import apply_checkpoint_env, hf_local_dir, resolve_checkpoint_path
+from worldarena.models.adapters.lyra2_runner import _prepare_transformer_engine_shim
 
 
 DEFAULT_STATIC_VIEW_INDICES = ("5", "0", "1", "2", "3", "4")
+APEX_INIT_SHIM = "from __future__ import annotations\n"
+APEX_MULTI_TENSOR_APPLY_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+
+    class MultiTensorApply:
+        available = True
+
+        def __init__(self, chunk_size: int = 2048 * 32) -> None:
+            self.chunk_size = int(chunk_size)
+
+        def __call__(self, op, noop_flag_buffer, tensor_lists, *args):
+            return op(self.chunk_size, noop_flag_buffer, tensor_lists, *args)
+
+
+    multi_tensor_applier = MultiTensorApply()
+    """
+)
+AMP_C_SHIM = textwrap.dedent(
+    """
+    from __future__ import annotations
+
+    import torch
+
+
+    def _default_device(noop_flag):
+        if isinstance(noop_flag, torch.Tensor):
+            return noop_flag.device
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+    def multi_tensor_l2norm(chunk_size, noop_flag, tensor_lists, per_tensor=False, *args):
+        del chunk_size, args
+        tensors = tensor_lists[0] if tensor_lists else []
+        device = _default_device(noop_flag)
+        total_sq = torch.zeros((), dtype=torch.float32, device=device)
+        per_tensor_norms = []
+        for tensor in tensors:
+            if tensor is None:
+                continue
+            current = torch.linalg.vector_norm(tensor.detach().float())
+            current = current.to(device=device, dtype=torch.float32)
+            if per_tensor:
+                per_tensor_norms.append(current)
+            total_sq = total_sq + current * current
+        total_norm = torch.sqrt(total_sq)
+        if per_tensor:
+            values = torch.stack(per_tensor_norms) if per_tensor_norms else torch.empty(0, device=device)
+            return total_norm, values
+        return total_norm, None
+
+
+    def multi_tensor_scale(chunk_size, noop_flag, tensor_lists, scale):
+        del chunk_size, noop_flag
+        sources = tensor_lists[0] if tensor_lists else []
+        targets = tensor_lists[1] if len(tensor_lists) > 1 else sources
+        for source, target in zip(sources, targets):
+            target.copy_(source * scale)
+        return None
+
+
+    def _unavailable_adam(*args, **kwargs):
+        raise RuntimeError("WorldArena Lyra-1 inference shim does not implement Apex fused Adam.")
+
+
+    multi_tensor_adam = _unavailable_adam
+    multi_tensor_adam_capturable = _unavailable_adam
+    multi_tensor_adam_capturable_master = _unavailable_adam
+    """
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -45,6 +122,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--offload_diffusion_transformer", action="store_true")
     parser.add_argument("--offload_tokenizer", action="store_true")
     parser.add_argument("--offload_text_encoder_model", action="store_true")
+    parser.add_argument("--skip_stage2", action="store_true")
     return parser.parse_args()
 
 
@@ -92,10 +170,27 @@ def _prepare_checkpoint_root(target_root: Path, layout: dict[str, Path]) -> Path
         layout["tokenizer_dir"],
         target_is_directory=True,
     )
+    cosmos_predict1_root = checkpoints_root / "cosmos_predict1"
+    cosmos_predict1_root.mkdir(parents=True, exist_ok=True)
+    (cosmos_predict1_root / "Cosmos-Tokenize1-CV8x8x8-720p").symlink_to(
+        layout["tokenizer_dir"],
+        target_is_directory=True,
+    )
     google_t5_root = checkpoints_root / "google-t5"
     google_t5_root.mkdir(parents=True, exist_ok=True)
     (google_t5_root / "t5-11b").symlink_to(layout["t5_dir"], target_is_directory=True)
     return checkpoints_root
+
+
+def _prepare_apex_amp_shim(workspace_root: Path) -> None:
+    apex_root = workspace_root / "apex"
+    apex_root.mkdir(parents=True, exist_ok=True)
+    (apex_root / "__init__.py").write_text(APEX_INIT_SHIM, encoding="utf-8")
+    (apex_root / "multi_tensor_apply.py").write_text(
+        APEX_MULTI_TENSOR_APPLY_SHIM,
+        encoding="utf-8",
+    )
+    (workspace_root / "amp_C.py").write_text(AMP_C_SHIM, encoding="utf-8")
 
 
 def _parse_static_view_indices(raw: str) -> list[str]:
@@ -154,8 +249,7 @@ def _stage1_command(
     generated_root: Path,
     args: argparse.Namespace,
 ) -> list[str]:
-    command = [
-        sys.executable,
+    script_and_args = [
         "cosmos_predict1/diffusion/inference/gen3c_single_image_sdg.py",
         "--checkpoint_dir",
         "checkpoints",
@@ -190,6 +284,20 @@ def _stage1_command(
         "--total_movement_distance_factor",
         str(args.total_movement_distance_factor),
     ]
+    command = [sys.executable]
+    if args.num_gpus > 1:
+        command.extend(
+            [
+                "-m",
+                "torch.distributed.run",
+                "--standalone",
+                "--nnodes",
+                "1",
+                "--nproc_per_node",
+                str(args.num_gpus),
+            ]
+        )
+    command.extend(script_and_args)
     if args.negative_prompt:
         command.extend(["--negative_prompt", args.negative_prompt])
     for flag_name in (
@@ -271,6 +379,143 @@ def _dataset_root(generated_root: Path, *, multi_trajectory: bool) -> Path:
     return wrapped_root
 
 
+def _terminate_process_group(process_group_id: int) -> None:
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(process_group_id, sig)
+        except ProcessLookupError:
+            return
+        time.sleep(2.0)
+
+
+def _run_command(command: list[str], *, cwd: Path, env: dict[str, str]) -> None:
+    process = subprocess.Popen(
+        command,
+        cwd=str(cwd),
+        env=env,
+        start_new_session=True,
+    )
+    try:
+        return_code = process.wait()
+    except BaseException:
+        _terminate_process_group(process.pid)
+        raise
+    if return_code != 0:
+        _terminate_process_group(process.pid)
+        raise subprocess.CalledProcessError(return_code, command)
+
+
+def _validate_video(
+    video_path: Path,
+    *,
+    expected_frames: int,
+    expected_fps: int,
+    expected_width: int,
+    expected_height: int,
+) -> None:
+    capture = cv2.VideoCapture(str(video_path))
+    if not capture.isOpened():
+        raise RuntimeError(f"Lyra-1 output video cannot be opened: {video_path}")
+    declared_fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0)
+    read_frames = 0
+    decoded_width: int | None = None
+    decoded_height: int | None = None
+    try:
+        while True:
+            ok, frame = capture.read()
+            if not ok:
+                break
+            read_frames += 1
+            frame_height, frame_width = frame.shape[:2]
+            if decoded_width is None:
+                decoded_width = int(frame_width)
+                decoded_height = int(frame_height)
+            elif decoded_width != frame_width or decoded_height != frame_height:
+                raise RuntimeError(
+                    f"Lyra-1 output video has inconsistent frame sizes: {video_path}"
+                )
+    finally:
+        capture.release()
+
+    if read_frames != expected_frames:
+        raise RuntimeError(
+            f"Lyra-1 output video decoded {read_frames} frames, expected {expected_frames}: {video_path}"
+        )
+    if decoded_height != expected_height:
+        raise RuntimeError(
+            f"Lyra-1 output video height is {decoded_height}, expected {expected_height}: {video_path}"
+        )
+    if decoded_width is None or decoded_width < expected_width:
+        raise RuntimeError(
+            f"Lyra-1 output video width is {decoded_width}, expected at least {expected_width}: {video_path}"
+        )
+    if declared_fps > 0 and abs(declared_fps - float(expected_fps)) > 0.5:
+        raise RuntimeError(
+            f"Lyra-1 output video fps is {declared_fps:.3f}, expected {expected_fps}: {video_path}"
+        )
+
+
+def _copy_validated_video(
+    selected_video: Path,
+    output_path: Path,
+    *,
+    expected_frames: int,
+    expected_fps: int,
+    expected_width: int,
+    expected_height: int,
+) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_output = output_path.with_name(f".{output_path.name}.{os.getpid()}.tmp")
+    if temp_output.exists():
+        temp_output.unlink()
+    try:
+        shutil.copy2(selected_video, temp_output)
+        _validate_video(
+            temp_output,
+            expected_frames=expected_frames,
+            expected_fps=expected_fps,
+            expected_width=expected_width,
+            expected_height=expected_height,
+        )
+        temp_output.replace(output_path)
+    except Exception:
+        temp_output.unlink(missing_ok=True)
+        raise
+
+
+def _copy_stage1_video(
+    generated_root: Path,
+    output_path: Path,
+    *,
+    output_view_index: int,
+    expected_frames: int,
+    expected_fps: int,
+    expected_width: int,
+    expected_height: int,
+) -> None:
+    direct_candidates = sorted((generated_root / "rgb").glob("*.mp4"))
+    selected_video: Path | None = direct_candidates[0] if direct_candidates else None
+    if selected_video is None:
+        for candidate in sorted(generated_root.rglob("*.mp4")):
+            if candidate.parent.name == "rgb" and candidate.parent.parent.name == str(output_view_index):
+                selected_video = candidate
+                break
+    if selected_video is None:
+        video_candidates = sorted(generated_root.rglob("*.mp4"))
+        if video_candidates:
+            selected_video = video_candidates[0]
+    if selected_video is None:
+        raise FileNotFoundError(f"Lyra-1 stage1 output video was not written under: {generated_root}")
+    _copy_validated_video(
+        selected_video,
+        output_path,
+        expected_frames=expected_frames,
+        expected_fps=expected_fps,
+        expected_width=expected_width,
+        expected_height=expected_height,
+    )
+
+
 def main() -> None:
     args = parse_args()
     repo_root = Path(args.repo_root).expanduser().resolve()
@@ -285,6 +530,8 @@ def main() -> None:
         temp_dir = Path(temp_dir_raw)
         workspace_root = temp_dir / "workspace"
         workspace_root.mkdir(parents=True, exist_ok=True)
+        _prepare_transformer_engine_shim(workspace_root)
+        _prepare_apex_amp_shim(workspace_root)
         (workspace_root / "cosmos_predict1").symlink_to(repo_root / "cosmos_predict1", target_is_directory=True)
         layout = _checkpoint_layout(checkpoint_dir)
         checkpoints_root = _prepare_checkpoint_root(
@@ -309,16 +556,27 @@ def main() -> None:
         if env.get("PYTHONPATH"):
             pythonpath.append(env["PYTHONPATH"])
         env["PYTHONPATH"] = os.pathsep.join(pythonpath)
-        subprocess.run(
+        _run_command(
             _stage1_command(
                 input_image_path=conditioning_copy,
                 generated_root=generated_root,
                 args=args,
             ),
-            check=True,
-            cwd=str(workspace_root),
+            cwd=workspace_root,
             env=env,
         )
+        time.sleep(float(os.environ.get("WORLDARENA_LYRA1_POST_RUN_SLEEP_SECONDS", "5")))
+        if args.skip_stage2:
+            _copy_stage1_video(
+                generated_root,
+                output_path,
+                output_view_index=args.output_view_index,
+                expected_frames=args.num_video_frames,
+                expected_fps=args.fps,
+                expected_width=args.width,
+                expected_height=args.height,
+            )
+            return
 
         dataset_name = f"worldarena_lyra1_{args.sample_name}"
         output_root = temp_dir / "recon"
@@ -350,7 +608,14 @@ def main() -> None:
             selected_video = video_candidates[0]
         if selected_video is None:
             raise FileNotFoundError(f"Lyra-1 output video was not written under: {output_root}")
-        shutil.copy2(selected_video, output_path)
+        _copy_validated_video(
+            selected_video,
+            output_path,
+            expected_frames=args.num_video_frames,
+            expected_fps=args.fps,
+            expected_width=args.width,
+            expected_height=args.height,
+        )
 
 
 if __name__ == "__main__":

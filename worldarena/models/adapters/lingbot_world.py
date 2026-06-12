@@ -289,9 +289,9 @@ def _camera_delta(token: str) -> np.ndarray:
     if not token or token == "fixed":
         return np.eye(4, dtype=np.float32)
     if token == "push_in":
-        return _translation_matrix(z=-LINGBOT_FORWARD_STEP)
-    if token == "pull_out":
         return _translation_matrix(z=LINGBOT_FORWARD_STEP)
+    if token == "pull_out":
+        return _translation_matrix(z=-LINGBOT_FORWARD_STEP)
     if token == "move_left":
         return _translation_matrix(x=-LINGBOT_LATERAL_STEP)
     if token == "move_right":
@@ -417,6 +417,7 @@ def _synthetic_image_action_path(config: ModelRuntimeConfig, sample: BenchmarkSa
         "relative_path": sample.relative_path,
         "annotation_path": sample.annotation_path,
         "camera_path": camera_path,
+        "camera_convention": "worldarena_diagram_push_positive_z_pull_negative_z",
         "frame_num": frame_num,
     }
     key = hashlib.sha1(
@@ -774,6 +775,7 @@ def _generation_kwargs_for_runtime(
 
     kwargs: dict[str, Any] = {
         "action_path": action_path,
+        "vis_ui": bool(runtime.generation.get("vis_ui", False)),
         "max_area": runtime.max_area_configs[size],
         "frame_num": int(runtime.generation.get("frame_num", getattr(runtime.cfg, "frame_num", LINGBOT_DEFAULT_FRAME_NUM))),
         "shift": float(runtime.generation.get("sample_shift", runtime.cfg.sample_shift)),

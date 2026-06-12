@@ -15,7 +15,7 @@ import {
   homeSignals,
   menuSections,
   siteTitle
-} from "./data.js?v=20260504-refine-v32";
+} from "./data.js?v=20260504-refine-v39";
 import { ArchiveWebGLView } from "./archive-webgl.js?v=20260504-refine-v32";
 
 const app = document.querySelector("#app");
@@ -152,6 +152,14 @@ const homeCopy = {
     docsCategory: "Docs",
     leaderboardCategory: "Leaderboard",
     archiveCategory: "Archive",
+    arenaBattle: "Arena Battle",
+    arenaBattleAction: "Enter Arena Battle",
+    arenaBattleBody: "Arena Battle turns benchmark models into timed duels across control, visual consistency, and physical stability.",
+    arenaBattleCategory: "Arena Battle",
+    arenaBattleFrameTitle: "WorldArena Arena Battle",
+    arenaBattleReady: "Arena Battle is fully loaded.",
+    arenaBattleFailed: "Arena Battle is blocked in embed view. Please open in a new tab.",
+    openArena: "Open Arena Battle",
     homeCategory: "Home",
     docsLayerCategory: "Docs layer",
     pillarCategory: "Evaluation pillar",
@@ -201,6 +209,14 @@ const homeCopy = {
     docsCategory: "文档",
     leaderboardCategory: "排行榜",
     archiveCategory: "探索",
+    arenaBattle: "Arena 竞技场",
+    arenaBattleAction: "进入竞技场",
+    arenaBattleBody: "Arena Battle 将模型放入统一世界任务中并行对抗，按控制力、真实感和物理稳定性生成综合评分。",
+    arenaBattleCategory: "Arena 竞技场",
+    arenaBattleFrameTitle: "WorldArena Arena 竞技场",
+    arenaBattleReady: "Arena 竞技场已加载完成。",
+    arenaBattleFailed: "该页面在当前环境下无法嵌入，请在新标签页打开。",
+    openArena: "打开 Arena 竞技场",
     homeCategory: "首页",
     docsLayerCategory: "文档层",
     pillarCategory: "评测支柱",
@@ -378,6 +394,15 @@ function localizedHomePosts() {
   const pagesByRoute = new Map(activeContentPages().map((page) => [normalizeRoute(page.route), page]));
 
   return homePosts.map((post) => {
+    if (normalizeRoute(post.href) === "/arena/") {
+      return {
+        ...post,
+        title: localizedHomeText("arenaBattle"),
+        date: localizedHomeText("benchmark"),
+        body: localizedHomeText("arenaBattleBody")
+      };
+    }
+
     const localizedPage = pagesByRoute.get(normalizeRoute(post.href));
 
     if (!localizedPage) {
@@ -510,10 +535,15 @@ function render() {
   clearHomeEntryTimer();
   stopHomeIce();
   stopArchiveLoop();
+  stopArenaBattleRuntime();
 
-  if (window.location.pathname.startsWith("/uncertain")) {
+  const path = normalizeRoute(window.location.pathname);
+
+  if (path.startsWith("/arena")) {
+    renderArenaBattle();
+  } else if (path.startsWith("/uncertain")) {
     renderArchive();
-  } else if (window.location.pathname.startsWith("/docs") || window.location.pathname.startsWith("/awesome-world-models")) {
+  } else if (path.startsWith("/docs") || path.startsWith("/awesome-world-models")) {
     renderDocPage();
   } else {
     renderHome();
@@ -789,10 +819,11 @@ function renderHome() {
           <h1 id="home-title">WorldArena</h1>
           <p class="home-hero-lede">${escapeHtml(localizedHomeText("heroLede"))}</p>
           <div class="home-hero-actions" aria-label="${escapeAttr(primaryLinksAria)}">
-            <a class="home-primary-action" href="/uncertain/" data-route>${escapeHtml(localizedHomeText("exploreArchive"))}</a>
+            <a class="home-primary-action" href="/arena/" data-route>${escapeHtml(localizedHomeText("arenaBattle"))}</a>
             <a href="#home-leaderboard">${escapeHtml(localizedHomeText("leaderboard"))}</a>
             <a href="/docs/benchmark/" data-route>${escapeHtml(localizedHomeText("benchmark"))}</a>
             <a href="/docs/benchmark/metrics/" data-route>${escapeHtml(localizedHomeText("metrics"))}</a>
+            <a href="/uncertain/" data-route>${escapeHtml(localizedHomeText("exploreArchive"))}</a>
           </div>
         </div>
         <div class="home-hero-visual" aria-label="${escapeAttr(heroVisualsAria)}">
@@ -839,6 +870,8 @@ function renderHome() {
   bindHomeSearch();
   window.requestAnimationFrame(scrollToHashTarget);
 }
+
+
 
 function clearHomeEntryTimer() {
   if (homeEntryTimer) {
@@ -1250,6 +1283,13 @@ function getHomeSearchItems() {
   ];
   const primaryItems = [
     {
+      category: localizedHomeText("arenaBattleCategory"),
+      title: localizedHomeText("arenaBattle"),
+      body: localizedHomeText("arenaBattleBody"),
+      href: "/arena/",
+      keywords: "arena battle world models leaderboard control realism physics realtime"
+    },
+    {
       category: localizedHomeText("archiveCategory"),
       title: localizedHomeText("exploreArchive"),
       body: localizedHomeText("archiveSearchBody"),
@@ -1282,6 +1322,12 @@ function findHomeSearchResults(value) {
 
   if (!query) {
     return [
+      {
+        category: localizedHomeText("arenaBattleCategory"),
+        title: localizedHomeText("arenaBattle"),
+        body: localizedHomeText("arenaBattleBody"),
+        href: "/arena/"
+      },
       {
         category: localizedHomeText("docsCategory"),
         title: localizedHomeText("benchmarkOverview"),
@@ -1465,7 +1511,7 @@ function bindHomeSearch() {
 function filterHomePosts(value) {
   const query = value.trim().toLowerCase();
 
-  document.querySelectorAll(".home-post, .home-doc-group, .home-pillar, .home-signal, .home-leaderboard-track").forEach((post) => {
+  document.querySelectorAll(".home-post, .home-doc-group, .home-pillar, .home-signal, .home-leaderboard-track, .home-arena-card").forEach((post) => {
     const searchable = post.dataset.title || post.textContent.toLowerCase();
     post.classList.toggle("is-muted", Boolean(query) && !searchable.includes(query));
   });
@@ -4592,6 +4638,918 @@ function smoothstep(edge0, edge1, value) {
   const amount = clamp((value - edge0) / Math.max(edge1 - edge0, 1), 0, 1);
 
   return amount * amount * (3 - 2 * amount);
+}
+
+const arenaBattleModels = [
+  { id: "atlas", name: "Ares-XL", family: "Transformer", style: "control", color: "#4d8eff", accent: "#92bbff", control: 0.91, visual: 0.73, physics: 0.62, stability: 0.74 },
+  { id: "phoenix", name: "Phoenix-7", family: "Diffusion", style: "visual", color: "#e16e67", accent: "#ffab89", control: 0.54, visual: 0.93, physics: 0.58, stability: 0.82 },
+  { id: "orion", name: "Orion", family: "NeRF Adapter", style: "physics", color: "#6f68ff", accent: "#9f99ff", control: 0.71, visual: 0.66, physics: 0.93, stability: 0.68 },
+  { id: "vanguard", name: "Vanguard", family: "WorldFormer", style: "stability", color: "#3abfbe", accent: "#7ce4e0", control: 0.68, visual: 0.71, physics: 0.77, stability: 0.95 },
+  { id: "quantum", name: "Quantum-R2", family: "Hybrid", style: "reaction", color: "#7b56ff", accent: "#b49bff", control: 0.78, visual: 0.72, physics: 0.67, stability: 0.58 },
+  { id: "zephyr", name: "Zephyr", family: "Latent Video", style: "agile", color: "#f1b24b", accent: "#ffd58c", control: 0.65, visual: 0.86, physics: 0.61, stability: 0.7 }
+];
+
+const arenaBattleScenarios = [
+  {
+    id: "city-pursuit",
+    labelEn: "City Pursuit",
+    labelZh: "城市追逐",
+    bodyEn: "Moving obstacles and high-speed camera transitions test control and stability simultaneously.",
+    bodyZh: "移动障碍与快节奏镜头切换，同时考验控制与稳定性。",
+    durationSeconds: 12,
+    pressure: 0.88,
+    colors: "#4e79ff",
+    weights: { control: 0.38, visual: 0.2, physics: 0.22, stability: 0.14, progress: 0.06 },
+    target: { control: 1.02, visual: 0.97, physics: 1.05, stability: 0.96 }
+  },
+  {
+    id: "terrain-planning",
+    labelEn: "Terrain Planning",
+    labelZh: "地形规划",
+    bodyEn: "Terrain transitions stress long-horizon consistency and navigation.",
+    bodyZh: "地形变化考验长时序连贯性和路径规划。",
+    durationSeconds: 14,
+    pressure: 0.76,
+    colors: "#4fb17a",
+    weights: { control: 0.3, visual: 0.24, physics: 0.24, stability: 0.16, progress: 0.06 },
+    target: { control: 0.96, visual: 1.03, physics: 1.1, stability: 1.02 }
+  },
+  {
+    id: "physics-stress",
+    labelEn: "Physics Stress",
+    labelZh: "物理应力",
+    bodyEn: "Contacts, rebounds, and collisions amplify small simulation errors.",
+    bodyZh: "接触、反弹和碰撞会放大小的物理偏差。",
+    durationSeconds: 10,
+    pressure: 1.05,
+    colors: "#be5f4f",
+    weights: { control: 0.24, visual: 0.2, physics: 0.4, stability: 0.14, progress: 0.02 },
+    target: { control: 0.88, visual: 1.0, physics: 1.23, stability: 0.9 }
+  },
+  {
+    id: "visual-synthesis",
+    labelEn: "Visual Synthesis",
+    labelZh: "外观合成",
+    bodyEn: "Texture persistence and artifact suppression over longer horizon.",
+    bodyZh: "长时序中持续纹理和伪影抑制。",
+    durationSeconds: 12,
+    pressure: 0.62,
+    colors: "#6f5fd6",
+    weights: { control: 0.2, visual: 0.52, physics: 0.11, stability: 0.11, progress: 0.06 },
+    target: { control: 0.86, visual: 1.26, physics: 0.96, stability: 0.96 }
+  }
+];
+
+const arenaBattleDifficulties = {
+  beginner: {
+    id: "beginner",
+    labelEn: "Beginner",
+    labelZh: "入门",
+    roundMultiplier: 1.06,
+    noiseAmp: 1.2,
+    response: 0.62,
+    drift: 0.015
+  },
+  standard: {
+    id: "standard",
+    labelEn: "Standard",
+    labelZh: "标准",
+    roundMultiplier: 1,
+    noiseAmp: 0.95,
+    response: 0.9,
+    drift: 0.014
+  },
+  advanced: {
+    id: "advanced",
+    labelEn: "Advanced",
+    labelZh: "进阶",
+    roundMultiplier: 0.86,
+    noiseAmp: 0.78,
+    response: 1.15,
+    drift: 0.018
+  },
+  master: {
+    id: "master",
+    labelEn: "Master",
+    labelZh: "大师",
+    roundMultiplier: 0.72,
+    noiseAmp: 0.56,
+    response: 1.32,
+    drift: 0.022
+  }
+};
+
+const arenaBattleMetricDefs = [
+  { id: "control", labelEn: "Control", labelZh: "控制力" },
+  { id: "visual", labelEn: "Visual", labelZh: "视觉" },
+  { id: "physics", labelEn: "Physics", labelZh: "物理" },
+  { id: "stability", labelEn: "Stability", labelZh: "稳定性" }
+];
+
+const arenaBattleUIText = {
+  en: {
+    runBattle: "Run battle",
+    stopBattle: "Stop",
+    resetBattle: "Reset",
+    openDocs: "Open docs",
+    scenario: "Scenario",
+    modelA: "Model A",
+    modelB: "Model B",
+    difficulty: "Difficulty",
+    rounds: "Rounds",
+    roundLabel: "Round",
+    statusReady: "Ready",
+    statusRunning: "Running",
+    statusBreak: "Preparing next round",
+    statusDone: "Battle complete",
+    totalScore: "Series score",
+    totalHint: "Cumulative points",
+    roundLog: "Round log",
+    winner: "Winner",
+    tie: "Tie",
+    noData: "Waiting for battle to start.",
+    arenaDoc: "Explore battle workflow"
+  },
+  zh: {
+    runBattle: "开始对决",
+    stopBattle: "停止",
+    resetBattle: "重置",
+    openDocs: "查看文档",
+    scenario: "场景",
+    modelA: "模型 A",
+    modelB: "模型 B",
+    difficulty: "难度",
+    rounds: "回合数",
+    roundLabel: "回合",
+    statusReady: "准备就绪",
+    statusRunning: "进行中",
+    statusBreak: "准备下一回合",
+    statusDone: "对决完成",
+    totalScore: "累计得分",
+    totalHint: "累计得分",
+    roundLog: "回合回放",
+    winner: "胜者",
+    tie: "平局",
+    noData: "等待对决开始。",
+    arenaDoc: "查看流程文档"
+  }
+};
+
+const arenaBattleStorageKey = "worldarena_arena_battle_cfg_v3";
+let arenaBattleRuntime = null;
+
+function arenaBattleText(key) {
+  const lang = activeLanguage() === "zh" ? arenaBattleUIText.zh : arenaBattleUIText.en;
+  return lang[key] || arenaBattleUIText.en[key] || key;
+}
+
+function arenaBattleMetricLabel(metric) {
+  return activeLanguage() === "zh" ? metric.labelZh : metric.labelEn;
+}
+
+function arenaBattleScenarioLabel(item) {
+  return activeLanguage() === "zh" ? item.labelZh : item.labelEn;
+}
+
+function arenaBattleScenarioBody(item) {
+  return activeLanguage() === "zh" ? item.bodyZh : item.bodyEn;
+}
+
+function arenaBattleDifficultyLabel(item) {
+  return activeLanguage() === "zh" ? item.labelZh : item.labelEn;
+}
+
+function arenaBattleModelById(id) {
+  return arenaBattleModels.find((item) => item.id === id) || arenaBattleModels[0];
+}
+
+function arenaBattleScenarioById(id) {
+  return arenaBattleScenarios.find((item) => item.id === id) || arenaBattleScenarios[0];
+}
+
+function arenaBattleDifficultyById(id) {
+  return arenaBattleDifficulties[id] || arenaBattleDifficulties.standard;
+}
+
+function arenaBattleRng(seed) {
+  let value = seed >>> 0;
+  return () => {
+    value = (value + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(value ^ (value >>> 15), value | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function readArenaBattleConfigFromStorage() {
+  try {
+    const stored = window.localStorage.getItem(arenaBattleStorageKey);
+    return stored ? JSON.parse(stored) : {};
+  } catch (_error) {
+    return {};
+  }
+}
+
+function writeArenaBattleConfig(runtime) {
+  try {
+    window.localStorage.setItem(
+      arenaBattleStorageKey,
+      JSON.stringify({
+        scenarioId: runtime.scenarioId,
+        difficultyId: runtime.difficultyId,
+        modelLeftId: runtime.modelLeftId,
+        modelRightId: runtime.modelRightId,
+        totalRounds: runtime.totalRounds
+      })
+    );
+  } catch (_error) {
+    // no storage available, ignore
+  }
+}
+
+function getArenaBattleRuntime() {
+  if (arenaBattleRuntime) {
+    return arenaBattleRuntime;
+  }
+
+  const saved = readArenaBattleConfigFromStorage();
+
+  arenaBattleRuntime = {
+    phase: "ready",
+    currentRound: 1,
+    totalRounds: Math.max(2, Math.min(12, Number(saved.totalRounds) || 4)),
+    scenarioId: saved.scenarioId || arenaBattleScenarios[0].id,
+    difficultyId: saved.difficultyId || "standard",
+    modelLeftId: saved.modelLeftId || arenaBattleModels[0].id,
+    modelRightId: saved.modelRightId || arenaBattleModels[2].id,
+    roundDurationMs: 12000,
+    roundStartAt: 0,
+    lastTickAt: 0,
+    fighters: null,
+    cumulativeLeft: 0,
+    cumulativeRight: 0,
+    rounds: [],
+    frameHandle: 0,
+    autoNextHandle: 0,
+    dom: null
+  };
+
+  return arenaBattleRuntime;
+}
+
+function stopArenaBattleRuntime() {
+  const runtime = getArenaBattleRuntime();
+
+  if (runtime.autoNextHandle) {
+    window.clearTimeout(runtime.autoNextHandle);
+    runtime.autoNextHandle = 0;
+  }
+
+  if (runtime.frameHandle) {
+    window.cancelAnimationFrame(runtime.frameHandle);
+    window.clearTimeout(runtime.frameHandle);
+    runtime.frameHandle = 0;
+  }
+
+  runtime.phase = "ready";
+  runtime.currentRound = 1;
+  runtime.fighters = null;
+}
+
+function buildArenaModelOptions() {
+  return arenaBattleModels
+    .map(
+      (model) =>
+        `<option value="${escapeAttr(model.id)}">${escapeHtml(model.name)} (${escapeHtml(model.family)})</option>`
+    )
+    .join("");
+}
+
+function buildArenaScenarioOptions() {
+  return arenaBattleScenarios
+    .map(
+      (scenario) =>
+        `<option value="${escapeAttr(scenario.id)}">${escapeHtml(arenaBattleScenarioLabel(scenario))}</option>`
+    )
+    .join("");
+}
+
+function buildArenaDifficultyOptions() {
+  return Object.entries(arenaBattleDifficulties)
+    .map(
+      ([key, item]) =>
+        `<option value="${escapeAttr(key)}">${escapeHtml(arenaBattleDifficultyLabel(item))}</option>`
+    )
+    .join("");
+}
+
+function renderArenaBattleContenderMarkup(side) {
+  return `
+    <article class="arena-contender" data-arena-contender="${escapeAttr(side)}">
+      <header class="arena-contender-head">
+        <span>${escapeHtml(side === "left" ? arenaBattleText("modelA") : arenaBattleText("modelB"))}</span>
+        <strong data-arena-round-score="${escapeAttr(side)}">--</strong>
+      </header>
+      <p class="arena-model-name" data-arena-model-name="${escapeAttr(side)}">—</p>
+      ${arenaBattleMetricDefs
+        .map(
+          (metric) => `
+            <div class="arena-meter-row">
+              <span class="arena-meter-name">${escapeHtml(arenaBattleMetricLabel(metric))}</span>
+              <div class="arena-meter-track" data-arena-meter-track="${escapeAttr(`${side}-${metric.id}`)}">
+                <span class="arena-meter-fill" data-arena-meter-fill="${escapeAttr(`${side}-${metric.id}`)}"></span>
+              </div>
+              <span class="arena-meter-value" data-arena-meter-value="${escapeAttr(`${side}-${metric.id}`)}">--</span>
+            </div>
+          `
+        )
+        .join("")}
+      <div class="arena-progress-line">
+        <span class="arena-progress-fill" data-arena-progress-fill="${escapeAttr(side)}"></span>
+      </div>
+      <p class="arena-progress-text" data-arena-progress-text="${escapeAttr(side)}">0%</p>
+    </article>
+  `;
+}
+
+function arenaBattleSeedFor(runtime) {
+  return runtime.currentRound * 123457 + runtime.totalRounds * 911 + runtime.scenarioId.length * 77;
+}
+
+function createArenaBattleFighter(model, rng) {
+  return {
+    model,
+    control: clamp(model.control * 80 + (rng() - 0.5) * 22, 16, 92),
+    visual: clamp(model.visual * 80 + (rng() - 0.5) * 22, 16, 92),
+    physics: clamp(model.physics * 80 + (rng() - 0.5) * 22, 16, 92),
+    stability: clamp(model.stability * 80 + (rng() - 0.5) * 22, 16, 92),
+    progress: 0,
+    roundScore: 0,
+    rng
+  };
+}
+
+function simulateFighterStep(fighter, scenario, difficulty, progress, dt, phaseShift) {
+  const metrics = ["control", "visual", "physics", "stability"];
+
+  metrics.forEach((metric, index) => {
+    const baseTarget = clamp(fighter.model[metric] * scenario.target[metric] * 100, 20, 95);
+    const jitter = (fighter.rng() - 0.5) * difficulty.noiseAmp * 6 * (0.9 + scenario.pressure);
+    const drift = Math.sin((progress * 2.2 + phaseShift * 0.7 + index * 0.7)) * difficulty.drift * 20;
+    const correction = (baseTarget - fighter[metric]) * difficulty.response * dt * (0.22 + 0.18 * Math.abs(1 - progress));
+    fighter[metric] = clamp(fighter[metric] + correction + jitter - drift, 0, 100);
+  });
+
+  const quality = (fighter.control + fighter.visual + fighter.physics + fighter.stability) / 4;
+  fighter.progress = clamp(progress * 100 + (quality - 50) * 0.35 + (fighter.rng() - 0.5) * 2.6, 0, 100);
+  fighter.roundScore = clamp(
+    fighter.control * scenario.weights.control +
+      fighter.visual * scenario.weights.visual +
+      fighter.physics * scenario.weights.physics +
+      fighter.stability * scenario.weights.stability +
+      fighter.progress * scenario.weights.progress,
+    0,
+    100
+  );
+}
+
+function renderArenaContender(root, side, fighter, modelId, progressFraction) {
+  const modelName = arenaBattleModelById(modelId).name;
+  const modelNode = root.querySelector(`[data-arena-model-name="${side}"]`);
+  const roundScoreNode = root.querySelector(`[data-arena-round-score="${side}"]`);
+
+  if (modelNode) {
+    modelNode.textContent = modelName;
+  }
+
+  if (!fighter) {
+    if (roundScoreNode) {
+      roundScoreNode.textContent = "--";
+    }
+
+    arenaBattleMetricDefs.forEach((metric) => {
+      const valueNode = root.querySelector(`[data-arena-meter-value="${side}-${metric.id}"]`);
+      const fillNode = root.querySelector(`[data-arena-meter-fill="${side}-${metric.id}"]`);
+      if (valueNode) {
+        valueNode.textContent = "--";
+      }
+      if (fillNode) {
+        fillNode.style.width = "0%";
+      }
+    });
+
+    const progressFill = root.querySelector(`[data-arena-progress-fill="${side}"]`);
+    const progressText = root.querySelector(`[data-arena-progress-text="${side}"]`);
+    if (progressFill) {
+      progressFill.style.width = `${Math.round(progressFraction * 100)}%`;
+    }
+    if (progressText) {
+      progressText.textContent = `${Math.round(progressFraction * 100)}%`;
+    }
+    return;
+  }
+
+  if (roundScoreNode) {
+    roundScoreNode.textContent = `${fighter.roundScore.toFixed(1)}`;
+  }
+
+  arenaBattleMetricDefs.forEach((metric) => {
+    const valueNode = root.querySelector(`[data-arena-meter-value="${side}-${metric.id}"]`);
+    const fillNode = root.querySelector(`[data-arena-meter-fill="${side}-${metric.id}"]`);
+    const value = clamp(Math.round(fighter[metric]), 0, 100);
+
+    if (valueNode) {
+      valueNode.textContent = `${value}%`;
+    }
+
+    if (fillNode) {
+      fillNode.style.width = `${value}%`;
+    }
+  });
+
+  const progressFill = root.querySelector(`[data-arena-progress-fill="${side}"]`);
+  const progressText = root.querySelector(`[data-arena-progress-text="${side}"]`);
+  const progress = clamp(Math.round(fighter.progress), 0, 100);
+
+  if (progressFill) {
+    progressFill.style.width = `${progress}%`;
+  }
+  if (progressText) {
+    progressText.textContent = `${progress}%`;
+  }
+
+  const contender = root.querySelector(`[data-arena-contender="${side}"]`);
+  if (contender) {
+    const profile = arenaBattleModelById(modelId);
+    contender.style.setProperty("--arena-color", profile.color);
+    contender.style.setProperty("--arena-accent", profile.accent);
+  }
+}
+
+function renderArenaBattleState(runtime) {
+  if (!runtime.dom) {
+    return;
+  }
+
+  const root = runtime.dom.root;
+  const scenario = arenaBattleScenarioById(runtime.scenarioId);
+  const difficulty = arenaBattleDifficultyById(runtime.difficultyId);
+
+  const left = runtime.fighters ? runtime.fighters[0] : null;
+  const right = runtime.fighters ? runtime.fighters[1] : null;
+
+  runtime.dom.roundLabel.textContent = `${runtime.currentRound}/${runtime.totalRounds}`;
+  runtime.dom.status.textContent =
+    runtime.phase === "running"
+      ? `${arenaBattleText("statusRunning")} · ${arenaBattleScenarioLabel(scenario)} · ${arenaBattleDifficultyLabel(difficulty)}`
+      : runtime.phase === "break"
+        ? arenaBattleText("statusBreak")
+        : runtime.phase === "complete"
+          ? arenaBattleText("statusDone")
+          : arenaBattleText("statusReady");
+
+  runtime.dom.scenarioLabel.textContent = `${arenaBattleScenarioLabel(scenario)} · ${arenaBattleScenarioBody(scenario)}`;
+  runtime.dom.totalLeft.textContent = `${runtime.cumulativeLeft.toFixed(1)}`;
+  runtime.dom.totalRight.textContent = `${runtime.cumulativeRight.toFixed(1)}`;
+
+  const progressFraction = runtime.phase === "running" && runtime.roundStartAt
+    ? clamp((performance.now() - runtime.roundStartAt) / runtime.roundDurationMs, 0, 1)
+    : 0;
+
+  const leader =
+    runtime.cumulativeLeft > runtime.cumulativeRight
+      ? arenaBattleModelById(runtime.modelLeftId).name
+      : runtime.cumulativeRight > runtime.cumulativeLeft
+        ? arenaBattleModelById(runtime.modelRightId).name
+        : arenaBattleText("tie");
+
+  renderArenaContender(root, "left", left, runtime.modelLeftId, progressFraction);
+  renderArenaContender(root, "right", right, runtime.modelRightId, progressFraction);
+
+  if (runtime.dom.leader) {
+    runtime.dom.leader.textContent = leader;
+  }
+
+  runtime.dom.runButton.textContent =
+    runtime.phase === "running"
+      ? arenaBattleText("stopBattle")
+      : runtime.phase === "break"
+        ? arenaBattleText("statusBreak")
+        : arenaBattleText("runBattle");
+  runtime.dom.runButton.disabled = runtime.phase === "break";
+
+  runtime.dom.log.innerHTML = runtime.rounds
+    .slice(0, 6)
+    .map((entry) => {
+      const leftWin = entry.winner === "left";
+      const rightWin = entry.winner === "right";
+      const winnerText =
+        entry.winner === "tie"
+          ? arenaBattleText("tie")
+          : leftWin
+            ? `${arenaBattleText("winner")}: ${entry.left.name}`
+            : `${arenaBattleText("winner")}: ${entry.right.name}`;
+
+      return `
+        <li>
+          <p>${arenaBattleText("roundLabel")} ${entry.round}: ${arenaBattleScenarioLabel(entry.scenario)}</p>
+          <span>${winnerText} · ${entry.left.score.toFixed(1)} : ${entry.right.score.toFixed(1)}</span>
+        </li>
+      `;
+    })
+    .join("") || `<li>${arenaBattleText("noData")}</li>`;
+}
+
+function startArenaBattleRound(runtime) {
+  const scenario = arenaBattleScenarioById(runtime.scenarioId);
+  const difficulty = arenaBattleDifficultyById(runtime.difficultyId);
+
+  runtime.phase = "running";
+  runtime.roundDurationMs = Math.round(scenario.durationSeconds * difficulty.roundMultiplier * 1000);
+  runtime.roundStartAt = performance.now();
+  runtime.lastTickAt = runtime.roundStartAt;
+
+  const seed = arenaBattleSeedFor(runtime);
+  const leftRng = arenaBattleRng(seed + 19);
+  const rightRng = arenaBattleRng(seed + 37);
+
+  runtime.currentScenario = scenario;
+  runtime.currentDifficulty = difficulty;
+  runtime.fighters = [
+    createArenaBattleFighter(arenaBattleModelById(runtime.modelLeftId), leftRng),
+    createArenaBattleFighter(arenaBattleModelById(runtime.modelRightId), rightRng)
+  ];
+
+  renderArenaBattleState(runtime);
+  runtime.frameHandle = window.setTimeout(() => tickArenaBattle(runtime, performance.now()), 80);
+}
+
+function concludeArenaBattleRound(runtime) {
+  const scenario = runtime.currentScenario;
+  const [left, right] = runtime.fighters;
+
+  const leftScore = +left.roundScore.toFixed(1);
+  const rightScore = +right.roundScore.toFixed(1);
+
+  runtime.cumulativeLeft += leftScore;
+  runtime.cumulativeRight += rightScore;
+
+  const winner =
+    leftScore > rightScore
+      ? "left"
+      : rightScore > leftScore
+        ? "right"
+        : "tie";
+
+  runtime.rounds.unshift({
+    round: runtime.currentRound,
+    scenario,
+    left: { name: arenaBattleModelById(runtime.modelLeftId).name, score: leftScore },
+    right: { name: arenaBattleModelById(runtime.modelRightId).name, score: rightScore },
+    winner
+  });
+
+  if (runtime.currentRound >= runtime.totalRounds) {
+    runtime.phase = "complete";
+    runtime.currentRound += 1;
+    runtime.fighters = null;
+    renderArenaBattleState(runtime);
+    return;
+  }
+
+  runtime.currentRound += 1;
+  runtime.phase = "break";
+  runtime.fighters = null;
+  renderArenaBattleState(runtime);
+
+  runtime.autoNextHandle = window.setTimeout(() => {
+    runtime.autoNextHandle = 0;
+    if (runtime.phase !== "break") {
+      return;
+    }
+    startArenaBattleRound(runtime);
+  }, 1200);
+}
+
+function tickArenaBattle(runtime, time) {
+  if (runtime.phase !== "running" || !runtime.fighters) {
+    return;
+  }
+
+  const now = time || performance.now();
+  const dt = Math.min(now - runtime.lastTickAt, 120) / 16.67;
+  runtime.lastTickAt = now;
+  const elapsed = now - runtime.roundStartAt;
+  const progress = clamp(elapsed / runtime.roundDurationMs, 0, 1);
+
+  runtime.fighters.forEach((fighter, index) => {
+    simulateFighterStep(fighter, runtime.currentScenario, runtime.currentDifficulty, progress, dt, index);
+  });
+
+  renderArenaBattleState(runtime);
+
+  if (progress >= 1) {
+    concludeArenaBattleRound(runtime);
+    return;
+  }
+
+  runtime.frameHandle = window.setTimeout(() => tickArenaBattle(runtime, performance.now()), 80);
+}
+
+function resetArenaBattleRuntime(runtime) {
+  stopArenaBattleRuntime();
+  runtime.phase = "ready";
+  runtime.currentRound = 1;
+  runtime.currentScenario = arenaBattleScenarioById(runtime.scenarioId);
+  runtime.currentDifficulty = arenaBattleDifficultyById(runtime.difficultyId);
+  runtime.cumulativeLeft = 0;
+  runtime.cumulativeRight = 0;
+  runtime.rounds = [];
+  runtime.fighters = null;
+  renderArenaBattleState(runtime);
+}
+
+function startArenaBattle(runtime) {
+  if (runtime.phase === "break") {
+    return;
+  }
+
+  syncArenaBattleInputs(runtime);
+
+  if (runtime.phase === "complete") {
+    runtime.phase = "ready";
+    runtime.currentRound = 1;
+    runtime.rounds = [];
+    runtime.cumulativeLeft = 0;
+    runtime.cumulativeRight = 0;
+  }
+
+  if (runtime.phase === "running") {
+    return;
+  }
+
+  if (runtime.phase === "ready") {
+    runtime.currentRound = 1;
+  }
+
+  runtime.fighters = [];
+  startArenaBattleRound(runtime);
+}
+
+function syncArenaBattleInputs(runtime) {
+  if (!runtime.dom) {
+    return;
+  }
+
+  runtime.scenarioId = runtime.dom.scenarioSelect.value;
+  runtime.difficultyId = runtime.dom.difficultySelect.value;
+  runtime.modelLeftId = runtime.dom.modelLeftSelect.value;
+  runtime.modelRightId = runtime.dom.modelRightSelect.value;
+  runtime.totalRounds = clamp(Math.round(Number(runtime.dom.roundsSelect.value) || runtime.totalRounds), 2, 12);
+
+  if (runtime.modelLeftId === runtime.modelRightId) {
+    const fallback = arenaBattleModels.find((model) => model.id !== runtime.modelLeftId) || arenaBattleModels[0];
+    runtime.modelRightId = fallback.id;
+    runtime.dom.modelRightSelect.value = runtime.modelRightId;
+  }
+
+  runtime.currentScenario = arenaBattleScenarioById(runtime.scenarioId);
+  runtime.currentDifficulty = arenaBattleDifficultyById(runtime.difficultyId);
+  runtime.dom.roundsSelect.value = String(runtime.totalRounds);
+  runtime.dom.scenarioSelect.value = runtime.scenarioId;
+  runtime.dom.difficultySelect.value = runtime.difficultyId;
+  runtime.dom.modelLeftSelect.value = runtime.modelLeftId;
+  runtime.dom.modelRightSelect.value = runtime.modelRightId;
+
+  writeArenaBattleConfig(runtime);
+}
+
+function renderArenaBattle() {
+  const runtime = getArenaBattleRuntime();
+
+  document.body.className = "arena-page";
+  const battleTitle = localizedHomeText("arenaBattle");
+  const isZh = activeLanguage() === "zh";
+
+  document.title = `${battleTitle} — ${siteTitle}`;
+
+  app.innerHTML = `
+    ${shellHeader()}
+    ${menuMarkup()}
+    <main class="arena-main" data-arena-page>
+      <section class="arena-hero arena-worktop">
+        <div>
+          <p class="arena-kicker">${escapeHtml(localizedHomeText("arenaBattleCategory"))}</p>
+          <h1 class="arena-title">${escapeHtml(battleTitle)}</h1>
+          <p class="arena-lede">${escapeHtml(isZh ? "选择场景和两个模型，运行本地对战评分。" : "Choose a scenario and two models, then run an in-page battle score.")}</p>
+        </div>
+        <div class="arena-score-strip" aria-label="${escapeAttr(arenaBattleText("totalScore"))}">
+          <span>${escapeHtml(arenaBattleText("totalScore"))}</span>
+          <strong><b data-arena-total-left>0.0</b><em>:</em><b data-arena-total-right>0.0</b></strong>
+          <small>${escapeHtml(isZh ? "领先" : "Leader")}: <span data-arena-leader>${escapeHtml(arenaBattleText("tie"))}</span></small>
+        </div>
+      </section>
+      <section class="arena-console">
+        <section class="arena-controls" aria-label="${escapeAttr(arenaBattleText("scenario"))}">
+          <label>
+            <span>${escapeHtml(arenaBattleText("scenario"))}</span>
+            <select data-arena-scenario>${buildArenaScenarioOptions()}</select>
+          </label>
+          <label>
+            <span>${escapeHtml(arenaBattleText("difficulty"))}</span>
+            <select data-arena-difficulty>${buildArenaDifficultyOptions()}</select>
+          </label>
+          <label>
+            <span>${escapeHtml(arenaBattleText("modelA"))}</span>
+            <select data-arena-model-left>${buildArenaModelOptions()}</select>
+          </label>
+          <label>
+            <span>${escapeHtml(arenaBattleText("modelB"))}</span>
+            <select data-arena-model-right>${buildArenaModelOptions()}</select>
+          </label>
+          <label>
+            <span>${escapeHtml(arenaBattleText("rounds"))}</span>
+            <select data-arena-rounds>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+              <option value="10">10</option>
+            </select>
+          </label>
+          <div class="arena-controls-actions">
+            <button type="button" class="arena-primary-action" data-arena-run>${escapeHtml(arenaBattleText("runBattle"))}</button>
+            <button type="button" data-arena-reset>${escapeHtml(arenaBattleText("resetBattle"))}</button>
+          </div>
+        </section>
+        <section class="arena-duel-wrap">
+          <div class="arena-summary">
+            <p><span data-arena-status>${escapeHtml(arenaBattleText("statusReady"))}</span></p>
+            <p>${escapeHtml(arenaBattleText("roundLabel"))} <strong data-arena-round>1/1</strong></p>
+            <p data-arena-scenario-name></p>
+          </div>
+          <section class="arena-duel-scene" data-arena-duel>
+            <div class="arena-duel-panel">
+              ${renderArenaBattleContenderMarkup("left")}
+            </div>
+            <div class="arena-vs-pill" aria-hidden="true">VS</div>
+            <div class="arena-duel-panel">
+              ${renderArenaBattleContenderMarkup("right")}
+            </div>
+          </section>
+          <section class="arena-logbook">
+            <header>
+              <h3>${escapeHtml(arenaBattleText("roundLog"))}</h3>
+            </header>
+            <ul data-arena-log></ul>
+          </section>
+        </section>
+      </section>
+    </main>
+  `;
+
+  runtime.dom = {
+    root: app,
+    scenarioSelect: document.querySelector("[data-arena-scenario]"),
+    difficultySelect: document.querySelector("[data-arena-difficulty]"),
+    modelLeftSelect: document.querySelector("[data-arena-model-left]"),
+    modelRightSelect: document.querySelector("[data-arena-model-right]"),
+    roundsSelect: document.querySelector("[data-arena-rounds]"),
+    runButton: document.querySelector("[data-arena-run]"),
+    resetButton: document.querySelector("[data-arena-reset]"),
+    status: document.querySelector("[data-arena-status]"),
+    roundLabel: document.querySelector("[data-arena-round]"),
+    totalLeft: document.querySelector("[data-arena-total-left]"),
+    totalRight: document.querySelector("[data-arena-total-right]"),
+    leader: document.querySelector("[data-arena-leader]"),
+    scenarioLabel: document.querySelector("[data-arena-scenario-name]"),
+    log: document.querySelector("[data-arena-log]")
+  };
+
+  runtime.dom.scenarioSelect.value = runtime.scenarioId;
+  runtime.dom.difficultySelect.value = runtime.difficultyId;
+  runtime.dom.modelLeftSelect.value = runtime.modelLeftId;
+  runtime.dom.modelRightSelect.value = runtime.modelRightId;
+  runtime.dom.roundsSelect.value = String(runtime.totalRounds);
+
+  bindShellEvents();
+  bindArenaBattleFrame();
+  renderArenaBattleState(runtime);
+  window.requestAnimationFrame(scrollToHashTarget);
+}
+
+function bindArenaBattleFrame() {
+  const runtime = getArenaBattleRuntime();
+
+  if (!runtime.dom) {
+    return;
+  }
+
+  const controls = [
+    runtime.dom.scenarioSelect,
+    runtime.dom.difficultySelect,
+    runtime.dom.modelLeftSelect,
+    runtime.dom.modelRightSelect,
+    runtime.dom.roundsSelect
+  ];
+
+  controls.forEach((element) => {
+    element.addEventListener("change", () => {
+      if (runtime.phase === "running" || runtime.phase === "break") {
+        return;
+      }
+      syncArenaBattleInputs(runtime);
+      renderArenaBattleState(runtime);
+    });
+  });
+
+  runtime.dom.runButton.addEventListener("click", () => {
+    if (runtime.phase === "running") {
+      if (runtime.frameHandle) {
+        window.cancelAnimationFrame(runtime.frameHandle);
+        window.clearTimeout(runtime.frameHandle);
+        runtime.frameHandle = 0;
+      }
+      runtime.phase = "ready";
+      renderArenaBattleState(runtime);
+      return;
+    }
+
+    startArenaBattle(runtime);
+  });
+
+  runtime.dom.resetButton.addEventListener("click", () => {
+    resetArenaBattleRuntime(runtime);
+  });
+
+  renderArenaBattleState(runtime);
+}
+
+function homeArenaBattleMarkup() {
+  const cards = activeLanguage() === "zh"
+    ? [
+      {
+        kicker: "对局场景",
+        title: "可扩展竞技场",
+        body: "同一世界状态下进行双模型对比，支持回合制和难度策略切换。"
+      },
+      {
+        kicker: "可解释评分",
+        title: "多维度指标",
+        body: "对决过程展示控制、视觉、物理、稳定性四项指标与实时进度。"
+      },
+      {
+        kicker: "完全本地",
+        title: "内置仿真逻辑",
+        body: "所有计算都在站内执行，无需外部 iframe 或跨站加载。"
+      }
+    ]
+    : [
+      {
+        kicker: "Arena engine",
+        title: "Fully local simulation",
+        body: "Pit two models in the same scenario, with round-based multi-metric scoring over time."
+      },
+      {
+        kicker: "Multi-metric",
+        title: "Transparent scoring",
+        body: "Shows control, visual quality, physics realism, and stability in real time."
+      },
+      {
+        kicker: "In-page engine",
+        title: "No embedding",
+        body: "Arena battle is implemented directly on this page; no third-party iframes are required."
+      }
+    ];
+
+  return `
+    <section class="home-arena-battle" aria-labelledby="home-arena-battle-title">
+      <div class="home-arena-overview">
+        <p class="home-kicker">${escapeHtml(localizedHomeText("arenaBattleCategory"))}</p>
+        <h2 id="home-arena-battle-title">${escapeHtml(localizedHomeText("arenaBattle"))}</h2>
+        <p>${escapeHtml(localizedHomeText("arenaBattleBody"))}</p>
+        <div class="home-arena-actions">
+          <a class="home-primary-action" href="/arena/" data-route>${escapeHtml(localizedHomeText("arenaBattleAction"))}</a>
+          <a href="/docs/benchmark/workflow/" data-route>${escapeHtml(activeLanguage() === "zh" ? "查看流程文档" : "Review workflow")}</a>
+        </div>
+      </div>
+      <div class="home-arena-card-grid">
+        ${cards
+          .map(
+            (card) => `
+            <article class="home-arena-card">
+              <span>${escapeHtml(card.kicker)}</span>
+              <h3>${escapeHtml(card.title)}</h3>
+              <p>${escapeHtml(card.body)}</p>
+            </article>
+          `
+          )
+          .join("")}
+      </div>
+    </section>
+  `;
 }
 
 render();

@@ -67,7 +67,7 @@ GENERIC_OBJECT_TOKENS = {
 }
 TEXT_KEYS = ("SceneSummary", "SceneDescription")
 STRUCTURED_OBJECT_KEYS = ("objects", "Objects", "entities", "Entities", "subjects", "Subjects")
-WORLD_SCORE_CAMERA_PROMPTS = {
+CAMERA_MOTION_PROMPTS = {
     "push_in": "push in",
     "pull_out": "pull out",
     "move_left": "move left",
@@ -84,9 +84,11 @@ WORLD_SCORE_CAMERA_PROMPTS = {
     "pedestal_down": "pedestal down",
     "fixed": "fixed",
 }
-WORLD_SCORE_CAMERA_ALIASES = {
+CAMERA_MOTION_ALIASES = {
     "dolly_in": "push_in",
     "dolly_out": "pull_out",
+    "zoom_in": "push_in",
+    "zoom_out": "pull_out",
     "truck_left": "move_left",
     "truck_right": "move_right",
     "tiltup": "tilt_up",
@@ -214,28 +216,27 @@ def _normalize_camera_token(value: Any) -> str | None:
     if not text:
         return None
     token = text.replace("-", "_").replace(" ", "_")
-    token = WORLD_SCORE_CAMERA_ALIASES.get(token, token)
-    if token in WORLD_SCORE_CAMERA_PROMPTS:
+    token = CAMERA_MOTION_ALIASES.get(token, token)
+    if token in CAMERA_MOTION_PROMPTS:
         return token
     return None
 
 
-def _worldscore_segment_prompts(camera_path: list[str], prompt_list: list[str], *, mode: str) -> list[str]:
+def _camera_segment_prompts(camera_path: list[str], prompt_list: list[str], *, mode: str) -> list[str]:
     prompts: list[str] = []
     if mode == "static":
         for layout, scene_prompt in zip(camera_path, prompt_list[1:]):
-            layout_prompt = WORLD_SCORE_CAMERA_PROMPTS.get(layout, layout.replace("_", " "))
+            layout_prompt = CAMERA_MOTION_PROMPTS.get(layout, layout.replace("_", " "))
             prompt = f"Camera {layout_prompt}. {scene_prompt}"
             if not prompt.endswith((".", "!", "?")):
                 prompt += "."
-            prompt += " Everything in the scene remains completely motionless."
             prompts.append(prompt)
         return prompts
 
     if not prompt_list:
         return prompts
     layout = camera_path[0] if camera_path else "fixed"
-    layout_prompt = WORLD_SCORE_CAMERA_PROMPTS.get(layout, layout.replace("_", " "))
+    layout_prompt = CAMERA_MOTION_PROMPTS.get(layout, layout.replace("_", " "))
     prompt = f"Camera {layout_prompt}. {prompt_list[0]}"
     if not prompt.endswith((".", "!", "?")):
         prompt += "."
@@ -269,8 +270,8 @@ def resolve_prompt_contract(annotation_path: str | None) -> dict[str, Any]:
         if not prompt_current and prompt_list:
             prompt_current = prompt_list[0]
         if not prompt_sequence and camera_path and len(prompt_list) >= len(camera_path) + 1:
-            prompt_sequence = _worldscore_segment_prompts(camera_path, prompt_list, mode="static")
-        prompt_target = prompt_sequence[0] if prompt_sequence else (prompt_list[1] if len(prompt_list) > 1 else "")
+            prompt_sequence = _camera_segment_prompts(camera_path, prompt_list, mode="static")
+        prompt_target = " ".join(prompt_sequence) if prompt_sequence else (prompt_list[1] if len(prompt_list) > 1 else "")
     elif mode == "dynamic":
         dynamic_prompt = _clean_text(generation_spec.get("prompt"))
         if not prompt_current and prompt_list:
@@ -278,7 +279,7 @@ def resolve_prompt_contract(annotation_path: str | None) -> dict[str, Any]:
         if not prompt_current:
             prompt_current = _clean_text(generation_spec.get("current_prompt")) or dynamic_prompt
         if not prompt_sequence and dynamic_prompt:
-            prompt_sequence = _worldscore_segment_prompts(
+            prompt_sequence = _camera_segment_prompts(
                 camera_path or ["fixed"],
                 [dynamic_prompt],
                 mode="dynamic",

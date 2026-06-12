@@ -1,6 +1,6 @@
 paths:
-  image_root: /bench-workspace/yesliu/hjd/data/WMBench/physics/first_frame
-  video_root: /bench-workspace/yesliu/hjd/data/WMBench/physics/videos_by_category
+  image_root: data/physics/first_frame
+  video_root: data/physics/videos_by_category
   inventory_dir: artifacts/benchmark/physics_judge/inventory
   manifest_dir: artifacts/benchmark/physics_judge/manifest
   reports_dir: artifacts/benchmark/physics_judge/reports

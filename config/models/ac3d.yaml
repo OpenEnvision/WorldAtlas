@@ -1,0 +1,58 @@
+model:
+  name: ac3d-cogvideox-2b
+  family: ac3d
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, camera_pose]
+  roles: [candidate]
+  python_bin: python
+  repo_root: /mnt/workspace/yangboxue/visual_generation/juanxi/github_repos/ac3d
+  checkpoint_dir: /mnt/workspace/yangboxue/visual_generation/juanxi/ckpt/ac3d
+  entrypoint: inference/cli_demo_camera.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: none
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/workspace/yangboxue/visual_generation/juanxi/ckpt
+    HF_HUB_OFFLINE: "1"
+    TRANSFORMERS_OFFLINE: "1"
+    TOKENIZERS_PARALLELISM: "false"
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  metadata:
+    upstream_repo: snap-research/ac3d
+    upstream_entrypoint: inference/cli_demo_camera.py
+    image_conditioning_contract: text_camera_dataset_no_image_conditioning
+    note: AC3D consumes a RealEstate10K-style video_root_dir plus camera indices, not WorldArena reference images directly.
+  generation:
+    variant: 2b
+    video_root_dir:
+    annotation_json: annotations/test.json
+    base_model_path: /mnt/workspace/yangboxue/visual_generation/juanxi/ckpt/CogVideoX-2b
+    controlnet_model_path: 2B/checkpoint-10000.pt
+    camera_index: 0
+    controlnet_weights: 1.0
+    controlnet_guidance_start: 0.0
+    controlnet_guidance_end: 0.4
+    use_dynamic_cfg: true
+    num_inference_steps: 50
+    guidance_scale: 6.0
+    num_videos_per_prompt: 1
+    dtype: bfloat16
+    seed: 42
+    num_frames: 49
+    height: 480
+    width: 720
+    stride_min: 2
+    stride_max: 2
+    downscale_coef: 8
+    controlnet_input_channels: 6
+    controlnet_transformer_num_attn_heads: 4
+    controlnet_transformer_attention_head_dim: 32
+    controlnet_transformer_out_proj_dim_factor: 64
+    controlnet_transformer_out_proj_dim_zero_init: true

@@ -92,7 +92,7 @@ e_t
 | 指标定位 | `core camera-control metric` |
 | 论文可用性结论 | 可作为核心相机可控性指标使用，但需要说明固定内参和尺度不变对齐假设 |
 
-- 当前被包装的 DROID-SLAM [[Teed and Deng, 2021](#reference)] 路径遵循 WorldScore 的设定，在第三方实现内部使用**固定的 synthetic intrinsics**（`[500, 500, 256, 256]`，再按帧大小缩放）。
+- 当前被包装的 DROID-SLAM [[Teed and Deng, 2021](#reference)] 路径遵循 上游设定，在第三方实现内部使用**固定的 synthetic intrinsics**（`[500, 500, 256, 256]`，再按帧大小缩放）。
 - 这个设定不把指标解释为逐样本真实标定条件下的绝对相机重建误差，而是解释为固定内参假设下、内部自洽的 camera controllability error。
 - 平移分量使用最小二乘尺度做后对齐，因此该指标更强调相机运动方向、旋转控制和尺度不变的轨迹一致性，而不是严格的 metric-space 尺度保真。
 - 建议报告方式：作为核心 camera-control metric 使用，并在方法说明中明确它是基于 DROID-SLAM、固定 synthetic intrinsics 和 scale-invariant alignment 的相机可控性误差。

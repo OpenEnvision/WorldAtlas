@@ -1,6 +1,6 @@
 paths:
-  image_root: /bench-workspace/yesliu/hjd/data/image_test_balanced_5000
-  video_root: /bench-workspace/yesliu/hjd/data/videos
+  image_root: data/physics/first_frame
+  video_root: data/physics/videos_by_category
   inventory_dir: artifacts/benchmark/physics/inventory
   manifest_dir: artifacts/benchmark/physics/manifest
   reports_dir: artifacts/benchmark/physics/reports

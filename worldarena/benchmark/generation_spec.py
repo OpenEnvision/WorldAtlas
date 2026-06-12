@@ -5,9 +5,9 @@ import re
 from typing import Any, Sequence
 
 from worldarena.benchmark.annotations import (
+    CAMERA_MOTION_PROMPTS,
     GENERIC_OBJECT_TOKENS,
     STRUCTURED_OBJECT_KEYS,
-    WORLD_SCORE_CAMERA_PROMPTS,
     _clean_text,
     _dedupe_phrases,
     _derive_object_prompts_from_text,
@@ -150,6 +150,8 @@ SCENERY_OBJECT_KEYWORDS = {
 CAMERA_LABEL_TO_TOKEN = {
     "dolly in": "push_in",
     "dolly out": "pull_out",
+    "zoom in": "push_in",
+    "zoom out": "pull_out",
     "move left": "move_left",
     "move right": "move_right",
     "orbit left": "orbit_left",
@@ -421,7 +423,7 @@ def normalize_camera_path(instruction_payload: dict[str, Any]) -> tuple[list[str
         if not cleaned:
             continue
         token = CAMERA_LABEL_TO_TOKEN.get(cleaned.lower(), cleaned.lower().replace("-", "_").replace(" ", "_"))
-        phrase = WORLD_SCORE_CAMERA_PROMPTS.get(token, cleaned.lower())
+        phrase = CAMERA_MOTION_PROMPTS.get(token, cleaned.lower())
         tokens.append(token)
         phrases.append(phrase)
     if not tokens:
@@ -598,9 +600,7 @@ def build_video_generation_spec(
         content_list.append(next_content)
         prompt_list.append(next_prompt)
         scene_objects.append(next_objects)
-        segment_prompts.append(
-            f"Camera {camera_phrase}. {next_prompt} Everything in the scene remains completely motionless."
-        )
+        segment_prompts.append(f"Camera {camera_phrase}. {next_prompt}")
 
     return caption_payload, {
         "mode": "static",

@@ -7,16 +7,15 @@ model:
   control_signals: [text, image, camera_pose]
   roles: [candidate]
   # Lyra-2's published environment targets Python 3.10 plus compiled CUDA extensions.
+  python_bin: ../conda/envs/lyra2/bin/python
   repo_root: thirdparty/Lyra-2
-  # Store Lyra-2 checkpoints as a direct tree under ckpt/Lyra-2.0.
-  checkpoint_dir: ckpt/Lyra-2.0
+  # This workspace stores the large shared checkpoint tree next to WorldArena.
+  checkpoint_dir: ../ckpt/Lyra-2.0
   entrypoint: lyra_2/_src/inference/lyra2_custom_traj_inference.py
   output_ext: .mp4
   supported_suites:
     - image_static
-    - image_dynamic
     - video_static
-    - video_dynamic
   prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
@@ -33,8 +32,10 @@ model:
     context_parallel_size: 1
     use_moge_scale: true
     da3_model_name: depth-anything/DA3NESTED-GIANT-LARGE-1.1
-    da3_model_path_custom: ckpt/depth-anything--DA3NESTED-GIANT-LARGE/model.safetensors
+    da3_model_path_custom: null
     da3_frame_interval: 8
     da3_max_history_frames: 10
     synthetic_focal_scale: 0.6
     offload: false
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: ../ckpt

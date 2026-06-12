@@ -2,13 +2,41 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import subprocess
 from typing import Any
 from uuid import uuid4
 
 from worldarena.benchmark.schemas import BenchmarkSample
 from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
-from worldarena.models.adapters.common import build_env, extend_command_with_options, run_command
+from worldarena.models.adapters.common import build_env, extend_command_with_options
 from worldarena.models.adapters.pose_synthesis import resolve_pose_annotation_path
+
+
+def _run_lyra2_command(
+    command: list[str],
+    *,
+    cwd: Path,
+    env: dict[str, str],
+    log_path: Path,
+) -> None:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("w", encoding="utf-8") as log_file:
+        try:
+            subprocess.run(
+                command,
+                check=True,
+                cwd=str(cwd),
+                env=env,
+                stdout=log_file,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            log_file.flush()
+            tail = "\n".join(log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-20:])
+            raise RuntimeError(
+                f"Lyra-2 command failed with exit code {exc.returncode}; log: {log_path}\n{tail}"
+            ) from exc
 
 
 class Lyra2Adapter(ModelAdapter):
@@ -116,7 +144,8 @@ class Lyra2Adapter(ModelAdapter):
             extra_pythonpaths=[project_root],
             overrides=self.config.env,
         )
-        run_command(command, cwd=project_root, env=env)
+        log_path = spec_path.with_suffix(".log")
+        _run_lyra2_command(command, cwd=project_root, env=env, log_path=log_path)
 
         results: dict[str, dict[str, Any]] = {}
         for request in requests:
@@ -129,6 +158,7 @@ class Lyra2Adapter(ModelAdapter):
                     "prompt": request.prompt,
                     "pose_source": pose_source,
                     "pose_annotation_path": str(pose_annotation_path),
+                    "generation_log": str(log_path),
                 }
             else:
                 results[request.sample.sample_id] = {
@@ -137,6 +167,7 @@ class Lyra2Adapter(ModelAdapter):
                     "prompt": request.prompt,
                     "pose_source": pose_source,
                     "pose_annotation_path": str(pose_annotation_path),
+                    "generation_log": str(log_path),
                 }
         return results
 
@@ -223,7 +254,8 @@ class Lyra2Adapter(ModelAdapter):
             extra_pythonpaths=[project_root],
             overrides=self.config.env,
         )
-        run_command(command, cwd=project_root, env=env)
+        log_path = output_path.with_suffix(".lyra2.log")
+        _run_lyra2_command(command, cwd=project_root, env=env, log_path=log_path)
         if not output_path.exists():
             raise FileNotFoundError(f"Lyra-2 output was not written: {output_path}")
         return {
@@ -232,4 +264,5 @@ class Lyra2Adapter(ModelAdapter):
             "prompt": prompt,
             "pose_source": pose_source,
             "pose_annotation_path": str(pose_annotation_path),
+            "generation_log": str(log_path),
         }

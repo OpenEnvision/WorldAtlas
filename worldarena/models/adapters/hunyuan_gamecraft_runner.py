@@ -115,6 +115,15 @@ def _build_env(
     env["PATH"] = os.pathsep.join(path_entries)
 
     pythonpath_entries = [str(repo_root)]
+    if env.get("WORLDARENA_HUNYUAN_FLASH_ATTN_FALLBACK", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }:
+        project_root = Path(__file__).resolve().parents[3]
+        flash_attn_fallback = project_root / "worldarena" / "_compat" / "flash_attn_fallback"
+        pythonpath_entries.insert(0, str(flash_attn_fallback))
     if env.get("PYTHONPATH"):
         pythonpath_entries.append(env["PYTHONPATH"])
     env["PYTHONPATH"] = os.pathsep.join(pythonpath_entries)

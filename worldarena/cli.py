@@ -85,7 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     build_physics_judge_manifest.add_argument(
         "--data-root",
-        default="/bench-workspace/yesliu/hjd/data/WMBench/physics",
+        default="data/physics",
     )
     build_physics_judge_manifest.add_argument(
         "--config",
@@ -107,6 +107,11 @@ def build_parser() -> argparse.ArgumentParser:
     generate.add_argument("--num-shards", type=int, default=1)
     generate.add_argument("--shard-index", type=int, default=0)
     generate.add_argument("--overwrite", action="store_true")
+    generate.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="Stop generation on the first failed sample instead of continuing.",
+    )
 
     evaluate = subparsers.add_parser(
         "evaluate",
@@ -135,6 +140,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_model.add_argument("--num-shards", type=int, default=1)
     run_model.add_argument("--shard-index", type=int, default=0)
     run_model.add_argument("--overwrite", action="store_true")
+    run_model.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="Stop generation on the first failed sample instead of continuing.",
+    )
 
     clean = subparsers.add_parser(
         "clean",
@@ -326,6 +336,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             overwrite=args.overwrite,
             num_shards=args.num_shards,
             shard_index=args.shard_index,
+            fail_fast=args.fail_fast,
         )
         print(json.dumps(result["manifest"], indent=2, ensure_ascii=False))
         return 0
@@ -373,6 +384,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             overwrite=args.overwrite,
             num_shards=args.num_shards,
             shard_index=args.shard_index,
+            fail_fast=args.fail_fast,
         )
         eval_config = apply_model_metric_overrides(config, model_config)
         output_dir = (

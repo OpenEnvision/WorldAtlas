@@ -6,7 +6,7 @@ model:
   artifact_types: [video, gaussian_splat, point_cloud]
   control_signals: [text, image, trajectory, camera_pose]
   roles: [candidate]
-  # WonderWorld is run through the WorldScore-style noninteractive path:
+  # WonderWorld is run through a noninteractive batch path:
   # render benchmark frames, save the main prediction as MP4, and keep 3DGS files only as a sidecar archive.
   python_bin: /share/project/yesliu/miniconda3/envs/wonderworld/bin/python
   repo_root: thirdparty/WonderWorld

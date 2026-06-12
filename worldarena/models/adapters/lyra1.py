@@ -11,6 +11,7 @@ from worldarena.models.adapters.common import (
     run_command,
     run_sequential_generate_batch,
 )
+from worldarena.models.adapters.gen3c import _generation_for_sample
 
 
 def _view_indices_arg(value: object | None) -> str | None:
@@ -25,7 +26,10 @@ def _view_indices_arg(value: object | None) -> str | None:
 
 class Lyra1Adapter(ModelAdapter):
     def supports_batch_generation(self) -> bool:
-        return True
+        # This adapter's batch path is only a sequential wrapper around per-sample
+        # torchrun launches. Keep Lyra-1 on the normal path so --fail-fast can
+        # stop immediately after a broken generation.
+        return False
 
     def generate_batch(
         self,
@@ -45,7 +49,7 @@ class Lyra1Adapter(ModelAdapter):
         if self.config.checkpoint_dir is None:
             raise ValueError("Lyra-1 adapter requires checkpoint_dir")
 
-        generation = self.config.generation
+        generation = _generation_for_sample(self.config.generation, sample)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         project_root = Path(__file__).resolve().parents[3]
 
@@ -92,6 +96,7 @@ class Lyra1Adapter(ModelAdapter):
                 "offload_diffusion_transformer",
                 "offload_tokenizer",
                 "offload_text_encoder_model",
+                "skip_stage2",
             ),
         )
         static_view_indices = _view_indices_arg(generation.get("static_view_indices_fixed"))

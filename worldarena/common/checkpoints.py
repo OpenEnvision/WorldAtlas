@@ -14,15 +14,18 @@ CHECKPOINT_ENV_KEYS = (
     "HF_HUB_OFFLINE",
     "TRANSFORMERS_OFFLINE",
 )
+CHECKPOINT_ROOT_ENV = "WORLDARENA_CHECKPOINT_ROOT"
+LEGACY_WORKSPACE_ROOT_ENV = "WORLDARENA_LEGACY_WORKSPACE_ROOT"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-LEGACY_WORKSPACE_ROOT = Path("/bench-workspace/yesliu/hjd")
 CANONICAL_CHECKPOINT_ROOT = PROJECT_ROOT / "ckpt"
 HF_REPO_SUBPATHS: dict[str, tuple[str, ...]] = {
+    "depth-anything/DA3-GIANT": ("DA3-GIANT",),
     "depth-anything/DA3NESTED-GIANT-LARGE-1.1": ("depth-anything--DA3NESTED-GIANT-LARGE",),
     "depth-anything/Depth-Anything-V2-Small-hf": ("models--depth-anything--Depth-Anything-V2-Small-hf",),
     "facebook/dinov2-base": ("models--facebook--dinov2-base",),
     "google-t5/t5-11b": ("t5-11b",),
     "google/umt5-xxl": ("google", "umt5-xxl"),
+    "mhamilton723/FeatUp": ("mhamilton723--FeatUp",),
     "nvidia/Cosmos-Tokenize1-CV8x8x8-720p": ("Cosmos-Tokenize1-CV8x8x8-720p",),
     "openai/clip-vit-base-patch16": ("models--openai--clip-vit-base-patch16",),
 }
@@ -46,8 +49,16 @@ def workspace_root() -> Path:
     return PROJECT_ROOT.parent.parent
 
 
+def legacy_workspace_root() -> Path | None:
+    """Return an optional old workspace root used for local manifest migration."""
+    raw = os.environ.get(LEGACY_WORKSPACE_ROOT_ENV, "").strip()
+    if not raw:
+        return None
+    return Path(raw).expanduser()
+
+
 def rehome_legacy_workspace_path(value: str | os.PathLike[str] | None) -> Path | None:
-    """Map stale /bench-workspace paths onto the active workspace when possible."""
+    """Map stale absolute workspace paths onto the active workspace when requested."""
     if value is None:
         return None
     path = Path(value).expanduser()
@@ -55,8 +66,11 @@ def rehome_legacy_workspace_path(value: str | os.PathLike[str] | None) -> Path |
         return path.resolve()
     if not path.is_absolute():
         return path
+    legacy_root = legacy_workspace_root()
+    if legacy_root is None:
+        return path
     try:
-        relative = path.relative_to(LEGACY_WORKSPACE_ROOT)
+        relative = path.relative_to(legacy_root)
     except ValueError:
         return path
     remapped = (workspace_root() / relative).resolve()
@@ -66,8 +80,13 @@ def rehome_legacy_workspace_path(value: str | os.PathLike[str] | None) -> Path |
 
 
 def checkpoint_root(*, create: bool = True) -> Path:
-    """Return the single checkpoint root under the WorldArena repository."""
-    root = canonical_checkpoint_root()
+    """Return the active checkpoint root.
+
+    WorldArena keeps `ckpt/` as the canonical in-repo layout. Some shared
+    workspaces keep the actual large checkpoint tree next to the checkout and
+    point this helper at it with WORLDARENA_CHECKPOINT_ROOT.
+    """
+    root = _active_checkpoint_root()
     if create:
         root.mkdir(parents=True, exist_ok=True)
     return root
@@ -76,6 +95,35 @@ def checkpoint_root(*, create: bool = True) -> Path:
 def canonical_checkpoint_root() -> Path:
     """Return the user-facing canonical checkpoint root path."""
     return CANONICAL_CHECKPOINT_ROOT
+
+
+def _configured_checkpoint_root() -> Path | None:
+    raw = os.environ.get(CHECKPOINT_ROOT_ENV)
+    if not raw:
+        return None
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    return Path(os.path.abspath(str(path)))
+
+
+def _active_checkpoint_root() -> Path:
+    return _configured_checkpoint_root() or CANONICAL_CHECKPOINT_ROOT
+
+
+def _allowed_checkpoint_roots() -> tuple[Path, ...]:
+    roots: list[Path] = []
+    for candidate in (
+        _configured_checkpoint_root(),
+        CANONICAL_CHECKPOINT_ROOT,
+        PROJECT_ROOT.parent / "ckpt",
+    ):
+        if candidate is None:
+            continue
+        root = Path(os.path.abspath(str(candidate)))
+        if root not in roots:
+            roots.append(root)
+    return tuple(roots)
 
 
 def resolve_project_path(value: str | os.PathLike[str] | None) -> Path | None:
@@ -104,21 +152,26 @@ def resolve_checkpoint_path(
     kind: str = "any",
     required: bool = False,
 ) -> Path | None:
-    """Resolve a path and require it to stay under the single ckpt root."""
+    """Resolve a path and require it to stay under an approved ckpt root."""
     path = resolve_project_path(value)
     if path is None:
         return None
-    root = checkpoint_root()
     path_resolved = path.resolve(strict=False)
-    root_resolved = root.resolve(strict=False)
-    if (
-        path != root
-        and not path.is_relative_to(root)
-        and path_resolved != root_resolved
-        and not path_resolved.is_relative_to(root_resolved)
-    ):
+    allowed = False
+    for root in _allowed_checkpoint_roots():
+        root_resolved = root.resolve(strict=False)
+        if (
+            path == root
+            or path.is_relative_to(root)
+            or path_resolved == root_resolved
+            or path_resolved.is_relative_to(root_resolved)
+        ):
+            allowed = True
+            break
+    if not allowed:
         raise ValueError(
-            f"checkpoint path must stay under {canonical_checkpoint_root()}, got {path}"
+            "checkpoint path must stay under one of "
+            f"{', '.join(str(root) for root in _allowed_checkpoint_roots())}, got {path}"
         )
     _validate_existing_path_kind(path, kind)
     if required:
@@ -235,8 +288,10 @@ def apply_checkpoint_env(
 __all__ = [
     "CANONICAL_CHECKPOINT_ROOT",
     "CHECKPOINT_ENV_KEYS",
+    "CHECKPOINT_ROOT_ENV",
     "CheckpointCacheEnv",
     "HF_REPO_SUBPATHS",
+    "LEGACY_WORKSPACE_ROOT_ENV",
     "apply_checkpoint_env",
     "canonical_checkpoint_root",
     "checkpoint_cache_env",
@@ -245,6 +300,7 @@ __all__ = [
     "checkpoint_root",
     "filter_checkpoint_env_overrides",
     "hf_local_dir",
+    "legacy_workspace_root",
     "project_root",
     "rehome_legacy_workspace_path",
     "resolve_checkpoint_path",

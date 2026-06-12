@@ -1,0 +1,56 @@
+model:
+  name: hunyuan-gamecraft-juanxi
+  family: hunyuan_gamecraft
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, actions]
+  roles: [candidate]
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/HYGameCraft/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/Hunyuan-GameCraft-1.0
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Hunyuan-GameCraft-1.0
+  entrypoint: hymm_sp/sample_batch.py
+  env:
+    LD_PRELOAD: /mnt/cpfs/yangboxue/visual_generation/juanxi/WorldArena/artifacts/runtime/libittnotify_stub.so
+    NCCL_MAX_NCHANNELS: "8"
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    TOKENIZERS_PARALLELISM: "false"
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    model_variant: standard
+    checkpoint_filename:
+    num_gpus: 8
+    master_port: 29605
+    height: 704
+    width: 1216
+    cfg_scale: 2.0
+    sample_n_frames: 33
+    infer_steps: 50
+    flow_shift_eval_video: 5.0
+    seed: 42
+    prompt_prefix: ""
+    prompt_suffix: ""
+    add_pos_prompt: ""
+    add_neg_prompt: ""
+    action_source: worldarena_camera_path
+    action_speed: 0.2
+    min_single_action_seconds: 5.0
+    image_start: true
+    cpu_offload: false
+    disable_sp: false
+    use_fp8: false
+    use_sage: false
+    use_deepcache: 1
+    keep_work_dir: false
+    action_plan:
+      default:
+        - w
+        - d
+        - w
+        - a
+        - w

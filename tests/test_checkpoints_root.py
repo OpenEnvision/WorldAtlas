@@ -11,6 +11,14 @@ def test_default_project_root_matches_repo_checkout() -> None:
     assert checkpoints.canonical_checkpoint_root() == repo_root / "ckpt"
 
 
+def test_checkpoint_root_can_be_overridden_by_env(monkeypatch, tmp_path: Path) -> None:
+    shared_root = tmp_path / "shared_ckpt"
+    monkeypatch.setenv(checkpoints.CHECKPOINT_ROOT_ENV, str(shared_root))
+
+    assert checkpoints.checkpoint_root(create=False) == shared_root
+    assert checkpoints.checkpoint_env(create=False)["HF_HOME"] == str(shared_root / "huggingface")
+
+
 def test_cosmos_tokenizer_repo_uses_direct_checkpoint_dir() -> None:
     assert checkpoints.HF_REPO_SUBPATHS["nvidia/Cosmos-Tokenize1-CV8x8x8-720p"] == (
         "Cosmos-Tokenize1-CV8x8x8-720p",

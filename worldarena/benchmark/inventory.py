@@ -354,6 +354,7 @@ def _count_key(asset: DiscoveredAsset) -> str:
 
 def build_inventory(config: BenchmarkConfig) -> dict[str, Any]:
     assets = discover_assets(config)
+    print("Discovered assets count:", len(assets))
     counts = {
         key: {
             "planned": config.planned_counts.get(key),
@@ -418,9 +419,10 @@ def build_inventory(config: BenchmarkConfig) -> dict[str, Any]:
             }
         )
 
-    records_frame = pd.DataFrame.from_records([asset.to_dict() for asset in assets]).sort_values(
-        ["asset_level", "category_path", "relative_path"]
-    )
+    if not assets:
+        records_frame = pd.DataFrame(columns=["asset_level", "category_path", "relative_path", "modality"])
+    else:
+        records_frame = pd.DataFrame.from_records([asset.to_dict() for asset in assets]).sort_values(["asset_level", "category_path", "relative_path"])
     mismatch_frame = pd.DataFrame.from_records(mismatch_rows)
 
     summary = {

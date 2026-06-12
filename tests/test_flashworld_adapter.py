@@ -25,7 +25,7 @@ def _make_config(tmp_path: Path) -> ModelRuntimeConfig:
     config_path.write_text("model: {}\n", encoding="utf-8")
     return ModelRuntimeConfig(
         config_path=config_path,
-        name="flashworld-worldscore-static",
+        name="flashworld-static",
         family="flashworld",
         python_bin="python",
         repo_root=tmp_path,
@@ -109,7 +109,7 @@ def _make_video_sample(annotation_path: Path) -> BenchmarkSample:
     )
 
 
-def test_resolved_annotation_path_synthesizes_worldscore_image_controls(tmp_path: Path) -> None:
+def test_resolved_annotation_path_synthesizes_image_controls(tmp_path: Path) -> None:
     config = _make_config(tmp_path)
     sample = _make_image_sample(
         suite="image_static",

@@ -38,7 +38,7 @@ def _parse_bool(value: str | bool) -> bool:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena WonderWorld WorldScore-style runner.")
+    parser = argparse.ArgumentParser(description="WorldArena WonderWorld batch runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--entrypoint", default="run.py", type=str)
     parser.add_argument("--conditioning_image", required=True, type=str)
@@ -75,13 +75,13 @@ def parse_args() -> argparse.Namespace:
 @contextlib.contextmanager
 def _work_dir(keep_work_dir: bool):
     if keep_work_dir:
-        path = Path(tempfile.mkdtemp(prefix="worldarena_wonderworld_worldscore_"))
+        path = Path(tempfile.mkdtemp(prefix="worldarena_wonderworld_batch_"))
         try:
             yield path
         finally:
             pass
         return
-    with tempfile.TemporaryDirectory(prefix="worldarena_wonderworld_worldscore_") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="worldarena_wonderworld_batch_") as temp_dir:
         yield Path(temp_dir)
 
 
@@ -181,7 +181,7 @@ def _write_example_config(path: Path, *, args: argparse.Namespace, example_name:
 def _load_pose_sequence(annotation_path: Path) -> np.ndarray:
     poses_path = annotation_path / "poses.npy"
     if not poses_path.exists():
-        raise FileNotFoundError(f"WonderWorld WorldScore mode requires poses.npy: {poses_path}")
+        raise FileNotFoundError(f"WonderWorld batch mode requires poses.npy: {poses_path}")
     poses = np.load(poses_path).astype(np.float32)
     if poses.ndim != 3 or poses.shape[1:] != (4, 4):
         raise ValueError(f"expected poses.npy with shape [N,4,4], got {poses.shape}")
@@ -362,7 +362,7 @@ def _archive_sidecar(path: Path, *, work_dir: Path, frames_dir: Path, example_na
                 archive.write(source, f"run/{source.relative_to(work_dir / 'output' / example_name)}")
 
 
-def _run_worldscore_generation(args: argparse.Namespace, *, work_dir: Path) -> list[Image.Image]:
+def _run_batch_generation(args: argparse.Namespace, *, work_dir: Path) -> list[Image.Image]:
     repo_root = Path(args.repo_root).expanduser().resolve()
     sys.path.insert(0, str(repo_root))
     sys.path.insert(0, str(repo_root / "RepViT"))
@@ -657,7 +657,7 @@ def main() -> None:
         os.environ.clear()
         os.environ.update(_normalized_env(repo_root))
         try:
-            frames = _run_worldscore_generation(args, work_dir=work_dir)
+            frames = _run_batch_generation(args, work_dir=work_dir)
         finally:
             os.chdir(old_cwd)
             os.environ.clear()

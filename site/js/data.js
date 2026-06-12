@@ -37,6 +37,7 @@ export const menuSections = [
     links: [
       { label: "Benchmark Overview", href: "/docs/benchmark/" },
       { label: "Leaderboard", href: "/#home-leaderboard" },
+      { label: "Arena Battle", href: "/arena/" },
       { label: "Protocol & Eligibility", href: "/docs/benchmark/protocol/" },
       { label: "Workflow & Outputs", href: "/docs/benchmark/workflow/" },
       { label: "Metrics Overview", href: "/docs/benchmark/metrics/" },
@@ -407,9 +408,19 @@ export const archiveItems = allContentPages.map((page, index) => ({
   summary: page.summary || "WorldArena documentation page."
 }));
 
-const selectedHomePages = [
+const arenaBattleHomePost = {
+  title: "Arena Battle",
+  date: "Benchmark",
+  image: "/assets/arena-battle-cover.png?v=20260504-arena-cover-v1",
+  accent: palette[2],
+  href: "/arena/",
+  body: "Run an in-page model duel across control, visual consistency, physics, and stability."
+};
+
+const selectedHomeEntries = [
   benchmarkPage,
   metricsPage,
+  arenaBattleHomePost,
   architecturePage,
   workflowPage,
   runtimePage,
@@ -417,11 +428,11 @@ const selectedHomePages = [
   developmentPage
 ].filter(Boolean);
 
-export const homePosts = selectedHomePages.map((page, index) => ({
-  title: page.title,
-  date: page.section,
-  image: homeVisuals[index % homeVisuals.length],
-  accent: palette[index % palette.length],
-  href: page.route,
-  body: page.summary || "Open this WorldArena documentation section."
+export const homePosts = selectedHomeEntries.map((entry, index) => ({
+  title: entry.title,
+  date: entry.date || entry.section,
+  image: entry.image || homeVisuals[index % homeVisuals.length],
+  accent: entry.accent || palette[index % palette.length],
+  href: entry.href || entry.route,
+  body: entry.body || entry.summary || "Open this WorldArena documentation section."
 }));

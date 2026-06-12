@@ -299,7 +299,7 @@ class WonderWorldAdapter(ModelAdapter):
             num_scenes=num_scenes,
         )
         archive_path = (
-            output_path.with_name(f"{output_path.stem}.worldscore.zip")
+            output_path.with_name(f"{output_path.stem}.sidecar.zip")
             if bool(generation.get("archive_sidecars", True))
             else None
         )
@@ -307,7 +307,7 @@ class WonderWorldAdapter(ModelAdapter):
         command = [
             self.config.python_bin,
             "-m",
-            "worldarena.models.adapters.wonderworld_worldscore_runner",
+            "worldarena.models.adapters.wonderworld_batch_runner",
             "--repo_root",
             str(repo_root),
             "--entrypoint",

@@ -8,7 +8,7 @@ model:
   roles: [candidate]
   # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
   repo_root: thirdparty/lingbot-world
-  python_bin: /share/project/yesliu/miniconda3/envs/lingbot-world/bin/python
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/lingbot-world/bin/python
   # /share/project/yesliu/hjd/model/tmp/lingbot-world/lingbot-world-base-cam
   # currently points to this canonical ckpt location.
   checkpoint_dir: ckpt/lingbot-world-base-cam
@@ -26,11 +26,20 @@ model:
     # including sample_steps/sample_shift/sample_guide_scale, ulysses_size, t5_cpu,
     # t5_fsdp, dit_fsdp, use_prompt_extend, prompt_extend_*, and action_string_by_suite.
     task: i2v-A14B
-    size: 832*480
+    size: 480*832
     frame_num: 81
     base_seed: 42
     sample_solver: unipc
+    sample_steps: 70
+    sample_shift: 10.0
+    launcher: torchrun
+    nproc_per_node: 8
+    master_port: 29541
+    ulysses_size: 8
+    t5_fsdp: true
+    dit_fsdp: true
     offload_model: false
+    vis_ui: false
   metadata:
     variant: base_cam
     upstream_model_id: robbyant/lingbot-world-base-cam

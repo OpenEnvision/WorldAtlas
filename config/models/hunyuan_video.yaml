@@ -1,0 +1,40 @@
+model:
+  name: hunyuan-video-i2v
+  family: hunyuan_video
+  backend_type: local_repo
+  task_families: [video_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/HunyuanVideo/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/HunyuanVideo-I2V
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/HunyuanVideo-I2V
+  entrypoint: sample_image2video.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: reference_image
+  generation:
+    model: HYVideo-T/2
+    video_size: [720, 1280]
+    video_length: 129
+    infer_steps: 50
+    cfg_scale: 1.0
+    embedded_cfg_scale: 6.0
+    flow_shift: 17.0
+    flow_reverse: true
+    seed: 0
+    i2v_resolution: 720p
+    i2v_condition_type: token_replace
+    i2v_stability: false
+    rewrite_static_camera_prompt: true
+    use_cpu_offload: false
+    num_gpus: 8
+    ulysses_degree: 8
+    ring_degree: 1
+    fps: 24
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+    ALLOW_RESIZE_FOR_SP: "1"

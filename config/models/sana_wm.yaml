@@ -1,0 +1,32 @@
+model:
+  name: sana-wm
+  family: sana_wm
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/sana/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/Sana
+  entrypoint: inference_video_scripts/inference_sana_wm.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    num_frames: 161
+    fps: 16
+    step: 60
+    cfg_scale: 5.0
+    flow_shift: 8.0
+    seed: 42
+    sampling_algo: flow_euler_ltx
+    no_refiner: false
+    no_action_overlay: false
+    synthetic_focal_scale: 0.6
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt

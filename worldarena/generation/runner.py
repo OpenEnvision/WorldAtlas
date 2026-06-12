@@ -167,6 +167,7 @@ def generate_predictions(
     overwrite: bool = False,
     num_shards: int = 1,
     shard_index: int = 0,
+    fail_fast: bool = False,
 ) -> dict[str, Any]:
     adapter = build_model_adapter(model_config)
     output_dir = output_dir.resolve()
@@ -216,6 +217,18 @@ def generate_predictions(
             records.append(record)
             records_by_sample_id[sample.sample_id] = record
             prompt_map[str(prediction_path)] = prompt
+            if fail_fast:
+                _write_generation_outputs(
+                    output_dir=output_dir,
+                    records=records,
+                    prompt_map=prompt_map,
+                    model_config=model_config,
+                    shard_index=shard_index,
+                    num_shards=num_shards,
+                )
+                raise RuntimeError(
+                    f"Failed to prepare conditioning input for {sample.sample_id}: {record['error']}"
+                ) from exc
             continue
         generation_started_at: float | None = None
         try:
@@ -253,6 +266,21 @@ def generate_predictions(
                     time.perf_counter() - generation_started_at,
                     6,
                 )
+            if fail_fast:
+                records.append(record)
+                records_by_sample_id[sample.sample_id] = record
+                prompt_map[str(prediction_path)] = prompt
+                _write_generation_outputs(
+                    output_dir=output_dir,
+                    records=records,
+                    prompt_map=prompt_map,
+                    model_config=model_config,
+                    shard_index=shard_index,
+                    num_shards=num_shards,
+                )
+                raise RuntimeError(
+                    f"Generation failed for {sample.sample_id}: {record['error']}"
+                ) from exc
         records.append(record)
         records_by_sample_id[sample.sample_id] = record
         prompt_map[str(prediction_path)] = prompt
@@ -263,7 +291,40 @@ def generate_predictions(
             pending_requests=pending_requests,
             records_by_sample_id=records_by_sample_id,
         )
+        if fail_fast:
+            first_failed = next((item for item in records if item["status"] == "failed"), None)
+            if first_failed is not None:
+                _write_generation_outputs(
+                    output_dir=output_dir,
+                    records=records,
+                    prompt_map=prompt_map,
+                    model_config=model_config,
+                    shard_index=shard_index,
+                    num_shards=num_shards,
+                )
+                raise RuntimeError(
+                    f"Generation failed for {first_failed['sample_id']}: {first_failed['error']}"
+                )
 
+    return _write_generation_outputs(
+        output_dir=output_dir,
+        records=records,
+        prompt_map=prompt_map,
+        model_config=model_config,
+        shard_index=shard_index,
+        num_shards=num_shards,
+    )
+
+
+def _write_generation_outputs(
+    *,
+    output_dir: Path,
+    records: list[dict[str, Any]],
+    prompt_map: dict[str, str],
+    model_config: ModelRuntimeConfig,
+    shard_index: int,
+    num_shards: int,
+) -> dict[str, Any]:
     manifest_payload = {
         "model_name": model_config.name,
         "family": model_config.family,
