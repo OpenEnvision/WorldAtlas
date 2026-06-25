@@ -208,6 +208,8 @@ WorldArena/
 | `lingbot_world.yaml` | `thirdparty/lingbot-world` | `lingbot-world-base-cam` |
 | `lingbot_world_base_act_preview.yaml` | `thirdparty/lingbot-world` | `lingbot-world-base-act-preview`，`generation.shared_checkpoint_dir=lingbot-world-base-cam` |
 | `lingbot_world_fast.yaml` | `thirdparty/lingbot-world` | `lingbot-world-base-cam`，`generation.fast_checkpoint_dir=lingbot-world-fast` |
+| `cosmos_predict25_14b.yaml` | `thirdparty/cosmos-predict2.5` | `Cosmos-Predict2.5-14B`、`Cosmos-Reason1-7B`、`Wan2.1-I2V-14B-480P/Wan2.1_VAE.pth` |
+| `cosmos_predict25_2b.yaml` | `thirdparty/cosmos-predict2.5` | `Cosmos-Predict2.5-2B`，以及与 14B 配置相同的辅助 text/tokenizer checkpoint |
 | `inspatio_world.yaml` | `thirdparty/inspatio-world` | `inspatio--world` |
 | `infinite_world.yaml` | `thirdparty/Infinite-World` | `MeiGen-AI--Infinite-World` |
 | `neoverse.yaml` | `thirdparty/NeoVerse` | `Yuppie1204--NeoVerse` |

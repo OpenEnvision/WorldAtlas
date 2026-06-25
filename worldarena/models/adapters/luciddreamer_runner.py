@@ -39,7 +39,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--campath_render",
         default="llff",
-        choices=("back_and_forth", "llff", "headbanging"),
         type=str,
     )
     parser.add_argument("--model_name", default=None, type=str)

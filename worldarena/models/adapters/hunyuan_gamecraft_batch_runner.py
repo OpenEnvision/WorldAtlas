@@ -15,6 +15,7 @@ from typing import Any
 from worldarena.common.checkpoints import apply_checkpoint_env, resolve_checkpoint_path
 from worldarena.models.adapters.hunyuan_gamecraft_runner import (
     _DEFAULT_CHECKPOINT_FILENAME,
+    _apply_nccl_defaults,
     _build_env,
     _find_checkpoint_file,
     _find_model_base,
@@ -94,6 +95,9 @@ def _distributed_command(
         sys.executable,
         "-m",
         "torch.distributed.run",
+        "--standalone",
+        "--nnodes",
+        "1",
         "--nproc_per_node",
         str(args.num_gpus),
         "--master_port",
@@ -448,6 +452,10 @@ def _worker_main(args: argparse.Namespace) -> None:
     os.environ["CPU_OFFLOAD"] = "1" if bool(args.cpu_offload) else "0"
     os.environ["DISABLE_SP"] = "1" if bool(args.disable_sp) else "0"
     os.environ.update(apply_checkpoint_env())
+    # Must run before torch import / process-group init so NCCL picks up the
+    # transport overrides. Covers direct torchrun launches that bypass the
+    # parent _build_env path.
+    _apply_nccl_defaults(os.environ)
 
     import torch
     from diffusers.hooks import apply_group_offloading

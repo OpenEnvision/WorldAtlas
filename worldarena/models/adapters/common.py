@@ -22,7 +22,10 @@ def build_env(
     extra_pythonpaths: Iterable[Path] = (),
     overrides: dict[str, str] | None = None,
 ) -> dict[str, str]:
-    env = apply_checkpoint_env()
+    base_env = os.environ.copy()
+    if overrides and "WORLDARENA_CHECKPOINT_ROOT" in overrides:
+        base_env["WORLDARENA_CHECKPOINT_ROOT"] = str(overrides["WORLDARENA_CHECKPOINT_ROOT"])
+    env = apply_checkpoint_env(base_env)
     pythonpaths = [str(path) for path in extra_pythonpaths if str(path)]
     if env.get("PYTHONPATH"):
         pythonpaths.append(env["PYTHONPATH"])

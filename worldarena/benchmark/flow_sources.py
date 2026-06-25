@@ -77,12 +77,24 @@ def _module_under_roots(module: object, roots: Sequence[Path]) -> bool:
     return any(resolved.is_relative_to(root) for root in roots)
 
 
+def _is_generic_upstream_module(name: str) -> bool:
+    return name == "utils" or name.startswith("utils.")
+
+
 @contextmanager
 def isolated_upstream_import_context(*paths: Path) -> Iterator[None]:
     roots = _dedupe_paths(paths)
     existing_modules = set(sys.modules)
     inserted_paths: list[str] = []
+    saved_modules: dict[str, object] = {}
     try:
+        for name, module in list(sys.modules.items()):
+            if not _is_generic_upstream_module(name):
+                continue
+            if _module_under_roots(module, roots):
+                continue
+            saved_modules[name] = module
+            del sys.modules[name]
         for root in reversed(roots):
             root_str = str(root)
             if root_str not in sys.path:
@@ -94,10 +106,13 @@ def isolated_upstream_import_context(*paths: Path) -> Iterator[None]:
             while root_str in sys.path:
                 sys.path.remove(root_str)
         for name, module in list(sys.modules.items()):
-            if name in existing_modules:
+            if name in saved_modules:
                 continue
-            if _module_under_roots(module, roots):
+            if name not in existing_modules and _module_under_roots(module, roots):
                 del sys.modules[name]
+            elif _is_generic_upstream_module(name) and _module_under_roots(module, roots):
+                del sys.modules[name]
+        sys.modules.update(saved_modules)
 
 
 @contextmanager

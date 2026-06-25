@@ -7,22 +7,49 @@ model:
   control_signals: [text, image]
   roles: [candidate]
   # LucidDreamer targets Python 3.9 plus compiled Gaussian rasterization extensions.
-  # Keep the upstream repo under thirdparty/ or symlink it there after preparing its environment externally.
-  repo_root: thirdparty/LucidDreamer
+  # WorldArena itself should be launched from a Python 3.10+ environment; this
+  # interpreter is used only for the persistent LucidDreamer runner.
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/luciddreamer/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/LucidDreamer
   entrypoint: run.py
   output_ext: .mp4
   supported_suites:
     - image_static
     - video_static
-  prompt_mode: prompt_current
+  prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
     campath_gen: lookdown
     campath_render: llff
     seed: 1
     diff_steps: 50
+    input_size: 512
+    use_camera_path_render: true
+    # LucidDreamer only exposes coarse render presets. This maps the first
+    # WorldArena camera token to the closest available preset and records the
+    # original camera_path in generation records for metric interpretation.
+    campath_render_by_camera_token:
+      fixed: llff
+      move_left: llff
+      move_right: llff
+      orbit_left: llff
+      orbit_right: llff
+      pan_left: headbanging
+      pan_right: headbanging
+      pedestal_down: headbanging
+      pedestal_up: headbanging
+      pull_out: back_and_forth
+      push_in: back_and_forth
+      roll_ccw: headbanging_circle
+      roll_cw: headbanging_circle
+      tilt_down: headbanging
+      tilt_up: headbanging
     negative_prompt: ""
     model_name: ckpt/stabilityai--stable-diffusion-2-inpainting
+    min_seconds: 5.0
     prompt_prefix: ""
     prompt_suffix: ""
     keep_work_dir: false
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+    LD_LIBRARY_PATH: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/luciddreamer/lib/python3.9/site-packages/torch/lib:/mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/luciddreamer/lib

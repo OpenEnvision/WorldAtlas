@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-SITE=/share/project/bench/WorldArena/site
-NODE=/share/project/bench/tools/node-v20.11.1-linux-x64/bin/node
+SITE=/mnt/cpfs/yangboxue/visual_generation/juanxi/WorldArena/site
+NODE=node
 PID=$SITE/worldarena-site.pid
 LOG=$SITE/worldarena-site.log
 PORT=${PORT:-4173}
@@ -16,6 +16,16 @@ if ss -ltnp 2>/dev/null | grep -q ":${PORT} "; then
   exit 1
 fi
 : > "$LOG"
-PORT="$PORT" nohup "$NODE" "$SITE/server.cjs" > "$LOG" 2>&1 &
+if command -v setsid >/dev/null 2>&1; then
+  setsid env PORT="$PORT" "$NODE" "$SITE/server.cjs" > "$LOG" 2>&1 < /dev/null &
+else
+  PORT="$PORT" nohup "$NODE" "$SITE/server.cjs" > "$LOG" 2>&1 < /dev/null &
+fi
 echo $! > "$PID"
+sleep 1
+if ! kill -0 "$(cat "$PID")" 2>/dev/null; then
+  echo "server failed to stay running; log follows" >&2
+  cat "$LOG" >&2
+  exit 1
+fi
 echo "started pid=$(cat "$PID") port=$PORT"

@@ -6,17 +6,23 @@ from worldarena.models.adapters import (
     CameraCtrlAdapter,
     CogVideoAdapter,
     CosmosFrameworkAdapter,
+    CosmosPredict25Adapter,
+    DreamXWorldAdapter,
+    EchoInfinityAdapter,
     FlashWorldAdapter,
     Gen3CAdapter,
+    HeliosAdapter,
     HYWorldPlayAdapter,
     HunyuanGameCraftAdapter,
     HunyuanVideoAdapter,
     HunyuanWorldAdapter,
+    HunyuanWorldVoyagerAdapter,
     InSpatioWorldAdapter,
     InfiniteWorldAdapter,
     KairosAdapter,
     LingBotWorldAdapter,
     LongCatVideoAdapter,
+    LongLiveAdapter,
     LTX23Adapter,
     LucidDreamerAdapter,
     Lyra1Adapter,
@@ -27,6 +33,7 @@ from worldarena.models.adapters import (
     MotionCtrlAdapter,
     ReCamMasterAdapter,
     SanaWMAdapter,
+    StableVirtualCameraAdapter,
     Wan22Adapter,
     VideoApiAdapter,
     WarpAsHistoryAdapter,
@@ -56,12 +63,26 @@ def build_model_adapter(config: ModelRuntimeConfig) -> ModelAdapter:
         return CogVideoAdapter(config)
     if family in {"cosmos_framework", "cosmos-framework", "cosmos"}:
         return CosmosFrameworkAdapter(config)
+    if family in {
+        "cosmos_predict25",
+        "cosmos-predict25",
+        "cosmos_predict2.5",
+        "cosmos-predict2.5",
+        "cosmos_predict2_5",
+    }:
+        return CosmosPredict25Adapter(config)
+    if family in {"dreamx_world", "dreamx-world", "dreamx"}:
+        return DreamXWorldAdapter(config)
     if family in {"astra"}:
         return AstraAdapter(config)
     if family in {"lingbot", "lingbot_world", "lingbot-world"}:
         return LingBotWorldAdapter(config)
+    if family in {"longlive", "long_live", "long-live", "longlive_1", "longlive_2"}:
+        return LongLiveAdapter(config)
     if family in {"gen3c"}:
         return Gen3CAdapter(config)
+    if family in {"helios", "helios_video", "helios-video"}:
+        return HeliosAdapter(config)
     if family in {"luciddreamer", "lucid_dreamer", "lucid-dreamer"}:
         return LucidDreamerAdapter(config)
     if family in {"hy_worldplay", "hy-worldplay", "worldplay"}:
@@ -77,6 +98,14 @@ def build_model_adapter(config: ModelRuntimeConfig) -> ModelAdapter:
         return HunyuanVideoAdapter(config)
     if family in {"hunyuanworld", "hunyuan_world", "hunyuanworld_1_0", "hunyuanworld-1.0"}:
         return HunyuanWorldAdapter(config)
+    if family in {
+        "hunyuanworld_voyager",
+        "hunyuanworld-voyager",
+        "hunyuan_world_voyager",
+        "hunyuan-world-voyager",
+        "voyager",
+    }:
+        return HunyuanWorldVoyagerAdapter(config)
     if family in {"longcat_video", "longcat-video", "longcat"}:
         return LongCatVideoAdapter(config)
     if family in {"ltx2.3", "ltx23", "ltx_2_3", "ltx-2.3", "ltx-23", "ltx_video"}:
@@ -98,6 +127,14 @@ def build_model_adapter(config: ModelRuntimeConfig) -> ModelAdapter:
         return ReCamMasterAdapter(config)
     if family in {"sana_wm", "sana-wm", "sanawm"}:
         return SanaWMAdapter(config)
+    if family in {
+        "stable_virtual_camera",
+        "stable-virtual-camera",
+        "stablevirtualcamera",
+        "seva",
+        "svc",
+    }:
+        return StableVirtualCameraAdapter(config)
     if family in {"lyra1", "lyra_1", "lyra-1"}:
         return Lyra1Adapter(config)
     if family in {"lyra2", "lyra_2", "lyra-2"}:
@@ -124,6 +161,8 @@ def build_model_adapter(config: ModelRuntimeConfig) -> ModelAdapter:
         return YumeAdapter(config)
     if family in {"wan", "wan22", "wan2.2", "wan_2_2", "wan2_2"}:
         return Wan22Adapter(config)
+    if family in {"echo_infinity", "echo-infinity", "echoinfinity"}:
+        return EchoInfinityAdapter(config)
     if family in {"warp_as_history", "warp-as-history", "warpas_history", "wah"}:
         return WarpAsHistoryAdapter(config)
     raise ValueError(f"Unsupported model family: {config.family}")

@@ -1,0 +1,29 @@
+model:
+  name: longlive-2.0
+  family: longlive_2
+  backend_type: local_repo
+  task_families: [video_generation]
+  artifact_types: [video]
+  control_signals: [text]
+  roles: [candidate]
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/realtime-video/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/LongLive
+  entrypoint: inference.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: none
+  generation:
+    version: "2.0"
+    config_path: configs/inference.yaml
+    prompt_file_format: txt
+    nproc_per_node: 1
+    master_port: 29500
+    use_torchrun: false
+    config_overrides: {}
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt

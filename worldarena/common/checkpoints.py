@@ -9,6 +9,7 @@ from typing import Mapping
 CHECKPOINT_ENV_KEYS = (
     "HF_HOME",
     "HF_HUB_CACHE",
+    "HUGGINGFACE_HUB_CACHE",
     "TRANSFORMERS_CACHE",
     "TORCH_HOME",
     "HF_HUB_OFFLINE",
@@ -28,6 +29,8 @@ HF_REPO_SUBPATHS: dict[str, tuple[str, ...]] = {
     "mhamilton723/FeatUp": ("mhamilton723--FeatUp",),
     "nvidia/Cosmos-Tokenize1-CV8x8x8-720p": ("Cosmos-Tokenize1-CV8x8x8-720p",),
     "openai/clip-vit-base-patch16": ("models--openai--clip-vit-base-patch16",),
+    "Wan-AI/Wan2.1-T2V-1.3B": ("Wan2.1-T2V-1.3B",),
+    "Wan-AI/Wan2.2-TI2V-5B-Diffusers": ("Wan2.2-TI2V-5B-Diffusers",),
 }
 
 
@@ -232,7 +235,16 @@ def hf_local_dir(repo_id: str, *, required: bool = False) -> Path:
 
 def checkpoint_cache_env(*, create: bool = True) -> CheckpointCacheEnv:
     """Return the fixed cache directories that keep HF/Torch downloads under ckpt."""
-    root = checkpoint_root(create=create)
+    return _checkpoint_cache_env_for_root(checkpoint_root(create=create), create=create)
+
+
+def _checkpoint_cache_env_for_root(root: Path, *, create: bool = True) -> CheckpointCacheEnv:
+    root = root.expanduser()
+    if not root.is_absolute():
+        root = PROJECT_ROOT / root
+    root = Path(os.path.abspath(str(root)))
+    if create:
+        root.mkdir(parents=True, exist_ok=True)
     hf_home = (root / "huggingface").resolve()
     hf_hub_cache = (hf_home / "hub").resolve()
     transformers_cache = (root / "transformers").resolve()
@@ -254,6 +266,7 @@ def checkpoint_env(*, create: bool = True) -> dict[str, str]:
     return {
         "HF_HOME": str(cache_env.hf_home),
         "HF_HUB_CACHE": str(cache_env.hf_hub_cache),
+        "HUGGINGFACE_HUB_CACHE": str(cache_env.hf_hub_cache),
         "TRANSFORMERS_CACHE": str(cache_env.transformers_cache),
         "TORCH_HOME": str(cache_env.torch_home),
         "HF_HUB_OFFLINE": "1",
@@ -281,7 +294,22 @@ def apply_checkpoint_env(
 ) -> dict[str, str]:
     """Overlay the fixed checkpoint cache env onto an existing environment."""
     payload = dict(env or os.environ.copy())
-    payload.update(checkpoint_env(create=create))
+    root_override = payload.get(CHECKPOINT_ROOT_ENV)
+    if root_override:
+        cache_env = _checkpoint_cache_env_for_root(Path(root_override), create=create)
+        payload.update(
+            {
+                "HF_HOME": str(cache_env.hf_home),
+                "HF_HUB_CACHE": str(cache_env.hf_hub_cache),
+                "HUGGINGFACE_HUB_CACHE": str(cache_env.hf_hub_cache),
+                "TRANSFORMERS_CACHE": str(cache_env.transformers_cache),
+                "TORCH_HOME": str(cache_env.torch_home),
+                "HF_HUB_OFFLINE": "1",
+                "TRANSFORMERS_OFFLINE": "1",
+            }
+        )
+    else:
+        payload.update(checkpoint_env(create=create))
     return payload
 
 

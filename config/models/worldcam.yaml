@@ -6,27 +6,30 @@ model:
   artifact_types: [video]
   control_signals: [text, video, camera_pose]
   roles: [candidate]
-  # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
-  repo_root: thirdparty/WorldCam
-  # Download the fine-tuned WorldCam DiT here as `finetuned_dit.safetensors`.
-  checkpoint_dir: ckpt/worldcam--worldcam
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/worldcam/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/WorldCam
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/worldcam
   entrypoint: inference.py
   output_ext: .mp4
   supported_suites:
     - video_static
-    - video_dynamic
   prompt_mode: prompt_current
   reference_mode: reference_video
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
   generation:
     height: 480
     width: 832
     cond_frames: 65
-    camera_frames: 233
-    output_fps: 30
+    camera_frames: auto
+    output_fps: match_gt
     output_quality: 4
     cfg_scale: 4.0
     seed: 0
-    num_ar_steps: 50
+    num_ar_steps: auto
+    match_gt_frame_count: true
+    match_gt_fps: true
     attention_sink_inference: false
     long_term_memory_start: 30
     long_term_memory_num_clips: 4

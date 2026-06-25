@@ -58,6 +58,8 @@ def patch_torch_dynamo_config_aliases() -> None:
         "accumulated_recompile_limit": "accumulated_cache_size_limit",
     }
     config_module = torch._dynamo.config
+    if all(alias in getattr(config_module, "_config", {}) for alias in alias_map):
+        return
     _install_config_aliases(config_module, alias_map)
 
 
@@ -71,7 +73,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output_dir", required=True, type=str)
     parser.add_argument("--save_name", required=True, type=str)
     parser.add_argument("--size", default="704*1280", type=str)
-    parser.add_argument("--fps", default=17, type=int)
+    parser.add_argument("--fps", default=17.0, type=float)
     parser.add_argument("--save_num_frames", default=0, type=int)
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--num_iterations", default=1, type=int)

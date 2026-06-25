@@ -102,17 +102,24 @@ class MatrixGame3Runtime:
         self.size = str(self.generation.get("size", "704*1280"))
         self.height = int(self.size.split("*")[0])
         self.width = int(self.size.split("*")[1])
-        self.fps = int(self.generation.get("fps", 17))
-        self.save_num_frames = int(self.generation.get("save_num_frames") or 0)
+        self.default_fps = float(self.generation.get("fps", 17))
+        self.default_save_num_frames = int(self.generation.get("save_num_frames") or 0)
+        self.current_fps = self.default_fps
+        self.current_save_num_frames = self.default_save_num_frames
         self.seed = int(self.generation.get("seed", 42))
-        self.num_iterations = int(dict(self.generation.get("action_plan", {})).get("num_iterations", self.generation.get("num_iterations", 2)))
+        self.default_num_iterations = int(
+            dict(self.generation.get("action_plan", {})).get(
+                "num_iterations",
+                self.generation.get("num_iterations", 2),
+            )
+        )
 
         self.runtime_args = SimpleNamespace(
             ckpt_dir=str(self.checkpoint_dir),
             size=self.size,
             save_name="generated_video",
             seed=self.seed,
-            num_iterations=self.num_iterations,
+            num_iterations=self.default_num_iterations,
             output_dir=str(output_dir),
             sample_shift=self.generation.get("sample_shift"),
             sample_guide_scale=float(self.generation.get("sample_guide_scale", 5.0)),
@@ -150,15 +157,15 @@ class MatrixGame3Runtime:
         ):
             del config, mouse_icon_path, mouse_scale, mouse_rotation, default_frame_res
             frames = input_video
-            if self.save_num_frames:
-                if self.save_num_frames > len(frames):
+            if self.current_save_num_frames:
+                if self.current_save_num_frames > len(frames):
                     raise ValueError(
-                        f"save_num_frames={self.save_num_frames} exceeds generated frame count {len(frames)}"
+                        f"save_num_frames={self.current_save_num_frames} exceeds generated frame count {len(frames)}"
                     )
-                frames = frames[: self.save_num_frames]
+                frames = frames[: self.current_save_num_frames]
             output_path = Path(output_video)
             output_path.parent.mkdir(parents=True, exist_ok=True)
-            self.imageio.mimsave(str(output_path), np.ascontiguousarray(frames), fps=self.fps)
+            self.imageio.mimsave(str(output_path), np.ascontiguousarray(frames), fps=self.current_fps)
 
         mg_inference.process_video = patched_process_video
 
@@ -224,7 +231,15 @@ class MatrixGame3Runtime:
     def generate_one(self, item: dict[str, Any]) -> dict[str, Any]:
         torch = self.torch
         pil_image = self.Image.open(item["conditioning_image"]).convert("RGB")
-        self._install_get_data(item["action_payload"], pil_image)
+        action_payload = item["action_payload"]
+        self.current_fps = float(action_payload.get("output_fps", self.default_fps))
+        self.current_save_num_frames = int(
+            action_payload.get("save_num_frames", self.default_save_num_frames) or 0
+        )
+        self.runtime_args.num_iterations = int(
+            action_payload.get("num_iterations", self.default_num_iterations)
+        )
+        self._install_get_data(action_payload, pil_image)
         self.runtime_args.save_name = item["prediction_path"].stem
         self.runtime_args.output_dir = str(item["prediction_path"].parent)
         self.pipeline.output_dir = str(item["prediction_path"].parent)
@@ -247,16 +262,19 @@ class MatrixGame3Runtime:
         if not item["prediction_path"].exists():
             raise FileNotFoundError(f"Matrix-Game-3 output was not written: {item['prediction_path']}")
         return {
-            "actions": item["action_payload"].get("actions", []),
-            "action_source": item["action_payload"].get("action_source"),
-            "camera_token": item["action_payload"].get("camera_token"),
-            "camera_path": item["action_payload"].get("camera_path"),
-            "control_source": item["action_payload"].get("control_source"),
-            "prompt_control_note": item["action_payload"].get("prompt_control_note"),
+            "actions": action_payload.get("actions", []),
+            "action_source": action_payload.get("action_source"),
+            "camera_token": action_payload.get("camera_token"),
+            "camera_path": action_payload.get("camera_path"),
+            "control_source": action_payload.get("control_source"),
+            "prompt_control_note": action_payload.get("prompt_control_note"),
             "mode": "matrix_game_3",
-            "num_iterations": self.num_iterations,
-            "output_fps": self.fps,
-            "saved_frames": self.save_num_frames or None,
+            "num_iterations": self.runtime_args.num_iterations,
+            "output_fps": self.current_fps,
+            "saved_frames": self.current_save_num_frames or None,
+            "gt_camera_annotation_path": action_payload.get("gt_camera_annotation_path"),
+            "gt_video_frame_count": action_payload.get("gt_video_frame_count"),
+            "gt_video_fps": action_payload.get("gt_video_fps"),
             "prediction_path": str(item["prediction_path"]),
             "variant": "matrix_game_3",
         }

@@ -27,6 +27,19 @@ def _torch_dtype(torch, value: str):
     return torch.bfloat16
 
 
+_DEFAULT_RESOLUTIONS: dict[str, tuple[int, int]] = {
+    "cogvideox1.5-5b-i2v": (768, 1360),
+    "cogvideox1.5-5b": (768, 1360),
+    "cogvideox-5b-i2v": (480, 720),
+    "cogvideox-5b": (480, 720),
+    "cogvideox-2b": (480, 720),
+}
+
+
+def _default_height_width(model_path: str) -> tuple[int, int] | None:
+    return _DEFAULT_RESOLUTIONS.get(Path(model_path).name.lower())
+
+
 def main() -> int:
     args = parse_args()
     repo_root = Path(args.repo_root).expanduser().resolve()
@@ -62,9 +75,17 @@ def main() -> int:
     for row_index, row in enumerate(rows):
         sample_id = str(row.get("sample_id", row_index))
         try:
+            default_height_width = _default_height_width(model_path)
+            height = generation.get("height")
+            width = generation.get("width")
+            if default_height_width is not None:
+                if height is None:
+                    height = default_height_width[0]
+                if width is None:
+                    width = default_height_width[1]
             kwargs = {
-                "height": generation.get("height"),
-                "width": generation.get("width"),
+                "height": int(height) if height is not None else None,
+                "width": int(width) if width is not None else None,
                 "prompt": str(row["prompt"]),
                 "num_videos_per_prompt": 1,
                 "num_inference_steps": int(generation.get("num_inference_steps", 50)),

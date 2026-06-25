@@ -229,6 +229,15 @@ def main() -> None:
             extra_pythonpaths=[project_root],
             overrides=model_config.env,
         )
+        for proxy_key in (
+            "ALL_PROXY",
+            "all_proxy",
+            "HTTP_PROXY",
+            "http_proxy",
+            "HTTPS_PROXY",
+            "https_proxy",
+        ):
+            env.pop(proxy_key, None)
         try:
             subprocess.run(
                 command,

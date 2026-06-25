@@ -16,7 +16,7 @@ def _make_config(tmp_path: Path) -> ModelRuntimeConfig:
     config_path.write_text("model: {}\n", encoding="utf-8")
     return ModelRuntimeConfig(
         config_path=config_path,
-        name="ac3d-cogvideox-2b",
+        name="ac3d-cogvideox-5b-i2v",
         family="ac3d",
         python_bin="python",
         repo_root=tmp_path / "ac3d",
@@ -25,17 +25,20 @@ def _make_config(tmp_path: Path) -> ModelRuntimeConfig:
         output_ext=".mp4",
         supported_suites=["image_static"],
         prompt_mode="prompt_target",
-        reference_mode="none",
-        control_signals=["text", "camera_pose"],
+        reference_mode="reference_image",
+        control_signals=["text", "image", "camera_pose"],
         generation={
-            "variant": "2b",
+            "variant": "5b",
+            "conditioning_mode": "image",
             "video_root_dir": str(tmp_path / "re10k"),
             "annotation_json": "annotations/test.json",
-            "base_model_path": str(tmp_path / "ckpt" / "CogVideoX-2b"),
-            "controlnet_model_path": "2B/checkpoint-10000.pt",
+            "base_model_path": str(tmp_path / "ckpt" / "CogVideoX-5b-I2V"),
+            "controlnet_model_path": "5B/checkpoint-10000.pt",
             "camera_index": 3,
             "num_inference_steps": 1,
-            "num_frames": 2,
+            "num_frames": 49,
+            "fps": 8,
+            "min_duration_seconds": 5.0,
         },
     )
 
@@ -65,6 +68,7 @@ def _make_sample() -> BenchmarkSample:
         source_type="synthetic",
         source_group_id="group-1",
         license_bucket="internal",
+        camera_path=["orbit_left"],
     )
 
 
@@ -74,9 +78,9 @@ def test_ac3d_config_and_registry_load() -> None:
 
     assert isinstance(adapter, AC3DAdapter)
     assert adapter.supports_batch_generation()
-    assert config.reference_mode == "none"
-    assert config.generation["variant"] == "2b"
-    assert config.generation["controlnet_transformer_attention_head_dim"] == 32
+    assert config.reference_mode == "reference_image"
+    assert config.generation["variant"] == "5b"
+    assert config.generation["controlnet_transformer_attention_head_dim"] == 64
 
 
 def test_ac3d_generate_batch_writes_spec_and_generation_config(monkeypatch, tmp_path: Path) -> None:
@@ -129,6 +133,7 @@ def test_ac3d_generate_batch_writes_spec_and_generation_config(monkeypatch, tmp_
             "camera_index": 3,
             "start_camera_idx": 3,
             "end_camera_idx": 4,
+            "camera_path": ["orbit_left"],
         }
     ]
     assert captured["generation"] == config.generation

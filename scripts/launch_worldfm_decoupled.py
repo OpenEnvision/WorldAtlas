@@ -9,7 +9,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
-from typing import Any
+from typing import Any, Callable
 from uuid import uuid4
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -37,8 +37,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--threads-per-merge-worker", type=int, default=None)
     parser.add_argument("--threads-per-gpu-worker", type=int, default=8)
     parser.add_argument("--poll-seconds", type=float, default=30.0)
+    parser.add_argument("--summarize-interval-seconds", type=float, default=60.0)
     parser.add_argument("--work-root", default=None)
     parser.add_argument("--spec-path", default=None)
+    parser.add_argument(
+        "--sequential-stages",
+        action="store_true",
+        help="Wait for all prepare workers to exit before starting final (legacy behavior).",
+    )
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--delete-after-final", action="store_true")
     return parser.parse_args()
@@ -249,9 +255,15 @@ def _start_worker(
     return worker_name, process, log_file
 
 
-def _wait(processes: list[tuple[str, subprocess.Popen, object]]) -> bool:
+def _wait(
+    processes: list[tuple[str, subprocess.Popen, object]],
+    *,
+    summarize_every: float | None = None,
+    summarize_fn: Callable[[], None] | None = None,
+) -> bool:
     failed = False
     remaining = list(processes)
+    next_summary_at = time.time() + float(summarize_every or 0)
     try:
         while remaining:
             active: list[tuple[str, subprocess.Popen, object]] = []
@@ -265,6 +277,9 @@ def _wait(processes: list[tuple[str, subprocess.Popen, object]]) -> bool:
                 failed = failed or code != 0
             remaining = active
             if remaining:
+                if summarize_fn is not None and summarize_every and time.time() >= next_summary_at:
+                    summarize_fn()
+                    next_summary_at = time.time() + float(summarize_every)
                 time.sleep(15)
     finally:
         for name, process, log_file in remaining:
@@ -273,6 +288,37 @@ def _wait(processes: list[tuple[str, subprocess.Popen, object]]) -> bool:
                 process.terminate()
             log_file.close()
     return not failed
+
+
+def _load_records(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    records: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        records.append(json.loads(line))
+    return records
+
+
+def _resolve_run_context(args: argparse.Namespace, output_dir: Path) -> tuple[Path, Path, list[dict[str, Any]]]:
+    work_root = Path(args.work_root).expanduser().resolve() if args.work_root else output_dir / "_worldfm_decoupled"
+    run_root = work_root
+    spec_path = Path(args.spec_path).expanduser().resolve() if args.spec_path else work_root / "requests.jsonl"
+    if args.spec_path:
+        if not spec_path.exists():
+            raise FileNotFoundError(f"batch spec not found: {spec_path}")
+        records = _load_records(run_root / "initial_records.jsonl")
+        if not records:
+            records = [{"prediction_path": str(output_dir / "unknown.mp4"), "status": "pending"}]
+        print(f"[launch_worldfm_decoupled] resume existing run work_root={run_root}", flush=True)
+        return run_root, spec_path, records
+
+    run_root = work_root / f"run_{uuid4().hex[:10]}"
+    run_root.mkdir(parents=True, exist_ok=True)
+    spec_path, records = _build_spec(args, output_dir=output_dir, work_root=run_root)
+    return run_root, spec_path, records
 
 
 def _summarize(output_dir: Path, work_root: Path, records: list[dict[str, Any]]) -> None:
@@ -297,6 +343,9 @@ def _summarize(output_dir: Path, work_root: Path, records: list[dict[str, Any]])
         elif final_done.exists():
             record["status"] = "failed"
             record["error"] = f"final stage done but output missing: {prediction_path}"
+        else:
+            record["status"] = "pending"
+            record["error"] = None
         updated.append(record)
     with (output_dir / "generation_records.jsonl").open("w", encoding="utf-8") as file:
         for record in updated:
@@ -308,6 +357,7 @@ def _summarize(output_dir: Path, work_root: Path, records: list[dict[str, Any]])
         "records": len(updated),
         "generated": sum(1 for item in updated if item["status"] == "generated"),
         "skipped_existing": sum(1 for item in updated if item["status"] == "skipped_existing"),
+        "pending": sum(1 for item in updated if item["status"] == "pending"),
         "failed": sum(1 for item in updated if item["status"] == "failed"),
         "work_root": str(work_root),
     }
@@ -318,12 +368,7 @@ def main() -> int:
     args = parse_args()
     output_dir = Path(args.output_dir).expanduser().resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
-    work_root = Path(args.work_root).expanduser().resolve() if args.work_root else output_dir / "_worldfm_decoupled"
-    run_root = work_root / f"run_{uuid4().hex[:10]}"
-    if args.spec_path:
-        run_root = work_root
-    run_root.mkdir(parents=True, exist_ok=True)
-    spec_path, records = _build_spec(args, output_dir=output_dir, work_root=run_root)
+    run_root, spec_path, records = _resolve_run_context(args, output_dir)
     if not spec_path.exists() or spec_path.stat().st_size == 0:
         _summarize(output_dir, run_root, records)
         print("[launch_worldfm_decoupled] no runnable requests", flush=True)
@@ -344,11 +389,20 @@ def main() -> int:
 
     log_dir = output_dir / "logs"
     env = os.environ.copy()
+    executable_bin = str(Path(sys.executable).resolve().parent)
+    path_entries = [entry for entry in env.get("PATH", "").split(os.pathsep) if entry]
+    if executable_bin not in path_entries:
+        env["PATH"] = os.pathsep.join([executable_bin, *path_entries])
     prepare_gpus = _split_csv(args.prepare_gpus)
     final_gpus = _split_csv(args.final_gpus)
     merge_threads = int(args.threads_per_merge_worker or max(1, (os.cpu_count() or 1) // max(int(args.merge_workers), 1)))
 
     merge_processes: list[tuple[str, subprocess.Popen, object]] = []
+    prepare_processes: list[tuple[str, subprocess.Popen, object]] = []
+    final_processes: list[tuple[str, subprocess.Popen, object]] = []
+    summarize_fn = lambda: _summarize(output_dir, run_root, records)
+    summarize_every = float(args.summarize_interval_seconds)
+
     if args.mode in {"full", "merge", "prepare_merge"}:
         for index in range(max(int(args.merge_workers), 1)):
             merge_processes.append(
@@ -364,7 +418,6 @@ def main() -> int:
                 )
             )
 
-    ok = True
     if args.mode in {"full", "prepare", "prepare_merge"}:
         prepare_processes = [
             _start_worker(
@@ -379,9 +432,9 @@ def main() -> int:
             )
             for index, gpu_id in enumerate(prepare_gpus)
         ]
-        ok = _wait(prepare_processes) and ok
 
-    if args.mode in {"full", "final"}:
+    pipeline_final = args.mode == "full" and not args.sequential_stages
+    if args.mode == "final" or pipeline_final:
         final_processes = [
             _start_worker(
                 stage="final",
@@ -395,10 +448,40 @@ def main() -> int:
             )
             for index, gpu_id in enumerate(final_gpus)
         ]
-        ok = _wait(final_processes) and ok
+        if pipeline_final:
+            print(
+                "[launch_worldfm_decoupled] pipelined full mode: prepare/merge/final run concurrently; "
+                "final mp4 is written to output_dir as each sample completes.",
+                flush=True,
+            )
 
-    if merge_processes:
-        ok = _wait(merge_processes) and ok
+    ok = True
+    if pipeline_final:
+        active = [*merge_processes, *prepare_processes, *final_processes]
+        ok = _wait(
+            active,
+            summarize_every=summarize_every,
+            summarize_fn=summarize_fn,
+        ) and ok
+    else:
+        if prepare_processes:
+            ok = _wait(
+                prepare_processes,
+                summarize_every=summarize_every,
+                summarize_fn=summarize_fn,
+            ) and ok
+        if final_processes:
+            ok = _wait(
+                final_processes,
+                summarize_every=summarize_every,
+                summarize_fn=summarize_fn,
+            ) and ok
+        if merge_processes:
+            ok = _wait(
+                merge_processes,
+                summarize_every=summarize_every,
+                summarize_fn=summarize_fn,
+            ) and ok
     _summarize(output_dir, run_root, records)
     return 0 if ok else 1
 

@@ -122,24 +122,24 @@ export const homeHeroVisuals = [
 
 export const homeSignals = [
   {
-    value: "4 suites",
-    label: "formal benchmark surface",
+    value: "34,941+",
+    label: "videos evaluated",
+    href: "/uncertain/"
+  },
+  {
+    value: "126",
+    label: "models & runs",
+    href: "#home-leaderboard"
+  },
+  {
+    value: "26",
+    label: "fine-grained categories",
     href: "/docs/benchmark/"
   },
   {
-    value: "6 pillars",
-    label: "capability roll-up",
-    href: "/docs/benchmark/metrics/"
-  },
-  {
-    value: "32+ metrics",
+    value: "32+",
     label: "suite metric vectors",
     href: "/docs/benchmark/metrics/"
-  },
-  {
-    value: "1 archive",
-    label: "images, videos, physics",
-    href: "/uncertain/"
   }
 ];
 

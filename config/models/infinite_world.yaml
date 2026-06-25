@@ -6,10 +6,9 @@ model:
   artifact_types: [video]
   control_signals: [text, image, actions]
   roles: [candidate]
-  # Infinite-World currently expects a CUDA-capable Python 3.10 runtime with flash-attn.
-  python_bin: /share/project/yesliu/miniconda3/envs/infworld/bin/python
-  repo_root: /bench-workspace/yesliu/hjd/model/WorldArena/ckpt/MeiGen-AI--Infinite-World
-  checkpoint_dir: /bench-workspace/yesliu/hjd/model/WorldArena/ckpt/MeiGen-AI--Infinite-World
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/sana/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Infinite-World
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Infinite-World
   entrypoint: scripts/infworld_inference.py
   output_ext: .mp4
   supported_suites:
@@ -55,3 +54,12 @@ model:
           - forward
           - camera_left
       frames_per_action: 16
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+    HF_HOME: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/hf-home
+    HUGGINGFACE_HUB_CACHE: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/hf-home/hub
+    TORCH_HOME: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/torch-home
+    XDG_CACHE_HOME: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/xdg-cache
+    TOKENIZERS_PARALLELISM: "false"
+    PYTHONPATH: "/mnt/cpfs/yangboxue/visual_generation/juanxi/WorldArena:/mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Infinite-World"
+    LD_LIBRARY_PATH: "/mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/sana/lib:/usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda-12.9/lib64:/usr/local/cuda/lib64"

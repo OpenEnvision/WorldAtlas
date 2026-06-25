@@ -1,0 +1,53 @@
+# Cosmos-Predict2.5-2B via the standalone nvidia-cosmos/cosmos-predict2.5 repo.
+# Runs image-conditioned WorldArena batches through one Cosmos-Predict2.5
+# inference process so the checkpoint is loaded once per benchmark run.
+model:
+  name: cosmos-predict2.5-2b
+  family: cosmos_predict25
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  python_bin: thirdparty/cosmos-predict2.5/.venv/bin/python
+  repo_root: thirdparty/cosmos-predict2.5
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Cosmos-Predict2.5-2B
+  entrypoint: examples/inference.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    inference_type: image2world
+    model: 2B/post-trained
+    model_size: 2B
+    checkpoint_variant: post-trained
+    checkpoint_path: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Cosmos-Predict2.5-2B/base/post-trained/81edfebe-bd6a-4039-8c1d-737df1a790bf_ema_bf16.pt
+    local_aux:
+      reason1_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Cosmos-Reason1-7B
+      tokenizer_vae: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Cosmos-Predict2.5-2B/tokenizer.pth
+    num_gpus: 8
+    context_parallel_size: 8
+    num_output_frames: 93
+    stage_rgb_inputs: false
+    num_steps: 35
+    guidance: 7
+    seed: 0
+    disable_guardrails: true
+    offload_guardrail_models: true
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+    HF_HOME: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/.hf_home
+    HUGGINGFACE_HUB_CACHE: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/.hf_home/hub
+    TORCH_HOME: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/torch-home
+    XDG_CACHE_HOME: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/xdg-cache
+    PATH: /mnt/cpfs/yangboxue/visual_generation/juanxi/WorldArena/thirdparty/cosmos-predict2.5/.venv/bin:/usr/local/cuda/bin:/usr/local/bin:/usr/bin:/bin
+    CUDA_HOME: /usr/local/cuda-12.9
+    CUDA_PATH: /usr/local/cuda-12.9
+    LD_LIBRARY_PATH: /usr/local/cuda-12.9/targets/x86_64-linux/lib:/usr/local/cuda-12.9/lib64
+    HF_HUB_OFFLINE: "0"
+    TRANSFORMERS_OFFLINE: "0"

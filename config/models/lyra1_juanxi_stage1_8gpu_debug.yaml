@@ -1,0 +1,41 @@
+model:
+  name: lyra-1-juanxi-stage1-8gpu-debug
+  family: lyra1
+  backend_type: local_repo
+  task_families: [video_generation, scene_3d_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/lyra/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/lyra/Lyra-1
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Lyra
+  entrypoint: sample.py
+  output_ext: .mp4
+  env:
+    CUDA_HOME: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/lyra
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+  supported_suites:
+    - image_static
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    num_gpus: 8
+    num_video_frames: 121
+    height: 704
+    width: 1280
+    fps: 24
+    seed: 42
+    guidance: 1.0
+    num_steps: 35
+    trajectory: left
+    camera_rotation: center_facing
+    movement_distance: 0.3
+    total_movement_distance_factor: 1.0
+    foreground_masking: true
+    center_depth_quantile: true
+    center_depth_quantile_value: 0.9
+    multi_trajectory: true
+    target_index_subsample: 1
+    output_view_index: 0
+    static_view_indices_fixed: ["5", "0", "1", "2", "3", "4"]
+    skip_stage2: true

@@ -73,6 +73,38 @@ def _stage_dir(work_root: Path, stage: str, request: dict[str, Any]) -> Path:
     return work_root / stage / str(request["prediction_stem"])
 
 
+def _output_root_from_request(request: dict[str, Any]) -> Path:
+    return Path(str(request["output_path"])).expanduser().resolve().parent
+
+
+def _publish_stage_staging(
+    work_root: Path,
+    request: dict[str, Any],
+    stage: str,
+    stage_dir: Path,
+) -> None:
+    output_root = _output_root_from_request(request)
+    stem = str(request["prediction_stem"])
+    dest = output_root / "_staging" / stem / stage
+    dest.mkdir(parents=True, exist_ok=True)
+    if stage == "prepare":
+        for name in ("panorama_rgb.png", "moge_prepare.npz"):
+            source = stage_dir / name
+            if source.exists():
+                shutil.copy2(source, dest / name)
+    elif stage == "merge":
+        for name in ("transforms_condition.json",):
+            source = stage_dir / name
+            if source.exists():
+                shutil.copy2(source, dest / name)
+        preview = stage_dir / "condition_candidates" / "0000.png"
+        if preview.exists():
+            shutil.copy2(preview, dest / "condition_preview.png")
+    done_path = _done_path(work_root, stage, request)
+    if done_path.exists():
+        shutil.copy2(done_path, dest / "done.json")
+
+
 def _done_path(work_root: Path, stage: str, request: dict[str, Any]) -> Path:
     return _stage_dir(work_root, stage, request) / "done.json"
 
@@ -516,6 +548,13 @@ def _run_stage_loop(
                         "time": time.time(),
                     },
                 )
+                if args.stage in {"prepare", "merge"}:
+                    _publish_stage_staging(
+                        work_root,
+                        request,
+                        args.stage,
+                        _stage_dir(work_root, args.stage, request),
+                    )
             except Exception as exc:  # noqa: BLE001 - write per-sample failure and continue.
                 _failed(
                     fail_path,

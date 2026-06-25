@@ -1,0 +1,215 @@
+.home-hero-bg-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -2;
+    transform: scale(1.02);
+}
+
+.home-hero-overlay {
+    display: none !important; /* Completely remove any dark overlays to show raw video */
+}
+
+/* Completely remove the bottom white gradient that was blocking the video */
+.home-hero::after {
+    display: none !important;
+}
+.home-hero::before {
+    display: none !important;
+}
+
+/* Enhance the title and text readability when fading in */
+.home-hero h1 {
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.home-hero-lede, .home-kicker {
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.8);
+}
+
+@keyframes heroFadeIn {
+    0% { opacity: 0; transform: translateY(16px); filter: blur(6px); }
+    100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+.home-hero-fade-in {
+    opacity: 0;
+    animation: heroFadeIn 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) 4.8s forwards;
+}
+
+/* Reset height of home-hero so it is purely a video showcase */
+.home-hero {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    padding: 0 !important;
+    display: block !important;
+}
+
+/* Styling for the new intro section that sits below the video */
+.home-intro-section {
+    background: #fdfdfc;
+    padding: 100px 0 100px;
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 -32px 80px rgba(0,0,0,0.06);
+    margin-bottom: -1px;
+}
+
+.home-intro-section::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+        radial-gradient(circle at 80% 0%, rgba(104, 126, 95, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 20% 100%, rgba(167, 101, 42, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.home-intro-copy {
+    width: min(1320px, calc(100% - 96px));
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+}
+
+.home-intro-kicker {
+    display: none !important;
+}
+
+.home-intro-title {
+    margin: 0 0 40px 0 !important;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    width: 100%;
+}
+
+.home-intro-logo {
+    max-width: 100%;
+    height: auto;
+    width: clamp(540px, 80vw, 1080px);
+    display: block;
+    margin: 0;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.05));
+}
+
+.home-intro-lede {
+    color: rgba(21, 21, 21, 0.75);
+    font-size: clamp(20px, 2.5vw, 26px);
+    line-height: 1.6;
+    margin-bottom: 56px;
+    text-shadow: none;
+    max-width: 860px;
+    font-weight: 400;
+}
+
+.home-intro-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 20px;
+}
+
+.home-intro-actions a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 60px;
+    padding: 0 40px;
+    border: 1px solid rgba(21, 21, 21, 0.15);
+    border-radius: 999px;
+    background: transparent;
+    color: #151515;
+    font-size: 18px;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.home-intro-actions a:hover {
+    background: rgba(21, 21, 21, 0.05);
+    border-color: rgba(21, 21, 21, 0.3);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+.home-intro-actions .home-primary-action {
+    background: #151515;
+    color: #ffffff;
+    border-color: #151515;
+    font-size: 19px;
+}
+
+.home-intro-actions .home-primary-action:hover {
+    background: #292929;
+    color: #ffffff;
+    box-shadow: 0 16px 32px rgba(21, 21, 21, 0.15);
+    transform: translateY(-3px);
+}
+
+.home-main {
+    background: #fdfdfc;
+}
+
+/* Pillar section high-end custom styles */
+.home-pillar-section {
+    position: relative;
+    z-index: 1;
+    margin: 0 clamp(24px, 4vw, 48px) clamp(76px, 10vw, 136px);
+    padding: clamp(100px, 12vw, 160px) clamp(40px, 8vw, 100px);
+    background:
+        radial-gradient(circle at 10% 0%, rgba(113, 168, 151, 0.08) 0%, transparent 50%),
+        linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(250, 251, 248, 1)) !important;
+    border: 1px solid rgba(21, 21, 21, 0.08) !important;
+    border-radius: 48px !important;
+    color: #151515 !important;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.05) !important;
+    backdrop-filter: blur(20px);
+}
+
+.home-signal-strip {
+    background: transparent !important;
+    color: #151515 !important;
+    border-top: none !important;
+    border-bottom: 1px solid rgba(21, 21, 21, 0.1) !important;
+    margin-bottom: 80px !important;
+}
+
+.home-signal {
+    border-right: 1px solid rgba(21, 21, 21, 0.1) !important;
+    color: #151515 !important;
+    padding: 24px 0 48px !important;
+}
+
+.home-signal:last-child {
+    border-right: none !important;
+}
+
+.home-signal:hover {
+    background: rgba(21, 21, 21, 0.02) !important;
+}
+
+.home-signal strong {
+    color: #151515 !important;
+    text-shadow: none !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+    font-size: clamp(42px, 5vw, 56px) !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.03em !important;
+    display: block !important;
+    margin-bottom: 12px !important;
+}
+
+.home-signal span {
+    color: rgba(21, 21, 21, 0.6) !important;
+    text-shadow: none !important;
+    font-size: 13px !important;
+    letter-spacing: 0.15em !important;
+    text-transform: uppercase !important;
+    font-weight: 800 !important;
+}

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+import tempfile
 from typing import Any
 
 from worldarena.benchmark.schemas import BenchmarkSample
@@ -11,6 +13,24 @@ from worldarena.models.adapters.common import (
     run_command,
     run_sequential_generate_batch,
 )
+
+DEFAULT_CAMERA_PATH_RENDER_PRESET = {
+    "fixed": "llff",
+    "move_left": "llff",
+    "move_right": "llff",
+    "orbit_left": "llff",
+    "orbit_right": "llff",
+    "pan_left": "headbanging",
+    "pan_right": "headbanging",
+    "pedestal_down": "headbanging",
+    "pedestal_up": "headbanging",
+    "pull_out": "back_and_forth",
+    "push_in": "back_and_forth",
+    "roll_ccw": "headbanging_circle",
+    "roll_cw": "headbanging_circle",
+    "tilt_down": "headbanging",
+    "tilt_up": "headbanging",
+}
 
 
 def _generation_for_suite(generation: dict[str, Any], suite: str) -> dict[str, Any]:
@@ -24,6 +44,35 @@ def _generation_for_suite(generation: dict[str, Any], suite: str) -> dict[str, A
     return resolved
 
 
+def _camera_path_for_sample(sample: BenchmarkSample) -> list[str]:
+    return [str(token).strip().lower() for token in sample.camera_path if str(token).strip()]
+
+
+def _generation_for_sample(generation: dict[str, Any], sample: BenchmarkSample) -> dict[str, Any]:
+    resolved = _generation_for_suite(generation, sample.suite)
+    camera_path = _camera_path_for_sample(sample)
+    resolved["_camera_path"] = camera_path
+    resolved["_camera_path_primary"] = camera_path[0] if camera_path else None
+    resolved["_campath_render_source"] = "config"
+
+    if not bool(resolved.get("use_camera_path_render", True)) or not camera_path:
+        return resolved
+
+    mapping = dict(DEFAULT_CAMERA_PATH_RENDER_PRESET)
+    configured_mapping = resolved.get("campath_render_by_camera_token")
+    if isinstance(configured_mapping, dict):
+        mapping.update({str(key).strip().lower(): str(value).strip() for key, value in configured_mapping.items()})
+
+    primary_token = camera_path[0]
+    mapped_render = mapping.get(primary_token)
+    if mapped_render:
+        resolved["campath_render"] = mapped_render
+        resolved["_campath_render_source"] = "sample_camera_path"
+    else:
+        resolved["_campath_render_source"] = "config_unknown_camera_path"
+    return resolved
+
+
 class LucidDreamerAdapter(ModelAdapter):
     def supports_batch_generation(self) -> bool:
         return True
@@ -32,7 +81,79 @@ class LucidDreamerAdapter(ModelAdapter):
         self,
         requests: list[PreparedGenerationRequest],
     ) -> dict[str, dict[str, Any]]:
-        return run_sequential_generate_batch(self, requests)
+        if not requests:
+            return {}
+
+        repo_root = self.config.repo_root
+        if repo_root is None:
+            raise ValueError("LucidDreamer adapter requires repo_root")
+
+        project_root = Path(__file__).resolve().parents[3]
+        runner_path = project_root / "worldarena" / "models" / "adapters" / "luciddreamer_batch_runner.py"
+        if not runner_path.exists():
+            raise FileNotFoundError(f"LucidDreamer batch runner not found: {runner_path}")
+
+        with tempfile.TemporaryDirectory(prefix="worldarena_luciddreamer_batch_") as temp_dir_raw:
+            temp_dir = Path(temp_dir_raw)
+            requests_path = temp_dir / "requests.jsonl"
+            results_path = temp_dir / "results.jsonl"
+            with requests_path.open("w", encoding="utf-8") as file:
+                for request in requests:
+                    generation = _generation_for_sample(self.config.generation, request.sample)
+                    prompt_prefix = str(generation.get("prompt_prefix", ""))
+                    prompt_suffix = str(generation.get("prompt_suffix", ""))
+                    prompt_text = f"{prompt_prefix}{request.prompt}{prompt_suffix}".strip()
+                    payload = {
+                        "sample_id": request.sample.sample_id,
+                        "suite": request.sample.suite,
+                        "camera_path": generation.get("_camera_path") or [],
+                        "camera_path_primary": generation.get("_camera_path_primary"),
+                        "campath_render_source": generation.get("_campath_render_source", "config"),
+                        "conditioning_image": str(request.conditioning_image.expanduser().resolve()),
+                        "output_path": str(request.output_path.expanduser().resolve()),
+                        "prompt": prompt_text,
+                        "negative_prompt": str(generation.get("negative_prompt", "")),
+                        "campath_gen": str(generation.get("campath_gen", "lookdown")),
+                        "campath_render": str(generation.get("campath_render", "llff")),
+                        "model_name": generation.get("model_name"),
+                        "seed": int(generation.get("seed", 1)),
+                        "diff_steps": int(generation.get("diff_steps", 50)),
+                        "input_size": int(generation.get("input_size", 512)),
+                        "keep_work_dir": bool(generation.get("keep_work_dir", False)),
+                        "min_seconds": float(generation.get("min_seconds", 5.0)),
+                    }
+                    file.write(json.dumps(payload, ensure_ascii=False) + "\n")
+
+            command = [
+                self.config.python_bin,
+                "-u",
+                str(runner_path),
+                "--repo_root",
+                str(repo_root),
+                "--requests_jsonl",
+                str(requests_path),
+                "--results_jsonl",
+                str(results_path),
+            ]
+
+            env = build_env(
+                extra_pythonpaths=[project_root],
+                overrides=self.config.env,
+            )
+            run_command(command, cwd=repo_root, env=env)
+
+            results: dict[str, dict[str, Any]] = {}
+            if not results_path.exists():
+                raise FileNotFoundError(f"LucidDreamer batch runner did not write results: {results_path}")
+            with results_path.open("r", encoding="utf-8") as file:
+                for line in file:
+                    if not line.strip():
+                        continue
+                    payload = json.loads(line)
+                    sample_id = str(payload.get("sample_id", ""))
+                    if sample_id:
+                        results[sample_id] = payload
+            return results
 
     def generate(
         self,
@@ -45,7 +166,7 @@ class LucidDreamerAdapter(ModelAdapter):
         if repo_root is None:
             raise ValueError("LucidDreamer adapter requires repo_root")
 
-        generation = _generation_for_suite(self.config.generation, sample.suite)
+        generation = _generation_for_sample(self.config.generation, sample)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         project_root = Path(__file__).resolve().parents[3]
 
@@ -96,6 +217,9 @@ class LucidDreamerAdapter(ModelAdapter):
             "command": command,
             "prediction_path": str(output_path),
             "prompt": prompt_text,
+            "camera_path": generation.get("_camera_path") or [],
+            "camera_path_primary": generation.get("_camera_path_primary"),
+            "campath_render_source": generation.get("_campath_render_source", "config"),
             "campath_gen": str(generation.get("campath_gen", "lookdown")),
             "campath_render": str(generation.get("campath_render", "llff")),
         }
@@ -106,4 +230,9 @@ class LucidDreamerAdapter(ModelAdapter):
         return payload
 
 
-__all__ = ["LucidDreamerAdapter", "_generation_for_suite"]
+__all__ = [
+    "DEFAULT_CAMERA_PATH_RENDER_PRESET",
+    "LucidDreamerAdapter",
+    "_generation_for_sample",
+    "_generation_for_suite",
+]

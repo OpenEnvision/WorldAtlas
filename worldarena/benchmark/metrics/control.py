@@ -12,6 +12,7 @@ from worldarena.benchmark.official_runtime import (
     materialize_frame_paths,
 )
 from worldarena.benchmark.schemas import BenchmarkSample, MetricOutput
+from worldarena.benchmark.synthetic_camera import synthetic_camera_matrices_for_sample
 
 
 CAMERA_ERROR_BACKENDS = {"droid_slam"}
@@ -42,31 +43,42 @@ class CameraErrorMetric(OfficialMetric):
 
         backend = self._resolve_backend()
         details = self._base_details(prediction)
-        if not sample.annotation_path or not sample.has_pose:
-            return MetricOutput(
-                raw=None,
-                normalized=None,
-                backend=backend,
-                details=details,
-                error="camera poses are unavailable for this sample",
-            )
         try:
             frame_paths = materialize_frame_paths(prediction.path)
-            cameras_gt = load_camera_matrices(
-                sample.annotation_path,
-                target_frames=len(frame_paths),
-            )
+            cameras_gt = None
+            camera_scale = 1.0
+            camera_pose_source = None
+            if sample.annotation_path and sample.has_pose:
+                cameras_gt = load_camera_matrices(
+                    sample.annotation_path,
+                    target_frames=len(frame_paths),
+                )
+                if cameras_gt is not None:
+                    camera_pose_source = "annotation"
+            if cameras_gt is None:
+                synthetic = synthetic_camera_matrices_for_sample(
+                    sample,
+                    target_frames=len(frame_paths),
+                    runtime=self.runtime,
+                )
+                if synthetic is not None:
+                    cameras_gt = synthetic.matrices
+                    camera_scale = synthetic.scale
+                    camera_pose_source = synthetic.source
+                    details["camera_path"] = list(synthetic.camera_path)
             if cameras_gt is None:
                 raise FileNotFoundError("camera poses are unavailable for this sample")
             result = compute_camera_error(
                 prediction.path,
                 cameras_gt=cameras_gt,
-                scale=1.0,
+                scale=camera_scale,
                 normalization=self.normalization,
                 frame_paths=frame_paths,
                 runtime=self.runtime,
             )
             details.update(result["details"])
+            if camera_pose_source is not None:
+                details["camera_pose_source"] = camera_pose_source
             return MetricOutput(
                 raw=result["raw"],
                 normalized=result["normalized"],

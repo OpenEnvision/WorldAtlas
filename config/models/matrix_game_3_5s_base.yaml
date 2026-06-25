@@ -1,0 +1,56 @@
+model:
+  name: matrix-game-3-5s-base
+  family: matrix_game_3
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, actions]
+  roles: [candidate]
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/matrix-game-3.0/bin/python
+  repo_root: thirdparty/Matrix-Game-3.0
+  checkpoint_dir: ckpt/Matrix-Game-3.0
+  entrypoint: generate.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    WAN_FA_VERSION: "2"
+  generation:
+    size: 704*1280
+    fps: 17
+    save_num_frames: 85
+    seed: 42
+    # base (non-distilled) model: CFG is only applied on the base path, so a real
+    # guide_scale plus a proper step count is required for the text prompt to drive motion.
+    use_base_model: true
+    num_inference_steps: 50
+    sample_guide_scale: 5.0
+    vae_type: mg_lightvae
+    lightvae_pruning_rate: 0.5
+    compile_vae: true
+    use_int8: true
+    fa_version: "2"
+    visualize_ops: false
+    action_source: worldarena_camera_path
+    action_plan:
+      default:
+        - forward
+      by_suite:
+        image_static:
+          - forward
+        image_dynamic:
+          - idle
+        video_static:
+          - forward
+        video_dynamic:
+          - idle
+      frames_per_action: 12
+      first_clip_frames: 57
+      clip_overlap_frames: 16
+      num_iterations: 2

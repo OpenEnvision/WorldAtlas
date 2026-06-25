@@ -38,7 +38,9 @@ def copy_output(source: Path, destination: Path) -> None:
         raise FileNotFoundError(f"missing generated output: {source}")
     destination.parent.mkdir(parents=True, exist_ok=True)
     if source != destination:
-        shutil.copy2(source, destination)
+        temporary = destination.with_name(destination.name + ".tmp.syncing")
+        shutil.copy2(source, temporary)
+        temporary.replace(destination)
 
 
 def latest_mp4(directory: Path) -> Path:

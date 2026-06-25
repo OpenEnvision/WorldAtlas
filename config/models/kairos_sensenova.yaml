@@ -6,9 +6,9 @@ model:
   artifact_types: [video]
   control_signals: [text, image]
   roles: [candidate]
-  python_bin: python
-  repo_root: /mnt/workspace/yangboxue/visual_generation/juanxi/github_repos/kairos-sensenova
-  checkpoint_dir: /mnt/workspace/yangboxue/visual_generation/juanxi/ckpt/kairos-sensenova
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/kairos-sensenova/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/kairos-sensenova
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/kairos-sensenova
   entrypoint: examples/inference.py
   output_ext: .mp4
   supported_suites:
@@ -19,7 +19,7 @@ model:
   prompt_mode: prompt_target
   reference_mode: first_frame
   env:
-    WORLDARENA_CHECKPOINT_ROOT: /mnt/workspace/yangboxue/visual_generation/juanxi/ckpt
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
     TOKENIZERS_PARALLELISM: "false"
     PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
   metadata:

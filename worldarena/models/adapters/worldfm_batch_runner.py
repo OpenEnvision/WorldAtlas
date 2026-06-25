@@ -199,6 +199,14 @@ def _official_config(
         step=int(args.step),
         cfg_scale=float(args.cfg_scale),
         gpu_index=int(args.gpu_index),
+        compile_worldfm=bool(getattr(args, "compile_worldfm", False)),
+        compile_mode=str(getattr(args, "compile_mode", "reduce-overhead")),
+        vae_channels_last=bool(getattr(args, "vae_channels_last", True)),
+        vae_deterministic=bool(getattr(args, "vae_deterministic", True)),
+        compile_vae=bool(getattr(args, "compile_vae", True)),
+        compile_vae_mode=str(getattr(args, "compile_vae_mode", "reduce-overhead")),
+        disable_vae_slicing=bool(getattr(args, "disable_vae_slicing", True)),
+        disable_vae_tiling=bool(getattr(args, "disable_vae_tiling", True)),
     )
     return pipeline._load_config(namespace)
 

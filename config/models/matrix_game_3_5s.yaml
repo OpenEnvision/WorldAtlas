@@ -6,7 +6,7 @@ model:
   artifact_types: [video]
   control_signals: [text, image, actions]
   roles: [candidate]
-  python_bin: /share/project/yesliu/miniconda3/envs/matrix-game-3.0/bin/python
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/matrix-game-3.0/bin/python
   repo_root: thirdparty/Matrix-Game-3.0
   checkpoint_dir: ckpt/Matrix-Game-3.0
   entrypoint: generate.py

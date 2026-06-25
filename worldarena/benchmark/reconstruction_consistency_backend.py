@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import lru_cache
 import importlib
+import locale
 import os
 from pathlib import Path
 import sys
@@ -30,6 +31,80 @@ def _default_device() -> str:
     except ModuleNotFoundError:
         return "cpu"
     return "cuda:0" if torch.cuda.is_available() else "cpu"
+
+
+def _prepend_process_path(key: str, path: Path) -> None:
+    if not path.exists():
+        return
+    current = os.environ.get(key)
+    values = [str(path)]
+    if current:
+        values.append(current)
+    os.environ[key] = os.pathsep.join(dict.fromkeys(values))
+
+
+def _ensure_cuda_toolkit_env() -> None:
+    os.environ["LANG"] = "C.UTF-8"
+    os.environ["LC_ALL"] = "C.UTF-8"
+    os.environ.setdefault("PYTHONUTF8", "1")
+    try:
+        locale.setlocale(locale.LC_ALL, os.environ["LC_ALL"])
+    except locale.Error:
+        pass
+    _prepend_process_path("PATH", Path(sys.executable).resolve().parent)
+    cuda_home = os.environ.get("CUDA_HOME") or os.environ.get("CUDA_PATH")
+    if cuda_home and (Path(cuda_home) / "bin" / "nvcc").exists():
+        selected = Path(cuda_home)
+    else:
+        candidates: list[Path] = []
+        try:
+            import torch
+
+            if torch.version.cuda:
+                major, minor = torch.version.cuda.split(".")[:2]
+                candidates.append(Path(f"/usr/local/cuda-{major}.{minor}"))
+        except Exception:
+            pass
+        candidates.extend(
+            [
+                Path("/usr/local/cuda-12.4"),
+                Path("/usr/local/cuda-12.8"),
+                Path("/usr/local/cuda-12.9"),
+                Path("/usr/local/cuda-12.1"),
+                Path("/usr/local/cuda-12"),
+                Path("/usr/local/cuda"),
+            ]
+        )
+        selected = next(
+            (candidate for candidate in candidates if (candidate / "bin" / "nvcc").exists()),
+            None,
+        )
+        if selected is None:
+            return
+        os.environ["CUDA_HOME"] = str(selected)
+        os.environ.setdefault("CUDA_PATH", str(selected))
+
+    _prepend_process_path("PATH", selected / "bin")
+    _prepend_process_path("LD_LIBRARY_PATH", selected / "lib64")
+    _patch_torch_cpp_extension_utf8_hash()
+
+
+def _patch_torch_cpp_extension_utf8_hash() -> None:
+    try:
+        import torch.utils._cpp_extension_versioner as versioner
+    except Exception:
+        return
+    if getattr(versioner.hash_source_files, "_worldarena_utf8_patch", False):
+        return
+
+    def hash_source_files_utf8(hash_value: int, source_files: list[str]) -> int:
+        for filename in source_files:
+            with open(filename, encoding="utf-8") as file:
+                hash_value = versioner.update_hash(hash_value, file.read())
+        return hash_value
+
+    hash_source_files_utf8._worldarena_utf8_patch = True  # type: ignore[attr-defined]
+    versioner.hash_source_files = hash_source_files_utf8
 
 
 def _resolve_depth_anything3_source(
@@ -258,6 +333,7 @@ def compute_reconstruction_consistency(
     if scorer != "lpips":
         raise ValueError("reconstruction_consistency currently supports scorer='lpips'")
 
+    _ensure_cuda_toolkit_env()
     device = str(payload.get("device") or _default_device())
     source = _resolve_depth_anything3_source(payload.get("repo_root"))
     model_name = _resolve_model_name(str(payload.get("model_name") or DEFAULT_RECONSTRUCTION_MODEL))

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +15,8 @@ from worldarena.common.serialization import ensure_dir, write_json
 from worldarena.datasets.scanners import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from worldarena.benchmark.config import BenchmarkConfig
 from worldarena.benchmark.schemas import DiscoveredAsset
+
+VIPE_ANNOTATION_ENV = "WORLD_ARENA_VIPE_ANNOTATION_ROOT"
 
 
 def _count_mask_images(mask_dir: Path) -> int:
@@ -180,6 +183,80 @@ def _annotation_dir_with_payload(default_dir: Path, *candidate_dirs: Path) -> Pa
     return default_dir
 
 
+def _first_annotation_dir_with_payload(*annotation_dirs: Path | None) -> Path | None:
+    for annotation_dir in annotation_dirs:
+        if annotation_dir is not None and _has_annotation_payload(annotation_dir):
+            return annotation_dir
+    return None
+
+
+def _unique_paths(paths: list[Path]) -> list[Path]:
+    seen: set[str] = set()
+    unique: list[Path] = []
+    for path in paths:
+        key = str(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(path)
+    return unique
+
+
+def _configured_vipe_annotation_roots(video_root: Path) -> list[Path]:
+    roots: list[Path] = []
+    env_root = os.environ.get(VIPE_ANNOTATION_ENV)
+    if env_root:
+        roots.append(Path(env_root).expanduser())
+    roots.extend(
+        [
+            video_root.with_name(f"{video_root.name}_vipe_ann"),
+            video_root.parent / "videos_test_split_4971_vipe_ann",
+        ]
+    )
+    return _unique_paths(roots)
+
+
+def _matching_vipe_annotation_dir(annotation_parent: Path, stem: str) -> Path | None:
+    for name in (f"{stem}_vipe_ann", f"{stem}_ann", stem):
+        candidate = annotation_parent / name
+        if _has_annotation_payload(candidate):
+            return candidate
+
+    if not annotation_parent.is_dir():
+        return None
+
+    matches = [
+        child
+        for child in sorted(annotation_parent.iterdir())
+        if child.is_dir()
+        and child.name.startswith(stem)
+        and child.name.endswith("_vipe_ann")
+        and _has_annotation_payload(child)
+    ]
+    return matches[0] if matches else None
+
+
+def _static_video_vipe_annotation_dir(video_root: Path, path: Path) -> Path | None:
+    relative_parent = path.relative_to(video_root).parent
+    relative_without_static = Path(*relative_parent.parts[1:]) if relative_parent.parts[:1] == ("static",) else None
+    candidate_parents: list[Path] = []
+    for vipe_root in _configured_vipe_annotation_roots(video_root):
+        candidate_parents.append(vipe_root / relative_parent / "annotations_vipe")
+        if relative_without_static is not None:
+            candidate_parents.append(vipe_root / relative_without_static / "annotations_vipe")
+        else:
+            candidate_parents.append(vipe_root / "static" / relative_parent / "annotations_vipe")
+            if not relative_parent.parts or relative_parent.parts[0] not in {"photorealistic", "stylized"}:
+                for style in ("photorealistic", "stylized"):
+                    candidate_parents.append(vipe_root / "static" / style / relative_parent / "annotations_vipe")
+
+    for annotation_parent in _unique_paths(candidate_parents):
+        annotation_dir = _matching_vipe_annotation_dir(annotation_parent, path.stem)
+        if annotation_dir is not None:
+            return annotation_dir
+    return None
+
+
 def _discover_video_asset(path: Path, video_root: Path) -> DiscoveredAsset | None:
     relative_path = path.relative_to(video_root)
     if _should_skip_hidden(relative_path):
@@ -191,7 +268,12 @@ def _discover_video_asset(path: Path, video_root: Path) -> DiscoveredAsset | Non
     if parts[0] == "static" and len(parts) >= 6:
         _, style, environment, scene, duration_bucket, _ = parts[:6]
         category_path = "/".join(parts[:-1])
-        annotation_dir = path.parent / "annotations" / f"{path.stem}_SpatialVID_ann"
+        spatialvid_annotation_dir = path.parent / "annotations" / f"{path.stem}_SpatialVID_ann"
+        vipe_annotation_dir = _static_video_vipe_annotation_dir(video_root, path)
+        annotation_dir = (
+            _first_annotation_dir_with_payload(vipe_annotation_dir, spatialvid_annotation_dir)
+            or spatialvid_annotation_dir
+        )
         has_annotation, has_instruction, has_pose = _annotation_flags(annotation_dir)
         has_mask = (annotation_dir / "dyn_masks.npz").exists()
         return DiscoveredAsset(

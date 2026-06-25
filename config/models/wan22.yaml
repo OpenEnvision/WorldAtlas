@@ -6,7 +6,7 @@ model:
   artifact_types: [video]
   control_signals: [text, image]
   roles: [candidate]
-  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/wan2.2/bin/python
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/HunyuanVideo/bin/python
   repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/Wan2.2
   checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Wan2.2-I2V-A14B
   entrypoint: generate.py
@@ -22,5 +22,11 @@ model:
     task: i2v-A14B
     size: 1280*720
     min_seconds: 5.0
+    nproc_per_node: 8
+    master_port: 29542
+    ulysses_size: 8
+    t5_fsdp: true
+    dit_fsdp: true
+    offload_model: false
   env:
     WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt

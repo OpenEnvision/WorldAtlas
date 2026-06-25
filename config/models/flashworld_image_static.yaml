@@ -7,9 +7,9 @@ model:
   control_signals: [text, image, camera_pose]
   roles: [candidate]
   # Image-conditioned static-scene generation for FlashWorld.
-  repo_root: thirdparty/FlashWorld
-  checkpoint_dir: ckpt/imlixinyang--FlashWorld
-  python_bin: /share/project/yesliu/miniconda3/envs/flashworld/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/FlashWorld
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/FlashWorld
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/flashworld/bin/python
   entrypoint: cli.py
   output_ext: .mp4
   supported_suites:
@@ -29,3 +29,5 @@ model:
     export_ply: false
     export_spz: false
     synthetic_focal_scale: 0.6
+  env:
+    FLASHWORLD_WAN_DIFFUSERS_MODEL_ID: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Wan2.2-TI2V-5B-Diffusers

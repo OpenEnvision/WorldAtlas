@@ -11,6 +11,28 @@ from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequ
 from worldarena.models.adapters.common import build_env, extend_command_with_options
 
 
+def _runner_command(python_bin: str, generation: dict[str, Any]) -> list[str]:
+    module_name = "worldarena.models.adapters.wan22_batch_runner"
+    nproc_per_node = int(generation.get("nproc_per_node", 1) or 1)
+    if nproc_per_node <= 1:
+        return [python_bin, "-m", module_name]
+
+    torchrun_path = Path(python_bin).with_name("torchrun")
+    command = [
+        str(torchrun_path) if torchrun_path.exists() else "torchrun",
+        "--standalone",
+        "--nnodes",
+        "1",
+        "--nproc-per-node",
+        str(nproc_per_node),
+    ]
+    master_port = generation.get("master_port")
+    if master_port is not None:
+        command.extend(["--master-port", str(int(master_port))])
+    command.extend(["-m", module_name])
+    return command
+
+
 def _run_wan22_command(
     command: list[str],
     *,
@@ -81,20 +103,20 @@ class Wan22Adapter(ModelAdapter):
                         ensure_ascii=False,
                     )
                     + "\n"
-                )
+        )
 
         generation = self.config.generation
-        command = [
-            self.config.python_bin,
-            "-m",
-            "worldarena.models.adapters.wan22_batch_runner",
-            "--repo_root",
-            str(self.config.repo_root),
-            "--checkpoint_dir",
-            str(self.config.checkpoint_dir),
-            "--batch_spec_path",
-            str(spec_path),
-        ]
+        command = _runner_command(self.config.python_bin, generation)
+        command.extend(
+            [
+                "--repo_root",
+                str(self.config.repo_root),
+                "--checkpoint_dir",
+                str(self.config.checkpoint_dir),
+                "--batch_spec_path",
+                str(spec_path),
+            ]
+        )
         extend_command_with_options(
             command,
             payload=generation,
@@ -109,9 +131,10 @@ class Wan22Adapter(ModelAdapter):
                 "base_seed": int,
                 "negative_prompt": str,
                 "device_id": int,
+                "ulysses_size": int,
             },
             bool_value_options=("offload_model",),
-            flag_options=("t5_cpu", "convert_model_dtype"),
+            flag_options=("t5_cpu", "convert_model_dtype", "t5_fsdp", "dit_fsdp"),
         )
         sample_guide_scale = generation.get("sample_guide_scale")
         if sample_guide_scale is not None:

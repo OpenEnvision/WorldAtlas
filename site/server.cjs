@@ -1,29 +1,36 @@
-const fs = require("node:fs");
-const http = require("node:http");
-const path = require("node:path");
-const { spawn } = require("node:child_process");
-const url = require("node:url");
-const zlib = require("node:zlib");
+const fs = require("fs");
+const http = require("http");
+const path = require("path");
+const { spawn } = require("child_process");
+const url = require("url");
+const zlib = require("zlib");
 
 const root = __dirname;
+const worldArenaRoot = path.resolve(root, "..");
 const port = Number(process.env.PORT || 4173);
 const generatedRoot = process.env.WORLDARENA_GENERATED_ROOT || "/share/project/bench/WorldArena/docs/generated";
 const thumbAssetVersion = "20260502-fps-v4";
-const mediaCatalogCacheVersion = "20260502-visual-only-v1";
+const mediaCatalogCacheVersion = "20260620-openenvision-v1";
+const arenaBattleCacheVersion = "20260620-real-results-v1";
+const openEnvisionRoot = "/mnt/cpfs/yangboxue/visual_generation/juanxi/data/OpenEnvision/worldarena";
 const dataRoots = {
-  images: process.env.WORLDARENA_IMAGE_DATA || "/share/project/bench/data/image_test_balanced_5000",
-  videos: process.env.WORLDARENA_VIDEO_DATA || "/share/project/bench/data/videos",
-  videoSplit: process.env.WORLDARENA_VIDEO_SPLIT_DATA || "/share/project/bench/data/videos_test_split_4971",
+  images: process.env.WORLDARENA_IMAGE_DATA || path.join(openEnvisionRoot, "image_test_balanced_5000"),
+  videos: process.env.WORLDARENA_VIDEO_DATA || path.join(openEnvisionRoot, "videos"),
+  videoSplit: process.env.WORLDARENA_VIDEO_SPLIT_DATA || "",
   physics: process.env.WORLDARENA_PHYSICS_DATA || "/share/project/bench/data/physics",
   generated: generatedRoot
 };
+const arenaModelConfigRoot = process.env.WORLDARENA_MODEL_CONFIG_ROOT || path.join(worldArenaRoot, "config", "models");
+const arenaPredictionRoot = process.env.WORLDARENA_PREDICTIONS_ROOT || path.join(worldArenaRoot, "artifacts", "predictions");
 const mediaExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4", ".webm", ".mov", ".m4v"]);
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 const videoExtensions = new Set([".mp4", ".webm", ".mov", ".m4v"]);
 let mediaCatalogCache = null;
+let arenaBattleCache = null;
 const mediaCatalogDiskCachePath = process.env.WORLDARENA_MEDIA_CATALOG_CACHE || path.join(root, ".cache", `media-catalog-${mediaCatalogCacheVersion}.json`);
 const posterCacheRoot = process.env.WORLDARENA_POSTER_CACHE || path.join(root, ".cache", "posters");
 const imageThumbCacheRoot = process.env.WORLDARENA_IMAGE_THUMB_CACHE || path.join(root, ".cache", "image-thumbs");
+const arenaVoteLogPath = process.env.WORLDARENA_ARENA_VOTES || path.join(root, ".cache", "arena-votes.json");
 const pendingPosters = new Map();
 const pendingImageThumbs = new Map();
 const posterQueue = [];
@@ -66,6 +73,36 @@ const palette = [
   "#f3d6b6",
   "#dce3ef"
 ];
+const arenaModelColors = [
+  "#2f766f",
+  "#5b6ee1",
+  "#b85c44",
+  "#7c5aa6",
+  "#2f6f9f",
+  "#8a6d2f",
+  "#3d7b4e",
+  "#a5476f",
+  "#5f6b35",
+  "#7a5845"
+];
+
+function base64Url(value) {
+  return Buffer.from(value)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function removeFileIfExists(filePath) {
+  try {
+    fs.unlinkSync(filePath);
+  } catch (error) {
+    if (!error || error.code !== "ENOENT") {
+      throw error;
+    }
+  }
+}
 
 function readJson(filePath, fallback) {
   try {
@@ -99,6 +136,10 @@ function truncate(value, maxLength = 260) {
   }
 
   return `${text.slice(0, maxLength - 1).trim()}...`;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function titleCase(value) {
@@ -163,7 +204,7 @@ function uniqueTags(values) {
   ).slice(0, 14);
 }
 
-function walkFiles(directory, extensions, output = []) {
+function walkFiles(directory, extensions, output = [], shouldSkipDirectory = null) {
   if (!fs.existsSync(directory)) {
     return output;
   }
@@ -172,7 +213,11 @@ function walkFiles(directory, extensions, output = []) {
     const entryPath = path.join(directory, entry.name);
 
     if (entry.isDirectory()) {
-      walkFiles(entryPath, extensions, output);
+      if (shouldSkipDirectory && shouldSkipDirectory(entryPath, entry.name)) {
+        continue;
+      }
+
+      walkFiles(entryPath, extensions, output, shouldSkipDirectory);
     } else if (entry.isFile() && extensions.has(path.extname(entry.name).toLowerCase())) {
       output.push(entryPath);
     }
@@ -395,7 +440,7 @@ function createGeneratedItem(fileName, index, recordIndex, mediaType, previewByS
   const posterPath = mediaType === "image" ? path.join("samples", "images", fileName) : path.join("samples", "posters", fileName);
   const thumbGroup = mediaType === "image" ? "images" : "posters";
   const thumb = thumbUrlForSample(thumbGroup, parts.stem);
-  const previewName = previewByStem?.get(parts.stem) || "";
+  const previewName = previewByStem ? previewByStem.get(parts.stem) || "" : "";
   const videoPath = previewName ? path.join("samples", "previews", previewName) : "";
 
   return {
@@ -485,8 +530,8 @@ function buildImageItems() {
       const categoryTags = caption.CategoryTags || {};
       const summary =
         caption.SceneSummary ||
-        item.generation_spec?.current_prompt ||
-        item.generation_spec?.prompt ||
+        (item.generation_spec && item.generation_spec.current_prompt) ||
+        (item.generation_spec && item.generation_spec.prompt) ||
         relativePath;
       const title = truncate(summary, 76) || `Image ${index + 1}`;
       const tags = uniqueTags([
@@ -496,8 +541,8 @@ function buildImageItems() {
         item.environment,
         item.scene,
         item.motion_category,
-        categoryTags.sceneType?.first,
-        categoryTags.sceneType?.second
+        categoryTags.sceneType && categoryTags.sceneType.first,
+        categoryTags.sceneType && categoryTags.sceneType.second
       ]);
 
       return {
@@ -546,6 +591,53 @@ function buildVideoManifestMap() {
   return bySource;
 }
 
+function archiveVideoMeta(relativePath) {
+  const parts = relativePath.split(path.sep);
+  const group = parts[0] || "video";
+
+  if (group === "dynamic") {
+    return {
+      motionRegime: "dynamic",
+      style: parts[1] || "dataset",
+      environment: "dynamic",
+      category: parts[3] || parts[parts.length - 2] || "video",
+      durationBucket: ""
+    };
+  }
+
+  if (group === "indoor") {
+    return {
+      motionRegime: "static",
+      style: "photorealistic",
+      environment: "indoor",
+      category: parts[1] || "indoor",
+      durationBucket: parts[2] || ""
+    };
+  }
+
+  return {
+    motionRegime: group,
+    style: parts[1] || "dataset",
+    environment: parts[2] || "scene",
+    category: parts[3] || parts[parts.length - 2] || "video",
+    durationBucket: parts[4] || ""
+  };
+}
+
+function isArchiveVideoSamplePath(relativePath) {
+  const parts = relativePath.split(path.sep);
+
+  if (parts[0] !== "indoor" && parts[0] !== "dynamic") {
+    return false;
+  }
+
+  return !parts.some((part) => part === "annotations" || part.startsWith(".") || part === "__pycache__");
+}
+
+function shouldSkipArchiveVideoDirectory(_directoryPath, directoryName) {
+  return directoryName === "annotations" || directoryName.startsWith(".") || directoryName === "__pycache__";
+}
+
 function buildVideoSplitItems() {
   const files = walkFiles(dataRoots.videoSplit, new Set([".mp4", ".webm", ".mov", ".m4v"]));
 
@@ -555,7 +647,7 @@ function buildVideoSplitItems() {
     const motionRegime = parts[0] || "video";
     const style = parts[1] || "dataset";
     const environment = parts[2] || "scene";
-    const category = parts[3] || parts.at(-2) || "video";
+    const category = parts[3] || parts[parts.length - 2] || "video";
     const durationBucket = parts[4] || "";
     const stat = statItem(filePath);
     const title = `${titleCase(category)} Video`;
@@ -589,20 +681,31 @@ function buildVideoSplitItems() {
 
 function buildVideoItems() {
   const videoRoots = [
-    path.join(dataRoots.videos, "dynamic", "stylized", "videos"),
-    path.join(dataRoots.videos, "dynamic", "photorealistic", "videos")
+    path.join(dataRoots.videos, "indoor"),
+    path.join(dataRoots.videos, "dynamic")
   ];
   const manifestBySource = buildVideoManifestMap();
-  const files = videoRoots.flatMap((directory) => walkFiles(directory, new Set([".mp4", ".webm", ".mov", ".m4v"])));
+  const files = videoRoots
+    .flatMap((directory) => walkFiles(directory, new Set([".mp4", ".webm", ".mov", ".m4v"]), [], shouldSkipArchiveVideoDirectory))
+    .filter((filePath) => isArchiveVideoSamplePath(path.relative(dataRoots.videos, filePath)));
 
   return files.map((filePath, index) => {
     const relativePath = path.relative(dataRoots.videos, filePath);
-    const parts = relativePath.split(path.sep);
-    const motionRegime = parts[0] || "video";
-    const style = parts[1] || "dataset";
-    const category = parts[3] || parts.at(-2) || "video";
+    const meta = archiveVideoMeta(relativePath);
+    const motionRegime = meta.motionRegime;
+    const style = meta.style;
+    const category = meta.category;
     const manifest = manifestBySource.get(relativePath);
-    const tags = uniqueTags(["videos", motionRegime, style, category, manifest?.group_name, manifest?.style_name]);
+    const tags = uniqueTags([
+      "videos",
+      motionRegime,
+      style,
+      meta.environment,
+      category,
+      meta.durationBucket,
+      manifest && manifest.group_name,
+      manifest && manifest.style_name
+    ]);
     const title = `${titleCase(category)} ${titleCase(style)} Video ${index + 1}`;
 
     return {
@@ -658,9 +761,16 @@ function buildPhysicsItems() {
     const fileName = path.basename(filePath);
     const metadata = metadataByVideoName.get(fileName);
     const poster = metadata ? firstFrameForPhysics(metadata) : "";
-    const label = metadata?.label || dimension;
-    const tags = uniqueTags(["physics", group, dimension, label, metadata?.annotation_labels, metadata?.all_matching_dimensions]);
-    const titlePrefix = metadata?.rank_within_dimension
+    const label = metadata && metadata.label || dimension;
+    const tags = uniqueTags([
+      "physics",
+      group,
+      dimension,
+      label,
+      metadata && metadata.annotation_labels,
+      metadata && metadata.all_matching_dimensions
+    ]);
+    const titlePrefix = metadata && metadata.rank_within_dimension
       ? `${String(metadata.order).padStart(3, "0")} ${titleCase(dimension)}`
       : titleCase(dimension);
 
@@ -676,7 +786,7 @@ function buildPhysicsItems() {
       source: "physics",
       accent: palette[(index + 6) % palette.length],
       tags,
-      summary: truncate(metadata?.captions || [titleCase(group), titleCase(dimension)].filter(Boolean).join(" · "), 220),
+      summary: truncate(metadata && metadata.captions || [titleCase(group), titleCase(dimension)].filter(Boolean).join(" · "), 220),
       path: relativePath
     };
   });
@@ -698,7 +808,7 @@ function interleave(groups) {
 }
 
 function catalogItemKey(item) {
-  return item?.source && item?.path ? `${item.source}:${item.path}` : "";
+  return item && item.source && item.path ? `${item.source}:${item.path}` : "";
 }
 
 function mergeGeneratedThumbs(items, generatedItems) {
@@ -745,8 +855,9 @@ function readMediaCatalogDiskCache() {
   const cached = readJson(mediaCatalogDiskCachePath, null);
 
   if (
-    cached?.cacheVersion === mediaCatalogCacheVersion &&
-    cached?.catalog &&
+    cached &&
+    cached.cacheVersion === mediaCatalogCacheVersion &&
+    cached.catalog &&
     Array.isArray(cached.catalog.items) &&
     Array.isArray(cached.catalog.summary)
   ) {
@@ -1012,12 +1123,12 @@ function resolveImageThumbSource(pathname) {
 }
 
 function posterCachePath(dataset, relativePath) {
-  const cacheKey = Buffer.from(`${thumbAssetVersion}/poster/${dataset}/${relativePath}`).toString("base64url");
+  const cacheKey = base64Url(`${thumbAssetVersion}/poster/${dataset}/${relativePath}`);
   return path.join(posterCacheRoot, `${cacheKey}.jpg`);
 }
 
 function imageThumbCachePath(dataset, relativePath) {
-  const cacheKey = Buffer.from(`${thumbAssetVersion}/image/${dataset}/${relativePath}`).toString("base64url");
+  const cacheKey = base64Url(`${thumbAssetVersion}/image/${dataset}/${relativePath}`);
   return path.join(imageThumbCacheRoot, `${cacheKey}.jpg`);
 }
 
@@ -1053,7 +1164,7 @@ function runPosterQueue() {
       if (code === 0 && fs.existsSync(job.outputPath)) {
         job.resolve(job.outputPath);
       } else {
-        fs.rmSync(job.outputPath, { force: true });
+        removeFileIfExists(job.outputPath);
         job.reject(new Error(`ffmpeg exited with ${code}`));
       }
 
@@ -1063,7 +1174,7 @@ function runPosterQueue() {
     ffmpeg.on("error", (error) => {
       activePosterJobs -= 1;
       pendingPosters.delete(job.outputPath);
-      fs.rmSync(job.outputPath, { force: true });
+      removeFileIfExists(job.outputPath);
       job.reject(error);
       runPosterQueue();
     });
@@ -1118,7 +1229,7 @@ function runImageThumbQueue() {
       if (code === 0 && fs.existsSync(job.outputPath)) {
         job.resolve(job.outputPath);
       } else {
-        fs.rmSync(job.outputPath, { force: true });
+        removeFileIfExists(job.outputPath);
         job.reject(new Error(`ffmpeg exited with ${code}`));
       }
 
@@ -1128,7 +1239,7 @@ function runImageThumbQueue() {
     ffmpeg.on("error", (error) => {
       activeImageThumbJobs -= 1;
       pendingImageThumbs.delete(job.outputPath);
-      fs.rmSync(job.outputPath, { force: true });
+      removeFileIfExists(job.outputPath);
       job.reject(error);
       runImageThumbQueue();
     });
@@ -1151,6 +1262,810 @@ function ensureImageThumb(inputPath, outputPath) {
 
   pendingImageThumbs.set(outputPath, promise);
   return promise;
+}
+
+function safeReadDir(dirPath, options = {}) {
+  try {
+    return fs.readdirSync(dirPath, options);
+  } catch {
+    return [];
+  }
+}
+
+function normalizeArenaKey(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function parseYamlScalar(value) {
+  const trimmed = String(value || "").trim();
+
+  if (!trimmed || trimmed === "null") {
+    return "";
+  }
+
+  return trimmed.replace(/^["']|["']$/g, "");
+}
+
+function parseYamlInlineList(value) {
+  const trimmed = String(value || "").trim();
+
+  if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) {
+    return null;
+  }
+
+  return trimmed
+    .slice(1, -1)
+    .split(",")
+    .map((item) => parseYamlScalar(item))
+    .filter(Boolean);
+}
+
+function yamlFieldValue(text, fieldName) {
+  const pattern = new RegExp(`^\\s{2}${fieldName}:\\s*(.*)$`, "m");
+  const match = text.match(pattern);
+
+  return match ? parseYamlScalar(match[1]) : "";
+}
+
+function yamlFieldList(text, fieldName) {
+  const lines = text.split(/\r?\n/);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const match = line.match(new RegExp(`^\\s{2}${fieldName}:\\s*(.*)$`));
+
+    if (!match) {
+      continue;
+    }
+
+    const inline = parseYamlInlineList(match[1]);
+
+    if (inline) {
+      return inline;
+    }
+
+    const values = [];
+
+    for (let next = index + 1; next < lines.length; next += 1) {
+      const itemMatch = lines[next].match(/^\s{4}-\s*(.+?)\s*$/);
+
+      if (itemMatch) {
+        values.push(parseYamlScalar(itemMatch[1]));
+        continue;
+      }
+
+      if (lines[next].trim() && !/^\s{5,}/.test(lines[next])) {
+        break;
+      }
+    }
+
+    return values;
+  }
+
+  return [];
+}
+
+function yamlNestedValue(text, parentName, fieldName) {
+  const lines = text.split(/\r?\n/);
+  const parentPattern = new RegExp(`^\\s{2}${parentName}:\\s*$`);
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!parentPattern.test(lines[index])) {
+      continue;
+    }
+
+    for (let next = index + 1; next < lines.length; next += 1) {
+      if (/^\s{2}\S/.test(lines[next])) {
+        break;
+      }
+
+      const match = lines[next].match(new RegExp(`^\\s{4}${fieldName}:\\s*(.*)$`));
+
+      if (match) {
+        return parseYamlScalar(match[1]);
+      }
+    }
+  }
+
+  return "";
+}
+
+function titleFromModelId(value) {
+  return String(value || "")
+    .replace(/\.(yaml|yml)$/i, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function readArenaModels() {
+  return safeReadDir(arenaModelConfigRoot, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && /\.ya?ml$/i.test(entry.name))
+    .map((entry, index) => {
+      const filePath = path.join(arenaModelConfigRoot, entry.name);
+      const text = fs.readFileSync(filePath, "utf8");
+      const id = entry.name.replace(/\.ya?ml$/i, "");
+      const name = yamlFieldValue(text, "name") || titleFromModelId(id);
+      const family = yamlFieldValue(text, "family") || titleFromModelId(id.split("_")[0]);
+      const taskFamilies = yamlFieldList(text, "task_families");
+      const artifactTypes = yamlFieldList(text, "artifact_types");
+      const controlSignals = yamlFieldList(text, "control_signals");
+      const roles = yamlFieldList(text, "roles");
+      const supportedSuites = yamlFieldList(text, "supported_suites");
+      const backendType = yamlFieldValue(text, "backend_type") || "unknown";
+      const outputExt = yamlFieldValue(text, "output_ext") || "";
+      const generation = {
+        fps: yamlNestedValue(text, "generation", "fps"),
+        size: yamlNestedValue(text, "generation", "size"),
+        minSeconds: yamlNestedValue(text, "generation", "min_seconds"),
+        saveNumFrames: yamlNestedValue(text, "generation", "save_num_frames")
+      };
+      const aliases = [
+        id,
+        name,
+        family,
+        id.replace(/_juanxi|_smoke|_debug|_fast|_base|_preview/g, ""),
+        name.replace(/-juanxi|-smoke|-debug|-fast|-base|-preview/g, "")
+      ]
+        .map(normalizeArenaKey)
+        .filter((alias) => alias.length >= 4);
+
+      return {
+        id,
+        name,
+        family,
+        backendType,
+        taskFamilies,
+        artifactTypes,
+        controlSignals,
+        roles,
+        supportedSuites,
+        outputExt,
+        generation,
+        configFile: path.relative(worldArenaRoot, filePath),
+        color: arenaModelColors[index % arenaModelColors.length],
+        accent: arenaModelColors[(index + 3) % arenaModelColors.length],
+        aliases: Array.from(new Set(aliases))
+      };
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function readJsonlHead(filePath, maxLines = 80) {
+  let descriptor = null;
+
+  try {
+    descriptor = fs.openSync(filePath, "r");
+    const buffer = Buffer.alloc(512 * 1024);
+    const bytesRead = fs.readSync(descriptor, buffer, 0, buffer.length, 0);
+    const text = buffer.slice(0, bytesRead).toString("utf8");
+    return text
+      .split(/\r?\n/)
+      .filter(Boolean)
+      .slice(0, maxLines)
+      .map((line) => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  } finally {
+    if (descriptor !== null) {
+      try {
+        fs.closeSync(descriptor);
+      } catch {
+        // ignore close errors
+      }
+    }
+  }
+}
+
+function predictionFileUrl(filePath) {
+  const resolvedRoot = path.resolve(arenaPredictionRoot);
+  const resolvedPath = path.resolve(filePath);
+
+  if (
+    resolvedPath !== resolvedRoot &&
+    !resolvedPath.startsWith(`${resolvedRoot}${path.sep}`)
+  ) {
+    return "";
+  }
+
+  return `/prediction-media/${toUrlPath(path.relative(resolvedRoot, resolvedPath))}`;
+}
+
+function sampleMediaPath(runDir, record) {
+  const candidates = [
+    record && record.prediction_path,
+    record && record.output_path,
+    record && record.media_path
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const absolutePath = path.isAbsolute(candidate) ? candidate : path.join(runDir, candidate);
+
+    if (fs.existsSync(absolutePath) && mediaExtensions.has(path.extname(absolutePath).toLowerCase())) {
+      return absolutePath;
+    }
+
+    const byBasename = path.join(runDir, path.basename(candidate));
+
+    if (fs.existsSync(byBasename) && mediaExtensions.has(path.extname(byBasename).toLowerCase())) {
+      return byBasename;
+    }
+  }
+
+  return "";
+}
+
+function inferSuiteFromText(value) {
+  const text = String(value || "").toLowerCase();
+
+  if (text.includes("video_dynamic")) {
+    return "video_dynamic";
+  }
+
+  if (text.includes("video_static")) {
+    return "video_static";
+  }
+
+  if (text.includes("image_dynamic")) {
+    return "image_dynamic";
+  }
+
+  if (text.includes("image_static")) {
+    return "image_static";
+  }
+
+  return "";
+}
+
+function findArenaRunModel(runName, models) {
+  const runKey = normalizeArenaKey(runName);
+  let bestModel = null;
+  let bestScore = 0;
+
+  models.forEach((model) => {
+    model.aliases.forEach((alias) => {
+      if (!alias || alias.length < 4) {
+        return;
+      }
+
+      const score = runKey.includes(alias) ? alias.length : alias.includes(runKey) ? Math.min(alias.length, runKey.length) : 0;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestModel = model;
+      }
+    });
+  });
+
+  return bestModel;
+}
+
+function appendArenaSample(samples, runDir, record, fallbackMediaPath = "") {
+  if (samples.length >= 6) {
+    return;
+  }
+
+  const mediaPath = sampleMediaPath(runDir, record) || fallbackMediaPath;
+  const mediaUrl = mediaPath ? predictionFileUrl(mediaPath) : "";
+
+  if (!mediaUrl) {
+    return;
+  }
+
+  const extension = path.extname(mediaPath).toLowerCase();
+
+  samples.push({
+    sampleId: record.sample_id || path.basename(mediaPath, extension),
+    suite: record.suite || inferSuiteFromText(record.sample_id || mediaPath),
+    prompt: truncate(record.prompt || record.caption || "", 190),
+    status: record.status || "available",
+    mediaUrl,
+    mediaKind: videoExtensions.has(extension) ? "video" : "image"
+  });
+}
+
+function scanArenaPredictionRun(runDir, models) {
+  const runName = path.basename(runDir);
+  const model = findArenaRunModel(runName, models);
+  const suites = new Set();
+  const statuses = {};
+  const samples = [];
+  const recordFiles = [];
+  const specFiles = [];
+  const recordRoots = [runDir, path.join(runDir, runName)];
+  let mediaCount = 0;
+  let declaredRecords = 0;
+  let observedRecords = 0;
+
+  recordRoots.forEach((recordRoot) => {
+    ["generation_records.jsonl", ...Array.from({ length: 16 }, (_item, index) => `generation_records.shard${index}.jsonl`)]
+      .map((fileName) => path.join(recordRoot, fileName))
+      .filter((filePath) => fs.existsSync(filePath))
+      .forEach((filePath) => recordFiles.push(filePath));
+  });
+
+  const uniqueRecordFiles = Array.from(new Set(recordFiles));
+  recordFiles.length = 0;
+  uniqueRecordFiles.forEach((filePath) => recordFiles.push(filePath));
+
+  safeReadDir(path.join(runDir, "_batch_specs"), { withFileTypes: true })
+    .filter((entry) => entry.isFile() && /\.jsonl$/i.test(entry.name))
+    .slice(0, 8)
+    .forEach((entry) => specFiles.push(path.join(runDir, "_batch_specs", entry.name)));
+
+  [...recordFiles, ...specFiles].slice(0, 10).forEach((filePath) => {
+    const records = readJsonlHead(filePath, 12);
+    let shardTotal = 0;
+
+    records.forEach((record) => {
+      const suite = record.suite || inferSuiteFromText(record.sample_id || record.prediction_path || "");
+
+      if (suite) {
+        suites.add(suite);
+      }
+
+      const status = record.status || (record.error ? "error" : "");
+
+      if (status) {
+        statuses[status] = (statuses[status] || 0) + 1;
+      }
+
+      if (Number(record.shard_total) > shardTotal) {
+        shardTotal = Number(record.shard_total);
+      }
+
+      observedRecords += 1;
+      const sampleCountBefore = samples.length;
+      appendArenaSample(samples, runDir, record);
+      if (samples.length > sampleCountBefore) {
+        mediaCount += 1;
+      }
+    });
+
+    declaredRecords += shardTotal || records.length;
+  });
+
+  return {
+    id: normalizeArenaKey(runName) || runName,
+    name: runName,
+    modelId: model ? model.id : "",
+    modelName: model ? model.name : "",
+    suites: Array.from(suites).sort(),
+    mediaCount,
+    frameDirs: 0,
+    sidecars: 0,
+    recordFiles: recordFiles.length,
+    specFiles: specFiles.length,
+    declaredRecords,
+    observedRecords,
+    statuses,
+    samples
+  };
+}
+
+function arenaCompletionRatio(statuses, mediaCount) {
+  const entries = Object.entries(statuses || {});
+  const observed = entries.reduce((total, [, count]) => total + count, 0);
+
+  if (!observed) {
+    return mediaCount ? 0.74 : 0.42;
+  }
+
+  const complete = entries.reduce((total, [status, count]) => {
+    return /generated|skipped_existing|available|success|complete/i.test(status) ? total + count : total;
+  }, 0);
+
+  return clamp(complete / observed, 0.18, 1);
+}
+
+function arenaLogCoverage(value, scale = 1600) {
+  return clamp(Math.log10(value + 1) / Math.log10(scale + 1), 0, 1);
+}
+
+const arenaVoteDimensions = [
+  { id: "overall", label: "Overall" },
+  { id: "visual_quality", label: "Visual Quality" },
+  { id: "control_alignment", label: "Control Alignment" },
+  { id: "world_consistency", label: "World Consistency" }
+];
+
+function readArenaVotes() {
+  const payload = readJson(arenaVoteLogPath, {});
+  return Array.isArray(payload.votes) ? payload.votes : [];
+}
+
+function writeArenaVotes(votes) {
+  fs.mkdirSync(path.dirname(arenaVoteLogPath), { recursive: true });
+  fs.writeFileSync(arenaVoteLogPath, JSON.stringify({ votes }, null, 2));
+}
+
+function arenaVoteKFactor(battleCount) {
+  if (battleCount < 30) {
+    return 64;
+  }
+
+  if (battleCount < 80) {
+    return 48;
+  }
+
+  if (battleCount < 200) {
+    return 32;
+  }
+
+  return 16;
+}
+
+function createArenaRatingRecord(model) {
+  return {
+    modelId: model.id,
+    name: model.name,
+    family: model.family,
+    ratings: Object.fromEntries(arenaVoteDimensions.map((dimension) => [dimension.id, 1500])),
+    battles: Object.fromEntries(arenaVoteDimensions.map((dimension) => [dimension.id, 0])),
+    wins: Object.fromEntries(arenaVoteDimensions.map((dimension) => [dimension.id, 0])),
+    losses: Object.fromEntries(arenaVoteDimensions.map((dimension) => [dimension.id, 0]))
+  };
+}
+
+function applyArenaEloVote(ratings, vote) {
+  if (!vote || vote.winner === "tie" || vote.ranked === false) {
+    return;
+  }
+
+  const dimension = arenaVoteDimensions.some((item) => item.id === vote.dimension)
+    ? vote.dimension
+    : "overall";
+  const left = ratings.get(vote.leftModelId);
+  const right = ratings.get(vote.rightModelId);
+
+  if (!left || !right || left.modelId === right.modelId) {
+    return;
+  }
+
+  const leftRating = left.ratings[dimension];
+  const rightRating = right.ratings[dimension];
+  const expectedLeft = 1 / (1 + Math.pow(10, (rightRating - leftRating) / 400));
+  const expectedRight = 1 - expectedLeft;
+  const leftScore = vote.winner === "left" ? 1 : 0;
+  const rightScore = 1 - leftScore;
+  const leftK = arenaVoteKFactor(left.battles[dimension]);
+  const rightK = arenaVoteKFactor(right.battles[dimension]);
+
+  left.ratings[dimension] = Math.round(leftRating + leftK * (leftScore - expectedLeft));
+  right.ratings[dimension] = Math.round(rightRating + rightK * (rightScore - expectedRight));
+  left.battles[dimension] += 1;
+  right.battles[dimension] += 1;
+
+  if (leftScore === 1) {
+    left.wins[dimension] += 1;
+    right.losses[dimension] += 1;
+  } else {
+    right.wins[dimension] += 1;
+    left.losses[dimension] += 1;
+  }
+}
+
+function arenaHumanLeaderboard(models, votes) {
+  const modelById = new Map(models.map((model) => [model.id, model]));
+  const ratings = new Map(models.map((model) => [model.id, createArenaRatingRecord(model)]));
+  const cleanVotes = votes.filter((vote) => modelById.has(vote.leftModelId) && modelById.has(vote.rightModelId));
+
+  cleanVotes.forEach((vote) => applyArenaEloVote(ratings, vote));
+
+  return {
+    dimensions: arenaVoteDimensions,
+    votes: cleanVotes.length,
+    rankedVotes: cleanVotes.filter((vote) => vote.ranked !== false && vote.winner !== "tie").length,
+    ties: cleanVotes.filter((vote) => vote.winner === "tie").length,
+    updatedAt: cleanVotes.length ? cleanVotes[cleanVotes.length - 1].createdAt : "",
+    rows: Array.from(ratings.values())
+      .sort((left, right) => right.ratings.overall - left.ratings.overall)
+      .map((row, index) => ({
+        rank: index + 1,
+        ...row
+      }))
+      .slice(0, 40)
+  };
+}
+
+function parseJsonRequest(request) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+
+    request.on("data", (chunk) => {
+      body += chunk;
+
+      if (body.length > 1024 * 1024) {
+        reject(new Error("Request body too large"));
+        request.destroy();
+      }
+    });
+
+    request.on("end", () => {
+      try {
+        resolve(body ? JSON.parse(body) : {});
+      } catch (error) {
+        reject(error);
+      }
+    });
+
+    request.on("error", reject);
+  });
+}
+
+function sanitizeArenaVote(payload) {
+  const dimension = arenaVoteDimensions.some((item) => item.id === payload.dimension)
+    ? payload.dimension
+    : "overall";
+  const winner = ["left", "right", "tie"].includes(payload.winner) ? payload.winner : "";
+
+  if (!winner || !payload.leftModelId || !payload.rightModelId || payload.leftModelId === payload.rightModelId) {
+    return null;
+  }
+
+  return {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    createdAt: new Date().toISOString(),
+    ranked: payload.ranked !== false,
+    dimension,
+    winner,
+    leftModelId: String(payload.leftModelId),
+    rightModelId: String(payload.rightModelId),
+    leftSampleId: String(payload.leftSampleId || ""),
+    rightSampleId: String(payload.rightSampleId || ""),
+    sharedSampleId: String(payload.sharedSampleId || ""),
+    suite: String(payload.suite || ""),
+    battleMode: String(payload.battleMode || "random"),
+    reason: truncate(payload.reason || "", 240)
+  };
+}
+
+function sendBadRequest(response, message) {
+  const body = Buffer.from(JSON.stringify({ error: message }));
+
+  response.writeHead(400, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Content-Length": body.length
+  });
+  response.end(body);
+}
+
+function decorateArenaModels(models, runs) {
+  const runsByModel = new Map();
+
+  runs.forEach((run) => {
+    if (!run.modelId) {
+      return;
+    }
+
+    if (!runsByModel.has(run.modelId)) {
+      runsByModel.set(run.modelId, []);
+    }
+
+    runsByModel.get(run.modelId).push(run);
+  });
+
+  return models
+    .map((model, index) => {
+      const modelRuns = runsByModel.get(model.id) || [];
+      const suites = new Set(model.supportedSuites);
+      const statuses = {};
+      let mediaCount = 0;
+      let frameDirs = 0;
+      let sidecars = 0;
+      let recordFiles = 0;
+      let specFiles = 0;
+      let declaredRecords = 0;
+      let observedRecords = 0;
+      const samples = [];
+
+      modelRuns.forEach((run) => {
+        run.suites.forEach((suite) => suites.add(suite));
+        mediaCount += run.mediaCount;
+        frameDirs += run.frameDirs;
+        sidecars += run.sidecars;
+        recordFiles += run.recordFiles;
+        specFiles += run.specFiles;
+        declaredRecords += run.declaredRecords || 0;
+        observedRecords += run.observedRecords || 0;
+        Object.entries(run.statuses).forEach(([status, count]) => {
+          statuses[status] = (statuses[status] || 0) + count;
+        });
+        run.samples.forEach((sample) => {
+          if (samples.length < 5) {
+            samples.push(sample);
+          }
+        });
+      });
+
+      const hasActions = model.controlSignals.some((signal) => /action|camera|pose/i.test(signal));
+      const hasVideoInput = model.controlSignals.some((signal) => /video|multi_view|depth/i.test(signal));
+      const isWorldModel = model.taskFamilies.some((family) => /world_model|physics/i.test(family));
+      const suiteCoverage = clamp(suites.size / 4, 0, 1);
+      const resultCoverage = arenaLogCoverage(mediaCount + frameDirs + declaredRecords + recordFiles * 80 + specFiles * 20);
+      const completion = arenaCompletionRatio(statuses, mediaCount + frameDirs);
+      const dynamicCoverage = Array.from(suites).filter((suite) => /dynamic|video/.test(suite)).length / 4;
+
+      return {
+        ...model,
+        color: model.color || palette[index % palette.length],
+        accent: model.accent || palette[(index + 4) % palette.length],
+        runCount: modelRuns.length,
+        mediaCount,
+        frameDirs,
+        sidecars,
+        recordFiles,
+        specFiles,
+        declaredRecords,
+        observedRecords,
+        statuses,
+        suites: Array.from(suites).sort(),
+        samples,
+        coverageLabel: `${modelRuns.length} runs · ${declaredRecords || mediaCount} records · ${samples.length} previews`,
+        control: clamp(0.28 + suiteCoverage * 0.18 + (hasActions ? 0.25 : 0.06) + (hasVideoInput ? 0.1 : 0) + resultCoverage * 0.18, 0.18, 0.98),
+        visual: clamp(0.32 + (model.artifactTypes.includes("video") ? 0.18 : 0.08) + resultCoverage * 0.28 + suiteCoverage * 0.14 + completion * 0.08, 0.2, 0.98),
+        physics: clamp(0.24 + (isWorldModel ? 0.28 : 0.06) + (hasActions ? 0.14 : 0.04) + dynamicCoverage * 0.2 + resultCoverage * 0.12, 0.16, 0.96),
+        stability: clamp(0.3 + completion * 0.3 + resultCoverage * 0.18 + suiteCoverage * 0.12 + (model.backendType === "local_repo" ? 0.04 : 0), 0.18, 0.98)
+      };
+    })
+    .filter((model) => model.roles.length === 0 || model.roles.includes("candidate"))
+    .sort((left, right) => {
+      const rightCoverage = right.runCount + right.mediaCount + right.frameDirs;
+      const leftCoverage = left.runCount + left.mediaCount + left.frameDirs;
+
+      if (rightCoverage !== leftCoverage) {
+        return rightCoverage - leftCoverage;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+}
+
+function arenaScenariosFromRuns(runs, models) {
+  const presentSuites = new Set();
+
+  runs.forEach((run) => run.suites.forEach((suite) => presentSuites.add(suite)));
+  models.forEach((model) => model.supportedSuites.forEach((suite) => presentSuites.add(suite)));
+
+  const scenarios = [
+    {
+      id: "image_static",
+      labelEn: "Image Static I2V",
+      labelZh: "静态图像 I2V",
+      bodyEn: "Single image conditioning with camera motion over mostly static scenes.",
+      bodyZh: "以单张图像作为条件，在静态世界中评估镜头运动和外观保持。",
+      durationSeconds: 7,
+      pressure: 0.74,
+      weights: { control: 0.3, visual: 0.34, physics: 0.12, stability: 0.18, progress: 0.06 },
+      target: { control: 1.02, visual: 1.1, physics: 0.82, stability: 1.06 }
+    },
+    {
+      id: "image_dynamic",
+      labelEn: "Image Dynamic I2V",
+      labelZh: "动态图像 I2V",
+      bodyEn: "Image-conditioned rollout with object motion and scene dynamics.",
+      bodyZh: "从图像条件展开动态物体和场景运动。",
+      durationSeconds: 8,
+      pressure: 0.92,
+      weights: { control: 0.26, visual: 0.25, physics: 0.28, stability: 0.15, progress: 0.06 },
+      target: { control: 1.0, visual: 1.0, physics: 1.16, stability: 0.98 }
+    },
+    {
+      id: "video_static",
+      labelEn: "Video Static Continuation",
+      labelZh: "静态视频续写",
+      bodyEn: "First-frame or prefix continuation with camera-path consistency.",
+      bodyZh: "基于首帧或前缀续写，强调镜头路径和几何稳定。",
+      durationSeconds: 8,
+      pressure: 0.86,
+      weights: { control: 0.34, visual: 0.22, physics: 0.16, stability: 0.22, progress: 0.06 },
+      target: { control: 1.12, visual: 0.94, physics: 0.95, stability: 1.1 }
+    },
+    {
+      id: "video_dynamic",
+      labelEn: "Video Dynamic Continuation",
+      labelZh: "动态视频续写",
+      bodyEn: "Prefix-conditioned long rollout with motion and object permanence pressure.",
+      bodyZh: "前缀条件下的长时序动态续写，关注运动和物体保持。",
+      durationSeconds: 9,
+      pressure: 1.04,
+      weights: { control: 0.24, visual: 0.2, physics: 0.32, stability: 0.18, progress: 0.06 },
+      target: { control: 0.98, visual: 0.96, physics: 1.2, stability: 1.04 }
+    }
+  ];
+  const filtered = scenarios.filter((scenario) => presentSuites.has(scenario.id));
+
+  return filtered.length ? filtered : scenarios;
+}
+
+function arenaBattlePayload() {
+  if (
+    arenaBattleCache &&
+    arenaBattleCache.cacheVersion === arenaBattleCacheVersion &&
+    Date.now() - arenaBattleCache.createdAt < 120000
+  ) {
+    return {
+      ...arenaBattleCache.payload,
+      humanLeaderboard: arenaHumanLeaderboard(arenaBattleCache.payload.models || [], readArenaVotes())
+    };
+  }
+
+  const registryModels = readArenaModels();
+  const runs = safeReadDir(arenaPredictionRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => scanArenaPredictionRun(path.join(arenaPredictionRoot, entry.name), registryModels));
+  const models = decorateArenaModels(registryModels, runs);
+  const summary = {
+    integratedModels: registryModels.filter((model) => model.roles.length === 0 || model.roles.includes("candidate")).length,
+    arenaModels: models.length,
+    predictionRuns: runs.length,
+    mappedRuns: runs.filter((run) => run.modelId).length,
+    mediaOutputs: runs.reduce((total, run) => total + run.mediaCount, 0),
+    declaredRecords: runs.reduce((total, run) => total + (run.declaredRecords || 0), 0),
+    observedRecords: runs.reduce((total, run) => total + (run.observedRecords || 0), 0),
+    frameSets: runs.reduce((total, run) => total + run.frameDirs, 0),
+    recordFiles: runs.reduce((total, run) => total + run.recordFiles, 0),
+    specFiles: runs.reduce((total, run) => total + run.specFiles, 0)
+  };
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    source: {
+      modelConfigRoot: path.relative(worldArenaRoot, arenaModelConfigRoot),
+      predictionRoot: path.relative(worldArenaRoot, arenaPredictionRoot),
+      basis: "Arena scores are derived from model config capabilities and local prediction artifact coverage, not from a single official leaderboard scalar."
+    },
+    summary,
+    scenarios: arenaScenariosFromRuns(runs, models),
+    models,
+    humanLeaderboard: arenaHumanLeaderboard(models, readArenaVotes()),
+    runs: runs
+      .sort((left, right) => (right.declaredRecords + right.mediaCount) - (left.declaredRecords + left.mediaCount))
+      .slice(0, 80)
+  };
+
+  arenaBattleCache = {
+    cacheVersion: arenaBattleCacheVersion,
+    createdAt: Date.now(),
+    payload
+  };
+
+  return payload;
+}
+
+function resolvePredictionMediaFile(pathname) {
+  const prefix = "/prediction-media/";
+
+  if (!pathname.startsWith(prefix)) {
+    return null;
+  }
+
+  const relativeUrl = pathname.slice(prefix.length);
+  const relativePath = relativeUrl
+    .split("/")
+    .map((part) => decodeURIComponent(part))
+    .join(path.sep);
+  const resolvedRoot = path.resolve(arenaPredictionRoot);
+  const resolvedPath = path.resolve(resolvedRoot, relativePath);
+  const extension = path.extname(resolvedPath).toLowerCase();
+
+  if (
+    (resolvedPath === resolvedRoot || !resolvedPath.startsWith(`${resolvedRoot}${path.sep}`)) ||
+    !fs.existsSync(resolvedPath) ||
+    !mediaExtensions.has(extension)
+  ) {
+    return null;
+  }
+
+  return resolvedPath;
 }
 
 function sendJson(request, response, payload) {
@@ -1209,7 +2124,7 @@ function cacheControlFor(filePath, requestUrl = "") {
   const resolvedPath = path.resolve(filePath);
   const extension = path.extname(filePath).toLowerCase();
   const versionedAsset = /\?[^#]*\bv=/.test(requestUrl) &&
-    [".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".mp3", ".m4a", ".ogg", ".wav"].includes(extension);
+    [".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".mp3", ".m4a", ".ogg", ".wav", ".mp4", ".webm", ".mov", ".m4v"].includes(extension);
 
   if (versionedAsset) {
     return "public, max-age=31536000, immutable";
@@ -1318,6 +2233,54 @@ const server = http.createServer((request, response) => {
 
   if (pathname === "/api/archive-media") {
     sendJson(request, response, archivePagePayload(parsedUrl.query));
+    return;
+  }
+
+  if (pathname === "/api/arena-battle") {
+    sendJson(request, response, arenaBattlePayload());
+    return;
+  }
+
+  if (pathname === "/api/arena-vote") {
+    if (request.method !== "POST") {
+      sendNotFound(response);
+      return;
+    }
+
+    parseJsonRequest(request)
+      .then((payload) => {
+        const vote = sanitizeArenaVote(payload);
+
+        if (!vote) {
+          sendBadRequest(response, "Invalid arena vote payload");
+          return;
+        }
+
+        const votes = readArenaVotes();
+        votes.push(vote);
+        writeArenaVotes(votes);
+        arenaBattleCache = null;
+        sendJson(request, response, {
+          ok: true,
+          vote,
+          humanLeaderboard: arenaHumanLeaderboard(arenaBattlePayload().models || [], votes)
+        });
+      })
+      .catch((error) => {
+        sendBadRequest(response, error.message || "Invalid JSON");
+      });
+    return;
+  }
+
+  if (pathname.startsWith("/prediction-media/")) {
+    const mediaPath = resolvePredictionMediaFile(pathname);
+
+    if (!mediaPath) {
+      sendNotFound(response);
+      return;
+    }
+
+    sendFile(request, response, mediaPath);
     return;
   }
 

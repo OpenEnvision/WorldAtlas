@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 from types import ModuleType
 import uuid
 from typing import Any
@@ -43,6 +44,61 @@ DEFAULT_PULSE_RUNTIME_PYTHONPATHS = (
 
 def resolve_pulse_of_motion_root() -> Path:
     return (_project_root() / "thirdparty" / "Pulse-of-Motion").resolve()
+
+
+def _pulse_import_paths(root: Path | None = None) -> list[Path]:
+    pulse_root = (root or resolve_pulse_of_motion_root()).resolve()
+    inference_root = pulse_root / "inference"
+    return [path for path in (inference_root,) if path.exists()]
+
+
+def _module_under_root(module: object, root: Path) -> bool:
+    module_file = getattr(module, "__file__", None)
+    if module_file is None:
+        return False
+    try:
+        return Path(str(module_file)).resolve().is_relative_to(root)
+    except OSError:
+        return False
+
+
+class _PulseImportContext:
+    _GENERIC_MODULE_ROOTS = ("utils", "src")
+
+    def __init__(self, root: Path) -> None:
+        self.root = root.resolve()
+        self.paths = _pulse_import_paths(self.root)
+        self._inserted_paths: list[str] = []
+        self._saved_modules: dict[str, ModuleType] = {}
+
+    def __enter__(self) -> None:
+        pulse_roots = tuple(self.paths)
+        for name, module in list(sys.modules.items()):
+            top_level = name.split(".", 1)[0]
+            if top_level not in self._GENERIC_MODULE_ROOTS:
+                continue
+            if any(_module_under_root(module, root) for root in pulse_roots):
+                continue
+            self._saved_modules[name] = module
+            del sys.modules[name]
+        for path in reversed(self.paths):
+            path_str = str(path)
+            if path_str not in sys.path:
+                sys.path.insert(0, path_str)
+                self._inserted_paths.append(path_str)
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        pulse_roots = tuple(self.paths)
+        for path_str in self._inserted_paths:
+            while path_str in sys.path:
+                sys.path.remove(path_str)
+        for name, module in list(sys.modules.items()):
+            top_level = name.split(".", 1)[0]
+            if top_level in self._GENERIC_MODULE_ROOTS and any(
+                _module_under_root(module, root) for root in pulse_roots
+            ):
+                del sys.modules[name]
+        sys.modules.update(self._saved_modules)
 
 
 def _module_available(module_name: str) -> bool:
@@ -101,6 +157,8 @@ def resolve_pulse_runtime_env(runtime: dict[str, Any] | None = None) -> dict[str
     for candidate in DEFAULT_PULSE_RUNTIME_PYTHONPATHS:
         if candidate.exists():
             pythonpath_entries.append(str(candidate.resolve()))
+    for candidate in _pulse_import_paths():
+        pythonpath_entries.append(str(candidate.resolve()))
     env["PYTHONPATH"] = os.pathsep.join(_dedupe_paths(pythonpath_entries))
     return env
 
@@ -247,7 +305,8 @@ def _load_predict_module(root: str) -> ModuleType:
     if spec is None or spec.loader is None:
         raise ImportError(f"failed to load Pulse-of-Motion module from: {predict_path}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with _PulseImportContext(pulse_root):
+        spec.loader.exec_module(module)
     return module
 
 
@@ -277,7 +336,8 @@ def _load_model(root: str, device: str, checkpoint_file: str):
 
     torch_module.load = _compat_torch_load
     try:
-        return module.load_model(str(config_path), checkpoint_file, device)
+        with _PulseImportContext(pulse_root):
+            return module.load_model(str(config_path), checkpoint_file, device)
     finally:
         torch_module.load = original_torch_load
 

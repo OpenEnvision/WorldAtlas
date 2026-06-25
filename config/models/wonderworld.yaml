@@ -8,21 +8,22 @@ model:
   roles: [candidate]
   # WonderWorld is run through a noninteractive batch path:
   # render benchmark frames, save the main prediction as MP4, and keep 3DGS files only as a sidecar archive.
-  python_bin: /share/project/yesliu/miniconda3/envs/wonderworld/bin/python
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/wonderworld/bin/python
   repo_root: thirdparty/WonderWorld
   entrypoint: run.py
   output_ext: .mp4
   supported_suites:
     - image_static
     - video_static
-  prompt_mode: prompt_current
+  prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
     # Download the upstream RepViT SAM checkpoint under the unified ckpt root.
-    repvit_checkpoint: ckpt/WonderWorld/repvit_sam.pt
-    stable_diffusion_checkpoint: sd2-community/stable-diffusion-2-inpainting
-    depth_model_repo: prs-eth/marigold-v1-0
-    normal_model_repo: prs-eth/marigold-normals-v0-1
+    repvit_checkpoint: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/WonderWorld/repvit_sam.pt
+    stable_diffusion_checkpoint: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/sd2-community--stable-diffusion-2-inpainting
+    depth_model_repo: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/prs-eth--marigold-v1-0
+    normal_model_repo: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/prs-eth--marigold-normals-v0-1
+    oneformer_model_repo: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/huggingface/hub/models--shi-labs--oneformer_ade20k_swin_large/snapshots/4a5bac8e64f82681a12db2e151a4c2f4ce6092b2
     scene_name:
     entities:
     entity_limit: 3
@@ -31,7 +32,7 @@ model:
     negative_prompt: ""
     seed: 1
     num_scenes: 1
-    trajectory_frames: 49
+    trajectory_frames: 50
     fps: 10
     use_gpt: false
     debug: false
@@ -48,3 +49,5 @@ model:
     keep_work_dir: false
     archive_sidecars: true
     synthetic_focal_scale: 1.875
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt

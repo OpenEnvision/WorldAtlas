@@ -1,0 +1,16 @@
+Metric,Value
+Total images,5000.0
+Static images,3372.0
+Dynamic images,1628.0
+Photorealistic images,2468.0
+Stylized images,2532.0
+Indoor videos,2282.0
+Outdoor videos,3319.0
+Dynamic videos,787.0
+Indoor video scenes,4.0
+Outdoor video scenes,6.0
+Dynamic motion categories,5.0
+Indoor motion score (mean),44.89
+Indoor luminance (mean),114.58
+Dynamic motion score (mean),27.18
+Dynamic ratio (mean),0.424

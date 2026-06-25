@@ -53,6 +53,7 @@ site/*.pid
 site/*.log
 site/._*
 site/**/._*
+site/assets/promo_gallery.mp4
 
 # Benchmark and experiment outputs
 bench_output/
@@ -69,6 +70,10 @@ artifacts/benchmark/
 artifacts/dataset_stats/
 artifacts/predictions/
 artifacts/v1/
+paper_image_selection/
+paper_image_selection_100/
+paper_image_selection_100_fine_categories/
+paper_image_selection_balanced_style_split/
 
 # Model weights and generated assets
 checkpoints/
@@ -86,6 +91,9 @@ weights/
 tmp/
 temp/
 cache
+tmp_all_expanded_contact_sheets/
+*.bak_*
+*.orig
 runtimes/
 thirdparty/*
 !thirdparty/README.md

@@ -15,8 +15,11 @@ from typing import Iterator
 
 import cv2
 
-from worldarena.common.checkpoints import apply_checkpoint_env, hf_local_dir, resolve_checkpoint_path
-from worldarena.models.adapters.lyra2_runner import _prepare_transformer_engine_shim
+from worldarena.common.checkpoints import apply_checkpoint_env, resolve_checkpoint_path
+from worldarena.models.adapters.lyra2_runner import (
+    _complete_local_hf_dir,
+    _prepare_transformer_engine_shim,
+)
 
 
 DEFAULT_STATIC_VIEW_INDICES = ("5", "0", "1", "2", "3", "4")
@@ -113,26 +116,59 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--camera_rotation", default="center_facing", type=str)
     parser.add_argument("--movement_distance", default=0.3, type=float)
     parser.add_argument("--total_movement_distance_factor", default=1.0, type=float)
+    parser.add_argument("--filter_points_threshold", default=0.05, type=float)
+    parser.add_argument("--center_depth_quantile_value", default=0.5, type=float)
     parser.add_argument("--target_index_subsample", default=4, type=int)
     parser.add_argument("--output_view_index", default=0, type=int)
     parser.add_argument("--negative_prompt", default=None, type=str)
     parser.add_argument("--static_view_indices_fixed", default=",".join(DEFAULT_STATIC_VIEW_INDICES), type=str)
+    parser.add_argument("--stage1_num_gpus", default=None, type=int)
     parser.add_argument("--foreground_masking", action="store_true")
+    parser.add_argument("--center_depth_quantile", action="store_true")
     parser.add_argument("--multi_trajectory", action="store_true")
     parser.add_argument("--offload_diffusion_transformer", action="store_true")
     parser.add_argument("--offload_tokenizer", action="store_true")
     parser.add_argument("--offload_text_encoder_model", action="store_true")
+    parser.add_argument("--offload_prompt_upsampler", action="store_true")
+    parser.add_argument("--offload_guardrail_models", action="store_true")
+    parser.add_argument("--disable_guardrail", action="store_true")
+    parser.add_argument("--disable_prompt_encoder", action="store_true")
     parser.add_argument("--skip_stage2", action="store_true")
     return parser.parse_args()
+
+
+def _stage1_num_gpus(args: argparse.Namespace) -> int:
+    return max(1, int(args.stage1_num_gpus if args.stage1_num_gpus is not None else args.num_gpus))
 
 
 def _checkpoint_layout(checkpoint_dir: Path) -> dict[str, Path]:
     resolved = checkpoint_dir.expanduser().resolve()
     lyra_dir = resolved
-    gen3c_dir = hf_local_dir("nvidia/GEN3C-Cosmos-7B", required=True)
-    tokenizer_dir = hf_local_dir("nvidia/Cosmos-Tokenize1-CV8x8x8-720p", required=True)
-    t5_dir = hf_local_dir("google-t5/t5-11b", required=True)
-    moge_dir = hf_local_dir("Ruicheng/moge-vitl", required=True)
+    gen3c_dir = _complete_local_hf_dir(
+        (
+            "nvidia/GEN3C-Cosmos-7B",
+            "nvidia--GEN3C-Cosmos-7B",
+            "Gen3C-Cosmos-7B",
+            "GEN3C-Cosmos-7B",
+        ),
+        required_files=("model.pt",),
+    )
+    tokenizer_dir = _complete_local_hf_dir(
+        (
+            "nvidia/Cosmos-Tokenize1-CV8x8x8-720p",
+            "nvidia--Cosmos-Tokenize1-CV8x8x8-720p",
+            "Cosmos-Tokenize1-CV8x8x8-720p",
+        ),
+        required_files=("encoder.jit", "decoder.jit", "mean_std.pt", "image_mean_std.pt"),
+    )
+    t5_dir = _complete_local_hf_dir(
+        ("google-t5/t5-11b", "google-t5--t5-11b", "t5-11b"),
+        required_files=("config.json", "spiece.model"),
+    )
+    moge_dir = _complete_local_hf_dir(
+        ("Ruicheng/moge-vitl", "Ruicheng--moge-vitl", "moge-vitl"),
+        required_files=("model.pt",),
+    )
 
     missing: list[str] = []
     if not (lyra_dir / "lyra_static.pt").is_file():
@@ -223,6 +259,9 @@ def _temporary_dataset_registration(
     dataset_name: str,
     root_path: Path,
     view_indices: list[str],
+    sample_stems: list[str] | None = None,
+    wait_for_files: bool = False,
+    ready_timeout_seconds: float = 3600.0,
 ) -> Iterator[None]:
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
@@ -230,9 +269,85 @@ def _temporary_dataset_registration(
     from src.models.data.radym_wrapper import RadymWrapper
     from src.models.data.registry import dataset_registry
 
+    class WorldArenaRadymWrapper(RadymWrapper):
+        def __init__(
+            self,
+            *radym_args,
+            worldarena_sample_stems: list[str] | None = None,
+            worldarena_view_indices: list[str] | None = None,
+            worldarena_wait_for_files: bool = False,
+            worldarena_ready_timeout_seconds: float = 3600.0,
+            **radym_kwargs,
+        ) -> None:
+            super().__init__(*radym_args, **radym_kwargs)
+            self.worldarena_view_indices = [
+                str(view_index) for view_index in (worldarena_view_indices or [])
+            ]
+            self.worldarena_wait_for_files = bool(worldarena_wait_for_files)
+            self.worldarena_ready_timeout_seconds = float(worldarena_ready_timeout_seconds)
+            if worldarena_sample_stems is not None:
+                base_view_index = (
+                    self.worldarena_view_indices[0]
+                    if self.worldarena_view_indices
+                    else str(self.start_view_idx)
+                )
+                base_root = Path(self.root_path)
+                self.mp4_file_paths = [
+                    base_root / base_view_index / "rgb" / f"{stem}.mp4"
+                    for stem in worldarena_sample_stems
+                ]
+                self.sample_list = self.mp4_file_paths
+                if self.worldarena_view_indices:
+                    self.num_cameras = len(self.worldarena_view_indices)
+                    self.n_views = self.num_cameras
+
+        def _wait_for_sample_ready(self, idx: int) -> None:
+            if not self.worldarena_wait_for_files:
+                return
+            stem = self.mp4_file_paths[idx].stem
+            view_indices = self.worldarena_view_indices or [str(self.start_view_idx)]
+            required_paths = []
+            for view_index in view_indices:
+                view_root = Path(self.root_path) / str(view_index)
+                required_paths.extend(
+                    [
+                        view_root / "rgb" / f"{stem}.mp4",
+                        view_root / "latent" / f"{stem}.pkl",
+                        view_root / "pose" / f"{stem}.npz",
+                        view_root / "intrinsics" / f"{stem}.npz",
+                    ]
+                )
+            deadline = time.monotonic() + self.worldarena_ready_timeout_seconds
+            while True:
+                missing = [
+                    str(path)
+                    for path in required_paths
+                    if not path.is_file() or path.stat().st_size <= 0
+                ]
+                if not missing:
+                    return
+                if time.monotonic() > deadline:
+                    raise TimeoutError(
+                        "Timed out waiting for Lyra-1 stage1 files for "
+                        f"{stem}; missing examples: {missing[:4]}"
+                    )
+                time.sleep(5.0)
+
+        def count_frames(self, video_idx: int):
+            self._wait_for_sample_ready(video_idx)
+            return super().count_frames(video_idx)
+
+        def get_data(self, idx, *args, **kwargs):
+            self._wait_for_sample_ready(idx)
+            return super().get_data(idx, *args, **kwargs)
+
     existing = dataset_registry.get(dataset_name)
     dataset_entry = _static_dataset_entry(root_path=root_path, view_indices=view_indices)
-    dataset_entry["cls"] = RadymWrapper
+    dataset_entry["cls"] = WorldArenaRadymWrapper
+    dataset_entry["kwargs"]["worldarena_sample_stems"] = sample_stems
+    dataset_entry["kwargs"]["worldarena_view_indices"] = view_indices
+    dataset_entry["kwargs"]["worldarena_wait_for_files"] = wait_for_files
+    dataset_entry["kwargs"]["worldarena_ready_timeout_seconds"] = ready_timeout_seconds
     dataset_registry[dataset_name] = dataset_entry
     try:
         yield
@@ -249,16 +364,19 @@ def _stage1_command(
     generated_root: Path,
     args: argparse.Namespace,
 ) -> list[str]:
+    stage1_num_gpus = _stage1_num_gpus(args)
     script_and_args = [
         "cosmos_predict1/diffusion/inference/gen3c_single_image_sdg.py",
         "--checkpoint_dir",
         "checkpoints",
         "--num_gpus",
-        str(args.num_gpus),
+        str(stage1_num_gpus),
         "--input_image_path",
         str(input_image_path),
         "--video_save_folder",
         str(generated_root),
+        "--video_save_name",
+        args.sample_name,
         "--prompt",
         args.prompt,
         "--num_video_frames",
@@ -283,9 +401,13 @@ def _stage1_command(
         str(args.movement_distance),
         "--total_movement_distance_factor",
         str(args.total_movement_distance_factor),
+        "--filter_points_threshold",
+        str(args.filter_points_threshold),
+        "--center_depth_quantile_value",
+        str(args.center_depth_quantile_value),
     ]
     command = [sys.executable]
-    if args.num_gpus > 1:
+    if stage1_num_gpus > 1:
         command.extend(
             [
                 "-m",
@@ -294,7 +416,7 @@ def _stage1_command(
                 "--nnodes",
                 "1",
                 "--nproc_per_node",
-                str(args.num_gpus),
+                str(stage1_num_gpus),
             ]
         )
     command.extend(script_and_args)
@@ -302,10 +424,15 @@ def _stage1_command(
         command.extend(["--negative_prompt", args.negative_prompt])
     for flag_name in (
         "foreground_masking",
+        "center_depth_quantile",
         "multi_trajectory",
         "offload_diffusion_transformer",
         "offload_tokenizer",
         "offload_text_encoder_model",
+        "offload_prompt_upsampler",
+        "offload_guardrail_models",
+        "disable_guardrail",
+        "disable_prompt_encoder",
     ):
         if getattr(args, flag_name):
             command.append(f"--{flag_name}")
@@ -322,6 +449,7 @@ def _run_stage2(
     target_index_subsample: int,
     output_fps: int,
     static_view_indices_fixed: list[str],
+    num_test_images: int = 1,
 ) -> None:
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
@@ -344,7 +472,8 @@ def _run_stage2(
     demo_config.ckpt_path = str((checkpoints_root / "Lyra" / "lyra_static.pt").resolve())
     demo_config.do_eval = True
     demo_config.skip_existing = False
-    demo_config.num_test_images = 1
+    demo_config.num_test_images = num_test_images
+    demo_config.num_workers = 0
     demo_config.use_depth = False
     demo_config.out_fps = output_fps
     demo_config.target_index_subsample = target_index_subsample
@@ -596,6 +725,7 @@ def main() -> None:
                 target_index_subsample=args.target_index_subsample,
                 output_fps=args.fps,
                 static_view_indices_fixed=effective_view_indices,
+                num_test_images=1,
             )
 
         video_candidates = sorted(output_root.rglob(f"{args.sample_name}.mp4"))

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 from PIL import Image
 
 from worldarena.benchmark.schemas import BenchmarkSample
+from worldarena.models.adapters import wan22_batch_runner
 from worldarena.models.adapters.base import PreparedGenerationRequest
 from worldarena.models.adapters.wan22 import Wan22Adapter
 from worldarena.models.config import ModelRuntimeConfig
@@ -70,6 +72,27 @@ def test_wan22_family_builds_batch_adapter(tmp_path: Path) -> None:
 
     assert isinstance(adapter, Wan22Adapter)
     assert adapter.supports_batch_generation()
+
+
+def test_wan22_batch_runner_resolves_random_base_seed_once(monkeypatch) -> None:
+    class FakeDistributed:
+        @staticmethod
+        def is_available() -> bool:
+            return False
+
+        @staticmethod
+        def is_initialized() -> bool:
+            return False
+
+    class FakeTorch:
+        distributed = FakeDistributed()
+
+    args = SimpleNamespace(base_seed=-1)
+    monkeypatch.setattr(wan22_batch_runner.random, "randint", lambda _low, _high: 1234)
+
+    assert wan22_batch_runner._resolve_base_seed(args, {"torch": FakeTorch()}, rank=0) == 1234
+    assert args.base_seed == 1234
+    assert wan22_batch_runner._seed_for_row(args.base_seed, 2) == 1236
 
 
 def test_wan22_generate_batch_writes_spec_and_checks_outputs(monkeypatch, tmp_path: Path) -> None:

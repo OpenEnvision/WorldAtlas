@@ -1,0 +1,24 @@
+model:
+  name: echo-infinity-juanxi
+  family: echo_infinity
+  backend_type: local_repo
+  task_families: [video_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/Echo-Infinity/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/Echo-Infinity
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Echo-Infinity
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    num_gpus: 1
+    # num_output_frames=21 latent frames -> 81 decoded video frames
+    # (Wan VAE temporal mapping: 4*T - 3) -> ~5 seconds at 16 fps.
+    num_output_frames: 21
+    seed: 42
+    fps: 16

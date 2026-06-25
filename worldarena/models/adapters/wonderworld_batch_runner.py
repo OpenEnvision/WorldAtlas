@@ -9,6 +9,8 @@ import random
 import shutil
 import sys
 import tempfile
+import traceback
+import time
 from typing import Any
 import warnings
 import zipfile
@@ -37,20 +39,24 @@ def _parse_bool(value: str | bool) -> bool:
     raise argparse.ArgumentTypeError(f"invalid boolean value: {value!r}")
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="WorldArena WonderWorld batch runner.")
-    parser.add_argument("--repo_root", required=True, type=str)
+    parser.add_argument("--batch_spec", default=None, type=str)
+    parser.add_argument("--batch_results", default=None, type=str)
+    parser.add_argument("--repo_root", default=None, type=str)
     parser.add_argument("--entrypoint", default="run.py", type=str)
-    parser.add_argument("--conditioning_image", required=True, type=str)
-    parser.add_argument("--annotation_path", required=True, type=str)
-    parser.add_argument("--output_path", required=True, type=str)
+    parser.add_argument("--conditioning_image", default=None, type=str)
+    parser.add_argument("--annotation_path", default=None, type=str)
+    parser.add_argument("--output_path", default=None, type=str)
     parser.add_argument("--archive_path", default=None, type=str)
-    parser.add_argument("--sample_name", required=True, type=str)
-    parser.add_argument("--prompt_sequence_json", required=True, type=str)
-    parser.add_argument("--repvit_checkpoint", required=True, type=str)
+    parser.add_argument("--sample_name", default=None, type=str)
+    parser.add_argument("--prompt_sequence_json", default=None, type=str)
+    parser.add_argument("--style_prompt", default="photorealistic", type=str)
+    parser.add_argument("--repvit_checkpoint", default=None, type=str)
     parser.add_argument("--stable_diffusion_checkpoint", default="sd2-community/stable-diffusion-2-inpainting")
     parser.add_argument("--depth_model_repo", default="prs-eth/marigold-v1-0", type=str)
     parser.add_argument("--normal_model_repo", default="prs-eth/marigold-normals-v0-1", type=str)
+    parser.add_argument("--oneformer_model_repo", default="shi-labs/oneformer_ade20k_swin_large", type=str)
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--num_scenes", default=1, type=int)
     parser.add_argument("--trajectory_frames", default=49, type=int)
@@ -69,7 +75,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--gen_layer", default=False, type=_parse_bool)
     parser.add_argument("--use_compile", default=False, type=_parse_bool)
     parser.add_argument("--keep_work_dir", default=False, type=_parse_bool)
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 @contextlib.contextmanager
@@ -91,8 +97,8 @@ def _slugify(value: str) -> str:
     return cleaned or "sample"
 
 
-def _normalized_env(repo_root: Path) -> dict[str, str]:
-    env = apply_checkpoint_env()
+def _normalized_env(repo_root: Path, base_env: dict[str, str] | None = None) -> dict[str, str]:
+    env = apply_checkpoint_env(base_env or os.environ.copy())
     pythonpaths = [
         str(repo_root),
         str(repo_root / "RepViT"),
@@ -364,9 +370,8 @@ def _archive_sidecar(path: Path, *, work_dir: Path, frames_dir: Path, example_na
 
 def _run_batch_generation(args: argparse.Namespace, *, work_dir: Path) -> list[Image.Image]:
     repo_root = Path(args.repo_root).expanduser().resolve()
-    sys.path.insert(0, str(repo_root))
-    sys.path.insert(0, str(repo_root / "RepViT"))
-    sys.path.insert(0, str(repo_root / "RepViT" / "sam"))
+    pythonpath_roots = [str(repo_root), str(repo_root / "RepViT"), str(repo_root / "RepViT" / "sam")]
+    sys.path[:] = pythonpath_roots + [path for path in sys.path if path not in pythonpath_roots]
     os.chdir(work_dir)
     warnings.filterwarnings("ignore")
 
@@ -375,11 +380,12 @@ def _run_batch_generation(args: argparse.Namespace, *, work_dir: Path) -> list[I
     from gaussian_renderer import render
     from kornia.morphology import dilation
     from marigold_lcm.marigold_pipeline import MarigoldNormalsPipeline, MarigoldPipeline
+
+    import syncdiffusion.syncdiffusion_model as syncdiffusion_model
     from omegaconf import OmegaConf
     from scene import GaussianModel, Scene
     from torchvision.transforms import ToPILImage, ToTensor
     from transformers import OneFormerForUniversalSegmentation, OneFormerProcessor
-    from util.chatGPT4 import TextpromptGen
     from util.segment_utils import create_mask_generator_repvit
     from util.stable_diffusion_inpaint import StableDiffusionInpaintPipeline
     from util.utils import convert_pt3d_cam_to_3dgs_cam, prepare_scheduler, save_depth_map, soft_stitching
@@ -405,9 +411,9 @@ def _run_batch_generation(args: argparse.Namespace, *, work_dir: Path) -> list[I
         focal_length=float(args.init_focal_length),
     )
 
-    segment_processor = OneFormerProcessor.from_pretrained("shi-labs/oneformer_ade20k_swin_large")
+    segment_processor = OneFormerProcessor.from_pretrained(str(args.oneformer_model_repo))
     segment_model = OneFormerForUniversalSegmentation.from_pretrained(
-        "shi-labs/oneformer_ade20k_swin_large"
+        str(args.oneformer_model_repo)
     ).to("cuda")
     mask_generator = create_mask_generator_repvit()
     inpainter_pipeline = StableDiffusionInpaintPipeline.from_pretrained(
@@ -448,24 +454,59 @@ def _run_batch_generation(args: argparse.Namespace, *, work_dir: Path) -> list[I
         inpainting_resolution=config["inpainting_resolution_gen"],
     ).to(config["device"])
     kf_gen.image_latest = ToTensor()(start_keyframe).unsqueeze(0).to(config["device"])
-    kf_gen.recompose_image_latest_and_set_current_pc(scene_name=None)
-    pt_gen = TextpromptGen(kf_gen.run_dir, False)
+    sky_mask = kf_gen.generate_sky_mask().float()
+    sky_dir = Path("examples") / "sky_images" / str(config["example_name"])
+    needs_sky_image = bool(config.get("gen_sky_image", False))
+    if needs_sky_image or not (sky_dir / "sky_0.png").exists() or not (sky_dir / "sky_1.png").exists():
+        from syncdiffusion.syncdiffusion_model import SyncDiffusion
+
+        syncdiffusion_model = SyncDiffusion(config["device"], sd_version="2.0-inpaint", hf_key=config["stable_diffusion_checkpoint"])
+    else:
+        syncdiffusion_model = None
+    kf_gen.generate_sky_pointcloud(
+        syncdiffusion_model,
+        image=kf_gen.image_latest,
+        mask=sky_mask,
+        gen_sky=needs_sky_image,
+        style=str(args.style_prompt or "photorealistic"),
+    )
+    kf_gen.recompose_image_latest_and_set_current_pc(scene_name=prompt_list[0])
+    pt_gen = None
+    if bool(config.get("use_gpt", False)):
+        from util.chatGPT4 import TextpromptGen
+
+        pt_gen = TextpromptGen(kf_gen.run_dir, False)
     kf_gen.increment_kf_idx()
 
-    opt = GSParams()
+    traindatas = kf_gen.convert_to_3dgs_traindata(
+        xyz_scale=XYZ_SCALE,
+        remove_threshold=None,
+        use_no_loss_mask=False,
+    )
     if bool(config["gen_layer"]):
-        traindata, traindata_layer = kf_gen.convert_to_3dgs_traindata_latest_layer(
-            xyz_scale=XYZ_SCALE
-        )
-        gaussians = GaussianModel(sh_degree=0)
-        scene = Scene(traindata_layer, gaussians, opt)
-        _train_gaussian(gaussians, scene, opt, background, render, l1_loss, ssim)
+        _, traindata_sky, _ = traindatas
     else:
-        traindata = kf_gen.convert_to_3dgs_traindata_latest(
-            xyz_scale=XYZ_SCALE,
-            use_no_loss_mask=False,
-        )
-        gaussians = GaussianModel(sh_degree=0)
+        _, traindata_sky = traindatas
+
+    sky_opt = GSParams()
+    sky_opt.max_screen_size = 100
+    sky_opt.scene_extent = 1.5
+    sky_opt.densify_from_iter = 200
+    sky_opt.prune_from_iter = 200
+    sky_opt.densify_grad_threshold = 1.0
+    sky_opt.iterations = 399
+    gaussians = GaussianModel(sh_degree=0, floater_dist2_threshold=9e9)
+    scene = Scene(traindata_sky, gaussians, sky_opt, is_sky=True)
+    _train_gaussian(
+        gaussians,
+        scene,
+        sky_opt,
+        background,
+        render,
+        l1_loss,
+        ssim,
+        initialize_scaling=False,
+    )
 
     gaussians.visibility_filter_all = torch.zeros(
         gaussians.get_xyz_all.shape[0],
@@ -477,11 +518,26 @@ def _run_batch_generation(args: argparse.Namespace, *, work_dir: Path) -> list[I
         dtype=torch.bool,
         device="cuda",
     )
-    gaussians.is_sky_filter = torch.zeros(
+    gaussians.is_sky_filter = torch.ones(
         gaussians.get_xyz_all.shape[0],
         dtype=torch.bool,
         device="cuda",
     )
+
+    opt = GSParams()
+    if bool(config["gen_layer"]):
+        traindata, traindata_layer = kf_gen.convert_to_3dgs_traindata_latest_layer(
+            xyz_scale=XYZ_SCALE
+        )
+        gaussians = GaussianModel(sh_degree=0, previous_gaussian=gaussians)
+        scene = Scene(traindata_layer, gaussians, opt)
+        _train_gaussian(gaussians, scene, opt, background, render, l1_loss, ssim)
+    else:
+        traindata = kf_gen.convert_to_3dgs_traindata_latest(
+            xyz_scale=XYZ_SCALE,
+            use_no_loss_mask=False,
+        )
+
     if traindata["pcd_points"].shape[-1] != 0:
         gaussians = GaussianModel(sh_degree=0, previous_gaussian=gaussians)
         scene = Scene(traindata, gaussians, opt)
@@ -590,9 +646,19 @@ def _run_batch_generation(args: argparse.Namespace, *, work_dir: Path) -> list[I
     return rendered_frames
 
 
-def _train_gaussian(gaussians, scene, opt, background, render, l1_loss, ssim) -> None:
+def _train_gaussian(
+    gaussians,
+    scene,
+    opt,
+    background,
+    render,
+    l1_loss,
+    ssim,
+    *,
+    initialize_scaling: bool = True,
+) -> None:
     train_cameras = scene.getTrainCameras().copy()
-    gaussians.compute_3D_filter(cameras=train_cameras)
+    gaussians.compute_3D_filter(cameras=train_cameras, initialize_scaling=initialize_scaling)
     for iteration in range(1, opt.iterations + 1):
         viewpoint_stack = scene.getTrainCameras().copy()
         viewpoint_cam = viewpoint_stack.pop(random.randint(0, len(viewpoint_stack) - 1))
@@ -632,8 +698,134 @@ def _train_gaussian(gaussians, scene, opt, background, render, l1_loss, ssim) ->
                 gaussians.optimizer.zero_grad(set_to_none=True)
 
 
-def main() -> None:
-    args = parse_args()
+def _validate_single_args(args: argparse.Namespace) -> None:
+    required = (
+        "repo_root",
+        "conditioning_image",
+        "annotation_path",
+        "output_path",
+        "sample_name",
+        "prompt_sequence_json",
+        "repvit_checkpoint",
+    )
+    missing = [name for name in required if not getattr(args, name, None)]
+    if missing:
+        raise ValueError("missing required WonderWorld runner arguments: " + ", ".join(missing))
+
+
+def _cache_key(name: str, args: tuple[object, ...], kwargs: dict[str, object]) -> str:
+    payload = {
+        "name": name,
+        "args": [str(item) for item in args],
+        "kwargs": {key: str(value) for key, value in sorted(kwargs.items())},
+    }
+    return json.dumps(payload, sort_keys=True)
+
+
+def _install_singleload_caches() -> None:
+    cache: dict[str, object] = {}
+    for module_name in list(sys.modules):
+        if module_name in {"utils", "util", "scene"} or module_name.startswith(("utils.", "util.", "scene.")):
+            sys.modules.pop(module_name, None)
+
+    from transformers import OneFormerForUniversalSegmentation, OneFormerProcessor
+    import util.segment_utils as segment_utils
+    from util.stable_diffusion_inpaint import StableDiffusionInpaintPipeline
+    from marigold_lcm.marigold_pipeline import MarigoldNormalsPipeline, MarigoldPipeline
+
+    import syncdiffusion.syncdiffusion_model as syncdiffusion_model
+
+    original_processor_from_pretrained = OneFormerProcessor.from_pretrained
+
+    @classmethod
+    def cached_processor_from_pretrained(cls, *args, **kwargs):
+        del cls
+        key = _cache_key("oneformer_processor", args, kwargs)
+        if key not in cache:
+            print(f"[WonderWorld singleload] loading OneFormerProcessor once: {args[0] if args else ''}", flush=True)
+            cache[key] = original_processor_from_pretrained(*args, **kwargs)
+        return cache[key]
+
+    OneFormerProcessor.from_pretrained = cached_processor_from_pretrained
+
+    original_segment_from_pretrained = OneFormerForUniversalSegmentation.from_pretrained
+
+    @classmethod
+    def cached_segment_from_pretrained(cls, *args, **kwargs):
+        del cls
+        key = _cache_key("oneformer_model", args, kwargs)
+        if key not in cache:
+            print(f"[WonderWorld singleload] loading OneFormer model once: {args[0] if args else ''}", flush=True)
+            cache[key] = original_segment_from_pretrained(*args, **kwargs)
+        return cache[key]
+
+    OneFormerForUniversalSegmentation.from_pretrained = cached_segment_from_pretrained
+
+    original_mask_generator = segment_utils.create_mask_generator_repvit
+
+    def cached_mask_generator(*args, **kwargs):
+        key = _cache_key("repvit_mask_generator", args, kwargs)
+        if key not in cache:
+            print("[WonderWorld singleload] loading RepViT mask generator once", flush=True)
+            cache[key] = original_mask_generator(*args, **kwargs)
+        return cache[key]
+
+    segment_utils.create_mask_generator_repvit = cached_mask_generator
+
+    original_inpaint_from_pretrained = StableDiffusionInpaintPipeline.from_pretrained
+
+    @classmethod
+    def cached_inpaint_from_pretrained(cls, *args, **kwargs):
+        del cls
+        key = _cache_key("stable_diffusion_inpaint", args, kwargs)
+        if key not in cache:
+            print(f"[WonderWorld singleload] loading inpaint pipeline once: {args[0] if args else ''}", flush=True)
+            cache[key] = original_inpaint_from_pretrained(*args, **kwargs)
+        return cache[key]
+
+    StableDiffusionInpaintPipeline.from_pretrained = cached_inpaint_from_pretrained
+
+    original_depth_from_pretrained = MarigoldPipeline.from_pretrained
+
+    @classmethod
+    def cached_depth_from_pretrained(cls, *args, **kwargs):
+        del cls
+        key = _cache_key("marigold_depth", args, kwargs)
+        if key not in cache:
+            print(f"[WonderWorld singleload] loading Marigold depth once: {args[0] if args else ''}", flush=True)
+            cache[key] = original_depth_from_pretrained(*args, **kwargs)
+        return cache[key]
+
+    MarigoldPipeline.from_pretrained = cached_depth_from_pretrained
+
+    original_normal_from_pretrained = MarigoldNormalsPipeline.from_pretrained
+
+    @classmethod
+    def cached_normal_from_pretrained(cls, *args, **kwargs):
+        del cls
+        key = _cache_key("marigold_normals", args, kwargs)
+        if key not in cache:
+            print(f"[WonderWorld singleload] loading Marigold normals once: {args[0] if args else ''}", flush=True)
+            cache[key] = original_normal_from_pretrained(*args, **kwargs)
+        return cache[key]
+
+    MarigoldNormalsPipeline.from_pretrained = cached_normal_from_pretrained
+
+
+    original_syncdiffusion = syncdiffusion_model.SyncDiffusion
+
+    def cached_syncdiffusion(*args, **kwargs):
+        key = _cache_key("syncdiffusion", args, kwargs)
+        if key not in cache:
+            print("[WonderWorld singleload] loading SyncDiffusion once", flush=True)
+            cache[key] = original_syncdiffusion(*args, **kwargs)
+        return cache[key]
+
+    syncdiffusion_model.SyncDiffusion = cached_syncdiffusion
+
+
+def _run_one(args: argparse.Namespace) -> dict[str, object]:
+    _validate_single_args(args)
     repo_root = Path(args.repo_root).expanduser().resolve()
     conditioning_image = Path(args.conditioning_image).expanduser().resolve()
     output_path = Path(args.output_path).expanduser().resolve()
@@ -644,7 +836,8 @@ def main() -> None:
     if not repvit_checkpoint.exists():
         raise FileNotFoundError(f"WonderWorld RepViT checkpoint not found: {repvit_checkpoint}")
 
-    example_name = _slugify(args.sample_name)
+    started_at = time.perf_counter()
+    example_name = _slugify(str(args.sample_name))
     with _work_dir(bool(args.keep_work_dir)) as work_dir:
         local_conditioning = work_dir / "inputs" / f"conditioning{conditioning_image.suffix or '.png'}"
         local_conditioning.parent.mkdir(parents=True, exist_ok=True)
@@ -654,8 +847,10 @@ def main() -> None:
 
         old_cwd = Path.cwd()
         old_environ = os.environ.copy()
+        runtime_env = _normalized_env(repo_root, old_environ)
         os.environ.clear()
-        os.environ.update(_normalized_env(repo_root))
+        os.environ.update(runtime_env)
+        print(f"[WonderWorld batch] CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES', '')}", flush=True)
         try:
             frames = _run_batch_generation(args, work_dir=work_dir)
         finally:
@@ -674,6 +869,58 @@ def main() -> None:
                 frames_dir=frames_dir,
                 example_name=example_name,
             )
+    result: dict[str, object] = {
+        "status": "generated",
+        "prediction_path": str(output_path),
+        "generation_wall_time_seconds": round(time.perf_counter() - started_at, 6),
+    }
+    if args.archive_path and Path(args.archive_path).expanduser().exists():
+        result["archive_path"] = str(Path(args.archive_path).expanduser().resolve())
+    return result
+
+
+def _run_batch_spec(args: argparse.Namespace) -> None:
+    spec_path = Path(str(args.batch_spec)).expanduser().resolve()
+    results_path = (
+        Path(str(args.batch_results)).expanduser().resolve()
+        if args.batch_results
+        else spec_path.with_suffix(".results.json")
+    )
+    rows = [json.loads(line) for line in spec_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    results: dict[str, dict[str, object]] = {}
+    if rows:
+        first_args = parse_args(list(rows[0]["args"]))
+        repo_root = Path(first_args.repo_root).expanduser().resolve()
+        pythonpath_roots = [str(repo_root), str(repo_root / "RepViT"), str(repo_root / "RepViT" / "sam")]
+        sys.path[:] = pythonpath_roots + [path for path in sys.path if path not in pythonpath_roots]
+        _install_singleload_caches()
+
+    for row in rows:
+        sample_id = str(row["sample_id"])
+        request_args = parse_args(list(row["args"]))
+        print(f"[WonderWorld batch] generating {sample_id} -> {request_args.output_path}", flush=True)
+        try:
+            payload = _run_one(request_args)
+            payload.setdefault("prompt", row.get("prompt", ""))
+        except Exception as exc:
+            payload = {
+                "status": "failed",
+                "error": str(exc),
+                "traceback": traceback.format_exc(),
+                "prediction_path": row.get("prediction_path"),
+                "prompt": row.get("prompt", ""),
+            }
+        results[sample_id] = payload
+        results_path.parent.mkdir(parents=True, exist_ok=True)
+        results_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def main() -> None:
+    args = parse_args()
+    if args.batch_spec:
+        _run_batch_spec(args)
+        return
+    _run_one(args)
 
 
 if __name__ == "__main__":

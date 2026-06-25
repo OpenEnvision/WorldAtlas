@@ -881,7 +881,7 @@ def _run_persistent_generation(
         action_string=action_string,
         allow_act2cam=allow_act2cam,
     )
-    with runtime.torch.inference_mode():
+    with runtime.torch.no_grad():
         _debug_runtime_stage(runtime, sample, "pipeline_generate_start")
         video = runtime.pipeline.generate(
             prompt,
@@ -961,6 +961,12 @@ def _torchrun_prefix(config: ModelRuntimeConfig, generation: dict[str, Any]) -> 
         "--nproc_per_node",
         str(nproc_per_node),
     ]
+    master_addr = generation.get(
+        "master_addr",
+        os.environ.get("WORLDARENA_LOCAL_MASTER_ADDR", "127.0.0.1"),
+    )
+    if master_addr is not None:
+        command.extend(["--master_addr", str(master_addr)])
     master_port = generation.get("master_port")
     if master_port is not None:
         command.extend(["--master_port", str(int(master_port))])

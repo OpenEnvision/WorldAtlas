@@ -1,0 +1,47 @@
+model:
+  name: matrix-game-3-video-static-vipe
+  family: matrix_game_3
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, actions, pose]
+  roles: [candidate]
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/matrix-game-3.0/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/Matrix-Game/Matrix-Game-3
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Matrix-Game-3.0
+  entrypoint: generate.py
+  output_ext: .mp4
+  supported_suites:
+    - video_static
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    WAN_FA_VERSION: "2"
+  generation:
+    size: 704*1280
+    fps: 17
+    seed: 42
+    num_inference_steps: 3
+    sample_guide_scale: 5.0
+    vae_type: mg_lightvae
+    lightvae_pruning_rate: 0.5
+    compile_vae: true
+    use_int8: true
+    fa_version: "2"
+    visualize_ops: false
+    action_source: vipe_gt_camera
+    gt_camera_control_mode: coarse
+    gt_camera_segment_frames: 24
+    gt_camera_max_segments: 24
+    gt_camera_coarse_pulse_period_frames: 6
+    gt_camera_coarse_pulse_on_frames: 2
+    gt_camera_mouse_step: 0.05
+    gt_camera_translation_deadzone_percentile: 50
+    gt_camera_translation_deadzone_scale: 0.6
+    gt_camera_angle_deadzone_percentile: 50
+    gt_camera_angle_deadzone_scale: 0.6
+    gt_camera_angle_deadzone_degrees: 0.25
+    action_plan:
+      first_clip_frames: 57
+      clip_overlap_frames: 16

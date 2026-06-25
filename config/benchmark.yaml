@@ -67,7 +67,6 @@ benchmark:
     - brightness_distribution_consistency
     - color_temperature_constraint
     - sharpness_retention
-    - camera_error
     - seen_region_preservation
     - novel_region_fidelity
     - object_detection

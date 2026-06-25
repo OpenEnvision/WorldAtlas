@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 
+from worldarena.common.checkpoints import rehome_legacy_workspace_path
 from worldarena.benchmark.schemas import BenchmarkSample
 from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
 from worldarena.models.adapters.common import (
@@ -112,6 +113,16 @@ _WORLD_ARENA_CAMERA_PHRASES = {
     "camera orbits left": "orbit_left",
     "camera orbit right": "orbit_right",
     "camera orbits right": "orbit_right",
+}
+_MATRIX_GAME3_GT_CAMERA_ACTION_SOURCES = {
+    "gt_camera",
+    "gt_camera_path",
+    "video_gt_camera",
+    "vipe",
+    "vipe_camera",
+    "vipe_camera_path",
+    "vipe_gt_camera",
+    "vipe_gt_camera_path",
 }
 
 
@@ -677,6 +688,416 @@ def _matrix_game_2_official_bench_payload(
     raise ValueError(f"Unsupported Matrix-Game-2 mode for official actions: {mode}")
 
 
+def _annotation_dir_for_sample(sample: BenchmarkSample) -> Path | None:
+    if not sample.annotation_path:
+        return None
+    annotation_path = str(sample.annotation_path)
+    if "::" in annotation_path:
+        return None
+    remapped = rehome_legacy_workspace_path(annotation_path)
+    if remapped is None:
+        return None
+    path = Path(remapped).expanduser()
+    return path.resolve() if path.is_dir() else None
+
+
+def _read_json_dict(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return {}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return payload if isinstance(payload, dict) else {}
+
+
+def _load_gt_c2w_poses(annotation_dir: Path) -> np.ndarray:
+    for name in ("poses_c2w.npy", "poses.npy"):
+        path = annotation_dir / name
+        if not path.is_file():
+            continue
+        poses = np.asarray(np.load(path), dtype=np.float32)
+        if poses.ndim == 3 and poses.shape[1:] == (4, 4):
+            return poses
+    raise FileNotFoundError(f"VIPE camera pose file not found under {annotation_dir}")
+
+
+def _video_static_target_frames_and_fps(
+    *,
+    config: dict[str, Any],
+    sample: BenchmarkSample,
+    annotation_dir: Path | None,
+) -> tuple[int, float, dict[str, Any]]:
+    quality = _read_json_dict(annotation_dir / "quality_report.json") if annotation_dir is not None else {}
+    frame_count = quality.get("source_video_frame_count") or quality.get("frame_count")
+    if frame_count is None and annotation_dir is not None and (annotation_dir / "frame_indices.npy").is_file():
+        frame_count = int(np.load(annotation_dir / "frame_indices.npy").shape[0])
+    if frame_count is None and sample.duration_seconds and sample.fps:
+        frame_count = int(round(float(sample.duration_seconds) * float(sample.fps)))
+    if frame_count is None:
+        frame_count = int(config.get("save_num_frames", 0) or config.get("video_length", 85))
+
+    fps = quality.get("fps") or sample.fps or config.get("fps", 17)
+    fps = float(fps)
+    if not np.isfinite(fps) or fps <= 0.0:
+        fps = float(config.get("fps", 17))
+
+    return max(int(frame_count), 1), fps, quality
+
+
+def _matrix_game3_iteration_frame_count(first_clip_frames: int, followup_frames: int, num_iterations: int) -> int:
+    return first_clip_frames + (max(num_iterations, 1) - 1) * followup_frames
+
+
+def _matrix_game3_iterations_for_saved_frames(
+    *,
+    saved_frames: int,
+    first_clip_frames: int,
+    followup_frames: int,
+) -> int:
+    if saved_frames <= first_clip_frames:
+        return 1
+    return 1 + math.ceil((saved_frames - first_clip_frames) / followup_frames)
+
+
+def _interp_columns(values: np.ndarray, target_count: int) -> np.ndarray:
+    if values.shape[0] == target_count:
+        return values.astype(np.float32)
+    source_x = np.linspace(0.0, 1.0, num=values.shape[0], dtype=np.float32)
+    target_x = np.linspace(0.0, 1.0, num=target_count, dtype=np.float32)
+    columns = [np.interp(target_x, source_x, values[:, axis]) for axis in range(values.shape[1])]
+    return np.stack(columns, axis=1).astype(np.float32)
+
+
+def _camera_pitch_yaw_from_c2w(poses_c2w: np.ndarray) -> np.ndarray:
+    forward = poses_c2w[:, :3, 2].astype(np.float64)
+    norm = np.linalg.norm(forward, axis=1, keepdims=True)
+    forward = forward / np.maximum(norm, 1e-8)
+    yaw = np.unwrap(np.arctan2(forward[:, 0], forward[:, 2]))
+    horizontal = np.maximum(np.linalg.norm(forward[:, [0, 2]], axis=1), 1e-8)
+    pitch = np.unwrap(np.arctan2(-forward[:, 1], horizontal))
+    return np.stack([pitch, yaw], axis=1).astype(np.float32)
+
+
+def _nearest_rotations(poses_c2w: np.ndarray, target_count: int) -> np.ndarray:
+    if poses_c2w.shape[0] == target_count:
+        return poses_c2w[:, :3, :3].astype(np.float32)
+    indices = np.rint(np.linspace(0, poses_c2w.shape[0] - 1, num=target_count)).astype(np.int64)
+    return poses_c2w[indices, :3, :3].astype(np.float32)
+
+
+def _action_label(keyboard_row: np.ndarray, mouse_row: np.ndarray) -> str:
+    parts: list[str] = []
+    if keyboard_row[0] > 0.5:
+        parts.append("forward")
+    if keyboard_row[1] > 0.5:
+        parts.append("back")
+    if keyboard_row[2] > 0.5:
+        parts.append("left")
+    if keyboard_row[3] > 0.5:
+        parts.append("right")
+    if mouse_row[0] > 0.0:
+        parts.append("camera_up")
+    elif mouse_row[0] < 0.0:
+        parts.append("camera_down")
+    if mouse_row[1] > 0.0:
+        parts.append("camera_r")
+    elif mouse_row[1] < 0.0:
+        parts.append("camera_l")
+    return "_".join(parts) if parts else "idle"
+
+
+def _compress_action_labels(labels: list[str], *, max_items: int = 64) -> list[str]:
+    compressed: list[str] = []
+    for label in labels:
+        if compressed and compressed[-1] == label:
+            continue
+        compressed.append(label)
+    if len(compressed) <= max_items:
+        return compressed
+    head = compressed[: max_items // 2]
+    tail = compressed[-(max_items - len(head)) :]
+    return head + ["..."] + tail
+
+
+def _scaled_positive_deadzone(
+    values: np.ndarray,
+    *,
+    percentile: float,
+    scale: float,
+    minimum: float,
+) -> float:
+    nonzero = values[values > 0.0]
+    if not nonzero.size:
+        return minimum
+    return max(float(np.percentile(nonzero, percentile)) * scale, minimum)
+
+
+def _quantize_gt_camera_actions_dense(
+    *,
+    poses_c2w: np.ndarray,
+    saved_frames: int,
+    total_frames: int,
+    config: dict[str, Any],
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    keyboard = np.zeros((total_frames, 6), dtype=np.float32)
+    mouse = np.zeros((total_frames, 2), dtype=np.float32)
+    if poses_c2w.shape[0] < 2 or saved_frames < 2:
+        return keyboard, mouse, ["idle"]
+
+    positions = _interp_columns(poses_c2w[:, :3, 3], saved_frames)
+    pitch_yaw = _interp_columns(_camera_pitch_yaw_from_c2w(poses_c2w), saved_frames)
+    rotations = _nearest_rotations(poses_c2w, saved_frames)
+
+    deltas_world = positions[1:] - positions[:-1]
+    local_deltas = np.einsum("nij,nj->ni", np.swapaxes(rotations[:-1], 1, 2), deltas_world)
+    planar_steps = np.linalg.norm(local_deltas[:, [0, 2]], axis=1)
+    translation_deadzone = _scaled_positive_deadzone(
+        planar_steps,
+        percentile=float(config.get("gt_camera_translation_deadzone_percentile", 35)),
+        scale=float(config.get("gt_camera_translation_deadzone_scale", 0.35)),
+        minimum=float(config.get("gt_camera_translation_deadzone", 1e-6)),
+    )
+
+    angle_deltas = np.diff(pitch_yaw, axis=0)
+    angle_abs = np.abs(angle_deltas)
+    angle_deadzone = _scaled_positive_deadzone(
+        angle_abs,
+        percentile=float(config.get("gt_camera_angle_deadzone_percentile", 40)),
+        scale=float(config.get("gt_camera_angle_deadzone_scale", 0.35)),
+        minimum=math.radians(float(config.get("gt_camera_angle_deadzone_degrees", 0.03))),
+    )
+
+    mouse_step = float(config.get("gt_camera_mouse_step", 0.1))
+    labels: list[str] = []
+    usable_rows = min(saved_frames - 1, total_frames)
+    for index in range(usable_rows):
+        local_x = float(local_deltas[index, 0])
+        local_z = float(local_deltas[index, 2])
+        if local_z > translation_deadzone:
+            keyboard[index, _MATRIX_GAME_1_AND_3_KEYBOARD_IDX["forward"]] = 1.0
+        elif local_z < -translation_deadzone:
+            keyboard[index, _MATRIX_GAME_1_AND_3_KEYBOARD_IDX["back"]] = 1.0
+        if local_x > translation_deadzone:
+            keyboard[index, _MATRIX_GAME_1_AND_3_KEYBOARD_IDX["right"]] = 1.0
+        elif local_x < -translation_deadzone:
+            keyboard[index, _MATRIX_GAME_1_AND_3_KEYBOARD_IDX["left"]] = 1.0
+
+        delta_pitch = float(angle_deltas[index, 0])
+        delta_yaw = float(angle_deltas[index, 1])
+        if delta_pitch > angle_deadzone:
+            mouse[index, 0] = mouse_step
+        elif delta_pitch < -angle_deadzone:
+            mouse[index, 0] = -mouse_step
+        if delta_yaw > angle_deadzone:
+            mouse[index, 1] = mouse_step
+        elif delta_yaw < -angle_deadzone:
+            mouse[index, 1] = -mouse_step
+        labels.append(_action_label(keyboard[index], mouse[index]))
+
+    if usable_rows > 0 and usable_rows < total_frames:
+        keyboard[usable_rows:] = keyboard[usable_rows - 1]
+        mouse[usable_rows:] = mouse[usable_rows - 1]
+    return keyboard, mouse, _compress_action_labels(labels)
+
+
+def _dominant_translation_token(local_delta: np.ndarray, *, deadzone: float) -> str | None:
+    local_x = float(local_delta[0])
+    local_z = float(local_delta[2])
+    if max(abs(local_x), abs(local_z)) <= deadzone:
+        return None
+    if abs(local_z) >= abs(local_x):
+        return "forward" if local_z > 0.0 else "back"
+    return "right" if local_x > 0.0 else "left"
+
+
+def _dominant_rotation_vector(angle_delta: np.ndarray, *, deadzone: float, mouse_step: float) -> np.ndarray:
+    mouse = np.zeros(2, dtype=np.float32)
+    delta_pitch = float(angle_delta[0])
+    delta_yaw = float(angle_delta[1])
+    if max(abs(delta_pitch), abs(delta_yaw)) <= deadzone:
+        return mouse
+    if abs(delta_yaw) >= abs(delta_pitch):
+        mouse[1] = mouse_step if delta_yaw > 0.0 else -mouse_step
+    else:
+        mouse[0] = mouse_step if delta_pitch > 0.0 else -mouse_step
+    return mouse
+
+
+def _coarse_segment_bounds(active_frames: int, config: dict[str, Any]) -> list[tuple[int, int]]:
+    segment_frames = max(int(config.get("gt_camera_segment_frames", 24)), 2)
+    max_segments = max(int(config.get("gt_camera_max_segments", 24)), 1)
+    segment_count = max(math.ceil(active_frames / segment_frames), 1)
+    segment_count = min(segment_count, max_segments, active_frames)
+    edges = np.rint(np.linspace(0, active_frames, num=segment_count + 1)).astype(np.int64)
+    bounds: list[tuple[int, int]] = []
+    for start, end in zip(edges[:-1], edges[1:]):
+        start_i = int(start)
+        end_i = int(end)
+        if end_i > start_i:
+            bounds.append((start_i, end_i))
+    return bounds
+
+
+def _coarse_action_label(keyboard_token: str | None, mouse_row: np.ndarray) -> str:
+    keyboard = np.zeros(6, dtype=np.float32)
+    if keyboard_token is not None:
+        keyboard[_MATRIX_GAME_1_AND_3_KEYBOARD_IDX[keyboard_token]] = 1.0
+    return _action_label(keyboard, mouse_row)
+
+
+def _quantize_gt_camera_actions_coarse(
+    *,
+    poses_c2w: np.ndarray,
+    saved_frames: int,
+    total_frames: int,
+    config: dict[str, Any],
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    keyboard = np.zeros((total_frames, 6), dtype=np.float32)
+    mouse = np.zeros((total_frames, 2), dtype=np.float32)
+    active_frames = min(saved_frames, total_frames)
+    if poses_c2w.shape[0] < 2 or active_frames < 2:
+        return keyboard, mouse, ["idle"]
+
+    positions = _interp_columns(poses_c2w[:, :3, 3], saved_frames)
+    pitch_yaw = _interp_columns(_camera_pitch_yaw_from_c2w(poses_c2w), saved_frames)
+    rotations = _nearest_rotations(poses_c2w, saved_frames)
+    bounds = _coarse_segment_bounds(active_frames, config)
+    if not bounds:
+        return keyboard, mouse, ["idle"]
+
+    segment_local_deltas: list[np.ndarray] = []
+    segment_angle_deltas: list[np.ndarray] = []
+    for start, end in bounds:
+        pose_end = max(end - 1, start)
+        world_delta = positions[pose_end] - positions[start]
+        local_delta = rotations[start].T @ world_delta
+        segment_local_deltas.append(local_delta.astype(np.float32))
+        segment_angle_deltas.append((pitch_yaw[pose_end] - pitch_yaw[start]).astype(np.float32))
+
+    local_delta_array = np.stack(segment_local_deltas)
+    angle_delta_array = np.stack(segment_angle_deltas)
+    planar_steps = np.linalg.norm(local_delta_array[:, [0, 2]], axis=1)
+    translation_deadzone = _scaled_positive_deadzone(
+        planar_steps,
+        percentile=float(config.get("gt_camera_translation_deadzone_percentile", 50)),
+        scale=float(config.get("gt_camera_translation_deadzone_scale", 0.6)),
+        minimum=float(config.get("gt_camera_translation_deadzone", 1e-6)),
+    )
+    angle_deadzone = _scaled_positive_deadzone(
+        np.abs(angle_delta_array),
+        percentile=float(config.get("gt_camera_angle_deadzone_percentile", 50)),
+        scale=float(config.get("gt_camera_angle_deadzone_scale", 0.6)),
+        minimum=math.radians(float(config.get("gt_camera_angle_deadzone_degrees", 0.25))),
+    )
+
+    mouse_step = float(config.get("gt_camera_mouse_step", 0.05))
+    pulse_period = max(int(config.get("gt_camera_coarse_pulse_period_frames", 6)), 1)
+    pulse_on = max(int(config.get("gt_camera_coarse_pulse_on_frames", 2)), 1)
+    pulse_on = min(pulse_on, pulse_period)
+    labels: list[str] = []
+    for (start, end), local_delta, angle_delta in zip(bounds, segment_local_deltas, segment_angle_deltas):
+        keyboard_token = _dominant_translation_token(local_delta, deadzone=translation_deadzone)
+        mouse_row = _dominant_rotation_vector(angle_delta, deadzone=angle_deadzone, mouse_step=mouse_step)
+        labels.append(_coarse_action_label(keyboard_token, mouse_row))
+        for frame_index in range(start, end):
+            if (frame_index - start) % pulse_period >= pulse_on:
+                continue
+            if keyboard_token is not None:
+                keyboard[frame_index, _MATRIX_GAME_1_AND_3_KEYBOARD_IDX[keyboard_token]] = 1.0
+            mouse[frame_index] = mouse_row
+
+    return keyboard, mouse, _compress_action_labels(labels)
+
+
+def _quantize_gt_camera_actions(
+    *,
+    poses_c2w: np.ndarray,
+    saved_frames: int,
+    total_frames: int,
+    config: dict[str, Any],
+) -> tuple[np.ndarray, np.ndarray, list[str]]:
+    mode = str(config.get("gt_camera_control_mode", "coarse")).strip().lower()
+    if mode in {"dense", "frame", "framewise", "per_frame"}:
+        return _quantize_gt_camera_actions_dense(
+            poses_c2w=poses_c2w,
+            saved_frames=saved_frames,
+            total_frames=total_frames,
+            config=config,
+        )
+    if mode not in {"coarse", "segment", "segmented", "rough"}:
+        raise ValueError(f"Unsupported gt_camera_control_mode: {mode}")
+    return _quantize_gt_camera_actions_coarse(
+        poses_c2w=poses_c2w,
+        saved_frames=saved_frames,
+        total_frames=total_frames,
+        config=config,
+    )
+
+
+def _matrix_game_3_video_static_gt_payload(
+    config: dict[str, Any],
+    suite: str,
+    sample: BenchmarkSample,
+) -> dict[str, Any]:
+    if suite != "video_static":
+        raise ValueError(f"VIPE GT camera action source is only valid for video_static, got {suite}")
+    annotation_dir = _annotation_dir_for_sample(sample)
+    if annotation_dir is None:
+        raise FileNotFoundError(f"video_static sample has no annotation directory: {sample.sample_id}")
+
+    action_plan = dict(config.get("action_plan", {}))
+    first_clip_frames = int(action_plan.get("first_clip_frames", 57))
+    clip_overlap_frames = int(action_plan.get("clip_overlap_frames", 16))
+    followup_frames = 56 - clip_overlap_frames
+    saved_frames, output_fps, quality = _video_static_target_frames_and_fps(
+        config=config,
+        sample=sample,
+        annotation_dir=annotation_dir,
+    )
+    num_iterations = _matrix_game3_iterations_for_saved_frames(
+        saved_frames=saved_frames,
+        first_clip_frames=first_clip_frames,
+        followup_frames=followup_frames,
+    )
+    total_frames = _matrix_game3_iteration_frame_count(
+        first_clip_frames,
+        followup_frames,
+        num_iterations,
+    )
+    poses_c2w = _load_gt_c2w_poses(annotation_dir)
+    keyboard_condition, mouse_condition, actions = _quantize_gt_camera_actions(
+        poses_c2w=poses_c2w,
+        saved_frames=saved_frames,
+        total_frames=total_frames,
+        config=config,
+    )
+    return {
+        "variant": "matrix_game_3",
+        "actions": actions,
+        "keyboard_condition": keyboard_condition.tolist(),
+        "mouse_condition": mouse_condition.tolist(),
+        "total_frames": total_frames,
+        "num_iterations": num_iterations,
+        "save_num_frames": saved_frames,
+        "output_fps": output_fps,
+        "action_source": str(config.get("action_source", "vipe_gt_camera")).strip().lower(),
+        "control_source": "vipe_gt_camera",
+        "camera_token": None,
+        "camera_tokens": None,
+        "camera_path": list(sample.camera_path),
+        "prompt_current": sample.prompt_current,
+        "prompt_target": sample.prompt_target,
+        "gt_camera_annotation_path": str(annotation_dir),
+        "gt_camera_pose_count": int(poses_c2w.shape[0]),
+        "gt_video_frame_count": saved_frames,
+        "gt_video_fps": output_fps,
+        "gt_camera_quality_status": quality.get("status"),
+        "gt_camera_control_mode": str(config.get("gt_camera_control_mode", "coarse")).strip().lower(),
+        "prompt_control_note": (
+            "video_static uses the VIPE/GT camera trajectory quantized into Matrix-Game-3 "
+            "keyboard and mouse controls; output fps/frame count are matched to the GT video."
+        ),
+    }
+
+
 def _matrix_game_3_payload(
     config: dict[str, Any],
     suite: str,
@@ -684,6 +1105,9 @@ def _matrix_game_3_payload(
 ) -> dict[str, Any]:
     action_plan = dict(config.get("action_plan", {}))
     action_source = str(config.get("action_source", "worldarena_plan")).strip().lower()
+    if sample is not None and sample.suite == "video_static" and action_source in _MATRIX_GAME3_GT_CAMERA_ACTION_SOURCES:
+        return _matrix_game_3_video_static_gt_payload(config, suite, sample)
+
     camera_tokens: list[str] | None = None
     control_source = None
     if action_source in {
@@ -809,7 +1233,7 @@ def _matrix_game_3_command(
         "--size",
         str(generation.get("size", "704*1280")),
         "--fps",
-        str(int(generation.get("fps", 17))),
+        str(float(action_payload.get("output_fps", generation.get("fps", 17)))),
         "--seed",
         str(int(generation.get("seed", 42))),
         "--num_iterations",
@@ -819,7 +1243,7 @@ def _matrix_game_3_command(
         "--sample_guide_scale",
         str(float(generation.get("sample_guide_scale", 5.0))),
         "--save_num_frames",
-        str(int(generation.get("save_num_frames", 0) or 0)),
+        str(int(action_payload.get("save_num_frames", generation.get("save_num_frames", 0) or 0))),
         "--ulysses_size",
         str(int(generation.get("ulysses_size", 1))),
         "--vae_type",
@@ -1036,6 +1460,10 @@ class MatrixGameAdapter(ModelAdapter):
             "camera_path": action_payload.get("camera_path"),
             "control_source": action_payload.get("control_source"),
             "prompt_control_note": action_payload.get("prompt_control_note"),
+            "output_fps": action_payload.get("output_fps"),
+            "saved_frames": action_payload.get("save_num_frames"),
+            "gt_camera_annotation_path": action_payload.get("gt_camera_annotation_path"),
+            "gt_video_frame_count": action_payload.get("gt_video_frame_count"),
             "command": command,
             "action_spec_path": str(action_spec_path),
             "prediction_path": str(output_path),

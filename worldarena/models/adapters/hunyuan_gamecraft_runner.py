@@ -100,6 +100,46 @@ def _require_repo_layout(repo_root: Path) -> Path:
     return script_path.resolve()
 
 
+# NCCL transport hardening for single-node multi-GPU runs in containers whose
+# ambient environment advertises an InfiniBand / RDMA fabric that is not
+# actually present (e.g. Aliyun DSW exports NCCL_IB_HCA=erdma with no IB
+# device). The Hunyuan-GameCraft sequence-parallel path performs all_to_all
+# collectives; with IB enabled but unreachable, the lazy NCCL communicator
+# setup fails with "failed to recv, got 0 bytes", crashing most ranks and
+# hanging the rest.
+#
+# The fix is intentionally minimal: disable only the broken IB transport so
+# NCCL falls back to NVLink P2P (the GPUs are fully NV12-connected) plus
+# shared memory, which is both correct and fast. We deliberately do NOT touch
+# NCCL_P2P_DISABLE, since disabling NVLink P2P would cripple all_to_all
+# throughput. Stale IB selector variables are cleared so NCCL never tries the
+# missing fabric.
+_NCCL_FORCE_KEYS: dict[str, str] = {
+    "NCCL_IB_DISABLE": "1",
+}
+_NCCL_CLEAR_KEYS: tuple[str, ...] = (
+    "NCCL_IB_HCA",
+    "NCCL_IB_GID_INDEX",
+    "NCCL_IB_QPS_PER_CONNECTION",
+)
+_NCCL_SOFT_DEFAULTS: dict[str, str] = {
+    "NCCL_SOCKET_IFNAME": "eth0",
+}
+
+
+def _apply_nccl_defaults(env: dict[str, str]) -> None:
+    # Force IB off and drop the stale IB selectors regardless of ambient values;
+    # they are the actual cause of the communicator-setup crash. Dropping the
+    # key works for both a subprocess env dict (which replaces the child env)
+    # and a live os.environ passed by an in-process worker.
+    for key in _NCCL_CLEAR_KEYS:
+        env.pop(key, None)
+    env.update(_NCCL_FORCE_KEYS)
+    for key, value in _NCCL_SOFT_DEFAULTS.items():
+        if not str(os.environ.get(key, "")).strip() and not str(env.get(key, "")).strip():
+            env[key] = value
+
+
 def _build_env(
     *,
     repo_root: Path,
@@ -130,6 +170,7 @@ def _build_env(
     env["MODEL_BASE"] = str(model_base)
     env["CPU_OFFLOAD"] = "1" if cpu_offload else "0"
     env["DISABLE_SP"] = "1" if disable_sp else "0"
+    _apply_nccl_defaults(env)
     return env
 
 

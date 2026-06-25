@@ -30,6 +30,9 @@ from worldarena.common.checkpoints import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 THIRDPARTY_ROOT = PROJECT_ROOT / "thirdparty"
+WORLDSCORE_ROOT = Path(
+    os.environ.get("WORLDARENA_WORLDSCORE_ROOT", str(PROJECT_ROOT.parent / "WorldScore"))
+)
 OFFICIAL_METRIC_SOURCE_ROOT = PROJECT_ROOT / "worldarena" / "benchmark" / "official_source"
 OFFICIAL_METRIC_PACKAGE = "worldarena_official_metrics"
 OFFICIAL_METRIC_CHECKPOINT_DIR = "official_metrics"
@@ -131,6 +134,48 @@ def _existing_paths(paths: list[Path]) -> list[Path]:
     return [path for path in paths if path.exists()]
 
 
+def _first_existing_path(paths: list[Path]) -> Path | None:
+    for path in paths:
+        if path.exists():
+            return path.resolve()
+    return None
+
+
+def _worldscore_droid_root() -> Path:
+    return WORLDSCORE_ROOT / "thirdparty" / "DROID-SLAM"
+
+
+def _torch_library_path() -> Path | None:
+    try:
+        import torch  # noqa: PLC0415
+    except Exception:
+        return None
+    lib_path = Path(torch.__file__).resolve().parent / "lib"
+    return lib_path if lib_path.exists() else None
+
+
+def _lietorch_build_paths(lietorch_root: Path | None) -> list[Path]:
+    if lietorch_root is None:
+        return []
+    return sorted(
+        {
+            path.parent
+            for path in lietorch_root.rglob("lietorch_backends*.so")
+            if path.is_file()
+        }
+    )
+
+
+def _prepend_env_path(env: dict[str, str], key: str, paths: list[Path]) -> None:
+    path_values = [str(path) for path in paths if path is not None and path.exists()]
+    if not path_values:
+        return
+    existing = env.get(key)
+    if existing:
+        path_values.append(existing)
+    env[key] = os.pathsep.join(dict.fromkeys(path_values))
+
+
 def _prepare_overlay_root(
     source_root: Path,
     package_dir: Path,
@@ -188,18 +233,33 @@ def resolve_metric_source_layout() -> MetricSourceLayout:
     _prepare_metric_checkpoint_link(package_dir)
 
     third_party_root = package_dir / "benchmark" / "metrics" / "third_party"
-    droid_root = _select_candidate_path(
-        _existing_paths([THIRDPARTY_ROOT / "DROID-SLAM" / "droid_slam"])
-        + [path.parent for path in source_root.rglob("droid.py") if path.parent.name == "droid_slam"],
-        package_prefix="DROID-SLAM",
+    worldscore_droid_root = _worldscore_droid_root()
+    embedded_droid_roots = [
+        path.parent for path in source_root.rglob("droid.py") if path.parent.name == "droid_slam"
+    ]
+    droid_root = _first_existing_path(
+        embedded_droid_roots
+        + [
+            worldscore_droid_root / "droid_slam",
+            THIRDPARTY_ROOT / "DROID-SLAM" / "droid_slam",
+        ]
     )
     droid_build_root = _select_candidate_path(
-        [path.parent for path in (THIRDPARTY_ROOT / "DROID-SLAM").glob("droid_backends*.so")]
+        [
+            path.parent
+            for root in (worldscore_droid_root, THIRDPARTY_ROOT / "DROID-SLAM")
+            for path in root.rglob("droid_backends*.so")
+        ]
         + [path.parent for path in source_root.rglob("droid_backends*.so")],
         package_prefix="DROID-SLAM",
     )
     lietorch_root = _select_candidate_path(
-        _existing_paths([THIRDPARTY_ROOT / "DROID-SLAM" / "thirdparty" / "lietorch"])
+        _existing_paths(
+            [
+                worldscore_droid_root / "thirdparty" / "lietorch",
+                THIRDPARTY_ROOT / "DROID-SLAM" / "thirdparty" / "lietorch",
+            ]
+        )
         + [path.parent.parent for path in source_root.rglob("lietorch/__init__.py")],
         package_prefix="DROID-SLAM",
     )
@@ -265,8 +325,16 @@ def metric_runtime_context() -> Iterator[MetricSourceLayout]:
         )
         if path is not None
     ]
+    inserted_paths.extend(_lietorch_build_paths(layout.lietorch_root))
+    library_paths = [
+        path
+        for path in (_torch_library_path(),)
+        if path is not None
+    ]
+    previous_ld_library_path = os.environ.get("LD_LIBRARY_PATH")
     try:
         os.environ.update(env_updates)
+        _prepend_env_path(os.environ, "LD_LIBRARY_PATH", library_paths)
         for path in reversed(inserted_paths):
             sys.path.insert(0, str(path))
         os.chdir(layout.overlay_root)
@@ -278,6 +346,10 @@ def metric_runtime_context() -> Iterator[MetricSourceLayout]:
                 os.environ.pop(key, None)
             else:
                 os.environ[key] = value
+        if previous_ld_library_path is None:
+            os.environ.pop("LD_LIBRARY_PATH", None)
+        else:
+            os.environ["LD_LIBRARY_PATH"] = previous_ld_library_path
         for path in inserted_paths:
             path_str = str(path)
             while path_str in sys.path:
@@ -309,6 +381,29 @@ def _subprocess_runtime_env(runtime: dict[str, Any] | None) -> dict[str, str]:
     if existing_pythonpath:
         pythonpath_entries.append(existing_pythonpath)
     env["PYTHONPATH"] = os.pathsep.join(pythonpath_entries)
+    layout = resolve_metric_source_layout()
+    _prepend_env_path(
+        env,
+        "PYTHONPATH",
+        [
+            layout.overlay_root,
+            *[
+                path
+                for path in (layout.droid_root, layout.droid_build_root, layout.lietorch_root)
+                if path is not None
+            ],
+            *_lietorch_build_paths(layout.lietorch_root),
+        ],
+    )
+    _prepend_env_path(
+        env,
+        "LD_LIBRARY_PATH",
+        [
+            path
+            for path in (_torch_library_path(),)
+            if path is not None
+        ],
+    )
     for key, value in filter_checkpoint_env_overrides(dict((runtime or {}).get("env", {}))).items():
         env[str(key)] = str(value)
     return env
@@ -591,6 +686,21 @@ def _configure_motion_accuracy_runtime(metric: Any, runtime: dict[str, Any] | No
     return details
 
 
+def _configure_droid_runtime(metric: Any) -> None:
+    args = getattr(metric, "_args", None)
+    if args is None:
+        return
+    defaults = {
+        "disable_vis": True,
+        "motion_damping": 0.5,
+        "frontend_device": "cuda",
+        "backend_device": "cuda",
+    }
+    for key, value in defaults.items():
+        if not hasattr(args, key):
+            setattr(args, key, value)
+
+
 def _video_frame_cache_key(path: Path) -> str:
     stat = path.stat()
     payload = f"{path.resolve()}::{stat.st_mtime_ns}::{stat.st_size}"
@@ -824,6 +934,7 @@ def compute_camera_error(
 
     with metric_runtime_context():
         metric = _run_metric("camera_error")
+        _configure_droid_runtime(metric)
         try:
             score = metric._compute_scores(
                 frame_paths,
@@ -869,6 +980,7 @@ def compute_reprojection_error(
     frame_paths = materialize_frame_paths(prediction_path)
     with metric_runtime_context():
         metric = _run_metric("reprojection_error")
+        _configure_droid_runtime(metric)
         try:
             score = float(metric._compute_scores(frame_paths))
         finally:

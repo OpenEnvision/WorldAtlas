@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any, Callable
@@ -18,6 +19,15 @@ ANNOTATION_FILES = [
     "intrinsics.npy",
     "poses.npy",
     "dyn_masks.npz",
+]
+VIPE_ANNOTATION_ENV = "WORLD_ARENA_VIPE_ANNOTATION_ROOT"
+VIPE_ANNOTATION_FILES = [
+    "camera_type.txt",
+    "frame_indices.npy",
+    "poses_c2w.npy",
+    "poses_w2c.npy",
+    "quality_report.json",
+    "timestamps.npy",
 ]
 
 
@@ -174,6 +184,96 @@ def _image_annotation_dir(path: Path) -> Path:
     return path.parent / "annotations" / f"{path.stem}_ann"
 
 
+def _has_annotation_payload(annotation_dir: Path) -> bool:
+    if not annotation_dir.is_dir():
+        return False
+    return any((annotation_dir / name).exists() for name in (*ANNOTATION_FILES, *VIPE_ANNOTATION_FILES))
+
+
+def _first_annotation_dir_with_payload(*annotation_dirs: Path | None) -> Path | None:
+    for annotation_dir in annotation_dirs:
+        if annotation_dir is not None and _has_annotation_payload(annotation_dir):
+            return annotation_dir
+    return None
+
+
+def _unique_paths(paths: list[Path]) -> list[Path]:
+    seen: set[str] = set()
+    unique: list[Path] = []
+    for path in paths:
+        key = str(path)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(path)
+    return unique
+
+
+def _configured_vipe_annotation_roots(static_root: Path) -> list[Path]:
+    roots: list[Path] = []
+    env_root = os.environ.get(VIPE_ANNOTATION_ENV)
+    if env_root:
+        roots.append(Path(env_root).expanduser())
+
+    if static_root.name == "static":
+        video_root = static_root.parent
+        roots.extend(
+            [
+                video_root.with_name(f"{video_root.name}_vipe_ann"),
+                video_root.parent / "videos_test_split_4971_vipe_ann",
+            ]
+        )
+    else:
+        roots.extend(
+            [
+                static_root.with_name(f"{static_root.name}_vipe_ann"),
+                static_root.parent / "videos_test_split_4971_vipe_ann",
+            ]
+        )
+    return _unique_paths(roots)
+
+
+def _matching_vipe_annotation_dir(annotation_parent: Path, stem: str) -> Path | None:
+    for name in (f"{stem}_vipe_ann", f"{stem}_ann", stem):
+        candidate = annotation_parent / name
+        if _has_annotation_payload(candidate):
+            return candidate
+
+    if not annotation_parent.is_dir():
+        return None
+
+    matches = [
+        child
+        for child in sorted(annotation_parent.iterdir())
+        if child.is_dir()
+        and child.name.startswith(stem)
+        and child.name.endswith("_vipe_ann")
+        and _has_annotation_payload(child)
+    ]
+    return matches[0] if matches else None
+
+
+def _static_video_vipe_annotation_dir(static_root: Path, path: Path) -> Path | None:
+    relative_parent = path.relative_to(static_root).parent
+    candidate_parents: list[Path] = []
+    for vipe_root in _configured_vipe_annotation_roots(static_root):
+        candidate_parents.extend(
+            [
+                vipe_root / relative_parent / "annotations_vipe",
+                vipe_root / "static" / relative_parent / "annotations_vipe",
+            ]
+        )
+        if not relative_parent.parts or relative_parent.parts[0] not in {"photorealistic", "stylized"}:
+            for style in ("photorealistic", "stylized"):
+                candidate_parents.append(vipe_root / "static" / style / relative_parent / "annotations_vipe")
+
+    for annotation_parent in _unique_paths(candidate_parents):
+        annotation_dir = _matching_vipe_annotation_dir(annotation_parent, path.stem)
+        if annotation_dir is not None:
+            return annotation_dir
+    return None
+
+
 def _image_annotation_entry(collection: CollectionConfig, path: Path) -> tuple[str, dict[str, Any]] | None:
     dataset_root = collection.root.parent
     index_path = dataset_root / "image_annotations.json"
@@ -289,7 +389,12 @@ def scan_static_video(collection: CollectionConfig) -> list[dict[str, Any]]:
         if len(parts) < 5:
             continue
 
-        annotation_dir = path.parent / "annotations" / f"{path.stem}_SpatialVID_ann"
+        spatialvid_annotation_dir = path.parent / "annotations" / f"{path.stem}_SpatialVID_ann"
+        vipe_annotation_dir = _static_video_vipe_annotation_dir(collection.root, path)
+        annotation_dir = (
+            _first_annotation_dir_with_payload(vipe_annotation_dir, spatialvid_annotation_dir)
+            or spatialvid_annotation_dir
+        )
         record = _base_record(collection, path)
         record.update(
             {

@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from worldarena.common import checkpoints
+from worldarena.models.adapters.common import build_env
 
 
 def test_default_project_root_matches_repo_checkout() -> None:
@@ -17,6 +18,16 @@ def test_checkpoint_root_can_be_overridden_by_env(monkeypatch, tmp_path: Path) -
 
     assert checkpoints.checkpoint_root(create=False) == shared_root
     assert checkpoints.checkpoint_env(create=False)["HF_HOME"] == str(shared_root / "huggingface")
+
+
+def test_build_env_uses_configured_checkpoint_root_for_cache_dirs(tmp_path: Path) -> None:
+    shared_root = tmp_path / "shared_ckpt"
+
+    env = build_env(overrides={checkpoints.CHECKPOINT_ROOT_ENV: str(shared_root)})
+
+    assert env[checkpoints.CHECKPOINT_ROOT_ENV] == str(shared_root)
+    assert env["HF_HOME"] == str(shared_root / "huggingface")
+    assert env["HUGGINGFACE_HUB_CACHE"] == str(shared_root / "huggingface" / "hub")
 
 
 def test_cosmos_tokenizer_repo_uses_direct_checkpoint_dir() -> None:

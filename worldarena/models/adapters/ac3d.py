@@ -4,6 +4,7 @@ from typing import Any
 
 from worldarena.models.adapters.base import PreparedGenerationRequest
 from worldarena.models.adapters.external_batch import ExternalBatchAdapter
+from worldarena.models.adapters.gen3c import _camera_path_for_sample
 
 
 def _sample_key_candidates(request: PreparedGenerationRequest) -> tuple[str, ...]:
@@ -44,6 +45,7 @@ class AC3DAdapter(ExternalBatchAdapter):
                 "camera_index": camera_index,
                 "start_camera_idx": camera_index,
                 "end_camera_idx": end_camera_idx,
+                "camera_path": _camera_path_for_sample(request.sample),
             }
         )
         return payload

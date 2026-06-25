@@ -72,6 +72,15 @@ def _generation_for_camera_token(
         return resolved
 
     primary_token = camera_token.strip().lower()
+    if resolved.get("multi_trajectory"):
+        # Lyra/Gen3C official static demo uses a fixed six-trajectory sweep.
+        # Do not let a WorldArena camera token override trajectory/rotation in
+        # that mode, otherwise the generated views diverge from the upstream
+        # static_sdg.sh defaults.
+        resolved["camera_path"] = camera_path
+        resolved["camera_path_primary"] = primary_token
+        return resolved
+
     trajectory, camera_rotation = GEN3C_CAMERA_TRAJECTORIES.get(
         primary_token,
         (str(resolved.get("trajectory", "left")), str(resolved.get("camera_rotation", "center_facing"))),

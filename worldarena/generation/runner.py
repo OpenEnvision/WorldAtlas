@@ -155,6 +155,30 @@ def _apply_batch_generation_results(
         record.update(payload)
         record["status"] = status
         record["error"] = error
+        if status in {"generated", "skipped_existing"} and not _nonempty_file(request.output_path):
+            record["status"] = "failed"
+            record["error"] = f"generation did not write output: {request.output_path}"
+            record["prediction_path"] = str(request.output_path)
+
+
+def _nonempty_file(path: Path) -> bool:
+    return path.is_file() and path.stat().st_size > 0
+
+
+def _validate_record_outputs(records: list[dict[str, Any]]) -> None:
+    for record in records:
+        status = str(record.get("status") or "")
+        if status not in {"generated", "skipped_existing"}:
+            continue
+        prediction_path = record.get("prediction_path")
+        if not prediction_path:
+            record["status"] = "failed"
+            record["error"] = "generation did not report a prediction_path"
+            continue
+        path = Path(str(prediction_path)).expanduser()
+        if not _nonempty_file(path):
+            record["status"] = "failed"
+            record["error"] = f"generation did not write output: {path}"
 
 
 def generate_predictions(
@@ -258,6 +282,7 @@ def generate_predictions(
                     record["status"] = "generated"
             else:
                 record["status"] = "skipped_existing"
+                record["prediction_path"] = str(prediction_path)
         except Exception as exc:
             record["status"] = "failed"
             record["error"] = str(exc)
@@ -306,6 +331,7 @@ def generate_predictions(
                     f"Generation failed for {first_failed['sample_id']}: {first_failed['error']}"
                 )
 
+    _validate_record_outputs(records)
     return _write_generation_outputs(
         output_dir=output_dir,
         records=records,

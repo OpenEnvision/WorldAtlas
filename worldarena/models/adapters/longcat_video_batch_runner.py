@@ -89,7 +89,9 @@ def main() -> int:
             generator = torch.Generator(device=local_rank)
             generator.manual_seed(int(generation.get("seed", 42)) + row_index)
             image = load_image(str(row["conditioning_image"]))
-            target_size = image.size
+            # libx264 requires even width/height; round the source size down to even.
+            src_w, src_h = image.size
+            target_size = (max(2, src_w - (src_w % 2)), max(2, src_h - (src_h % 2)))
             output = pipe.generate_i2v(
                 image=image,
                 prompt=str(row["prompt"]),

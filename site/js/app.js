@@ -121,24 +121,24 @@ const homeCopy = {
     homeSearchAria: "Homepage search",
     heroKicker: "Benchmark for controllable world generation",
     heroLede:
-      "A Unified Benchmark for evaluating long-horizon world models across images, videos, physics, geometry, action control, and runtime contracts.",
+      "A Unified Benchmark for evaluating world models. It encompasses a curated dataset of 5,000 balanced test examples across 26 fine-grained categories (indoor/outdoor, static/dynamic, photorealistic/stylized), evaluating 126 model runs to produce over 34,941 prediction videos measuring geometric consistency, physics, and action control.",
     primaryLinksAria: "Primary links",
     exploreArchive: "Explore Archive",
     leaderboard: "Leaderboard",
     benchmark: "Benchmark",
     metrics: "Metrics",
-    heroVisualAria: "WorldArena sample worlds",
+    heroVisualAria: "WorldAtlas Arena sample worlds",
     coverageTitle: "World Model Coverage",
     coverageBody: "image · video · physics · 3D/4D · real time",
-    summaryAria: "WorldArena summary",
-    openExplorationAria: "Open WorldArena free exploration",
-    explorationSr: "WorldArena free exploration",
+    summaryAria: "WorldAtlas Arena summary",
+    openExplorationAria: "Open WorldAtlas Arena free exploration",
+    explorationSr: "WorldAtlas Arena free exploration",
     loading: "Loading...",
     evaluationKicker: "Evaluation surface",
     evaluationTitle: "Read the benchmark as a system, not a leaderboard.",
     docsKicker: "Documentation paths",
     docsTitle: "Jump into the contracts that make a run comparable.",
-    feedAria: "WorldArena documentation highlights",
+    feedAria: "WorldAtlas Arena documentation highlights",
     quickLinks: "Quick links",
     noMatches: "No matches",
     resultSingular: "result",
@@ -154,9 +154,9 @@ const homeCopy = {
     archiveCategory: "Archive",
     arenaBattle: "Arena Battle",
     arenaBattleAction: "Enter Arena Battle",
-    arenaBattleBody: "Arena Battle turns benchmark models into timed duels across control, visual consistency, and physical stability.",
+    arenaBattleBody: "Arena Battle reads integrated WorldArena models and local prediction artifacts, then collects blind human votes for multi-dimensional ELO rankings.",
     arenaBattleCategory: "Arena Battle",
-    arenaBattleFrameTitle: "WorldArena Arena Battle",
+    arenaBattleFrameTitle: "WorldAtlas Arena Battle",
     arenaBattleReady: "Arena Battle is fully loaded.",
     arenaBattleFailed: "Arena Battle is blocked in embed view. Please open in a new tab.",
     openArena: "Open Arena Battle",
@@ -164,7 +164,7 @@ const homeCopy = {
     docsLayerCategory: "Docs layer",
     pillarCategory: "Evaluation pillar",
     signalCategory: "Benchmark summary",
-    archiveSearchBody: "Browse WorldArena images, videos, physics samples, and generated worlds.",
+    archiveSearchBody: "Browse WorldAtlas Arena images, videos, physics samples, and generated worlds.",
     openOnHf: "Open on Hugging Face",
     submissionGuide: "Submission guide",
     leaderboardStatusAria: "Leaderboard status",
@@ -178,24 +178,24 @@ const homeCopy = {
     docs: "文档",
     homeSearchAria: "主页搜索",
     heroKicker: "面向可控世界生成的基准评测",
-    heroLede: "WorldArena 用统一契约评估长时序世界模型，覆盖图像、视频、物理、几何、动作控制和运行时约束。",
+    heroLede: "WorldAtlas Arena 是一个用于评估长时序世界模型的统一基准。它包含了一个经过精心整理的数据集，涵盖 26 个细粒度类别（室内/室外、静态/动态、写实/风格化）的 5,000 个均衡测试用例，评估了 126 次模型运行，生成了超过 34,941 个预测视频，以全面衡量几何一致性、物理规律和动作控制。",
     primaryLinksAria: "主要入口",
     exploreArchive: "自由探索",
     leaderboard: "排行榜",
     benchmark: "基准评测",
     metrics: "指标体系",
-    heroVisualAria: "WorldArena 样例世界",
+    heroVisualAria: "WorldAtlas Arena 样例世界",
     coverageTitle: "世界模型覆盖面",
     coverageBody: "图像 · 视频 · 物理 · 3D/4D · 实时",
-    summaryAria: "WorldArena 摘要",
-    openExplorationAria: "打开 WorldArena 自由探索",
-    explorationSr: "WorldArena 自由探索",
+    summaryAria: "WorldAtlas Arena 摘要",
+    openExplorationAria: "打开 WorldAtlas Arena 自由探索",
+    explorationSr: "WorldAtlas Arena 自由探索",
     loading: "加载中...",
     evaluationKicker: "评测面",
     evaluationTitle: "把基准读成一个系统，而不是单一排行榜。",
     docsKicker: "文档路径",
     docsTitle: "进入让每次运行可比较的核心契约。",
-    feedAria: "WorldArena 文档精选",
+    feedAria: "WorldAtlas Arena 文档精选",
     quickLinks: "快速入口",
     noMatches: "没有匹配结果",
     resultSingular: "个结果",
@@ -211,9 +211,9 @@ const homeCopy = {
     archiveCategory: "探索",
     arenaBattle: "Arena 竞技场",
     arenaBattleAction: "进入竞技场",
-    arenaBattleBody: "Arena Battle 将模型放入统一世界任务中并行对抗，按控制力、真实感和物理稳定性生成综合评分。",
+    arenaBattleBody: "Arena Battle 读取 WorldArena 已集成模型和本地 prediction 产物，通过双盲人类投票更新多维 ELO 排名。",
     arenaBattleCategory: "Arena 竞技场",
-    arenaBattleFrameTitle: "WorldArena Arena 竞技场",
+    arenaBattleFrameTitle: "WorldAtlas Arena 竞技场",
     arenaBattleReady: "Arena 竞技场已加载完成。",
     arenaBattleFailed: "该页面在当前环境下无法嵌入，请在新标签页打开。",
     openArena: "打开 Arena 竞技场",
@@ -221,7 +221,7 @@ const homeCopy = {
     docsLayerCategory: "文档层",
     pillarCategory: "评测支柱",
     signalCategory: "基准摘要",
-    archiveSearchBody: "浏览 WorldArena 图像、视频和生成世界样例。",
+    archiveSearchBody: "浏览 WorldAtlas Arena 图像、视频和生成世界样例。",
     openOnHf: "在 Hugging Face 打开",
     submissionGuide: "提交说明",
     leaderboardStatusAria: "排行榜状态",
@@ -236,10 +236,10 @@ const homeHeroLabelZh = new Map([
   ["Video Rollouts", "视频 Rollout"]
 ]);
 const homeSignalZh = new Map([
-  ["4 suites", ["4 个 suite", "正式基准评测面"]],
-  ["6 pillars", ["6 个支柱", "能力维度汇总"]],
-  ["32+ metrics", ["32+ 指标", "suite 指标向量"]],
-  ["1 archive", ["1 个探索库", "图像、视频、世界样例"]]
+  ["34,941+", ["34,941+", "测试视频总数"]],
+  ["126", ["126", "模型及运行方案"]],
+  ["26", ["26", "细粒度测试类别"]],
+  ["32+", ["32+", "评估指标向量"]]
 ]);
 const homePillarZh = new Map([
   ["Action Control", ["动作控制", "将 prompt、相机、物体和运动遵循度从单纯外观质量中分离出来。"]],
@@ -248,9 +248,9 @@ const homePillarZh = new Map([
   ["Runtime Contract", ["运行时契约", "本地仓库、API 模型和评测后端都通过同一套 manifest 与报告形态接入。"]]
 ]);
 const homeLeaderboardZh = {
-  eyebrow: "WorldArena 排行榜",
-  title: "WorldArena 排行榜",
-  body: "无需离开本站即可浏览 OpenEnvisionLab WorldArena Space。该 Space 由 /share/project/bench/WorldArena 生成，并用指标向量保留基准契约，而不是借用无关的公开排名。",
+  eyebrow: "WorldAtlas Arena 排行榜",
+  title: "WorldAtlas Arena 排行榜",
+  body: "无需离开本站即可浏览 OpenEnvisionLab WorldAtlas Arena Space。该 Space 由 /share/project/bench/WorldAtlas Arena 生成，并用指标向量保留基准契约，而不是借用无关的公开排名。",
   badges: ["OpenEnvisionLab Space", "4 个正式 suite", "指标向量报告"],
   tracks: [
     ["4 个 suite", "正式基准轨道", "image_static、image_dynamic、video_static 和 video_dynamic 保持为独立 headline suite。"],
@@ -814,11 +814,23 @@ function renderHome() {
         <div class="home-search-results" data-home-search-results></div>
       </section>
       <section class="home-hero" aria-labelledby="home-title">
-        <div class="home-hero-copy">
-          <p class="home-kicker">${escapeHtml(localizedHomeText("heroKicker"))}</p>
-          <h1 id="home-title">WorldArena</h1>
-          <p class="home-hero-lede">${escapeHtml(localizedHomeText("heroLede"))}</p>
-          <div class="home-hero-actions" aria-label="${escapeAttr(primaryLinksAria)}">
+        <video class="home-hero-bg-video" src="/assets/benchmark_hero_cover.mp4?v=20260621-v7" poster="/worldarena_showcase_continuous.mp4_frame_0.jpg?v=20260621-v1" autoplay loop muted playsinline></video>
+        <a class="home-decor-object" href="/uncertain/" data-archive-entry aria-label="${escapeAttr(localizedHomeText("openExplorationAria"))}">
+          <span class="home-swan-motion" aria-hidden="true">
+            <img class="home-swan-image" src="/assets/black-swan-cutout.webp" alt="" />
+          </span>
+          <span class="sr-only">${escapeHtml(localizedHomeText("explorationSr"))}</span>
+        </a>
+      </section>
+      <section class="home-intro-section">
+        <div class="home-intro-copy">
+          <p class="home-kicker home-intro-kicker">${escapeHtml(localizedHomeText("heroKicker"))}</p>
+          <h1 id="home-title" class="home-intro-title">
+            <img src="/assets/worldatlas-logo-cropped2.png" alt="WorldAtlas Arena" class="home-intro-logo" />
+            <span class="sr-only">WorldAtlas Arena</span>
+          </h1>
+          <p class="home-intro-lede">${escapeHtml(localizedHomeText("heroLede"))}</p>
+          <div class="home-intro-actions" aria-label="${escapeAttr(primaryLinksAria)}">
             <a class="home-primary-action" href="/arena/" data-route>${escapeHtml(localizedHomeText("arenaBattle"))}</a>
             <a href="#home-leaderboard">${escapeHtml(localizedHomeText("leaderboard"))}</a>
             <a href="/docs/benchmark/" data-route>${escapeHtml(localizedHomeText("benchmark"))}</a>
@@ -826,33 +838,20 @@ function renderHome() {
             <a href="/uncertain/" data-route>${escapeHtml(localizedHomeText("exploreArchive"))}</a>
           </div>
         </div>
-        <div class="home-hero-visual" aria-label="${escapeAttr(heroVisualsAria)}">
-          ${homeHeroVisuals.map(homeHeroVisualMarkup).join("")}
-          <div class="home-hero-readout">
-            <strong>${escapeHtml(localizedHomeText("coverageTitle"))}</strong>
-            <span>${escapeHtml(localizedHomeText("coverageBody"))}</span>
-          </div>
-        </div>
       </section>
-      <section class="home-signal-strip" aria-label="${escapeAttr(localizedHomeText("summaryAria"))}">
-        ${homeSignals.map(homeSignalMarkup).join("")}
-      </section>
-      <a class="home-decor-object" href="/uncertain/" data-archive-entry aria-label="${escapeAttr(localizedHomeText("openExplorationAria"))}">
-        <span class="home-swan-motion" aria-hidden="true">
-          <img class="home-swan-image" src="/assets/black-swan-cutout.webp" alt="" />
-        </span>
-        <span class="sr-only">${escapeHtml(localizedHomeText("explorationSr"))}</span>
-      </a>
       <div class="home-entry-loading" aria-hidden="true">${escapeHtml(localizedHomeText("loading"))}</div>
       <section class="home-pillar-section" aria-labelledby="home-pillar-title">
+        <section class="home-signal-strip" aria-label="${escapeAttr(localizedHomeText("summaryAria"))}">
+          ${homeSignals.map(homeSignalMarkup).join("")}
+        </section>
         <div class="home-section-heading">
-          <p class="home-kicker">${escapeHtml(localizedHomeText("evaluationKicker"))}</p>
           <h2 id="home-pillar-title">${escapeHtml(localizedHomeText("evaluationTitle"))}</h2>
         </div>
         <div class="home-pillar-grid">
           ${homePillars.map(homePillarMarkup).join("")}
         </div>
       </section>
+
       <section class="home-section-heading home-docs-heading" aria-labelledby="home-docs-title">
         <p class="home-kicker">${escapeHtml(localizedHomeText("docsKicker"))}</p>
         <h2 id="home-docs-title">${escapeHtml(localizedHomeText("docsTitle"))}</h2>
@@ -1298,7 +1297,7 @@ function getHomeSearchItems() {
     },
     {
       category: localizedHomeText("homeCategory"),
-      title: "WorldArena",
+      title: "WorldAtlas Arena",
       body: localizedHomeText("heroLede"),
       href: "/",
       keywords: "unified benchmark long-horizon world models"
@@ -1542,14 +1541,14 @@ function homeLeaderboardMarkup() {
         </aside>
         <section class="home-leaderboard-embed" aria-label="${escapeAttr(localizedHomeText("leaderboardEmbedAria"))}">
           <div class="home-leaderboard-toolbar">
-            <span>WorldArena / WorldArena</span>
+            <span>WorldAtlas Arena / WorldAtlas Arena</span>
             <div>
               <a href="${escapeAttr(leaderboard.openUrl)}" target="_blank" rel="noopener">${escapeHtml(localizedHomeText("openOnHf"))}</a>
               <a href="${escapeAttr(leaderboard.submissionUrl)}" target="_blank" rel="noopener">${escapeHtml(localizedHomeText("submissionGuide"))}</a>
             </div>
           </div>
           <iframe
-            title="WorldArena Hugging Face leaderboard"
+            title="WorldAtlas Arena Hugging Face leaderboard"
             src="${escapeAttr(leaderboard.embedUrl)}"
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade"
@@ -2238,7 +2237,7 @@ function archiveDatasetPanelMarkup() {
   return `
     <section class="dataset-panel ${panelClass}" data-dataset-panel aria-label="Dataset controls">
       <button class="dataset-panel-toggle" data-dataset-toggle type="button" aria-expanded="${archiveState.datasetPanelOpen ? "true" : "false"}">
-        <strong>WorldArena</strong>
+        <strong>WorldAtlas Arena</strong>
         <span data-dataset-summary>${escapeHtml(formatCount(activeArchiveDisplayCount))} loaded · ${escapeHtml(recordLabel)} · ${escapeHtml(activeFilter)}</span>
         <em>${archiveState.datasetPanelOpen ? "Collapse" : "Explore"}</em>
       </button>
@@ -2362,11 +2361,11 @@ function renderArchive() {
       <div class="archive-frame mode-drift">
         ${shellHeader({ archive: true })}
         ${menuMarkup()}
-        <main class="archive-main" aria-label="WorldArena dataset exploration">
+        <main class="archive-main" aria-label="WorldAtlas Arena dataset exploration">
           <section class="archive-scene" data-scene></section>
           <div class="intro-curtain is-active is-loading" data-intro>
             <div class="intro-object" aria-hidden="true"></div>
-            <span>Loading WorldArena data...</span>
+            <span>Loading WorldAtlas Arena data...</span>
           </div>
         </main>
       </div>
@@ -2386,7 +2385,7 @@ function renderArchive() {
     <div class="archive-frame mode-${archiveState.mode}">
       ${shellHeader({ archive: true })}
       ${menuMarkup()}
-      <main class="archive-main" aria-label="WorldArena dataset exploration">
+      <main class="archive-main" aria-label="WorldAtlas Arena dataset exploration">
         ${archiveDatasetPanelMarkup()}
         <section class="archive-scene" data-scene>
           <div class="archive-webgl-layer" data-webgl-layer></div>
@@ -2415,7 +2414,7 @@ function renderArchive() {
         </section>
         <section class="info-panel about-panel" data-about-panel>
           <h2>Dataset archive</h2>
-          <p>WorldArena image and video samples are arranged as a center-facing spatial data archive.</p>
+          <p>WorldAtlas Arena image and video samples are arranged as a center-facing spatial data archive.</p>
           <p>${archiveCatalogError ? escapeHtml(archiveCatalogError) : "The media samples stay fixed in a large world-space field; move the camera through the archive and click a sample for metadata and playback."}</p>
         </section>
         <aside class="detail-panel" data-detail-panel aria-live="polite"></aside>
@@ -4640,7 +4639,7 @@ function smoothstep(edge0, edge1, value) {
   return amount * amount * (3 - 2 * amount);
 }
 
-const arenaBattleModels = [
+const arenaBattleFallbackModels = [
   { id: "atlas", name: "Ares-XL", family: "Transformer", style: "control", color: "#4d8eff", accent: "#92bbff", control: 0.91, visual: 0.73, physics: 0.62, stability: 0.74 },
   { id: "phoenix", name: "Phoenix-7", family: "Diffusion", style: "visual", color: "#e16e67", accent: "#ffab89", control: 0.54, visual: 0.93, physics: 0.58, stability: 0.82 },
   { id: "orion", name: "Orion", family: "NeRF Adapter", style: "physics", color: "#6f68ff", accent: "#9f99ff", control: 0.71, visual: 0.66, physics: 0.93, stability: 0.68 },
@@ -4649,7 +4648,9 @@ const arenaBattleModels = [
   { id: "zephyr", name: "Zephyr", family: "Latent Video", style: "agile", color: "#f1b24b", accent: "#ffd58c", control: 0.65, visual: 0.86, physics: 0.61, stability: 0.7 }
 ];
 
-const arenaBattleScenarios = [
+let arenaBattleModels = arenaBattleFallbackModels;
+
+const arenaBattleFallbackScenarios = [
   {
     id: "city-pursuit",
     labelEn: "City Pursuit",
@@ -4700,6 +4701,8 @@ const arenaBattleScenarios = [
   }
 ];
 
+let arenaBattleScenarios = arenaBattleFallbackScenarios;
+
 const arenaBattleDifficulties = {
   beginner: {
     id: "beginner",
@@ -4746,11 +4749,15 @@ const arenaBattleMetricDefs = [
   { id: "stability", labelEn: "Stability", labelZh: "稳定性" }
 ];
 
+const arenaVoteDimensionDefs = [
+  { id: "overall", labelEn: "Overall", labelZh: "综合偏好" },
+  { id: "visual_quality", labelEn: "Visual Quality", labelZh: "视觉质量" },
+  { id: "control_alignment", labelEn: "Control Alignment", labelZh: "控制对齐" },
+  { id: "world_consistency", labelEn: "World Consistency", labelZh: "世界一致性" }
+];
+
 const arenaBattleUIText = {
   en: {
-    runBattle: "Run battle",
-    stopBattle: "Stop",
-    resetBattle: "Reset",
     openDocs: "Open docs",
     scenario: "Scenario",
     modelA: "Model A",
@@ -4759,21 +4766,42 @@ const arenaBattleUIText = {
     rounds: "Rounds",
     roundLabel: "Round",
     statusReady: "Ready",
-    statusRunning: "Running",
-    statusBreak: "Preparing next round",
-    statusDone: "Battle complete",
-    totalScore: "Series score",
-    totalHint: "Cumulative points",
-    roundLog: "Round log",
-    winner: "Winner",
     tie: "Tie",
     noData: "Waiting for battle to start.",
-    arenaDoc: "Explore battle workflow"
+    arenaDoc: "Explore battle workflow",
+    loadingData: "Loading WorldArena registry and predictions...",
+    dataFailed: "Using fallback arena data. Real prediction scan did not load.",
+    dataReady: "Registry-backed arena",
+    integratedModels: "Integrated models",
+    predictionRuns: "Prediction runs",
+    declaredRecords: "Declared records",
+    verifiedPreviews: "Verified previews",
+    sourceBasis: "Scoring basis",
+    configSignals: "Signals",
+    suites: "Suites",
+    artifacts: "Artifacts",
+    noPreview: "No generated preview found",
+    registryFile: "Config",
+    runCoverage: "Run coverage",
+    rankedVoting: "Ranked human voting",
+    rankedVotingBody: "Random blind battles update human ELO. Choose a dimension, vote, then identities are revealed.",
+    voteDimension: "Vote dimension",
+    randomBattle: "New blind battle",
+    preferLeft: "Prefer Model 1",
+    preferRight: "Prefer Model 2",
+    hardToChoose: "Hard to choose",
+    blindHidden: "Identity hidden until vote",
+    revealedAfterVote: "Vote recorded. Identities revealed.",
+    voteSaved: "Vote saved",
+    voteFailed: "Vote failed",
+    humanLeaderboard: "Human ELO leaderboard",
+    rankedVotes: "Ranked votes",
+    noVotes: "No human votes yet.",
+    humanVotes: "Human votes",
+    activeDimension: "Active dimension",
+    battleSample: "Battle sample"
   },
   zh: {
-    runBattle: "开始对决",
-    stopBattle: "停止",
-    resetBattle: "重置",
     openDocs: "查看文档",
     scenario: "场景",
     modelA: "模型 A",
@@ -4782,21 +4810,131 @@ const arenaBattleUIText = {
     rounds: "回合数",
     roundLabel: "回合",
     statusReady: "准备就绪",
-    statusRunning: "进行中",
-    statusBreak: "准备下一回合",
-    statusDone: "对决完成",
-    totalScore: "累计得分",
-    totalHint: "累计得分",
-    roundLog: "回合回放",
-    winner: "胜者",
     tie: "平局",
     noData: "等待对决开始。",
-    arenaDoc: "查看流程文档"
+    arenaDoc: "查看流程文档",
+    loadingData: "正在读取 WorldArena 模型注册表和预测结果...",
+    dataFailed: "真实预测扫描未加载，当前使用备用竞技场数据。",
+    dataReady: "基于真实注册表的竞技场",
+    integratedModels: "集成模型",
+    predictionRuns: "预测运行",
+    declaredRecords: "声明记录",
+    verifiedPreviews: "可验证预览",
+    sourceBasis: "评分依据",
+    configSignals: "控制信号",
+    suites: "套件",
+    artifacts: "产物",
+    noPreview: "未找到生成预览",
+    registryFile: "配置",
+    runCoverage: "运行覆盖",
+    rankedVoting: "人类偏好投票",
+    rankedVotingBody: "随机盲选对局会更新人类 ELO；先选择评价维度，投票后才揭示模型身份。",
+    voteDimension: "投票维度",
+    randomBattle: "下一组盲测对局",
+    preferLeft: "更偏好模型 1",
+    preferRight: "更偏好模型 2",
+    hardToChoose: "难以选择",
+    blindHidden: "投票前隐藏模型身份",
+    revealedAfterVote: "投票已记录，模型身份已揭示。",
+    voteSaved: "投票已保存",
+    voteFailed: "投票失败",
+    humanLeaderboard: "人类 ELO 榜",
+    rankedVotes: "有效投票",
+    noVotes: "还没有人类投票。",
+    humanVotes: "人类投票",
+    activeDimension: "当前维度",
+    battleSample: "对局样例"
   }
 };
 
 const arenaBattleStorageKey = "worldarena_arena_battle_cfg_v3";
 let arenaBattleRuntime = null;
+let arenaBattleData = null;
+let arenaBattleDataStatus = "idle";
+let arenaBattleDataPromise = null;
+
+function formatArenaNumber(value) {
+  const number = Number(value) || 0;
+
+  if (number >= 1000000) {
+    return `${(number / 1000000).toFixed(1)}M`;
+  }
+
+  if (number >= 10000) {
+    return `${(number / 1000).toFixed(1)}K`;
+  }
+
+  return number.toLocaleString("en-US");
+}
+
+function normalizeArenaRuntimeSelection(runtime) {
+  if (!runtime || !arenaBattleModels.length) {
+    return;
+  }
+
+  if (!arenaBattleModels.some((model) => model.id === runtime.modelLeftId)) {
+    runtime.modelLeftId = arenaBattleModels[0].id;
+  }
+
+  if (!arenaBattleModels.some((model) => model.id === runtime.modelRightId) || runtime.modelRightId === runtime.modelLeftId) {
+    const fallback = arenaBattleModels.find((model) => model.id !== runtime.modelLeftId) || arenaBattleModels[0];
+    runtime.modelRightId = fallback.id;
+  }
+
+  if (!arenaBattleScenarios.some((scenario) => scenario.id === runtime.scenarioId)) {
+    runtime.scenarioId = arenaBattleScenarios[0].id;
+  }
+}
+
+function applyArenaBattleData(payload) {
+  if (!payload || !Array.isArray(payload.models) || !payload.models.length) {
+    return;
+  }
+
+  arenaBattleData = payload;
+  arenaBattleModels = payload.models;
+  arenaBattleScenarios = Array.isArray(payload.scenarios) && payload.scenarios.length
+    ? payload.scenarios
+    : arenaBattleFallbackScenarios;
+
+  if (arenaBattleRuntime) {
+    normalizeArenaRuntimeSelection(arenaBattleRuntime);
+  }
+}
+
+function ensureArenaBattleData() {
+  if (arenaBattleDataStatus === "loaded") {
+    return Promise.resolve(arenaBattleData);
+  }
+
+  if (arenaBattleDataPromise) {
+    return arenaBattleDataPromise;
+  }
+
+  arenaBattleDataStatus = "loading";
+  arenaBattleDataPromise = fetch("/api/arena-battle")
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Arena data request failed: ${response.status}`);
+      }
+
+      return response.json();
+    })
+    .then((payload) => {
+      applyArenaBattleData(payload);
+      arenaBattleDataStatus = "loaded";
+      arenaBattleDataPromise = null;
+      return payload;
+    })
+    .catch((error) => {
+      console.warn(error);
+      arenaBattleDataStatus = "failed";
+      arenaBattleDataPromise = null;
+      return null;
+    });
+
+  return arenaBattleDataPromise;
+}
 
 function arenaBattleText(key) {
   const lang = activeLanguage() === "zh" ? arenaBattleUIText.zh : arenaBattleUIText.en;
@@ -4819,12 +4957,24 @@ function arenaBattleDifficultyLabel(item) {
   return activeLanguage() === "zh" ? item.labelZh : item.labelEn;
 }
 
+function arenaVoteDimensionLabel(itemOrId) {
+  const item = typeof itemOrId === "string"
+    ? arenaVoteDimensionDefs.find((dimension) => dimension.id === itemOrId)
+    : itemOrId;
+
+  if (!item) {
+    return itemOrId || "";
+  }
+
+  return activeLanguage() === "zh" ? item.labelZh : item.labelEn;
+}
+
 function arenaBattleModelById(id) {
-  return arenaBattleModels.find((item) => item.id === id) || arenaBattleModels[0];
+  return arenaBattleModels.find((item) => item.id === id) || arenaBattleModels[0] || arenaBattleFallbackModels[0];
 }
 
 function arenaBattleScenarioById(id) {
-  return arenaBattleScenarios.find((item) => item.id === id) || arenaBattleScenarios[0];
+  return arenaBattleScenarios.find((item) => item.id === id) || arenaBattleScenarios[0] || arenaBattleFallbackScenarios[0];
 }
 
 function arenaBattleDifficultyById(id) {
@@ -4859,7 +5009,8 @@ function writeArenaBattleConfig(runtime) {
         difficultyId: runtime.difficultyId,
         modelLeftId: runtime.modelLeftId,
         modelRightId: runtime.modelRightId,
-        totalRounds: runtime.totalRounds
+        totalRounds: runtime.totalRounds,
+        voteDimension: runtime.voteDimension
       })
     );
   } catch (_error) {
@@ -4889,6 +5040,9 @@ function getArenaBattleRuntime() {
     cumulativeLeft: 0,
     cumulativeRight: 0,
     rounds: [],
+    voteDimension: saved.voteDimension || "overall",
+    voteBattle: null,
+    voteStatus: "",
     frameHandle: 0,
     autoNextHandle: 0,
     dom: null
@@ -4919,8 +5073,15 @@ function stopArenaBattleRuntime() {
 function buildArenaModelOptions() {
   return arenaBattleModels
     .map(
-      (model) =>
-        `<option value="${escapeAttr(model.id)}">${escapeHtml(model.name)} (${escapeHtml(model.family)})</option>`
+      (model) => {
+        const coverage = model.runCount
+          ? ` · ${model.runCount} runs`
+          : model.declaredRecords
+            ? ` · ${formatArenaNumber(model.declaredRecords)} records`
+            : "";
+
+        return `<option value="${escapeAttr(model.id)}">${escapeHtml(model.name)} (${escapeHtml(model.family || model.backendType || "model")}${escapeHtml(coverage)})</option>`;
+      }
     )
     .join("");
 }
@@ -4943,33 +5104,380 @@ function buildArenaDifficultyOptions() {
     .join("");
 }
 
+function buildArenaVoteDimensionOptions(selectedId) {
+  return arenaVoteDimensionDefs
+    .map((dimension) => {
+      const selected = dimension.id === selectedId ? " selected" : "";
+      return `<option value="${escapeAttr(dimension.id)}"${selected}>${escapeHtml(arenaVoteDimensionLabel(dimension))}</option>`;
+    })
+    .join("");
+}
+
+function arenaVotePanelMarkup(runtime) {
+  return `
+    <section class="arena-vote-panel" aria-label="${escapeAttr(arenaBattleText("rankedVoting"))}">
+      <div>
+        <h2>${escapeHtml(arenaBattleText("rankedVoting"))}</h2>
+        <p>${escapeHtml(arenaBattleText("rankedVotingBody"))}</p>
+      </div>
+      <label>
+        <span>${escapeHtml(arenaBattleText("voteDimension"))}</span>
+        <select data-arena-vote-dimension>${buildArenaVoteDimensionOptions(runtime.voteDimension)}</select>
+      </label>
+      <button type="button" data-arena-random-battle>${escapeHtml(arenaBattleText("randomBattle"))}</button>
+      <div class="arena-vote-actions">
+        <button type="button" data-arena-vote="left">${escapeHtml(arenaBattleText("preferLeft"))}</button>
+        <button type="button" data-arena-vote="tie">${escapeHtml(arenaBattleText("hardToChoose"))}</button>
+        <button type="button" data-arena-vote="right">${escapeHtml(arenaBattleText("preferRight"))}</button>
+      </div>
+      <p class="arena-vote-status" data-arena-vote-status>${escapeHtml(runtime.voteStatus || arenaBattleText("blindHidden"))}</p>
+    </section>
+  `;
+}
+
+function arenaHumanLeaderboardMarkup() {
+  const leaderboard = arenaBattleData?.humanLeaderboard;
+  const rows = Array.isArray(leaderboard?.rows) ? leaderboard.rows.slice(0, 8) : [];
+  const dimension = arenaBattleRuntime?.voteDimension || "overall";
+
+  return `
+    <section class="arena-human-leaderboard" aria-label="${escapeAttr(arenaBattleText("humanLeaderboard"))}">
+      <header>
+        <div>
+          <h3>${escapeHtml(arenaBattleText("humanLeaderboard"))}</h3>
+          <p>${escapeHtml(arenaVoteDimensionLabel(dimension))} · ${escapeHtml(arenaBattleText("rankedVotes"))}: ${escapeHtml(formatArenaNumber(leaderboard?.rankedVotes || 0))}</p>
+        </div>
+      </header>
+      <ol>
+        ${rows.length
+          ? rows
+            .map((row) => `
+              <li>
+                <span>${escapeHtml(String(row.rank))}</span>
+                <strong>${escapeHtml(row.name)}</strong>
+                <em>${escapeHtml(String(row.ratings?.[dimension] || 1500))}</em>
+                <small>${escapeHtml(String(row.battles?.[dimension] || 0))} battles</small>
+              </li>
+            `)
+            .join("")
+          : `<li class="arena-human-empty">${escapeHtml(arenaBattleText("noVotes"))}</li>`}
+      </ol>
+    </section>
+  `;
+}
+
+function updateArenaHumanLeaderboard(runtime) {
+  if (runtime?.dom?.humanLeaderboard) {
+    runtime.dom.humanLeaderboard.innerHTML = arenaHumanLeaderboardMarkup();
+  }
+}
+
 function renderArenaBattleContenderMarkup(side) {
   return `
     <article class="arena-contender" data-arena-contender="${escapeAttr(side)}">
       <header class="arena-contender-head">
-        <span>${escapeHtml(side === "left" ? arenaBattleText("modelA") : arenaBattleText("modelB"))}</span>
-        <strong data-arena-round-score="${escapeAttr(side)}">--</strong>
+        <span>${escapeHtml(arenaVoteSideLabel(side))}</span>
       </header>
-      <p class="arena-model-name" data-arena-model-name="${escapeAttr(side)}">—</p>
-      ${arenaBattleMetricDefs
+      <p class="arena-model-name" data-arena-model-name="${escapeAttr(side)}">${escapeHtml(arenaVoteSideLabel(side))}</p>
+      <div class="arena-model-meta" data-arena-model-meta="${escapeAttr(side)}"></div>
+      <div class="arena-preview" data-arena-preview="${escapeAttr(side)}"></div>
+    </article>
+  `;
+}
+
+function arenaDataStripMarkup() {
+  const isZh = activeLanguage() === "zh";
+
+  if (arenaBattleDataStatus === "failed") {
+    return `
+      <div class="arena-data-state is-warning">
+        <strong>${escapeHtml(arenaBattleText("dataFailed"))}</strong>
+        <span>${escapeHtml(isZh ? "检查 /api/arena-battle 或后端日志。" : "Check /api/arena-battle or the local server log.")}</span>
+      </div>
+    `;
+  }
+
+  if (arenaBattleDataStatus !== "loaded" || !arenaBattleData) {
+    return `
+      <div class="arena-data-state">
+        <strong>${escapeHtml(arenaBattleText("loadingData"))}</strong>
+        <span>${escapeHtml(isZh ? "来源：config/models 与 artifacts/predictions" : "Source: config/models and artifacts/predictions")}</span>
+      </div>
+    `;
+  }
+
+  const summary = arenaBattleData.summary || {};
+  const verifiedPreviews = arenaBattleModels.reduce((total, model) => {
+    return total + (Array.isArray(model.samples) ? model.samples.length : 0);
+  }, 0);
+  const stats = [
+    [arenaBattleText("integratedModels"), summary.integratedModels],
+    [arenaBattleText("predictionRuns"), summary.predictionRuns],
+    [arenaBattleText("declaredRecords"), summary.declaredRecords],
+    [arenaBattleText("verifiedPreviews"), verifiedPreviews]
+  ];
+
+  return `
+    <div class="arena-data-state is-ready">
+      <strong>${escapeHtml(arenaBattleText("dataReady"))}</strong>
+      <span>${escapeHtml(arenaBattleData.source?.basis || "")}</span>
+    </div>
+    <div class="arena-data-stats">
+      ${stats
         .map(
-          (metric) => `
-            <div class="arena-meter-row">
-              <span class="arena-meter-name">${escapeHtml(arenaBattleMetricLabel(metric))}</span>
-              <div class="arena-meter-track" data-arena-meter-track="${escapeAttr(`${side}-${metric.id}`)}">
-                <span class="arena-meter-fill" data-arena-meter-fill="${escapeAttr(`${side}-${metric.id}`)}"></span>
-              </div>
-              <span class="arena-meter-value" data-arena-meter-value="${escapeAttr(`${side}-${metric.id}`)}">--</span>
-            </div>
+          ([label, value]) => `
+            <article>
+              <span>${escapeHtml(label)}</span>
+              <strong>${escapeHtml(formatArenaNumber(value))}</strong>
+            </article>
           `
         )
         .join("")}
-      <div class="arena-progress-line">
-        <span class="arena-progress-fill" data-arena-progress-fill="${escapeAttr(side)}"></span>
-      </div>
-      <p class="arena-progress-text" data-arena-progress-text="${escapeAttr(side)}">0%</p>
-    </article>
+    </div>
   `;
+}
+
+function updateArenaDataStrip(runtime) {
+  if (runtime?.dom?.dataStrip) {
+    runtime.dom.dataStrip.innerHTML = arenaDataStripMarkup();
+  }
+}
+
+function refreshArenaBattleControls(runtime) {
+  if (!runtime?.dom) {
+    return;
+  }
+
+  normalizeArenaRuntimeSelection(runtime);
+  if (runtime.dom.scenarioSelect) {
+    runtime.dom.scenarioSelect.innerHTML = buildArenaScenarioOptions();
+    runtime.dom.scenarioSelect.value = runtime.scenarioId;
+  }
+  if (runtime.dom.modelLeftSelect) {
+    runtime.dom.modelLeftSelect.innerHTML = buildArenaModelOptions();
+    runtime.dom.modelLeftSelect.value = runtime.modelLeftId;
+  }
+  if (runtime.dom.modelRightSelect) {
+    runtime.dom.modelRightSelect.innerHTML = buildArenaModelOptions();
+    runtime.dom.modelRightSelect.value = runtime.modelRightId;
+  }
+  if (runtime.dom.difficultySelect) {
+    runtime.dom.difficultySelect.value = runtime.difficultyId;
+  }
+  if (runtime.dom.roundsSelect) {
+    runtime.dom.roundsSelect.value = String(runtime.totalRounds);
+  }
+  if (runtime.dom.voteDimensionSelect) {
+    runtime.dom.voteDimensionSelect.innerHTML = buildArenaVoteDimensionOptions(runtime.voteDimension);
+    runtime.dom.voteDimensionSelect.value = runtime.voteDimension;
+  }
+  updateArenaDataStrip(runtime);
+  renderArenaBattleState(runtime);
+}
+
+function arenaRandomItem(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function arenaModelsWithSamples() {
+  return arenaBattleModels.filter((model) => Array.isArray(model.samples) && model.samples.length);
+}
+
+function createArenaRandomVoteBattle(runtime) {
+  if (runtime.autoNextHandle) {
+    window.clearTimeout(runtime.autoNextHandle);
+    runtime.autoNextHandle = 0;
+  }
+
+  if (runtime.frameHandle) {
+    window.cancelAnimationFrame(runtime.frameHandle);
+    window.clearTimeout(runtime.frameHandle);
+    runtime.frameHandle = 0;
+  }
+
+  const entries = [];
+
+  arenaModelsWithSamples().forEach((model) => {
+    model.samples.forEach((sample) => {
+      if (sample?.mediaUrl) {
+        entries.push({ model, sample });
+      }
+    });
+  });
+
+  const bySample = new Map();
+
+  entries.forEach((entry) => {
+    const key = `${entry.sample.sampleId || ""}::${entry.sample.suite || ""}`;
+
+    if (!entry.sample.sampleId) {
+      return;
+    }
+
+    if (!bySample.has(key)) {
+      bySample.set(key, []);
+    }
+
+    bySample.get(key).push(entry);
+  });
+
+  const sameInputPairs = [];
+
+  bySample.forEach((group) => {
+    const unique = group.filter((entry, index) => group.findIndex((item) => item.model.id === entry.model.id) === index);
+
+    for (let left = 0; left < unique.length; left += 1) {
+      for (let right = left + 1; right < unique.length; right += 1) {
+        sameInputPairs.push([unique[left], unique[right]]);
+      }
+    }
+  });
+
+  let pair = sameInputPairs.length ? arenaRandomItem(sameInputPairs) : null;
+
+  if (!pair && entries.length >= 2) {
+    const bySuite = new Map();
+    entries.forEach((entry) => {
+      const suite = entry.sample.suite || "mixed";
+      if (!bySuite.has(suite)) {
+        bySuite.set(suite, []);
+      }
+      bySuite.get(suite).push(entry);
+    });
+
+    const groups = Array.from(bySuite.values()).filter((group) => new Set(group.map((entry) => entry.model.id)).size >= 2);
+    const group = groups.length ? arenaRandomItem(groups) : entries;
+    const first = arenaRandomItem(group);
+    const candidates = group.filter((entry) => entry.model.id !== first.model.id);
+    const second = candidates.length ? arenaRandomItem(candidates) : arenaRandomItem(entries.filter((entry) => entry.model.id !== first.model.id));
+    pair = [first, second];
+  }
+
+  if (!pair) {
+    runtime.voteBattle = null;
+    runtime.voteStatus = arenaBattleDataStatus === "loading"
+      ? arenaBattleText("loadingData")
+      : arenaBattleText("noPreview");
+    renderArenaBattleState(runtime);
+    return;
+  }
+
+  const flip = Math.random() > 0.5;
+  const left = flip ? pair[1] : pair[0];
+  const right = flip ? pair[0] : pair[1];
+
+  runtime.voteBattle = {
+    ranked: true,
+    revealed: false,
+    voted: false,
+    leftModelId: left.model.id,
+    rightModelId: right.model.id,
+    leftSample: left.sample,
+    rightSample: right.sample,
+    sharedSampleId: left.sample.sampleId === right.sample.sampleId ? left.sample.sampleId : "",
+    suite: left.sample.suite || right.sample.suite || ""
+  };
+  runtime.modelLeftId = left.model.id;
+  runtime.modelRightId = right.model.id;
+  runtime.scenarioId = runtime.voteBattle.suite || runtime.scenarioId;
+  runtime.phase = "ready";
+  runtime.currentRound = 1;
+  runtime.fighters = null;
+  runtime.cumulativeLeft = 0;
+  runtime.cumulativeRight = 0;
+  runtime.rounds = [];
+  runtime.voteStatus = arenaBattleText("blindHidden");
+
+  if (runtime.dom) {
+    if (runtime.dom.modelLeftSelect) {
+      runtime.dom.modelLeftSelect.value = runtime.modelLeftId;
+    }
+    if (runtime.dom.modelRightSelect) {
+      runtime.dom.modelRightSelect.value = runtime.modelRightId;
+    }
+    if (runtime.dom.scenarioSelect && arenaBattleScenarioById(runtime.scenarioId)) {
+      runtime.dom.scenarioSelect.value = runtime.scenarioId;
+    }
+  }
+
+  writeArenaBattleConfig(runtime);
+  renderArenaBattleState(runtime);
+}
+
+function arenaVoteBattleSampleFor(side, model) {
+  const battle = arenaBattleRuntime?.voteBattle;
+
+  if (!battle) {
+    return null;
+  }
+
+  if (side === "left" && battle.leftModelId === model.id) {
+    return battle.leftSample;
+  }
+
+  if (side === "right" && battle.rightModelId === model.id) {
+    return battle.rightSample;
+  }
+
+  return null;
+}
+
+function arenaVoteSideLabel(side) {
+  if (activeLanguage() === "zh") {
+    return side === "left" ? "模型 1" : "模型 2";
+  }
+
+  return side === "left" ? "Model 1" : "Model 2";
+}
+
+function submitArenaVote(runtime, winner) {
+  const battle = runtime.voteBattle;
+
+  if (!battle || battle.voted) {
+    return;
+  }
+
+  battle.voted = true;
+  battle.revealed = true;
+  runtime.voteStatus = arenaBattleText("revealedAfterVote");
+  renderArenaBattleState(runtime);
+
+  fetch("/api/arena-vote", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ranked: battle.ranked,
+      dimension: runtime.voteDimension,
+      winner,
+      leftModelId: battle.leftModelId,
+      rightModelId: battle.rightModelId,
+      leftSampleId: battle.leftSample?.sampleId || "",
+      rightSampleId: battle.rightSample?.sampleId || "",
+      sharedSampleId: battle.sharedSampleId,
+      suite: battle.suite,
+      battleMode: "random"
+    })
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Vote failed: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then((payload) => {
+      if (arenaBattleData && payload.humanLeaderboard) {
+        arenaBattleData.humanLeaderboard = payload.humanLeaderboard;
+      }
+      runtime.voteStatus = arenaBattleText("voteSaved");
+      renderArenaBattleState(runtime);
+      updateArenaHumanLeaderboard(runtime);
+    })
+    .catch((error) => {
+      console.warn(error);
+      battle.voted = false;
+      runtime.voteStatus = arenaBattleText("voteFailed");
+      renderArenaBattleState(runtime);
+    });
 }
 
 function arenaBattleSeedFor(runtime) {
@@ -5013,14 +5521,97 @@ function simulateFighterStep(fighter, scenario, difficulty, progress, dt, phaseS
   );
 }
 
+function arenaModelSuiteText(model) {
+  const suites = Array.isArray(model.suites) && model.suites.length
+    ? model.suites
+    : Array.isArray(model.supportedSuites)
+      ? model.supportedSuites
+      : [];
+
+  return suites.slice(0, 4).join(", ") || "n/a";
+}
+
+function renderArenaModelDetails(root, side, model) {
+  const metaNode = root.querySelector(`[data-arena-model-meta="${side}"]`);
+  const previewNode = root.querySelector(`[data-arena-preview="${side}"]`);
+  const battle = arenaBattleRuntime?.voteBattle;
+  const battleSample = arenaVoteBattleSampleFor(side, model);
+  const isBattleModel = battle && (
+    (side === "left" && battle.leftModelId === model.id) ||
+    (side === "right" && battle.rightModelId === model.id)
+  );
+  const isBlind = !battle || (!battle.revealed && isBattleModel);
+  const sample = battleSample || (isBlind ? null : (Array.isArray(model.samples) ? model.samples[0] : null));
+  const previewKey = sample
+    ? `${isBlind ? side : model.id}:${sample.mediaUrl}:${isBlind ? "blind" : "revealed"}`
+    : `${side}:none:${isBlind ? "blind" : "revealed"}`;
+  const details = [
+    `${arenaBattleText("registryFile")}: ${model.configFile || model.backendType || "config/models"}`,
+    `${arenaBattleText("suites")}: ${arenaModelSuiteText(model)}`,
+    `${arenaBattleText("runCoverage")}: ${model.coverageLabel || `${model.runCount || 0} runs`}`
+  ];
+  const signals = Array.isArray(model.controlSignals) && model.controlSignals.length
+    ? model.controlSignals.slice(0, 4).join(", ")
+    : "";
+
+  if (signals) {
+    details.push(`${arenaBattleText("configSignals")}: ${signals}`);
+  }
+
+  if (metaNode) {
+    metaNode.innerHTML = isBlind
+      ? `<span>${escapeHtml(arenaBattleText("blindHidden"))}</span>${sample?.suite ? `<span>${escapeHtml(`${arenaBattleText("suites")}: ${sample.suite}`)}</span>` : ""}`
+      : details.map((item) => `<span>${escapeHtml(item)}</span>`).join("");
+  }
+
+  if (!previewNode || previewNode.dataset.previewKey === previewKey) {
+    return;
+  }
+
+  previewNode.dataset.previewKey = previewKey;
+
+  if (!sample) {
+    previewNode.innerHTML = `<div class="arena-preview-empty">${escapeHtml(arenaBattleText("noPreview"))}</div>`;
+    return;
+  }
+
+  const mediaLabel = isBlind ? arenaVoteSideLabel(side) : (sample.sampleId || model.name);
+  const media = sample.mediaKind === "image"
+    ? `<img src="${escapeAttr(sample.mediaUrl)}" alt="${escapeAttr(mediaLabel)}" loading="lazy" />`
+    : `<video src="${escapeAttr(sample.mediaUrl)}" muted loop playsinline preload="metadata"></video>`;
+
+  previewNode.innerHTML = `
+    <div class="arena-preview-media">${media}</div>
+    <div class="arena-preview-caption">
+      <strong>${escapeHtml(sample.suite || "prediction")}</strong>
+      <span>${escapeHtml(sample.sampleId || sample.status || "sample")}</span>
+      ${sample.prompt ? `<p>${escapeHtml(sample.prompt)}</p>` : ""}
+    </div>
+  `;
+
+  const video = previewNode.querySelector("video");
+  if (video) {
+    video.play().catch(() => {
+      // Autoplay can be blocked; the preview remains visible through metadata.
+    });
+  }
+}
+
 function renderArenaContender(root, side, fighter, modelId, progressFraction) {
-  const modelName = arenaBattleModelById(modelId).name;
+  const profile = arenaBattleModelById(modelId);
+  const voteBattle = arenaBattleRuntime?.voteBattle;
+  const isCurrentVoteModel = voteBattle &&
+    ((side === "left" && voteBattle.leftModelId === profile.id) || (side === "right" && voteBattle.rightModelId === profile.id));
+  const hiddenForVote = !voteBattle || (!voteBattle.revealed && isCurrentVoteModel);
+  const modelName = hiddenForVote ? arenaVoteSideLabel(side) : profile.name;
   const modelNode = root.querySelector(`[data-arena-model-name="${side}"]`);
   const roundScoreNode = root.querySelector(`[data-arena-round-score="${side}"]`);
 
   if (modelNode) {
     modelNode.textContent = modelName;
   }
+
+  renderArenaModelDetails(root, side, profile);
 
   if (!fighter) {
     if (roundScoreNode) {
@@ -5080,10 +5671,26 @@ function renderArenaContender(root, side, fighter, modelId, progressFraction) {
 
   const contender = root.querySelector(`[data-arena-contender="${side}"]`);
   if (contender) {
-    const profile = arenaBattleModelById(modelId);
-    contender.style.setProperty("--arena-color", profile.color);
-    contender.style.setProperty("--arena-accent", profile.accent);
+    contender.style.setProperty("--arena-color", hiddenForVote ? (side === "left" ? "#2f766f" : "#5d6a75") : profile.color);
+    contender.style.setProperty("--arena-accent", hiddenForVote ? (side === "left" ? "#7ec9bc" : "#c0a575") : profile.accent);
   }
+}
+
+function arenaVoteBattleSummaryLabel(runtime) {
+  const battle = runtime.voteBattle;
+
+  if (!battle) {
+    return arenaBattleDataStatus === "loading"
+      ? arenaBattleText("loadingData")
+      : arenaBattleText("statusReady");
+  }
+
+  const parts = [
+    battle.sharedSampleId || battle.leftSample?.sampleId || battle.rightSample?.sampleId || "",
+    battle.suite || ""
+  ].filter(Boolean);
+
+  return `${arenaBattleText("battleSample")}: ${parts.length ? parts.join(" · ") : "random pair"}`;
 }
 
 function renderArenaBattleState(runtime) {
@@ -5092,72 +5699,57 @@ function renderArenaBattleState(runtime) {
   }
 
   const root = runtime.dom.root;
-  const scenario = arenaBattleScenarioById(runtime.scenarioId);
-  const difficulty = arenaBattleDifficultyById(runtime.difficultyId);
+  const leaderboard = arenaBattleData?.humanLeaderboard || {};
+  const renderSimulation = runtime.phase === "running" && runtime.fighters;
+  const left = renderSimulation ? runtime.fighters[0] : null;
+  const right = renderSimulation ? runtime.fighters[1] : null;
+  const voteStatus = runtime.voteStatus ||
+    (runtime.voteBattle
+      ? runtime.voteBattle.revealed
+        ? arenaBattleText("revealedAfterVote")
+        : arenaBattleText("blindHidden")
+      : arenaBattleDataStatus === "loading"
+        ? arenaBattleText("loadingData")
+        : arenaBattleText("statusReady"));
 
-  const left = runtime.fighters ? runtime.fighters[0] : null;
-  const right = runtime.fighters ? runtime.fighters[1] : null;
+  if (runtime.dom.roundLabel) {
+    runtime.dom.roundLabel.textContent = arenaVoteDimensionLabel(runtime.voteDimension);
+  }
+  if (runtime.dom.status) {
+    runtime.dom.status.textContent = voteStatus;
+  }
+  if (runtime.dom.scenarioLabel) {
+    runtime.dom.scenarioLabel.textContent = arenaVoteBattleSummaryLabel(runtime);
+  }
+  if (runtime.dom.totalLeft) {
+    runtime.dom.totalLeft.textContent = formatArenaNumber(leaderboard.votes || 0);
+  }
+  if (runtime.dom.totalRight) {
+    runtime.dom.totalRight.textContent = formatArenaNumber(leaderboard.rankedVotes || 0);
+  }
 
-  runtime.dom.roundLabel.textContent = `${runtime.currentRound}/${runtime.totalRounds}`;
-  runtime.dom.status.textContent =
-    runtime.phase === "running"
-      ? `${arenaBattleText("statusRunning")} · ${arenaBattleScenarioLabel(scenario)} · ${arenaBattleDifficultyLabel(difficulty)}`
-      : runtime.phase === "break"
-        ? arenaBattleText("statusBreak")
-        : runtime.phase === "complete"
-          ? arenaBattleText("statusDone")
-          : arenaBattleText("statusReady");
-
-  runtime.dom.scenarioLabel.textContent = `${arenaBattleScenarioLabel(scenario)} · ${arenaBattleScenarioBody(scenario)}`;
-  runtime.dom.totalLeft.textContent = `${runtime.cumulativeLeft.toFixed(1)}`;
-  runtime.dom.totalRight.textContent = `${runtime.cumulativeRight.toFixed(1)}`;
-
-  const progressFraction = runtime.phase === "running" && runtime.roundStartAt
+  const progressFraction = renderSimulation && runtime.roundStartAt
     ? clamp((performance.now() - runtime.roundStartAt) / runtime.roundDurationMs, 0, 1)
     : 0;
-
-  const leader =
-    runtime.cumulativeLeft > runtime.cumulativeRight
-      ? arenaBattleModelById(runtime.modelLeftId).name
-      : runtime.cumulativeRight > runtime.cumulativeLeft
-        ? arenaBattleModelById(runtime.modelRightId).name
-        : arenaBattleText("tie");
 
   renderArenaContender(root, "left", left, runtime.modelLeftId, progressFraction);
   renderArenaContender(root, "right", right, runtime.modelRightId, progressFraction);
 
   if (runtime.dom.leader) {
-    runtime.dom.leader.textContent = leader;
+    runtime.dom.leader.textContent = arenaVoteDimensionLabel(runtime.voteDimension);
   }
 
-  runtime.dom.runButton.textContent =
-    runtime.phase === "running"
-      ? arenaBattleText("stopBattle")
-      : runtime.phase === "break"
-        ? arenaBattleText("statusBreak")
-        : arenaBattleText("runBattle");
-  runtime.dom.runButton.disabled = runtime.phase === "break";
+  if (runtime.dom.voteStatus) {
+    runtime.dom.voteStatus.textContent = voteStatus;
+  }
 
-  runtime.dom.log.innerHTML = runtime.rounds
-    .slice(0, 6)
-    .map((entry) => {
-      const leftWin = entry.winner === "left";
-      const rightWin = entry.winner === "right";
-      const winnerText =
-        entry.winner === "tie"
-          ? arenaBattleText("tie")
-          : leftWin
-            ? `${arenaBattleText("winner")}: ${entry.left.name}`
-            : `${arenaBattleText("winner")}: ${entry.right.name}`;
+  if (Array.isArray(runtime.dom.voteButtons)) {
+    runtime.dom.voteButtons.forEach((button) => {
+      button.disabled = !runtime.voteBattle || runtime.voteBattle.voted;
+    });
+  }
 
-      return `
-        <li>
-          <p>${arenaBattleText("roundLabel")} ${entry.round}: ${arenaBattleScenarioLabel(entry.scenario)}</p>
-          <span>${winnerText} · ${entry.left.score.toFixed(1)} : ${entry.right.score.toFixed(1)}</span>
-        </li>
-      `;
-    })
-    .join("") || `<li>${arenaBattleText("noData")}</li>`;
+  updateArenaHumanLeaderboard(runtime);
 }
 
 function startArenaBattleRound(runtime) {
@@ -5297,7 +5889,14 @@ function startArenaBattle(runtime) {
 }
 
 function syncArenaBattleInputs(runtime) {
-  if (!runtime.dom) {
+  if (
+    !runtime.dom ||
+    !runtime.dom.scenarioSelect ||
+    !runtime.dom.difficultySelect ||
+    !runtime.dom.modelLeftSelect ||
+    !runtime.dom.modelRightSelect ||
+    !runtime.dom.roundsSelect
+  ) {
     return;
   }
 
@@ -5326,6 +5925,7 @@ function syncArenaBattleInputs(runtime) {
 
 function renderArenaBattle() {
   const runtime = getArenaBattleRuntime();
+  normalizeArenaRuntimeSelection(runtime);
 
   document.body.className = "arena-page";
   const battleTitle = localizedHomeText("arenaBattle");
@@ -5341,53 +5941,23 @@ function renderArenaBattle() {
         <div>
           <p class="arena-kicker">${escapeHtml(localizedHomeText("arenaBattleCategory"))}</p>
           <h1 class="arena-title">${escapeHtml(battleTitle)}</h1>
-          <p class="arena-lede">${escapeHtml(isZh ? "选择场景和两个模型，运行本地对战评分。" : "Choose a scenario and two models, then run an in-page battle score.")}</p>
+          <p class="arena-lede">${escapeHtml(isZh ? "基于 WorldArena 真实集成模型和本地 prediction 产物，随机生成双盲对局，用人类偏好投票更新多维 ELO 排名。" : "Random blind battles compare WorldArena-integrated model outputs from local prediction artifacts and update multi-dimensional human ELO rankings.")}</p>
         </div>
-        <div class="arena-score-strip" aria-label="${escapeAttr(arenaBattleText("totalScore"))}">
-          <span>${escapeHtml(arenaBattleText("totalScore"))}</span>
-          <strong><b data-arena-total-left>0.0</b><em>:</em><b data-arena-total-right>0.0</b></strong>
-          <small>${escapeHtml(isZh ? "领先" : "Leader")}: <span data-arena-leader>${escapeHtml(arenaBattleText("tie"))}</span></small>
+        <div class="arena-score-strip" aria-label="${escapeAttr(arenaBattleText("humanVotes"))}">
+          <span>${escapeHtml(arenaBattleText("humanVotes"))}</span>
+          <strong><b data-arena-total-left>0</b><em>/</em><b data-arena-total-right>0</b></strong>
+          <small>${escapeHtml(arenaBattleText("activeDimension"))}: <span data-arena-leader>${escapeHtml(arenaVoteDimensionLabel(runtime.voteDimension))}</span></small>
         </div>
       </section>
+      <section class="arena-data-strip" data-arena-data-strip>
+        ${arenaDataStripMarkup()}
+      </section>
+      ${arenaVotePanelMarkup(runtime)}
       <section class="arena-console">
-        <section class="arena-controls" aria-label="${escapeAttr(arenaBattleText("scenario"))}">
-          <label>
-            <span>${escapeHtml(arenaBattleText("scenario"))}</span>
-            <select data-arena-scenario>${buildArenaScenarioOptions()}</select>
-          </label>
-          <label>
-            <span>${escapeHtml(arenaBattleText("difficulty"))}</span>
-            <select data-arena-difficulty>${buildArenaDifficultyOptions()}</select>
-          </label>
-          <label>
-            <span>${escapeHtml(arenaBattleText("modelA"))}</span>
-            <select data-arena-model-left>${buildArenaModelOptions()}</select>
-          </label>
-          <label>
-            <span>${escapeHtml(arenaBattleText("modelB"))}</span>
-            <select data-arena-model-right>${buildArenaModelOptions()}</select>
-          </label>
-          <label>
-            <span>${escapeHtml(arenaBattleText("rounds"))}</span>
-            <select data-arena-rounds>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-              <option value="6">6</option>
-              <option value="8">8</option>
-              <option value="10">10</option>
-            </select>
-          </label>
-          <div class="arena-controls-actions">
-            <button type="button" class="arena-primary-action" data-arena-run>${escapeHtml(arenaBattleText("runBattle"))}</button>
-            <button type="button" data-arena-reset>${escapeHtml(arenaBattleText("resetBattle"))}</button>
-          </div>
-        </section>
         <section class="arena-duel-wrap">
           <div class="arena-summary">
             <p><span data-arena-status>${escapeHtml(arenaBattleText("statusReady"))}</span></p>
-            <p>${escapeHtml(arenaBattleText("roundLabel"))} <strong data-arena-round>1/1</strong></p>
+            <p>${escapeHtml(arenaBattleText("activeDimension"))} <strong data-arena-round>${escapeHtml(arenaVoteDimensionLabel(runtime.voteDimension))}</strong></p>
             <p data-arena-scenario-name></p>
           </div>
           <section class="arena-duel-scene" data-arena-duel>
@@ -5399,12 +5969,9 @@ function renderArenaBattle() {
               ${renderArenaBattleContenderMarkup("right")}
             </div>
           </section>
-          <section class="arena-logbook">
-            <header>
-              <h3>${escapeHtml(arenaBattleText("roundLog"))}</h3>
-            </header>
-            <ul data-arena-log></ul>
-          </section>
+          <div data-arena-human-leaderboard>
+            ${arenaHumanLeaderboardMarkup()}
+          </div>
         </section>
       </section>
     </main>
@@ -5412,31 +5979,52 @@ function renderArenaBattle() {
 
   runtime.dom = {
     root: app,
-    scenarioSelect: document.querySelector("[data-arena-scenario]"),
-    difficultySelect: document.querySelector("[data-arena-difficulty]"),
-    modelLeftSelect: document.querySelector("[data-arena-model-left]"),
-    modelRightSelect: document.querySelector("[data-arena-model-right]"),
-    roundsSelect: document.querySelector("[data-arena-rounds]"),
-    runButton: document.querySelector("[data-arena-run]"),
-    resetButton: document.querySelector("[data-arena-reset]"),
     status: document.querySelector("[data-arena-status]"),
     roundLabel: document.querySelector("[data-arena-round]"),
     totalLeft: document.querySelector("[data-arena-total-left]"),
     totalRight: document.querySelector("[data-arena-total-right]"),
     leader: document.querySelector("[data-arena-leader]"),
     scenarioLabel: document.querySelector("[data-arena-scenario-name]"),
-    log: document.querySelector("[data-arena-log]")
+    log: document.querySelector("[data-arena-log]"),
+    dataStrip: document.querySelector("[data-arena-data-strip]"),
+    voteDimensionSelect: document.querySelector("[data-arena-vote-dimension]"),
+    randomBattleButton: document.querySelector("[data-arena-random-battle]"),
+    voteStatus: document.querySelector("[data-arena-vote-status]"),
+    voteButtons: Array.from(document.querySelectorAll("[data-arena-vote]")),
+    humanLeaderboard: document.querySelector("[data-arena-human-leaderboard]")
   };
 
-  runtime.dom.scenarioSelect.value = runtime.scenarioId;
-  runtime.dom.difficultySelect.value = runtime.difficultyId;
-  runtime.dom.modelLeftSelect.value = runtime.modelLeftId;
-  runtime.dom.modelRightSelect.value = runtime.modelRightId;
-  runtime.dom.roundsSelect.value = String(runtime.totalRounds);
+  if (runtime.dom.scenarioSelect) {
+    runtime.dom.scenarioSelect.value = runtime.scenarioId;
+  }
+  if (runtime.dom.difficultySelect) {
+    runtime.dom.difficultySelect.value = runtime.difficultyId;
+  }
+  if (runtime.dom.modelLeftSelect) {
+    runtime.dom.modelLeftSelect.value = runtime.modelLeftId;
+  }
+  if (runtime.dom.modelRightSelect) {
+    runtime.dom.modelRightSelect.value = runtime.modelRightId;
+  }
+  if (runtime.dom.roundsSelect) {
+    runtime.dom.roundsSelect.value = String(runtime.totalRounds);
+  }
 
   bindShellEvents();
   bindArenaBattleFrame();
   renderArenaBattleState(runtime);
+  ensureArenaBattleData().then(() => {
+    if (window.location.pathname.startsWith("/arena") && runtime.dom) {
+      if (runtime.phase === "running" || runtime.phase === "break") {
+        updateArenaDataStrip(runtime);
+      } else {
+        refreshArenaBattleControls(runtime);
+        if (!runtime.voteBattle) {
+          createArenaRandomVoteBattle(runtime);
+        }
+      }
+    }
+  });
   window.requestAnimationFrame(scrollToHashTarget);
 }
 
@@ -5453,35 +6041,35 @@ function bindArenaBattleFrame() {
     runtime.dom.modelLeftSelect,
     runtime.dom.modelRightSelect,
     runtime.dom.roundsSelect
-  ];
+  ].filter(Boolean);
 
   controls.forEach((element) => {
     element.addEventListener("change", () => {
       if (runtime.phase === "running" || runtime.phase === "break") {
         return;
       }
+      runtime.voteBattle = null;
+      runtime.voteStatus = "";
       syncArenaBattleInputs(runtime);
       renderArenaBattleState(runtime);
     });
   });
 
-  runtime.dom.runButton.addEventListener("click", () => {
-    if (runtime.phase === "running") {
-      if (runtime.frameHandle) {
-        window.cancelAnimationFrame(runtime.frameHandle);
-        window.clearTimeout(runtime.frameHandle);
-        runtime.frameHandle = 0;
-      }
-      runtime.phase = "ready";
-      renderArenaBattleState(runtime);
-      return;
-    }
-
-    startArenaBattle(runtime);
+  runtime.dom.voteDimensionSelect?.addEventListener("change", () => {
+    runtime.voteDimension = runtime.dom.voteDimensionSelect.value;
+    writeArenaBattleConfig(runtime);
+    renderArenaBattleState(runtime);
+    updateArenaHumanLeaderboard(runtime);
   });
 
-  runtime.dom.resetButton.addEventListener("click", () => {
-    resetArenaBattleRuntime(runtime);
+  runtime.dom.randomBattleButton?.addEventListener("click", () => {
+    createArenaRandomVoteBattle(runtime);
+  });
+
+  runtime.dom.voteButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      submitArenaVote(runtime, button.dataset.arenaVote);
+    });
   });
 
   renderArenaBattleState(runtime);
@@ -5491,36 +6079,36 @@ function homeArenaBattleMarkup() {
   const cards = activeLanguage() === "zh"
     ? [
       {
-        kicker: "对局场景",
-        title: "可扩展竞技场",
-        body: "同一世界状态下进行双模型对比，支持回合制和难度策略切换。"
+        kicker: "真实注册表",
+        title: "集成模型",
+        body: "模型选项来自 WorldArena/config/models，保留 family、suite、控制信号和产物类型。"
       },
       {
-        kicker: "可解释评分",
-        title: "多维度指标",
-        body: "对决过程展示控制、视觉、物理、稳定性四项指标与实时进度。"
+        kicker: "预测产物",
+        title: "本地结果",
+        body: "读取 artifacts/predictions 中的 generation records、batch specs 和可播放样例。"
       },
       {
-        kicker: "完全本地",
-        title: "内置仿真逻辑",
-        body: "所有计算都在站内执行，无需外部 iframe 或跨站加载。"
+        kicker: "人类偏好",
+        title: "多维 ELO",
+        body: "随机盲测投票会按综合偏好、视觉质量、控制对齐和世界一致性更新人类排名。"
       }
     ]
     : [
       {
-        kicker: "Arena engine",
-        title: "Fully local simulation",
-        body: "Pit two models in the same scenario, with round-based multi-metric scoring over time."
+        kicker: "Real registry",
+        title: "Integrated models",
+        body: "Model choices come from WorldArena/config/models with family, suite, control signal, and artifact metadata."
       },
       {
-        kicker: "Multi-metric",
-        title: "Transparent scoring",
-        body: "Shows control, visual quality, physics realism, and stability in real time."
+        kicker: "Prediction artifacts",
+        title: "Local results",
+        body: "Reads artifacts/predictions generation records, batch specs, and playable generated samples."
       },
       {
-        kicker: "In-page engine",
-        title: "No embedding",
-        body: "Arena battle is implemented directly on this page; no third-party iframes are required."
+        kicker: "Human preference",
+        title: "Multi-dimensional ELO",
+        body: "Random blind votes update human rankings across overall, visual quality, control alignment, and world consistency."
       }
     ];
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -75,7 +76,188 @@ class WonderJourneyAdapter(ModelAdapter):
         self,
         requests: list[PreparedGenerationRequest],
     ) -> dict[str, dict[str, Any]]:
-        return run_sequential_generate_batch(self, requests)
+        if not requests:
+            return {}
+        repo_root = self.config.repo_root
+        if repo_root is None:
+            raise ValueError("WonderJourney adapter requires repo_root")
+
+        project_root = _project_root(self.config)
+        spec_dir = requests[0].output_path.parent / "_batch_specs"
+        spec_dir.mkdir(parents=True, exist_ok=True)
+        spec_path = spec_dir / f"wonderjourney_{uuid.uuid4().hex}.jsonl"
+        results_path = spec_path.with_suffix(".results.json")
+        rows: list[dict[str, Any]] = []
+        prepared_results: dict[str, dict[str, Any]] = {}
+        metadata_by_sample: dict[str, dict[str, Any]] = {}
+
+        for request in requests:
+            sample = request.sample
+            output_path = request.output_path
+            generation = _generation_for_suite(self.config.generation, sample.suite)
+            try:
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                prompt_prefix = str(generation.get("prompt_prefix", ""))
+                prompt_suffix = str(generation.get("prompt_suffix", ""))
+                prompt_text = f"{prompt_prefix}{request.prompt}{prompt_suffix}".strip()
+                if not prompt_text:
+                    prompt_text = str(sample.prompt_current or sample.prompt_target or "").strip()
+
+                structured = _structured_prompts_for_sample(
+                    sample,
+                    prompt_text=prompt_text,
+                    generation=generation,
+                )
+                midas_checkpoint = _resolved_midas_checkpoint(self.config, generation)
+
+                command = [
+                    self.config.python_bin,
+                    "-m",
+                    "worldarena.models.adapters.wonderjourney_runner",
+                    "--repo_root",
+                    str(repo_root),
+                    "--entrypoint",
+                    str(self.config.entrypoint or "run.py"),
+                    "--conditioning_image",
+                    str(request.conditioning_image.expanduser().resolve()),
+                    "--output_path",
+                    str(output_path),
+                    "--sample_name",
+                    output_path.stem,
+                    "--prompt",
+                    prompt_text,
+                    "--scene_name",
+                    str(structured["scene_name"]),
+                    "--style_prompt",
+                    str(structured["style_prompt"]),
+                    "--negative_prompt",
+                    str(structured["negative_prompt"]),
+                    "--midas_checkpoint",
+                    str(midas_checkpoint),
+                ]
+                background_prompt = str(structured["background_prompt"])
+                if background_prompt:
+                    command.extend(["--background_prompt", background_prompt])
+                entities = [str(entity) for entity in structured["entities"]]
+                if entities:
+                    command.extend(["--entities", *entities])
+
+                stable_diffusion_checkpoint = _resolved_checkpointish_option(
+                    generation.get("stable_diffusion_checkpoint")
+                )
+                if stable_diffusion_checkpoint is not None:
+                    command.extend(["--stable_diffusion_checkpoint", stable_diffusion_checkpoint])
+                rotation_path = _sequence_option(generation.get("rotation_path"))
+                if rotation_path is not None:
+                    command.extend(["--rotation_path", rotation_path])
+
+                extend_command_with_options(
+                    command,
+                    payload=generation,
+                    value_options={
+                        "seed": int,
+                        "frames": int,
+                        "num_scenes": int,
+                        "num_keyframes": int,
+                        "save_fps": int,
+                        "run_timeout": float,
+                        "depth_model": str,
+                        "stable_diffusion_revision": str,
+                        "camera_speed": float,
+                        "rotation_range": float,
+                        "init_focal_length": float,
+                        "inpainting_resolution_gen": int,
+                        "inpainting_resolution_interp": int,
+                        "kf2_upsample_coef": int,
+                        "fg_depth_range": float,
+                        "depth_shift": float,
+                        "regenerate_times": int,
+                        "num_finetune_decoder_steps": int,
+                        "num_finetune_decoder_steps_interp": int,
+                        "camera_speed_multiplier_rotation": float,
+                    },
+                    bool_value_options=(
+                        "use_gpt",
+                        "debug",
+                        "skip_interp",
+                        "skip_gen",
+                        "enable_regenerate",
+                        "finetune_decoder_gen",
+                        "finetune_decoder_interp",
+                        "finetune_depth_model",
+                        "keep_work_dir",
+                        "archive_sidecars",
+                    ),
+                )
+                rows.append(
+                    {
+                        "sample_id": sample.sample_id,
+                        "args": command[3:],
+                        "prediction_path": str(output_path),
+                        "prompt": prompt_text,
+                    }
+                )
+                metadata_by_sample[sample.sample_id] = {
+                    "command": command,
+                    "prediction_path": str(output_path),
+                    "prompt": prompt_text,
+                    "scene_name": structured["scene_name"],
+                    "entities": structured["entities"],
+                    "entity_source": structured["entity_source"],
+                    "style_prompt": structured["style_prompt"],
+                    "background_prompt": structured["background_prompt"],
+                    "negative_prompt": structured["negative_prompt"],
+                    "content_prompt": structured["content_prompt"],
+                }
+            except Exception as exc:
+                prepared_results[sample.sample_id] = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "prediction_path": str(output_path),
+                    "prompt": request.prompt,
+                }
+
+        loaded_results: dict[str, dict[str, Any]] = {}
+        if rows:
+            with spec_path.open("w", encoding="utf-8") as file:
+                for row in rows:
+                    file.write(json.dumps(row, ensure_ascii=False))
+                    file.write(chr(10))
+            command = [
+                self.config.python_bin,
+                "-m",
+                "worldarena.models.adapters.wonderjourney_runner",
+                "--batch_spec",
+                str(spec_path),
+                "--batch_results",
+                str(results_path),
+            ]
+            env = build_env(extra_pythonpaths=[project_root], overrides=self.config.env)
+            run_command(command, cwd=project_root, env=env)
+            if results_path.exists():
+                loaded_results = json.loads(results_path.read_text(encoding="utf-8"))
+
+        results: dict[str, dict[str, Any]] = {}
+        for request in requests:
+            sample_id = request.sample.sample_id
+            payload = dict(prepared_results.get(sample_id) or loaded_results.get(sample_id) or {})
+            if not payload:
+                payload = {
+                    "status": "failed",
+                    "error": "batch generation returned no result for this sample",
+                    "prediction_path": str(request.output_path),
+                    "prompt": request.prompt,
+                }
+            if payload.get("status") == "generated":
+                payload.update(metadata_by_sample.get(sample_id, {}))
+                reverse_path = request.output_path.with_name(f"{request.output_path.stem}.reverse{request.output_path.suffix}")
+                keyframes_path = request.output_path.with_name(f"{request.output_path.stem}.keyframes{request.output_path.suffix}")
+                if reverse_path.exists():
+                    payload["reverse_video_path"] = str(reverse_path)
+                if keyframes_path.exists():
+                    payload["keyframes_video_path"] = str(keyframes_path)
+            results[sample_id] = payload
+        return results
 
     def generate(
         self,

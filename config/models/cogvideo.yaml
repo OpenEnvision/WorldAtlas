@@ -6,7 +6,7 @@ model:
   artifact_types: [video]
   control_signals: [text, image]
   roles: [candidate]
-  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/cogvideox-5b-physics-iq-benchmarking/bin/python
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/CogVideo/bin/python
   repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/CogVideo
   checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/CogVideoX1.5-5B-I2V
   entrypoint: inference/cli_demo.py
@@ -26,6 +26,6 @@ model:
     fps: 16
     dtype: bfloat16
     seed: 42
-    cpu_offload: sequential
+    cpu_offload: false
   env:
     WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt

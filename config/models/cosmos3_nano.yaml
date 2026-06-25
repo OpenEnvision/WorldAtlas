@@ -1,0 +1,40 @@
+model:
+  name: cosmos3-nano
+  family: cosmos_framework
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/cosmos-framework/bin/python
+  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/cosmos-framework
+  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Cosmos3-Nano
+  entrypoint: cosmos_framework/scripts/inference.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    model_mode: image2video
+    checkpoint_path: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/Cosmos3-Nano
+    parallelism_preset: throughput
+    num_gpus: 8
+    resolution: "720"
+    aspect_ratio: "16,9"
+    num_frames: 189
+    fps: 24
+    seed: 0
+    no_guardrails: true
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+    HF_HOME: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/hf-home
+    HUGGINGFACE_HUB_CACHE: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/hf-home/hub
+    TORCH_HOME: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/torch-home
+    XDG_CACHE_HOME: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/xdg-cache
+    PATH: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/cosmos-framework/bin:/usr/local/bin:/usr/bin:/bin
+    HF_HUB_OFFLINE: "0"
+    TRANSFORMERS_OFFLINE: "0"
