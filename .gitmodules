@@ -67,3 +67,48 @@
 [submodule "thirdparty/RAFT"]
 	path = thirdparty/RAFT
 	url = https://github.com/princeton-vl/RAFT.git
+[submodule "thirdparty/ABot-World"]
+	path = thirdparty/ABot-World
+	url = https://github.com/amap-cvlab/ABot-World.git
+[submodule "thirdparty/AlayaWorld"]
+	path = thirdparty/AlayaWorld
+	url = https://github.com/AlayaLab/AlayaWorld.git
+[submodule "thirdparty/CamI2V"]
+	path = thirdparty/CamI2V
+	url = https://github.com/ZGCTroy/CamI2V.git
+[submodule "thirdparty/cosmos-predict2.5"]
+	path = thirdparty/cosmos-predict2.5
+	url = https://github.com/nvidia-cosmos/cosmos-predict2.5.git
+[submodule "thirdparty/HY-WorldPlay"]
+	path = thirdparty/HY-WorldPlay
+	url = https://github.com/Tencent-Hunyuan/HY-WorldPlay.git
+[submodule "thirdparty/Hunyuan-GameCraft-1.0"]
+	path = thirdparty/Hunyuan-GameCraft-1.0
+	url = https://github.com/Tencent-Hunyuan/Hunyuan-GameCraft-1.0.git
+[submodule "thirdparty/lingbot-video"]
+	path = thirdparty/lingbot-video
+	url = https://github.com/Robbyant/lingbot-video.git
+[submodule "thirdparty/LucidDreamer"]
+	path = thirdparty/LucidDreamer
+	url = https://github.com/luciddreamer-cvlab/LucidDreamer.git
+[submodule "thirdparty/Matrix-Game"]
+	path = thirdparty/Matrix-Game
+	url = https://github.com/SkyworkAI/Matrix-Game.git
+[submodule "thirdparty/Matrix-Game-3.5"]
+	path = thirdparty/Matrix-Game-3.5
+	url = https://github.com/Riemann-Dynamics/Matrix-Game-3.5.git
+[submodule "thirdparty/RealCam-I2V"]
+	path = thirdparty/RealCam-I2V
+	url = https://github.com/ZGCTroy/RealCam-I2V.git
+[submodule "thirdparty/stable-virtual-camera"]
+	path = thirdparty/stable-virtual-camera
+	url = https://github.com/Stability-AI/stable-virtual-camera.git
+[submodule "thirdparty/WonderJourney"]
+	path = thirdparty/WonderJourney
+	url = https://github.com/KovenYu/WonderJourney.git
+[submodule "thirdparty/WonderWorld"]
+	path = thirdparty/WonderWorld
+	url = https://github.com/KovenYu/WonderWorld.git
+[submodule "thirdparty/VFIMamba"]
+	path = thirdparty/VFIMamba
+	url = https://github.com/MCG-NJU/VFIMamba.git
