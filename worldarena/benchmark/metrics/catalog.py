@@ -1,3 +1,5 @@
+"""Metric catalog: dimensions, normalization specs, and headline groupings."""
+
 from __future__ import annotations
 
 
@@ -27,14 +29,20 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "memory_revisit_consistency": "long_sequence",
     "memory_symmetry": "long_sequence",
     "long_sequence_motion_smoothness": "long_sequence",
+    "scene_memory_f1": "long_sequence",
     # Action control
     "prompt_alignment": "action_control",
     "semantic_alignment": "action_control",
     "camera_error": "action_control",
     "object_detection": "action_control",
     "motion_accuracy": "action_control",
+    "keystroke_strict_action_accuracy": "action_control",
+    "keystroke_partial_action_accuracy": "action_control",
+    "keystroke_traj_score": "action_control",
+    "keystroke_natet": "action_control",
+    "keystroke_nater": "action_control",
+    "keystroke_action_score": "action_control",
     # 3D/4D consistency
-    "novel_region_fidelity": "consistency_3d_4d",
     "met3r_consistency": "consistency_3d_4d",
     "reprojection_error": "consistency_3d_4d",
     "epipolar_error": "consistency_3d_4d",
@@ -44,6 +52,8 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "depth_collision": "consistency_3d_4d",
     "optical_flow_aepe": "consistency_3d_4d",
     "reconstruction_consistency": "consistency_3d_4d",
+    "geometric_consistency": "consistency_3d_4d",
+    "photometric_consistency": "consistency_3d_4d",
     # Physics
     "pmf": "physics",
     "fvmd": "physics",
@@ -93,16 +103,20 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "style_consistency": "quality",
     "perceptual_quality": "quality",
     "image_quality": "quality",
+    "hpsv3_norm": "quality",
     "brightness_consistency": "quality",
     "brightness_distribution_consistency": "quality",
     "color_temperature_consistency": "quality",
     "color_temperature_constraint": "quality",
     "sharpness_retention": "quality",
     "sharpness_vector_retention": "quality",
+    "temporal_flickering": "quality",
+    "background_consistency": "quality",
+    "segment_continuity": "quality",
     "long_sequence_aesthetic_quality": "quality",
     "long_sequence_imaging_quality": "quality",
-    "psnr": "quality",
-    "ssim": "quality",
+    "rollout_aesthetic_drift": "quality",
+    "rollout_imaging_drift": "quality",
     # Real time
     "physical_fps_error": "real_time",
     "physical_fps_pct_error": "real_time",
@@ -115,6 +129,7 @@ METRIC_DIMENSIONS: dict[str, str] = {
 
 
 def group_metrics_by_dimension(metric_names: list[str]) -> dict[str, list[str]]:
+    """Bucket metric names under their headline evaluation dimension."""
     grouped: dict[str, list[str]] = {}
     for metric_name in metric_names:
         dimension = METRIC_DIMENSIONS.get(metric_name, "uncategorized")

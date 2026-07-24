@@ -1,8 +1,8 @@
 # SSIM
 
-`ssim` 用来衡量预测帧和参考帧之间的结构相似度。
+**ssim** 用来衡量预测帧和参考帧之间的结构相似度。
 SSIM 是 Structural Similarity Index Measure（结构相似性指标），它不是直接比较像素误差，而是比较两张图像在局部亮度、对比度和结构上的相似程度。
-在 WorldArena 中，`ssim` 是一个 reference-based reconstruction 诊断指标：预测帧越接近参考帧的局部结构和视觉统计，分数越高。
+在 WorldArena 中，`ssim` 是一个 reference-based reconstruction 指标：预测帧越接近参考帧的局部结构和视觉统计，分数越高。
 
 ## 它测什么
 
@@ -120,7 +120,7 @@ SSIM 越高，说明预测帧与参考帧在局部亮度、对比度和结构上
 - 它的价值：比纯 PSNR 更关注结构。
 - 它的限制：和 PSNR 一样，仍然会奖励复制参考，不能代替语义或控制正确性。
 - 对轻微错位、非刚性变形、相机视角变化仍然敏感；高 SSIM 更像是“像参考”，不是“语义一定正确”。
-- 建议用法：只作为 full-reference 辅助诊断指标使用，并和 `psnr`、`style_consistency`、`perceptual_quality` 一起解读。
+- 建议用法：只作为 full-reference 辅助指标使用，并和 `psnr`、`style_consistency`、`perceptual_quality` 一起解读。
 
 ## 参考资料 {#reference}
 

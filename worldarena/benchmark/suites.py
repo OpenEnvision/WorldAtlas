@@ -1,3 +1,5 @@
+"""Benchmark suite definitions and metric groupings."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,7 +17,7 @@ class SuiteDefinition:
 SUITE_DEFINITIONS: dict[str, SuiteDefinition] = {
     "image_static": SuiteDefinition(
         name="image_static",
-        display_name="WorldArena-Image-Static",
+        display_name="WorldAtlas Arena-Image-Static",
         official=True,
         modality="video",
         default_metrics=(
@@ -29,7 +31,7 @@ SUITE_DEFINITIONS: dict[str, SuiteDefinition] = {
     ),
     "image_dynamic": SuiteDefinition(
         name="image_dynamic",
-        display_name="WorldArena-Image-Dynamic",
+        display_name="WorldAtlas Arena-Image-Dynamic",
         official=True,
         modality="video",
         default_metrics=(
@@ -43,7 +45,7 @@ SUITE_DEFINITIONS: dict[str, SuiteDefinition] = {
     ),
     "video_static": SuiteDefinition(
         name="video_static",
-        display_name="WorldArena-Video-Static",
+        display_name="WorldAtlas Arena-Video-Static",
         official=True,
         modality="video",
         default_metrics=(
@@ -56,18 +58,15 @@ SUITE_DEFINITIONS: dict[str, SuiteDefinition] = {
             "sharpness_retention",
             "camera_error",
             "seen_region_preservation",
-            "novel_region_fidelity",
             "object_detection",
             "reprojection_error",
             "optical_flow_aepe",
             "depth_accuracy",
-            "psnr",
-            "ssim",
         ),
     ),
     "video_dynamic": SuiteDefinition(
         name="video_dynamic",
-        display_name="WorldArena-Video-Dynamic",
+        display_name="WorldAtlas Arena-Video-Dynamic",
         official=True,
         modality="video",
         default_metrics=(
@@ -84,8 +83,6 @@ SUITE_DEFINITIONS: dict[str, SuiteDefinition] = {
             "motion_smoothness",
             "motion_accuracy",
             "depth_accuracy",
-            "psnr",
-            "ssim",
             "physical_fps_error",
             "physical_fps_pct_error",
             "physical_fps_intra_video_cv",
@@ -93,14 +90,14 @@ SUITE_DEFINITIONS: dict[str, SuiteDefinition] = {
     ),
     "auxiliary": SuiteDefinition(
         name="auxiliary",
-        display_name="WorldArena-Auxiliary",
+        display_name="WorldAtlas Arena-Auxiliary",
         official=False,
         modality="mixed",
         default_metrics=(),
     ),
     "experimental": SuiteDefinition(
         name="experimental",
-        display_name="WorldArena-Experimental",
+        display_name="WorldAtlas Arena-Experimental",
         official=False,
         modality="mixed",
         default_metrics=(

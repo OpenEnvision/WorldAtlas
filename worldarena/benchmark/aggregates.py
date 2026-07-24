@@ -1,3 +1,5 @@
+"""Aggregate per-sample metric scores into suite and dimension summaries."""
+
 from __future__ import annotations
 
 from collections import defaultdict

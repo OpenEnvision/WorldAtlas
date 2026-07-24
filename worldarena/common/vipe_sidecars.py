@@ -1,3 +1,5 @@
+"""Load ViPE annotation sidecars (depth, flow, segmentation) for metric evaluation."""
+
 from __future__ import annotations
 
 import json
@@ -47,23 +49,26 @@ class VipeArtifactPaths:
 
     @property
     def pose_path(self) -> Path:
+        """Pose path -> Path."""
         return self.root / "pose" / f"{self.stem}.npz"
 
     @property
     def intrinsics_path(self) -> Path:
+        """Intrinsics path -> Path."""
         return self.root / "intrinsics" / f"{self.stem}.npz"
 
     @property
     def camera_type_path(self) -> Path:
+        """Camera type path -> Path."""
         return self.root / "intrinsics" / f"{self.stem}_camera.txt"
 
     @property
     def depth_path(self) -> Path:
+        """Depth path -> Path."""
         return self.root / "depth" / f"{self.stem}.zip"
 
 
 def is_video_file(path: Path) -> bool:
-    """Return whether the path looks like a supported video file."""
 
     return path.is_file() and path.suffix.lower() in VIDEO_EXTENSIONS
 
@@ -250,7 +255,6 @@ def write_depth_preview(
 
 
 def sidecar_complete(path: Path) -> bool:
-    """Return whether a sidecar directory contains the required output files."""
 
     if not path.is_dir():
         return False
@@ -344,7 +348,7 @@ def export_vipe_sidecar(
     pipeline_name: str,
     vipe_python: Path,
 ) -> dict[str, object]:
-    """Convert one ViPE artifact bundle into a WorldArena-friendly sidecar directory."""
+    """Convert one ViPE artifact bundle into a WorldAtlas Arena-friendly sidecar directory."""
 
     source_video = probe_video(video_path)
     paths = VipeArtifactPaths(root=artifact_root, stem=video_path.stem)

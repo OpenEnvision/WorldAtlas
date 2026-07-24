@@ -1,3 +1,9 @@
+"""WonderJourney model adapter for WorldAtlas Arena.
+
+WonderJourney generates exploratory 3D scene videos from structured prompts.
+Shares prompt/trajectory helpers with WonderWorld.
+"""
+
 from __future__ import annotations
 
 import json
@@ -15,12 +21,12 @@ from worldarena.models.adapters.common import (
     build_env,
     extend_command_with_options,
     run_command,
-    run_sequential_generate_batch,
 )
 from worldarena.models.adapters.wonderworld import (
     _generation_for_suite,
     _structured_prompts_for_sample,
 )
+from worldarena.models.adapters.wonderjourney_runner import resolve_wonderjourney_camera_control
 from worldarena.models.config import ModelRuntimeConfig
 
 
@@ -68,9 +74,33 @@ def _sequence_option(value: object | None) -> str | None:
         return json.dumps([value])
 
 
+def _generation_with_camera_control(
+    sample: BenchmarkSample,
+    generation: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, object] | None]:
+    resolved = dict(generation)
+    if sample.suite != "image_static" or not bool(resolved.get("use_sample_camera_path", True)):
+        return resolved, None
+    control = resolve_wonderjourney_camera_control(
+        list(sample.camera_path),
+        frames=int(resolved.get("frames", 50)),
+        num_scenes=int(resolved.get("num_scenes", 1)),
+        num_keyframes=int(resolved.get("num_keyframes", 2)),
+    )
+    for key in ("frames", "num_scenes", "num_keyframes", "rotation_path"):
+        resolved[key] = control[key]
+    return resolved, control
+
+
 class WonderJourneyAdapter(ModelAdapter):
+    """Generate exploratory scene videos via the WonderJourney upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
 
     def generate_batch(
         self,
@@ -94,7 +124,10 @@ class WonderJourneyAdapter(ModelAdapter):
         for request in requests:
             sample = request.sample
             output_path = request.output_path
-            generation = _generation_for_suite(self.config.generation, sample.suite)
+            generation, camera_control = _generation_with_camera_control(
+                sample,
+                _generation_for_suite(self.config.generation, sample.suite),
+            )
             try:
                 output_path.parent.mkdir(parents=True, exist_ok=True)
                 prompt_prefix = str(generation.get("prompt_prefix", ""))
@@ -150,6 +183,10 @@ class WonderJourneyAdapter(ModelAdapter):
                 rotation_path = _sequence_option(generation.get("rotation_path"))
                 if rotation_path is not None:
                     command.extend(["--rotation_path", rotation_path])
+                if camera_control is not None:
+                    command.extend(
+                        ["--camera_actions", json.dumps(camera_control["camera_actions"])]
+                    )
 
                 extend_command_with_options(
                     command,
@@ -209,6 +246,19 @@ class WonderJourneyAdapter(ModelAdapter):
                     "negative_prompt": structured["negative_prompt"],
                     "content_prompt": structured["content_prompt"],
                 }
+                if camera_control is not None:
+                    metadata_by_sample[sample.sample_id].update(
+                        {
+                            "camera_path": list(sample.camera_path),
+                            "camera_actions": list(camera_control["camera_actions"]),
+                            "wonderjourney_motion_codes": list(camera_control["rotation_path"]),
+                            "camera_control_source": "sample.camera_path",
+                            "camera_control_frames_per_segment": int(camera_control["frames"]),
+                            "camera_control_total_frame_budget": int(
+                                camera_control["total_frame_budget"]
+                            ),
+                        }
+                    )
             except Exception as exc:
                 prepared_results[sample.sample_id] = {
                     "status": "failed",
@@ -270,7 +320,10 @@ class WonderJourneyAdapter(ModelAdapter):
         if repo_root is None:
             raise ValueError("WonderJourney adapter requires repo_root")
 
-        generation = _generation_for_suite(self.config.generation, sample.suite)
+        generation, camera_control = _generation_with_camera_control(
+            sample,
+            _generation_for_suite(self.config.generation, sample.suite),
+        )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         project_root = _project_root(self.config)
 
@@ -327,6 +380,8 @@ class WonderJourneyAdapter(ModelAdapter):
         rotation_path = _sequence_option(generation.get("rotation_path"))
         if rotation_path is not None:
             command.extend(["--rotation_path", rotation_path])
+        if camera_control is not None:
+            command.extend(["--camera_actions", json.dumps(camera_control["camera_actions"])])
 
         extend_command_with_options(
             command,
@@ -387,6 +442,19 @@ class WonderJourneyAdapter(ModelAdapter):
             "negative_prompt": structured["negative_prompt"],
             "content_prompt": structured["content_prompt"],
         }
+        if camera_control is not None:
+            payload.update(
+                {
+                    "camera_path": list(sample.camera_path),
+                    "camera_actions": list(camera_control["camera_actions"]),
+                    "wonderjourney_motion_codes": list(camera_control["rotation_path"]),
+                    "camera_control_source": "sample.camera_path",
+                    "camera_control_frames_per_segment": int(camera_control["frames"]),
+                    "camera_control_total_frame_budget": int(
+                        camera_control["total_frame_budget"]
+                    ),
+                }
+            )
         reverse_path = output_path.with_name(f"{output_path.stem}.reverse{output_path.suffix}")
         keyframes_path = output_path.with_name(f"{output_path.stem}.keyframes{output_path.suffix}")
         if reverse_path.exists():

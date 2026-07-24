@@ -1,3 +1,5 @@
+"""Subprocess runner for Yume single-sample inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -37,7 +39,7 @@ def _parse_bool(value: str | bool) -> bool:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena YUME subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena YUME subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", default=None, type=str)
     parser.add_argument("--entrypoint", default="webapp_single_gpu.py", type=str)
@@ -123,6 +125,7 @@ def _resolve_caption_model_dir(explicit_dir: Path | None) -> Path | None:
 
 
 def _ensure_flask_importable() -> None:
+    """Ensure flask importable."""
     if importlib.util.find_spec("flask") is not None:
         return
 

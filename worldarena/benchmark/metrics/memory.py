@@ -1,3 +1,5 @@
+"""Metric implementations for object permanence and scene memory."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -17,6 +19,7 @@ MEMORY_SYMMETRY_BACKENDS = {"mse_symmetry"}
 
 
 def _protocol_details(prediction: LoadedMedia) -> dict[str, Any]:
+    """Collect protocol and sampled frame indices for memory metrics."""
     return {
         "frame_indices": list(prediction.protocol_frame_indices),
         "sampled_frame_indices": list(prediction.sampled_frame_indices),
@@ -24,10 +27,12 @@ def _protocol_details(prediction: LoadedMedia) -> dict[str, Any]:
 
 
 def _feature_similarity(left: np.ndarray, right: np.ndarray) -> float:
+    """Map DINO cosine similarity to a [0, 1] feature match score."""
     return clamp01((cosine_similarity(left, right) + 1.0) / 2.0)
 
 
 def _mse_similarity(left: np.ndarray, right: np.ndarray, *, tau: float) -> tuple[float, float]:
+    """Return raw MSE and a tau-scaled similarity for revisit closure scoring."""
     left_float = left.astype(np.float32) / 255.0
     right_float = right.astype(np.float32) / 255.0
     mse = float(np.mean((left_float - right_float) ** 2))
@@ -35,6 +40,7 @@ def _mse_similarity(left: np.ndarray, right: np.ndarray, *, tau: float) -> tuple
 
 
 def _frame_mse(left: np.ndarray, right: np.ndarray) -> float:
+    """Mean squared RGB error between two frames, resizing when shapes differ."""
     if left.shape[:2] != right.shape[:2]:
         right = cv2.resize(right, (left.shape[1], left.shape[0]), interpolation=cv2.INTER_CUBIC)
     left_float = left.astype(np.float32) / 255.0
@@ -50,6 +56,7 @@ def compute_memory_symmetry(
     exp_power: float = 1.0,
     temporal_decay: float = 0.20,
 ) -> dict[str, Any]:
+    """Score mirror symmetry by matching early frames to their late-frame counterparts."""
     if len(frames) < 2:
         raise ValueError("memory_symmetry requires at least two frames")
 
@@ -87,11 +94,13 @@ class MemoryRevisitConsistencyMetric(Metric):
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Store closure weights and progress-gate hyperparameters for revisit scoring."""
         super().__init__("memory_revisit_consistency", backend, normalization)
         self.runtime = dict(runtime or {})
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the DINO-based memory revisit backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -105,6 +114,7 @@ class MemoryRevisitConsistencyMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Blend DINO, SSIM, and MSE closure with a mid-trajectory progress gate."""
         del sample
         del reference
 
@@ -200,17 +210,21 @@ class MemoryRevisitConsistencyMetric(Metric):
 
 
 class MemorySymmetryMetric(Metric):
+    """Score temporal mirror symmetry between paired early and late frames."""
+
     def __init__(
         self,
         backend: str,
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Store exponential decay knobs for symmetric frame-pair weighting."""
         super().__init__("memory_symmetry", backend, normalization)
         self.runtime = dict(runtime or {})
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the MSE-symmetry memory backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -224,6 +238,7 @@ class MemorySymmetryMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Evaluate mirror-frame similarity across the prediction timeline."""
         del sample
         del reference
         backend = self._resolve_backend()

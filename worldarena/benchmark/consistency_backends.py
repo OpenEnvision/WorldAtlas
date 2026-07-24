@@ -1,3 +1,5 @@
+"""Backend implementations for photometric and temporal consistency metrics."""
+
 from __future__ import annotations
 
 import os
@@ -13,6 +15,7 @@ from worldarena.benchmark.metrics.base import cosine_similarity
 
 @lru_cache(maxsize=1)
 def _load_dinov2_backend() -> tuple[Any, Any, str] | None:
+    """Load dinov2 backend -> tuple[Any, Any, str] | None."""
     try:
         import torch
         from transformers import AutoImageProcessor, AutoModel
@@ -49,6 +52,7 @@ def dinov2_image_features(frames: Sequence[np.ndarray]) -> np.ndarray:
 
 @lru_cache(maxsize=1)
 def _load_dreamsim_backend() -> tuple[Any, Any, str] | None:
+    """Load dreamsim backend -> tuple[Any, Any, str] | None."""
     try:
         os.environ.update(checkpoint_env())
         import torch

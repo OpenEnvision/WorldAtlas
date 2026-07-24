@@ -1,6 +1,6 @@
 # Seen Region Preservation
 
-`seen_region_preservation` asks whether scene content that remains visible after the first reference frame is preserved by the prediction.
+**seen_region_preservation** asks whether scene content that remains visible after the first reference frame is preserved by the prediction.
 
 ## What It Measures
 

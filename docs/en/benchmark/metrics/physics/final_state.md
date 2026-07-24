@@ -1,6 +1,6 @@
 # Final State Accuracy
 
-`final_state_accuracy` is a scenario-conditional simulator-backed metric for final-state classification tasks such as lever balance outcomes. It reports whether the predicted final state matches the ground-truth final state.
+**final_state_accuracy** is a scenario-conditional simulator-backed metric for final-state classification tasks such as lever balance outcomes. It reports whether the predicted final state matches the ground-truth final state.
 
 This metric is configured in `config/benchmark_physics.yaml`, but it is `not_applicable` unless the sample declares a final-state rule or explicit labels in `physics_spec.final_state_metric`.
 

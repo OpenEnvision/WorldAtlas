@@ -6,7 +6,7 @@ model:
   artifact_types: [video]
   control_signals: [image, actions]
   roles: [candidate]
-  repo_root: thirdparty/Matrix-Game-1
+  repo_root: thirdparty/Matrix-Game/Matrix-Game-1
   checkpoint_dir: ckpt/Matrix-Game-1.0
   entrypoint: inference_bench.py
   output_ext: .mp4

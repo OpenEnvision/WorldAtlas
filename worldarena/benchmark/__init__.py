@@ -64,6 +64,7 @@ __all__ = [
 
 
 def __getattr__(name: str):
+    """Lazy attribute accessor."""
     if name not in _EXPORTS:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     module_name, attribute_name = _EXPORTS[name]

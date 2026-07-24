@@ -7,7 +7,7 @@ model:
   control_signals: [text, image, actions]
   roles: [candidate]
   # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
-  repo_root: thirdparty/Matrix-Game-3.0
+  repo_root: thirdparty/Matrix-Game/Matrix-Game-3
   checkpoint_dir: ckpt/Matrix-Game-3.0
   entrypoint: generate.py
   output_ext: .mp4

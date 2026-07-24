@@ -1,3 +1,5 @@
+"""Subprocess runtime for long-sequence metric backends."""
+
 from __future__ import annotations
 
 import json
@@ -29,6 +31,7 @@ def _runtime_cache_dir(name: str) -> Path:
 
 
 def resolve_long_sequence_root() -> Path:
+    """Resolve long sequence root -> Path."""
     return Path(inspect_long_sequence_layout()["module_root"]).resolve()
 
 
@@ -60,6 +63,7 @@ def _coerce_runtime_bool(value: Any, default: bool = False) -> bool:
 
 
 def _default_device() -> str:
+    """Default device -> str."""
     try:
         import torch
     except ModuleNotFoundError:

@@ -1,3 +1,5 @@
+"""Worker entry point for MeT3R metric subprocesses."""
+
 from __future__ import annotations
 
 import argparse

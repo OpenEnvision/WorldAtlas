@@ -1,3 +1,5 @@
+"""Temporal coherence metric implementations."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,6 +21,7 @@ def _cache_key(
     fallback_meta_fps: float | None,
     runtime: dict[str, Any],
 ) -> tuple[str, str, int, int, str]:
+    """Build a cache key from video identity, metadata FPS, and runtime options."""
     path = Path(prediction_path).expanduser().resolve()
     stat = path.stat()
     runtime_key = repr(sorted(runtime.items()))
@@ -37,6 +40,7 @@ def _pulse_result(
     fallback_meta_fps: float | None,
     runtime: dict[str, Any],
 ) -> dict[str, Any]:
+    """Run Pulse-of-Motion once per video and memoize the full metric bundle."""
     key = _cache_key(
         prediction_path,
         fallback_meta_fps=fallback_meta_fps,
@@ -55,6 +59,8 @@ def _pulse_result(
 
 
 class TemporalCalibrationMetric(Metric):
+    """Expose Pulse-of-Motion FPS calibration sub-metrics from one backend pass."""
+
     def __init__(
         self,
         *,
@@ -63,11 +69,13 @@ class TemporalCalibrationMetric(Metric):
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Bind one physical-FPS sub-metric name and shared Pulse runtime options."""
         super().__init__(metric_name, backend, normalization)
         self.runtime = dict(runtime or {})
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the Pulse-of-Motion temporal calibration backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -81,6 +89,7 @@ class TemporalCalibrationMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Return one cached Pulse FPS metric for the prediction video."""
         del reference
 
         backend = self._resolve_backend()

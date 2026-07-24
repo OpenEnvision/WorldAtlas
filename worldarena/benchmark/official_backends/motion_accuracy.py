@@ -12,13 +12,10 @@ import hydra
 from hydra.core.global_hydra import GlobalHydra
 import re
 
-from core.raft import RAFT
-from core.utils.utils import load_ckpt
-from core.parser import parse_args
+from raft import RAFT
+from utils.utils import load_ckpt
+from parser import parse_args
 
-# Grounding DINO
-import argparse
-import groundingdino.datasets.transforms as T
 from groundingdino.models import build_model
 from groundingdino.util.slconfig import SLConfig
 from groundingdino.util.utils import clean_state_dict, get_phrases_from_posmap
@@ -26,53 +23,75 @@ from groundingdino.util.utils import clean_state_dict, get_phrases_from_posmap
 # Load spaCy's small English model
 # make sure to run: python -m spacy download en_core_web_sm
 import spacy
-nlp = spacy.load("en_core_web_sm")
 
-from worldarena_official_metrics.benchmark.metrics.base_metrics import BaseMetric
+from worldarena.benchmark.official_backends.base import (
+    BaseMetric,
+    official_checkpoint_path,
+    thirdparty_path,
+)
+from worldarena.benchmark.official_backends.sea_raft_compat import (
+    install_sea_raft_compat,
+)
+
+
+install_sea_raft_compat()
+nlp = spacy.load("en_core_web_sm")
 
 
 def mask_resize(mask, target_size):
     """
     Resize mask to target size while preserving the binary mask format
-    
+
     Args:
         mask (np.ndarray): Binary mask of shape (H, W)
         target_size (tuple): Target size (H, W)
-        
+
     Returns:
         np.ndarray: Resized binary mask of shape target_size
     """
-    
+
     if isinstance(mask, torch.Tensor):
         mask = mask.cpu().numpy()
-    
+
     if isinstance(target_size, torch.Size):
         target_size = tuple(target_size)
-    
+
     mask = (mask > 0.5).astype(np.uint8)
-    
+
     resized_mask = cv2.resize(
-        mask,
-        (target_size[1], target_size[0]), 
-        interpolation=cv2.INTER_NEAREST
+        mask, (target_size[1], target_size[0]), interpolation=cv2.INTER_NEAREST
     )
-    
+
     resized_mask = (resized_mask > 0.5).astype(np.uint8)
-    
+
     return resized_mask
 
-def load_model(model_config_path, model_checkpoint_path, bert_base_uncased_path, device):
+
+def load_model(
+    model_config_path, model_checkpoint_path, bert_base_uncased_path, device
+):
     args = SLConfig.fromfile(model_config_path)
     args.device = device
     args.bert_base_uncased_path = bert_base_uncased_path
     model = build_model(args)
     checkpoint = torch.load(model_checkpoint_path, map_location="cpu")
-    load_res = model.load_state_dict(clean_state_dict(checkpoint["model"]), strict=False)
+    load_res = model.load_state_dict(
+        clean_state_dict(checkpoint["model"]), strict=False
+    )
     print(load_res)
     _ = model.eval()
     return model
 
-def get_grounding_output(model, image, caption, box_threshold, text_threshold, with_logits=True, device="cuda"):
+
+def get_grounding_output(
+    model,
+    image,
+    caption,
+    box_threshold,
+    text_threshold,
+    with_logits=True,
+    device="cuda",
+):
     caption = caption.lower()
     caption = caption.strip()
     if not caption.endswith("."):
@@ -97,7 +116,9 @@ def get_grounding_output(model, image, caption, box_threshold, text_threshold, w
     # build pred
     pred_phrases = []
     for logit, box in zip(logits_filt, boxes_filt):
-        pred_phrase = get_phrases_from_posmap(logit > text_threshold, tokenized, tokenlizer)
+        pred_phrase = get_phrases_from_posmap(
+            logit > text_threshold, tokenized, tokenlizer
+        )
         if with_logits:
             pred_phrases.append(pred_phrase + f"({str(logit.max().item())[:4]})")
         else:
@@ -105,30 +126,42 @@ def get_grounding_output(model, image, caption, box_threshold, text_threshold, w
 
     return boxes_filt, pred_phrases
 
+
 def standardize_string(s):
     # Use a regular expression to remove spaces around special symbols
     # Adjust the characters in the square brackets as needed
-    s = re.sub(r"\s*([_\-*/+])\s*", r"\1", s)  
+    s = re.sub(r"\s*([_\-*/+])\s*", r"\1", s)
     return s
+
 
 def extract_noun_adjective(phrase):
     doc = nlp(phrase)
     adjectives = []
     nouns = []
-    
+
     for token in doc:
         if token.pos_ in ["ADJ", "JJ", "JJR", "JJS"]:  # Adjectives and related tags
             adjectives.append(token.text.lower())
-        elif token.pos_ in ["NOUN", "PROPN", "NN", "NNS", "NNP", "NNPS"]:  # Nouns and related tags
+        elif token.pos_ in [
+            "NOUN",
+            "PROPN",
+            "NN",
+            "NNS",
+            "NNP",
+            "NNPS",
+        ]:  # Nouns and related tags
             nouns.append(token.text.lower())
-        elif token.pos_ == "VERB" and token.tag_ == "VBN":  # Past participle verbs often used as adjectives
+        elif (
+            token.pos_ == "VERB" and token.tag_ == "VBN"
+        ):  # Past participle verbs often used as adjectives
             adjectives.append(token.text.lower())
 
     return adjectives, nouns
 
+
 def get_match_point(result, prompt_list):
     matched_prompts = set()
-    
+
     if "##" in result:
         result = result.replace("##", "")
         for prompt in prompt_list:
@@ -139,7 +172,7 @@ def get_match_point(result, prompt_list):
         result_adjectives, result_nouns = extract_noun_adjective(result)
         for prompt in prompt_list:
             prompt_adjectives, prompt_nouns = extract_noun_adjective(prompt)
-            
+
             # Count matches for nouns
             noun_matches = sum(1 for noun in result_nouns if noun in prompt_nouns)
             # If no nouns match, skip this prompt
@@ -150,6 +183,7 @@ def get_match_point(result, prompt_list):
             return 1, matched_prompts
 
     return 0, matched_prompts
+
 
 def load_ann_png(path):
     """Load a PNG file as a mask and its palette."""
@@ -178,9 +212,7 @@ def put_per_obj_mask(per_obj_mask, height, width):
     return mask
 
 
-def load_masks_from_dir(
-    input_mask_path, per_obj_png_file, allow_missing=False
-):
+def load_masks_from_dir(input_mask_path, per_obj_png_file, allow_missing=False):
     """Load masks from a directory as a dict of per-object masks."""
     if not per_obj_png_file:
         if allow_missing and not os.path.exists(input_mask_path):
@@ -191,10 +223,16 @@ def load_masks_from_dir(
         per_obj_input_mask = {}
         input_palette = None
         # each object is a directory in "{object_id:%03d}" format
-        for object_id, file_name in enumerate(sorted([f for f in os.listdir(input_mask_path) if f.endswith(".png") or f.endswith(".jpg")])):
-            input_mask_path_ = os.path.join(
-                input_mask_path, file_name
+        for object_id, file_name in enumerate(
+            sorted(
+                [
+                    f
+                    for f in os.listdir(input_mask_path)
+                    if f.endswith(".png") or f.endswith(".jpg")
+                ]
             )
+        ):
+            input_mask_path_ = os.path.join(input_mask_path, file_name)
             if allow_missing and not os.path.exists(input_mask_path_):
                 continue
             input_mask, input_palette = load_ann_png(input_mask_path_)
@@ -211,7 +249,9 @@ def generate_masks(
 ):
     """Save masks to a directory as PNG files."""
     if not per_obj_png_file:
-        output_mask = put_per_obj_mask(per_obj_output_mask, height, width).astype(np.bool_)
+        output_mask = put_per_obj_mask(per_obj_output_mask, height, width).astype(
+            np.bool_
+        )
     else:
         output_mask = np.zeros((height, width), dtype=np.uint8)
         for _, object_mask in per_obj_output_mask.items():
@@ -299,10 +339,10 @@ def vos_inference(
             for i, out_obj_id in enumerate(out_obj_ids)
         }
         video_segments[out_frame_idx] = per_obj_output_mask
-    
+
     def expand_mask(mask, pixels=10):
         """Expand the true part of the mask by n pixels"""
-        kernel = np.ones((pixels*2+1, pixels*2+1), np.uint8)
+        kernel = np.ones((pixels * 2 + 1, pixels * 2 + 1), np.uint8)
         dilated_mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1)
         return dilated_mask.astype(np.bool_)
 
@@ -315,16 +355,18 @@ def vos_inference(
             width=width,
             per_obj_png_file=per_obj_png_file,
         )
-        
+
         output_mask = expand_mask(output_mask)
         masks.append(output_mask)
-        
+
         if save:
             from torchvision.transforms import ToPILImage
+
             mask = torch.from_numpy(output_mask).unsqueeze(0)
             mask = ToPILImage()(mask.float()).save(f"mask_{out_frame_idx}.png")
-        
+
     return masks
+
 
 class MotionAccuracyMetric(BaseMetric):
     """
@@ -333,14 +375,14 @@ class MotionAccuracyMetric(BaseMetric):
 
     def __init__(self, generate_type: str) -> None:
         super().__init__()
-        
+
         args = {
-            "cfg": "worldarena_official_metrics/benchmark/metrics/third_party/SEA-RAFT/config/eval/spring-M.json",
-            "path": "worldarena_official_metrics/benchmark/metrics/checkpoints/Tartan-C-T-TSKH-spring540x960-M.pth",
+            "cfg": thirdparty_path("SEA-RAFT", "config", "eval", "spring-M.json"),
+            "path": official_checkpoint_path("Tartan-C-T-TSKH-spring540x960-M.pth"),
         }
         args = argparse.Namespace(**args)
         args = parse_args(args)
-        
+
         # load optical flow model
         model = RAFT(args)
         load_ckpt(model, args.path)
@@ -354,68 +396,97 @@ class MotionAccuracyMetric(BaseMetric):
 
         GlobalHydra.instance().clear()
         hydra.initialize(config_path=".")
-        
+
         # if we use per-object PNG files, they could possibly overlap in inputs and outputs
         hydra_overrides_extra = [
-            "++model.non_overlap_masks=" + ("false" if self._per_obj_png_file else "true")
+            "++model.non_overlap_masks="
+            + ("false" if self._per_obj_png_file else "true")
         ]
         self._predictor = build_sam2_video_predictor(
             config_file="sam2/configs/sam2.1/sam2.1_hiera_b+.yaml",
-            ckpt_path="worldarena_official_metrics/benchmark/metrics/checkpoints/sam2.1_hiera_base_plus.pt",
+            ckpt_path=official_checkpoint_path("sam2.1_hiera_base_plus.pt"),
             apply_postprocessing=False,
             hydra_overrides_extra=hydra_overrides_extra,
         )
-        
+
         self._generate_type = generate_type
         if self._generate_type == "t2v":
             # Grounding DINO
             args = {
-                "config_file": "worldarena_official_metrics/benchmark/metrics/third_party/groundingdino/config/GroundingDINO_SwinT_OGC.py",
-                "grounded_checkpoint": "worldarena_official_metrics/benchmark/metrics/checkpoints/groundingdino_swint_ogc.pth",
+                "config_file": thirdparty_path(
+                    "GroundingDINO",
+                    "groundingdino",
+                    "config",
+                    "GroundingDINO_SwinT_OGC.py",
+                ),
+                "grounded_checkpoint": official_checkpoint_path(
+                    "groundingdino_swint_ogc.pth"
+                ),
                 "sam_version": "vit_h",
-                "sam_checkpoint": "worldarena_official_metrics/benchmark/metrics/checkpoints/sam_vit_h_4b8939.pth",
+                "sam_checkpoint": official_checkpoint_path("sam_vit_h_4b8939.pth"),
                 "sam_hq_checkpoint": None,
                 "use_sam_hq": False,
                 "box_threshold": 0.4,
                 "text_threshold": 0.4,
-                "bert_base_uncased_path": "worldarena_official_metrics/benchmark/metrics/checkpoints/bert-base-uncased",
+                "bert_base_uncased_path": official_checkpoint_path("bert-base-uncased"),
                 "device": "cuda",
             }
             args = argparse.Namespace(**args)
-            
-            # load model        
-            self._grounding_dino_model = load_model(args.config_file, args.grounded_checkpoint, args.bert_base_uncased_path, args.device)
+
+            # load model
+            self._grounding_dino_model = load_model(
+                args.config_file,
+                args.grounded_checkpoint,
+                args.bert_base_uncased_path,
+                args.device,
+            )
             self._grounding_dino_args = args
-    
+
     def load_image(self, imfile):
         image = cv2.imread(imfile)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = torch.tensor(image, dtype=torch.float32).permute(2, 0, 1)
         image = image[None].to(self._device)
         return image
-    
+
     def forward_flow(self, image1, image2):
         with torch.amp.autocast(device_type="cuda"):
-            output = self._optical_flow_model(image1, image2, iters=self._optical_flow_args.iters, test_mode=True)
-        flow_final = output['flow'][-1]
-        info_final = output['info'][-1]
+            output = self._optical_flow_model(
+                image1, image2, iters=self._optical_flow_args.iters, test_mode=True
+            )
+        flow_final = output["flow"][-1]
+        info_final = output["info"][-1]
         return flow_final, info_final
 
     def _compute_flow(self, image1, image2):
-        print(f"computing flow...")
-        
-        img1 = F.interpolate(image1, scale_factor=2 ** self._optical_flow_args.scale, mode='bilinear', align_corners=False)
-        img2 = F.interpolate(image2, scale_factor=2 ** self._optical_flow_args.scale, mode='bilinear', align_corners=False)
+        print("computing flow...")
+
+        img1 = F.interpolate(
+            image1,
+            scale_factor=2**self._optical_flow_args.scale,
+            mode="bilinear",
+            align_corners=False,
+        )
+        img2 = F.interpolate(
+            image2,
+            scale_factor=2**self._optical_flow_args.scale,
+            mode="bilinear",
+            align_corners=False,
+        )
         H, W = img1.shape[2:]
-        flow, info = self.forward_flow(img1, img2)
-        flow_down = F.interpolate(flow, scale_factor=0.5 ** self._optical_flow_args.scale, mode='bilinear', align_corners=False) * (0.5 ** self._optical_flow_args.scale)
-        info_down = F.interpolate(info, scale_factor=0.5 ** self._optical_flow_args.scale, mode='area')
-        
+        flow, _ = self.forward_flow(img1, img2)
+        flow_down = F.interpolate(
+            flow,
+            scale_factor=0.5**self._optical_flow_args.scale,
+            mode="bilinear",
+            align_corners=False,
+        ) * (0.5**self._optical_flow_args.scale)
+
         flow = flow_down.cpu().numpy().squeeze().transpose(1, 2, 0)
         return flow
-    
+
     def _compute_scores(
-        self, 
+        self,
         rendered_images: List[str],
         masked_images: List[str],
         objects_list: List[str],
@@ -423,7 +494,7 @@ class MotionAccuracyMetric(BaseMetric):
 
         video_dir = os.path.dirname(rendered_images[0])
         mask_dir = os.path.dirname(masked_images[0])
-            
+
         masks = vos_inference(
             predictor=self._predictor,
             video_dir=video_dir,
@@ -431,23 +502,38 @@ class MotionAccuracyMetric(BaseMetric):
             score_thresh=self._score_thresh,
             per_obj_png_file=self._per_obj_png_file,
         )
-        
+
         scores = []
-        
+
         with torch.no_grad():
             images = rendered_images
-            for i, (imfile1, imfile2, mask) in enumerate(zip(images[:-1], images[1:], masks[:-1])):
+            for i, (imfile1, imfile2, mask) in enumerate(
+                zip(images[:-1], images[1:], masks[:-1])
+            ):
                 print(f"processing {imfile1}, {imfile2}...")
                 image1, image2 = self.load_image(imfile1), self.load_image(imfile2)
                 if mask.shape != image1.shape[2:]:
                     mask = mask_resize(mask, image1.shape[2:])
+                mask = mask.astype(bool)
                 flow = self._compute_flow(image1, image2)
-                flow_magnitude = np.sqrt((flow[..., 0] ** 2 + flow[..., 1] ** 2))   
+                flow_magnitude = np.sqrt((flow[..., 0] ** 2 + flow[..., 1] ** 2))
+                if mask.shape != flow_magnitude.shape:
+                    mask = mask_resize(
+                        mask.astype(np.uint8), flow_magnitude.shape
+                    ).astype(bool)
                 object_flow_magnitude = flow_magnitude[mask]
                 background_flow_magnitude = flow_magnitude[~mask]
-                motion_alignment = torch.from_numpy(object_flow_magnitude).max() - torch.from_numpy(background_flow_magnitude).max()
-                scores.append(float(motion_alignment.item()))
-            
+                object_max = (
+                    float(torch.from_numpy(object_flow_magnitude).max().item())
+                    if object_flow_magnitude.size
+                    else 0.0
+                )
+                background_max = (
+                    float(torch.from_numpy(background_flow_magnitude).max().item())
+                    if background_flow_magnitude.size
+                    else 0.0
+                )
+                scores.append(object_max - background_max)
+
         score = sum(scores) / len(scores)
         return score
-    

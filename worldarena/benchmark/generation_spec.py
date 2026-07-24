@@ -1,3 +1,5 @@
+"""Generation protocol specifications shared between benchmark and model adapters."""
+
 from __future__ import annotations
 
 from copy import deepcopy

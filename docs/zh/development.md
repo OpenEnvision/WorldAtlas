@@ -1,30 +1,110 @@
 # 开发
 
-以下命令默认都在项目的 conda 环境已经激活的前提下执行。
+<p class="dimension-lede">本页是 WorldAtlas Arena 的贡献者工作流索引：环境入口、数据刷新、benchmark 命令、文档构建与校验。模块边界与契约见 <a href="architecture/">架构</a>；完整运行时安装见 <a href="thirdparty/">运行时布局</a>。</p>
+
+以下命令默认在 Conda 环境（`worldarena`）已激活、且以 editable 方式安装本包的前提下执行：
+
+```bash
+conda activate worldarena
+pip install -e .
+```
+
+## 仓库结构
+
+| 路径 | 作用 |
+| --- | --- |
+| `worldarena/` | Benchmark 核心：manifest、指标、报告、模型适配器 |
+| `config/` | Benchmark、数据集与模型 YAML 契约 |
+| `docs/en/`、`docs/zh/` | 文档源文件（Markdown） |
+| `docs/site-nav.yaml` | 文档站侧边栏与 hidden page 契约 |
+| `docs-site/` | Astro v6 + Starlight 构建器；输出到 `site/doc/` |
+| `site/` | 静态站点壳层、Leaderboard 与 `/doc/` 托管 |
+| `thirdparty/` | 链接的上游模型与指标运行时 |
+| `artifacts/` | 预测、报告与生成的数据统计 |
 
 ## 数据分析
+
+刷新数据集 inventory 面板与 generated 分析产物：
 
 ```bash
 worldarena build-docs --config config/datasets.yaml
 ```
 
-这个命令会扫描配置好的数据根目录，刷新 `artifacts/dataset_stats/`，并重写 `docs/generated/`。
+该命令扫描配置的数据根目录，更新 `artifacts/dataset_stats/`，并重写 `docs/generated/`。新增、删除或重组源数据后应重新运行。分析页上的面板反映最近一次成功扫描的结果。
+
+## 文档站点
+
+文档由 **Astro + Starlight** 构建（不再使用 MkDocs）。源文件位于 `docs/{en,zh}/`；导航由 `docs/site-nav.yaml` 驱动。
+
+**安装文档工具链**（Node.js 18+）：
+
+```bash
+cd docs-site
+npm install
+```
+
+**本地预览**（热更新，`http://localhost:4321/doc/`）：
+
+```bash
+npm run dev
+```
+
+**生产构建**（输出静态 HTML 到 `site/doc/`）：
+
+```bash
+# 在仓库根目录
+npm run docs:build
+```
+
+构建流程会自动：
+
+1. 将 `docs/{en,zh}` 同步到 `docs-site/src/content/docs/`（连字符 slug、资源路径改写）。
+2. 重新生成 `docs-site/src/sidebar.generated.mjs`。
+3. 将 `docs/assets/` 中的共享资源链接到 docs public 目录。
+
+**与主站一起预览**（`/doc/` 与 Leaderboard、Arena 同服）：
+
+```bash
+npm run docs:build
+npm run site
+# 默认 http://localhost:4173/doc/
+```
+
+旧路径 `/docs/*` 会 301 重定向到 `/doc/*`。编辑带 case 媒体的 metric 页时，需保证 `docs/assets/metric_examples/` 存在；同步步骤会将其链接到 `/assets/worldarena/assets/metric_examples/`。
+
+更多路由映射与样式定制见 `docs-site/README.md`（`docs-site/src/styles/custom.css`）。
 
 ## 基准评测
+
+Formal suite 标准流程：
 
 ```bash
 worldarena build-inventory --config config/benchmark.yaml
 worldarena build-manifest --config config/benchmark.yaml
-worldarena evaluate --config config/benchmark.yaml --predictions-root /path/to/preds
+
+# 用已注册 adapter 生成预测
+worldarena generate \
+  --config config/benchmark.yaml \
+  --model-config config/models/lingbot_world.yaml
+
+# 评估已有 predictions 目录
+worldarena evaluate \
+  --config config/benchmark.yaml \
+  --predictions-root artifacts/predictions/<model-run>
+
+# 或一步 generate + evaluate
+worldarena run-model \
+  --config config/benchmark.yaml \
+  --model-config config/models/lingbot_world.yaml
 ```
 
-WorldArena 的正式 benchmark 面故意保持收敛：
+WorldAtlas Arena 的公开 benchmark 面刻意保持收敛：
 
-- 正式 suite：`image_static`、`image_dynamic`、`video_static`、`video_dynamic`
-- 正式 headline 输出：按指标的向量结果，而不是 suite 单分，也不是全局总分
-- 缺少强监督的指标会标为 `not_applicable`，不会混入正式或诊断报告
+- **Formal suite：** `image_static`、`image_dynamic`、`video_static`、`video_dynamic`
+- **Headline 输出：** `per_metric_summary.json` 中的按指标向量，以及 `per_dimension_summary.json` 中的维度汇总——不是 suite 单分，也不是全局总分
+- **适用性：** 缺少强监督的指标标为 `not_applicable`，不进入 official 聚合
 
-simulator-backed physics 工作流使用独立配置：
+Simulator-backed physics 使用独立配置与 report namespace：
 
 ```bash
 worldarena build-physics-manifest --physics-pipeline-root /path/to/physics-pipeline
@@ -33,44 +113,70 @@ worldarena build-physics-seed-manifest \
   --physics-pipeline-root /path/to/physics-pipeline
 ```
 
+解释边界见 [Benchmark 总览](benchmark/index.md) 与 [Physics 维度](benchmark/metrics/dimensions/physics.md)。
+
 ## 集成模型适配器
 
-内置适配器假设 `config/models/*.yaml` 使用对开源友好的相对路径。如果某个上游仓库需要不同布局，优先在本地覆盖 YAML，或把仓库链接进 `thirdparty/`，而不是把私有绝对路径硬编码回版本化配置中。
+内置适配器假设 `config/models/*.yaml` 使用对开源友好的相对路径。若上游仓库布局不同，优先在本地覆盖 YAML，或将仓库链接到 `thirdparty/`，不要把私有绝对路径写回版本化配置。
 
-所有模型，包括未来的 API 模型，都应保持同一套 YAML 表面：
+所有模型——本地 repo、Python module、HTTP API——共用同一套 YAML 表面：
 
-- `backend_type`
-- `task_families`
-- `artifact_types`
-- `control_signals`
-- `roles`
+| 字段 | 含义 |
+| --- | --- |
+| `backend_type` | `local_repo`、`python_module`、`sdk_api` 或 `http_api` |
+| `task_families` | 如 `video_generation`、`world_model` |
+| `artifact_types` | 输出模态（`video`、`mesh` 等） |
+| `control_signals` | 用于 eligibility 的条件轴 |
+| `roles` | `candidate`、`oracle`、`metric_backend` 等 |
 
-对于 API 模型，请把 `config/models/template_video_api.yaml.example` 作为起点，而不是另外发明第二种配置格式。
-
-当前 API 适配器走的是通用 benchmark 路径，而不是某个服务专用的旁路框架：
+API 模型请以 `config/models/template_video_api.yaml.example` 为起点，不要另起一套配置格式。通用路径为：
 
 - `backend_type: http_api`
-- 同一个 request builder 同时支持 `t2v` 和 `i2v`
-- provider 特定的提交与轮询逻辑位于 `model.api`
-- benchmark 命令路径不为远程模型做特殊分叉
+- 同一 request builder 支持 `t2v` 与 `i2v`
+- provider 提交/轮询逻辑位于 `model.api`
+- benchmark CLI 不为远程模型单独分叉
 
-`config/models/kling_api.yaml.example` 是具体参考配置。API pipeline 的回归测试跑在本地 fake polling server 上，因此无需真实凭证也能验证 benchmark 契约。
+`config/models/kling_api.yaml.example` 是具体参考。API pipeline 测试跑在本地 fake polling server 上，无需真实凭证即可验证契约。
 
 ## 预览与校验
 
+**文档**
+
 ```bash
-mkdocs build --strict
+npm run docs:build
+```
+
+**Python**
+
+```bash
 pytest
 ruff check .
 ```
 
-如果只想做一轮更轻量的 pre-commit 校验，至少运行：
+修改模型配置或 runtime layout 时，至少跑：
 
 ```bash
 pytest -q tests/test_model_config.py tests/test_runtime_layout.py tests/test_environment_check.py
 ```
 
-如果你修改了重型运行时 wrapper 或 simulator-backed evaluation，建议再补跑对应的定向测试，例如 `tests/test_long_sequence_backend_runtime.py`、`tests/test_long_sequence_runtime.py`、`tests/test_long_sequence_native.py` 和 `tests/test_physics_simulator_derived_metrics.py`。
+若改动重型 runtime wrapper 或 simulator-backed evaluation，建议补跑：
+
+- `tests/test_long_sequence_backend_runtime.py`
+- `tests/test_long_sequence_runtime.py`
+- `tests/test_long_sequence_native.py`
+- `tests/test_physics_simulator_derived_metrics.py`
+
+编辑 `docs/` 下导航或 Markdown 后，请执行 `npm run docs:build` 并在主站 `/doc/` 下抽查。
+
+## 站点内容导出
+
+刷新静态站点壳层使用的 SPA 内容包（`site/js/content*.js`）：
+
+```bash
+worldarena build-site-content
+```
+
+该命令读取 `docs/site-nav.yaml` 并导出页面正文。`/doc/` 下的 Starlight 页面由 `npm run docs:build` 单独构建。
 
 ## 清理
 
@@ -78,13 +184,4 @@ pytest -q tests/test_model_config.py tests/test_runtime_layout.py tests/test_env
 worldarena clean
 ```
 
-如果还想删除 `docs/generated/` 和 `artifacts/dataset_stats/`，请加上 `--generated`。
-
-## 开源发布卫生
-
-在发布改动之前，检查以下事项：
-
-- `config/models/*.yaml` 应使用项目相对默认值，而不是私有绝对路径。
-- `cache/` 和 `thirdparty/` 在版本控制中通常只应保留被跟踪的 README 文件。
-- 文档应说明新增适配器所带来的 checkpoint、仓库或许可证假设。
-- 生成出的 benchmark 报告和数据分析产物一般不应提交进 git，除非它们是有意纳入版本控制的 fixture。
+加上 `--generated` 可同时删除 `docs/generated/` 与 `artifacts/dataset_stats/`。

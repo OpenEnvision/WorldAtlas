@@ -1,0 +1,52 @@
+model:
+  name: realcam-i2v
+  family: realcam_i2v
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  # Official environment: Python 3.12, PyTorch 2.6.0, CUDA 12.6, ffmpeg 7.
+  repo_root: thirdparty/RealCam-I2V
+  checkpoint_dir: ckpt/RealCam-I2V
+  entrypoint: finetune/image_to_video.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    finetune_root: finetune
+    # Relative to checkpoint_dir; the shared base model is already kept at
+    # ckpt/CogVideoX1.5-5B-I2V in this workspace.
+    pretrained_model_path: ../CogVideoX1.5-5B-I2V
+    controlnet_checkpoint: RealCam-I2V_CogVideoX1.5-5B_50k.pt
+    controlnet_checkpoint_size_bytes: 143428057
+    num_frames: 81
+    height: 512
+    width: 896
+    fps: 16
+    num_inference_steps: 25
+    text_cfg: 5.0
+    camera_cfg: 1.0
+    trace_extract_ratio: 1.0
+    trace_scale_factor: 1.0
+    seed: 123
+    noise_shaping: false
+    noise_shaping_minimum_timesteps: 900
+    resize_for_rectangle_crop: true
+    negative_prompt: >-
+      Fast movement, jittery motion, abrupt transitions, distorted body,
+      missing limbs, unnatural posture, blurry, cropped, extra limbs, bad
+      anatomy, deformed, glitchy motion, artifacts.
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: ckpt
+    TOKENIZERS_PARALLELISM: "false"
+  metadata:
+    upstream_repo: https://github.com/ZGCTroy/RealCam-I2V.git
+    upstream_revision: 715c2c52abb394fc9b9fe10a4f33faf598579b45
+    checkpoint_repo: MuteApo/RealCam-I2V
+    base_model_repo: zai-org/CogVideoX1.5-5B-I2V
+    camera_contract: worldarena_c2w_to_official_realestate10k_w2c

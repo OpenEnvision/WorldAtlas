@@ -1,3 +1,9 @@
+"""Hunyuan GameCraft interactive world model adapter for WorldAtlas Arena.
+
+Maps WorldAtlas ``camera_path`` tokens to GameCraft keyboard actions and supports
+single-sample and batch generation via dedicated runner modules.
+"""
+
 from __future__ import annotations
 
 import json
@@ -116,10 +122,6 @@ def _worldarena_action_plan_for_sample(
     ] or ["fixed"]
     base_speed = float(generation.get("action_speed", 0.2))
     speed_overrides = dict(generation.get("worldarena_action_speeds", {}))
-    unsupported_action = str(generation.get("unsupported_action", "w"))
-    if unsupported_action not in _SUPPORTED_ACTIONS:
-        unsupported_action = "w"
-
     actions: list[str] = []
     speeds: list[float] = []
     approximations: list[dict[str, str]] = []
@@ -127,17 +129,9 @@ def _worldarena_action_plan_for_sample(
     for camera_token in camera_tokens:
         native = _WORLD_ARENA_GAMECRAFT_ACTIONS.get(camera_token)
         if native is None:
-            actions.append(unsupported_action)
-            speeds.append(0.0)
-            unsupported_tokens.append(camera_token)
-            approximations.append(
-                {
-                    "camera_token": camera_token,
-                    "native_action": unsupported_action,
-                    "type": "unsupported_no_motion",
-                }
+            raise ValueError(
+                f"unsupported Hunyuan-GameCraft camera token: {camera_token!r}"
             )
-            continue
 
         action, speed_scale, approximation = native
         actions.append(action)
@@ -153,9 +147,7 @@ def _worldarena_action_plan_for_sample(
             )
 
     control_source = "camera_path"
-    if unsupported_tokens:
-        control_source = "unsupported_camera_path"
-    elif approximations:
+    if approximations:
         control_source = "coarse_camera_path"
 
     return {
@@ -233,10 +225,17 @@ def _action_payload_for_sample(generation: dict[str, Any], sample: BenchmarkSamp
 
 
 class HunyuanGameCraftAdapter(ModelAdapter):
+    """Generate action-controlled game-world videos via Hunyuan GameCraft."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
 
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
+
     def _generation_options(self) -> tuple[dict[str, Any], dict[str, type], tuple[str, ...]]:
+        """Generation options -> tuple[dict[str, Any], dict[str, type], tuple[str, ...]]."""
         return (
             self.config.generation,
             {

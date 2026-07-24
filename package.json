@@ -1,0 +1,10 @@
+{
+  "name": "worldarena",
+  "private": true,
+  "scripts": {
+    "docs:sync": "npm --prefix docs-site run sync && npm --prefix docs-site run generate:css",
+    "docs:dev": "npm --prefix docs-site run dev",
+    "docs:build": "npm --prefix docs-site run build",
+    "site": "node site/server.cjs"
+  }
+}

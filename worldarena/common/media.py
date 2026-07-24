@@ -1,3 +1,5 @@
+"""Image and video probing utilities shared across benchmark and datasets."""
+
 from __future__ import annotations
 
 import concurrent.futures
@@ -49,6 +51,7 @@ class MediaProbeCache:
             del self._entries[key]
 
     def save(self) -> None:
+        """Save."""
         ensure_dir(self.path.parent)
         payload = {"entries": self._entries}
         self.path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")

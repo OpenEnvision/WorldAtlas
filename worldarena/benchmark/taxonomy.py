@@ -1,3 +1,5 @@
+"""Benchmark taxonomy: suites, task families, modalities, and sample ID conventions."""
+
 from __future__ import annotations
 
 
@@ -9,6 +11,7 @@ BENCHMARK_SPLIT = "test"
 
 
 def benchmark_split() -> str:
+    """Benchmark split -> str."""
     return BENCHMARK_SPLIT
 
 

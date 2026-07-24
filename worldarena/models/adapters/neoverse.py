@@ -1,3 +1,5 @@
+"""NeoVerse model adapter for WorldAtlas Arena."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,8 +16,14 @@ from worldarena.models.adapters.common import (
 
 
 class NeoVerseAdapter(ModelAdapter):
+    """Generate videos via the NeoVerse upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "reload_per_sample"
 
     def generate_batch(
         self,

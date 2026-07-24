@@ -1,6 +1,6 @@
-# WorldArena Model Configuration Summary
+# WorldAtlas Arena Model Configuration Summary
 
-This table is generated from `WorldArena/config/models/*.yaml`, excluding backup, example, debug, and smoke configs. `Model Type` is simplified to `video`, `3D`, or `4D`: generic I2V/T2V models are labeled `video`, geometry/scene/camera-view expansion models are labeled `3D`, and action/trajectory/interactive world models are labeled `4D`. `Ability` denotes the WorldArena benchmark suites supported by the config. `Video Length(s)` is computed as `Frame Number / FPS` when both values are explicit; otherwise the direct duration field or local runner default is used when available. Rows are ordered as `video`, then `3D`, then `4D`.
+This table is generated from `WorldAtlas Arena/config/models/*.yaml`, excluding backup, example, debug, and smoke configs. `Model Type` is simplified to `video`, `3D`, or `4D`: generic I2V/T2V models are labeled `video`, geometry/scene/camera-view expansion models are labeled `3D`, and action/trajectory/interactive world models are labeled `4D`. `Ability` denotes the WorldAtlas Arena benchmark suites supported by the config. `Video Length(s)` is computed as `Frame Number / FPS` when both values are explicit; otherwise the direct duration field or local runner default is used when available. Rows are ordered as `video`, then `3D`, then `4D`.
 
 | Model Type | Model Name | Ability | Version | Resolution | Video Length(s) | FPS | Frame Number |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -17,8 +17,8 @@ This table is generated from `WorldArena/config/models/*.yaml`, excluding backup
 | video | longlive-1.0 | image-static, image-dynamic, video-static, video-dynamic | 1.0 | 704x1280 | 5.33 | 24 | 128 |
 | video | longlive-2.0 | image-static, image-dynamic, video-static, video-dynamic | 2.0 | 704x1280 | 5.33 | 24 | 128 |
 | video | ltx-2.3-22b-distilled-i2v | image-static, image-dynamic, video-static, video-dynamic | 2.3-22B Distilled | 512x768 | 5 | 24 | 121 |
-| video | lyra-1 | image-static, image-dynamic, video-static, video-dynamic | 1 | 704x1280 | 5.04 | 24 | 121 |
-| video | lyra-1-juanxi | image-static, image-dynamic, video-static, video-dynamic | 1 Juanxi | 704x1280 | 5.04 | 24 | 121 |
+| video | lyra-1 | image-static | 1 | 704x1280 | 5.04 | 24 | 121 |
+| video | lyra-1-juanxi | image-static | 1 Juanxi | 704x1280 | 5.04 | 24 | 121 |
 | video | wan2.2-i2v-a14b | image-static, image-dynamic, video-static, video-dynamic | 2.2 I2V-A14B | 1280x720 | 5 | 16 | 81 |
 | video | yume-1.5 | image-static, image-dynamic, video-static, video-dynamic | 1.5 | 704x1280 | source-dependent | 16 | source-dependent |
 | 3D | ac3d-cogvideox-5b-i2v | image-static, image-dynamic | CogVideoX-5B I2V | 480x720 | 5 | 8 | 49 |
@@ -26,7 +26,7 @@ This table is generated from `WorldArena/config/models/*.yaml`, excluding backup
 | 3D | cameractrl | image-static, image-dynamic, video-static, video-dynamic | AnimateDiffV3/SD1.5 | 256x384 | not specified in config | not specified in config | 16 |
 | 3D | flashworld | video-static | default | 480x704 | 1.60 | 15 | 24 |
 | 3D | flashworld-image-static | image-static | image-static config | 480x704 | 1.60 | 15 | 24 |
-| 3D | gen3c | image-static, video-static, video-dynamic | Cosmos-7B | 704x1280 | 5.04 | 24 | 121 |
+| 3D | gen3c | image-static | Cosmos-7B | 704x1280 | 5.04 | 24 | 121 |
 | 3D | hunyuanworld | image-static, video-static | 1.0 | 3D asset output | not applicable | not video output | not video output |
 | 3D | hunyuanworld-voyager-image-static | image-static | Voyager | 512x768 | 5.38 | 24 | 129 |
 | 3D | luciddreamer | image-static, video-static | default | 512 | 5 | source-dependent | source-dependent |
@@ -34,7 +34,7 @@ This table is generated from `WorldArena/config/models/*.yaml`, excluding backup
 | 3D | motionctrl | image-static, image-dynamic | default | 256x256 | 1.60 | 10.0 | 16 |
 | 3D | neoverse | video-static, video-dynamic | default | 336x560 | not specified in config | not specified in config | 81 |
 | 3D | recammaster-wan2.1 | image-static | Wan2.1 | 480x832 | 2.70 | 30 | 81 |
-| 3D | stable-virtual-camera | image-static, image-dynamic | 1.1 | 576x576 | 6.00 | 12 | 72 |
+| 3D | stable-virtual-camera | image-static | 1.1 | 576x576 | 6.00 | 12 | 72 |
 | 3D | warp-as-history | image-static, image-dynamic, video-static, video-dynamic | default | 384x640 | 5.06 | 16 | 81 |
 | 3D | wonderjourney | image-static, video-static | default | 512 | 5.00 | 10 | 50 |
 | 3D | wonderworld | image-static, video-static | default | 512 | 5.00 | 10 | 50 |
@@ -58,4 +58,4 @@ This table is generated from `WorldArena/config/models/*.yaml`, excluding backup
 | 4D | worldcam | video-static | default | 480x832 | not applicable | match GT | match GT |
 | 4D | worldfm | image-static, image-dynamic, video-static, video-dynamic | default | 512 | 2.70 | 30 | 81 |
 
-Notes: `source-dependent` means the value follows the input sample or ground-truth clip at runtime. `not specified in config` means the value is not declared in the available WorldArena YAML/adapter files. For LongLive, the listed resolution/FPS are derived from the upstream Wan2.2-TI2V-5B inference config available in the local repo. For Echo-Infinity, `num_output_frames=21` latent frames are converted to 81 decoded video frames according to the YAML comment.
+Notes: `source-dependent` means the value follows the input sample or ground-truth clip at runtime. `not specified in config` means the value is not declared in the available WorldAtlas Arena YAML/adapter files. For LongLive, the listed resolution/FPS are derived from the upstream Wan2.2-TI2V-5B inference config available in the local repo. For Echo-Infinity, `num_output_frames=21` latent frames are converted to 81 decoded video frames according to the YAML comment.

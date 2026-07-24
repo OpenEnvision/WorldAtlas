@@ -7,9 +7,9 @@ model:
   control_signals: [text, image, trajectory]
   roles: [candidate]
   # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
+  python_bin: ../conda/envs/lingbot-world/bin/python
   repo_root: thirdparty/lingbot-world
-  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/lingbot-world/bin/python
-  # /share/project/yesliu/hjd/model/tmp/lingbot-world/lingbot-world-base-cam
+  # thirdparty/lingbot-world/lingbot-world-base-cam
   # currently points to this canonical ckpt location.
   checkpoint_dir: ckpt/lingbot-world-base-cam
   entrypoint: generate.py
@@ -22,6 +22,7 @@ model:
   prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
+    require_persistent_batch: true
     # The adapter forwards the common upstream CLI controls directly from this block,
     # including sample_steps/sample_shift/sample_guide_scale, ulysses_size, t5_cpu,
     # t5_fsdp, dit_fsdp, use_prompt_extend, prompt_extend_*, and action_string_by_suite.

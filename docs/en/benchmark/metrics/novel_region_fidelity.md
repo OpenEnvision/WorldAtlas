@@ -1,6 +1,6 @@
 # Novel Region Fidelity
 
-`novel_region_fidelity` asks whether newly exposed parts of the scene are rendered plausibly when the reference camera reveals content that was not visible in the first frame.
+**novel_region_fidelity** asks whether newly exposed parts of the scene are rendered plausibly when the reference camera reveals content that was not visible in the first frame.
 
 ## What It Measures
 

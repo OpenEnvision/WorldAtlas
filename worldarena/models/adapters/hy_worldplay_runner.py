@@ -1,3 +1,10 @@
+"""Subprocess runner that invokes HY-WorldPlay's ``hyvideo/generate.py``.
+
+The adapter writes pose JSON and conditioning paths; this module translates them
+into the upstream CLI, runs inference in a temp output dir, then copies the
+final mp4 into the benchmark predictions tree.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -32,7 +39,7 @@ def _str_to_optional_bool(value: str | bool | None) -> bool | None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena HY-WorldPlay subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena HY-WorldPlay subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--entrypoint", default="hyvideo/generate.py", type=str)
     parser.add_argument("--conditioning_image", required=True, type=str)
@@ -100,6 +107,7 @@ def _build_env(
 
 
 def _entrypoint_command(args: argparse.Namespace, entrypoint_path: Path) -> list[str]:
+    """Choose between plain python and torchrun based on launcher config."""
     nproc_per_node = max(int(args.nproc_per_node), 1)
     if args.launcher == "torchrun" or nproc_per_node > 1:
         command = [
@@ -117,6 +125,7 @@ def _entrypoint_command(args: argparse.Namespace, entrypoint_path: Path) -> list
 
 
 def _resolve_generated_video(output_dir: Path) -> Path:
+    """Prefer super-resolved output when ``--sr`` is enabled."""
     for candidate in (output_dir / "gen_sr.mp4", output_dir / "gen.mp4"):
         if candidate.exists():
             return candidate

@@ -1,18 +1,9 @@
 # Action Control
 
-`action_control` 维度覆盖 scene control、camera control、object/action control。它关注模型是否遵循 prompt、相机指令、目标物体约束和显式运动监督。
+**action_control** 维度评估生成 rollout 是否遵循 benchmark 声明的控制信号：文本指令、相机轨迹、结构化物体约束，以及显式运动监督。该维度将正式指标分数汇总写入 `per_dimension_summary.json`，是 WorldArena 的顶层评测轴之一。
 
-## 覆盖范围
+这与 perceptual quality、temporal smoothness 或几何一致性不同。一条 prediction 可以看起来清晰流畅，却仍然违背所要求的场景内容、相机路径、目标物体或规定运动。因此 action control 衡量的是**指令保真度**——画面变化是否与 evaluator 被要求执行的控制一致。
 
-| 层面 | 指标 |
-| --- | --- |
-| prompt / scene control | [`prompt_alignment`](../prompt_alignment.md)、[`semantic_alignment`](../semantic_alignment.md) |
-| camera control | [`camera_error`](../camera_error.md) |
-| object control | [`object_detection`](../object_detection.md) |
-| action / motion control | [`motion_accuracy`](../motion_accuracy.md) |
+该维度覆盖四类控制信号。**Prompt 与 scene control** 由 [`prompt_alignment`](../prompt_alignment.md) 与 [`semantic_alignment`](../semantic_alignment.md) 承担；其中 `prompt_alignment` 在存在显式 instruction supervision 且样本非 self-conditioned 时，对 protocol anchor frames 与目标指令做对齐评分。**Camera control** 使用 [`camera_error`](../camera_error.md)，将预测相机运动与 pose sidecar 比较。**Object control** 依赖 [`object_detection`](../object_detection.md) 对结构化 object annotation 打分，仅凭 caption 派生的 object 短语不计分。**Action 与 motion control** 包括 mask 监督下的 [`motion_accuracy`](../motion_accuracy.md)，以及 keyboard-action benchmark 中的 keystroke 指标族——[`keystroke_strict_action_accuracy`](../keystroke_strict_action_accuracy.md)、[`keystroke_partial_action_accuracy`](../keystroke_partial_action_accuracy.md)、[`keystroke_traj_score`](../keystroke_traj_score.md)、[`keystroke_natet`](../keystroke_natet.md)、[`keystroke_nater`](../keystroke_nater.md) 与 [`keystroke_action_score`](../keystroke_action_score.md)。
 
-## 解读重点
-
-- `prompt_alignment` 只在有显式 instruction supervision 且非 self-conditioned 时进入 official。
-- `object_detection` 只对显式结构化 object annotation 打分，caption-derived object prompt 不计分。
-- `camera_error` 与 `motion_accuracy` 都依赖强监督 sidecar；缺少 pose 或 dynamic mask 时不会被强行记 0。
+WorldArena 在该维度上采用严格的资格规则：缺少 instruction label、pose track、mask 或结构化 object annotation 时，指标记为 `not_applicable`，不会被强行记 0。解读时应与 consistency、physics、quality 维度一并阅读——外观指标很高，并不表示 world model 真正 obey 了控制信号。

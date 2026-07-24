@@ -1,3 +1,5 @@
+"""Remove generated artifacts and cache directories from the project tree."""
+
 from __future__ import annotations
 
 import shutil

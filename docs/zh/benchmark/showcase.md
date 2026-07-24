@@ -1,12 +1,12 @@
 # Showcase 可视化
 
-WorldArena 现在带一个轻量的 showcase 可视化工具，用来在评分前后检查生成结果。它支持三类可视化工作流：多视角浏览、方法之间对比、GIF/图片对比。
+WorldAtlas Arena 现在带一个轻量的 showcase 可视化工具，用来在评分前后检查生成结果。它支持三类可视化工作流：多视角浏览、方法之间对比、GIF/图片对比。
 
 这个工具生成静态页面。它会扫描 prediction 目录，写出 `showcase_manifest.json`，把媒体文件链接到本地 `media/` 目录，并渲染 `index.html`。不依赖 Dash、Gradio 或远程服务。
 
 ## 方法对比
 
-对比两个或更多 WorldArena prediction root：
+对比两个或更多 WorldAtlas Arena prediction root：
 
 ```bash
 python scripts/showcase/video_method_compare_app.py \
@@ -41,7 +41,7 @@ python scripts/showcase/gif_method_compare_app.py \
 
 这个模式会过滤掉视频文件，只保留 `.gif`、`.png`、`.jpg`、`.jpeg` 和 `.webp`。
 
-## WorldArena 生成记录
+## WorldAtlas Arena 生成记录
 
 如果 method root 下有 `generation_records*.jsonl`，可视化工具会优先使用记录里的 `sample_id`、`suite`、`prediction_path` 和 prompt 字段，而不是从文件名猜 sample。追加 `--include-conditioning` 可以把 conditioning input 一起显示出来。
 

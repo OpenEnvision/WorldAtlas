@@ -1,3 +1,5 @@
+"""Minimal flash-attn fallback stubs for environments without CUDA flash-attn."""
+
 from __future__ import annotations
 
 from .flash_attn_interface import (

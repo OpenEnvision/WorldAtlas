@@ -1,9 +1,13 @@
+"""Subprocess runner for WonderJourney inference."""
+
 from __future__ import annotations
 
 import argparse
+import copy
 import importlib.util
 import contextlib
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -16,7 +20,35 @@ from typing import Any
 
 import yaml
 
-from worldarena.common.checkpoints import apply_checkpoint_env
+from worldarena.common.checkpoints import apply_checkpoint_env, checkpoint_root
+
+
+# Values outside WonderJourney's native {-1, 0, 1} rotation codes let the
+# adapter carry the exact WorldArena action through the upstream run loop.
+WONDERJOURNEY_MOTION_CODES = {
+    "fixed": 10,
+    "push_in": 11,
+    "pull_out": 12,
+    "move_left": 13,
+    "move_right": 14,
+    "pan_left": 15,
+    "pan_right": 16,
+    "orbit_left": 17,
+    "orbit_right": 18,
+}
+
+WONDERJOURNEY_MOTION_DEFINITIONS = {
+    10: {"action": "fixed", "native_rotation": 0, "translation": (0.0, 0.0, 0.0)},
+    11: {"action": "push_in", "native_rotation": 0, "translation": (0.0, 0.0, 1.0)},
+    12: {"action": "pull_out", "native_rotation": 0, "translation": (0.0, 0.0, -1.0)},
+    # PerspectiveCameras stores world-to-camera T, so camera-center X motion has the opposite sign.
+    13: {"action": "move_left", "native_rotation": 0, "translation": (1.0, 0.0, 0.0)},
+    14: {"action": "move_right", "native_rotation": 0, "translation": (-1.0, 0.0, 0.0)},
+    15: {"action": "pan_left", "native_rotation": -1, "translation": None, "pan": True},
+    16: {"action": "pan_right", "native_rotation": 1, "translation": None, "pan": True},
+    17: {"action": "orbit_left", "native_rotation": -1, "translation": None, "pan": False},
+    18: {"action": "orbit_right", "native_rotation": 1, "translation": None, "pan": False},
+}
 
 
 def _parse_bool(value: str | bool) -> bool:
@@ -31,7 +63,7 @@ def _parse_bool(value: str | bool) -> bool:
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena WonderJourney subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena WonderJourney subprocess runner.")
     parser.add_argument("--batch_spec", default=None, type=str)
     parser.add_argument("--batch_results", default=None, type=str)
     parser.add_argument("--repo_root", default=None, type=str)
@@ -49,6 +81,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--stable_diffusion_checkpoint", default=None, type=str)
     parser.add_argument("--stable_diffusion_revision", default=None, type=str)
     parser.add_argument("--rotation_path", default=None, type=str)
+    parser.add_argument("--camera_actions", default=None, type=str)
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--frames", default=5, type=int)
     parser.add_argument("--num_scenes", default=1, type=int)
@@ -57,7 +90,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--run_timeout", default=None, type=float)
     parser.add_argument("--depth_model", default="midas_v3.1", type=str)
     parser.add_argument("--camera_speed", default=0.0005, type=float)
-    parser.add_argument("--rotation_range", default=0.0, type=float)
+    parser.add_argument("--rotation_range", default=0.45, type=float)
     parser.add_argument("--init_focal_length", default=500.0, type=float)
     parser.add_argument("--inpainting_resolution_gen", default=512, type=int)
     parser.add_argument("--inpainting_resolution_interp", default=512, type=int)
@@ -67,7 +100,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--regenerate_times", default=3, type=int)
     parser.add_argument("--num_finetune_decoder_steps", default=100, type=int)
     parser.add_argument("--num_finetune_decoder_steps_interp", default=30, type=int)
-    parser.add_argument("--camera_speed_multiplier_rotation", default=0.0, type=float)
+    parser.add_argument("--camera_speed_multiplier_rotation", default=0.2, type=float)
     parser.add_argument("--use_gpt", default=False, type=_parse_bool)
     parser.add_argument("--debug", default=False, type=_parse_bool)
     parser.add_argument("--skip_interp", default=False, type=_parse_bool)
@@ -79,6 +112,46 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--keep_work_dir", default=False, type=_parse_bool)
     parser.add_argument("--archive_sidecars", default=True, type=_parse_bool)
     return parser.parse_args(argv)
+
+
+def resolve_wonderjourney_camera_control(
+    camera_path: list[str],
+    *,
+    frames: int,
+    num_scenes: int,
+    num_keyframes: int,
+) -> dict[str, object]:
+    """Map WorldArena camera actions to an auditable WonderJourney motion plan."""
+    actions = [str(value).strip().lower() for value in camera_path if str(value).strip()]
+    if not actions:
+        actions = ["fixed"]
+    unsupported = [action for action in actions if action not in WONDERJOURNEY_MOTION_CODES]
+    if unsupported:
+        raise ValueError(
+            "WonderJourney does not support camera_path action(s): "
+            + ", ".join(sorted(set(unsupported)))
+        )
+
+    original_scenes = max(int(num_scenes), 1)
+    original_keyframes = max(int(num_keyframes), 1)
+    original_segments = original_scenes * original_keyframes
+    target_segments = max(original_segments, len(actions))
+    resolved_keyframes = max(int(math.ceil(target_segments / original_scenes)), 1)
+    resolved_segments = original_scenes * resolved_keyframes
+    expanded_actions = list(actions)
+    expanded_actions.extend([expanded_actions[-1]] * (resolved_segments - len(expanded_actions)))
+
+    total_frame_budget = max(int(frames), 1) * original_segments
+    resolved_frames = max(int(round(total_frame_budget / resolved_segments)), 1)
+    motion_codes = [WONDERJOURNEY_MOTION_CODES[action] for action in expanded_actions]
+    return {
+        "camera_actions": expanded_actions,
+        "rotation_path": motion_codes,
+        "frames": resolved_frames,
+        "num_scenes": original_scenes,
+        "num_keyframes": resolved_keyframes,
+        "total_frame_budget": total_frame_budget,
+    }
 
 
 @contextlib.contextmanager
@@ -101,6 +174,14 @@ def _slugify(value: str) -> str:
     return cleaned or "sample"
 
 
+def _default_wonderjourney_sam_checkpoint() -> str:
+    return str(checkpoint_root() / "WonderJourney" / "sam_vit_h_4b8939.pth")
+
+
+def _default_wonderjourney_oneformer_repo() -> str:
+    return str(checkpoint_root() / "oneformer_coco_swin_large")
+
+
 def _normalized_env(repo_root: Path, base_env: dict[str, str] | None = None) -> dict[str, str]:
     env = apply_checkpoint_env(base_env or os.environ.copy())
     pythonpaths = [str(repo_root), str(repo_root / "midas_module")]
@@ -108,10 +189,7 @@ def _normalized_env(repo_root: Path, base_env: dict[str, str] | None = None) -> 
         pythonpaths.append(env["PYTHONPATH"])
     env["PYTHONPATH"] = os.pathsep.join(pythonpaths)
     env["PYTHONUNBUFFERED"] = "1"
-    env.setdefault(
-        "WONDERJOURNEY_SAM_CHECKPOINT",
-        "/mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/WonderJourney/sam_vit_h_4b8939.pth",
-    )
+    env.setdefault("WONDERJOURNEY_SAM_CHECKPOINT", _default_wonderjourney_sam_checkpoint())
     return env
 
 
@@ -125,7 +203,67 @@ def _require_repo_layout(repo_root: Path, entrypoint: str) -> tuple[Path, Path]:
     return entrypoint_path, base_config_path
 
 
-def _runtime_entrypoint(entrypoint_path: Path, work_dir: Path, revision: str | None) -> Path:
+def install_wonderjourney_camera_control(module) -> None:
+    """Patch the imported upstream runtime to honor WorldArena motion codes."""
+    if getattr(module, "_worldarena_camera_control_installed", False):
+        return
+    models_module = sys.modules.get(module.KeyframeGen.__module__)
+    if models_module is None or not hasattr(models_module, "FrameSyn"):
+        raise RuntimeError("unable to locate WonderJourney models.models for camera control patching")
+
+    frame_syn = models_module.FrameSyn
+    if not getattr(frame_syn, "_worldarena_camera_control_installed", False):
+        original_get_next_camera = frame_syn.get_next_camera_rotation
+
+        def controlled_get_next_camera(self):
+            vector = getattr(self, "_worldarena_motion_vector", None)
+            if vector is None:
+                return original_get_next_camera(self)
+            next_camera = copy.deepcopy(self.current_camera)
+            move_dir = self.current_camera.T.new_tensor([vector])
+            next_camera.move_dir = move_dir
+            next_camera.T += self.camera_speed * move_dir
+            if getattr(self.current_camera, "rotations_count", 0) != 0:
+                next_camera.rotations_count = self.current_camera.rotations_count + 1
+            return next_camera
+
+        frame_syn.get_next_camera_rotation = controlled_get_next_camera
+        frame_syn._worldarena_camera_control_installed = True
+
+    def wrap_constructor(factory, *, rotation_index: int):
+        def controlled_constructor(*args, **kwargs):
+            positional = list(args)
+            raw_rotation = kwargs.get("rotation") if "rotation" in kwargs else positional[rotation_index]
+            motion = WONDERJOURNEY_MOTION_DEFINITIONS.get(int(raw_rotation))
+            if motion is None:
+                return factory(*args, **kwargs)
+            native_rotation = int(motion["native_rotation"])
+            if "rotation" in kwargs:
+                kwargs = dict(kwargs)
+                kwargs["rotation"] = native_rotation
+            else:
+                positional[rotation_index] = native_rotation
+            instance = factory(*positional, **kwargs)
+            instance._worldarena_camera_action = str(motion["action"])
+            instance._worldarena_motion_vector = motion["translation"]
+            if bool(motion.get("pan", False)):
+                instance.camera_speed = 0.0
+            return instance
+
+        return controlled_constructor
+
+    module.KeyframeGen = wrap_constructor(module.KeyframeGen, rotation_index=5)
+    module.KeyframeInterp = wrap_constructor(module.KeyframeInterp, rotation_index=4)
+    module._worldarena_camera_control_installed = True
+
+
+def _runtime_entrypoint(
+    entrypoint_path: Path,
+    work_dir: Path,
+    revision: str | None,
+    *,
+    require_camera_control: bool = False,
+) -> Path:
     source = entrypoint_path.read_text(encoding="utf-8")
     patched = source
 
@@ -145,13 +283,49 @@ def _runtime_entrypoint(entrypoint_path: Path, work_dir: Path, revision: str | N
     # Upstream WonderJourney hard-codes a local SAM checkpoint path from the
     # authors' machine. Use the benchmark workspace checkpoint instead.
     segment_import = "from util.segment_utils import create_mask_generator"
-    segment_stub = 'import os as _worldarena_os\nfrom segment_anything import sam_model_registry, SamAutomaticMaskGenerator\n\n\ndef create_mask_generator():\n    sam_checkpoint = _worldarena_os.environ.get("WONDERJOURNEY_SAM_CHECKPOINT", "/mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/WonderJourney/sam_vit_h_4b8939.pth")\n    sam = sam_model_registry["vit_h"](checkpoint=sam_checkpoint)\n    sam.to(device="cuda")\n    return SamAutomaticMaskGenerator(\n        model=sam,\n        points_per_side=32,\n        pred_iou_thresh=0.86,\n        stability_score_thresh=0.92,\n        min_mask_region_area=100,\n    )\n'
+    default_sam_checkpoint = json.dumps(_default_wonderjourney_sam_checkpoint())
+    segment_stub = (
+        "import os as _worldarena_os\n"
+        "from segment_anything import sam_model_registry, SamAutomaticMaskGenerator\n\n\n"
+        "def create_mask_generator():\n"
+        f"    sam_checkpoint = _worldarena_os.environ.get(\"WONDERJOURNEY_SAM_CHECKPOINT\", {default_sam_checkpoint})\n"
+        '    sam = sam_model_registry["vit_h"](checkpoint=sam_checkpoint)\n'
+        '    sam.to(device="cuda")\n'
+        "    return SamAutomaticMaskGenerator(\n"
+        "        model=sam,\n"
+        "        points_per_side=32,\n"
+        "        pred_iou_thresh=0.86,\n"
+        "        stability_score_thresh=0.92,\n"
+        "        min_mask_region_area=100,\n"
+        "    )\n"
+    )
     if segment_import in patched:
         patched = patched.replace(segment_import, segment_stub)
 
+    models_import = "from models.models import KeyframeGen, KeyframeInterp, save_point_cloud_as_ply"
+    config_merge = "    config = OmegaConf.merge(base_config, example_config)"
+    camera_patch_applied = models_import in patched and config_merge in patched
+    if camera_patch_applied:
+        patched = patched.replace(
+            models_import,
+            models_import
+            + "\nfrom worldarena.models.adapters.wonderjourney_runner import "
+            + "install_wonderjourney_camera_control",
+            1,
+        )
+        patched = patched.replace(
+            config_merge,
+            config_merge + "\n    install_wonderjourney_camera_control(sys.modules[__name__])",
+            1,
+        )
+    elif require_camera_control:
+        raise RuntimeError(
+            "WonderJourney upstream entrypoint is incompatible with the WorldArena camera control patch"
+        )
+
     oneformer_repo = os.environ.get(
         "WONDERJOURNEY_ONEFORMER_MODEL_REPO",
-        "/mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/oneformer_coco_swin_large",
+        _default_wonderjourney_oneformer_repo(),
     )
     patched = patched.replace(
         '"shi-labs/oneformer_coco_swin_large"',
@@ -191,6 +365,72 @@ def _parse_rotation_path(value: str | None, *, num_scenes: int, num_keyframes: i
     return rotation_path
 
 
+def _parse_camera_actions(value: str | None) -> list[str]:
+    if value is None or not str(value).strip():
+        return []
+    text = str(value).strip()
+    try:
+        parsed: Any = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = [item.strip() for item in text.split(",") if item.strip()]
+    if not isinstance(parsed, list):
+        raise ValueError(f"camera_actions must be a list or comma-separated string: {value!r}")
+    actions = [str(item).strip().lower() for item in parsed if str(item).strip()]
+    unsupported = [action for action in actions if action not in WONDERJOURNEY_MOTION_CODES]
+    if unsupported:
+        raise ValueError(
+            "unsupported WonderJourney camera action(s): "
+            + ", ".join(sorted(set(unsupported)))
+        )
+    return actions
+
+
+def _validated_motion_plan(args: argparse.Namespace) -> tuple[list[int], list[str]]:
+    required = max(int(args.num_scenes), 1) * max(int(args.num_keyframes), 1)
+    rotation_path = _parse_rotation_path(
+        args.rotation_path,
+        num_scenes=int(args.num_scenes),
+        num_keyframes=int(args.num_keyframes),
+    )
+    camera_actions = _parse_camera_actions(args.camera_actions)
+    unknown_codes = [
+        value
+        for value in rotation_path
+        if value not in {-1, 0, 1} and value not in WONDERJOURNEY_MOTION_DEFINITIONS
+    ]
+    if unknown_codes:
+        raise ValueError(
+            "unsupported WonderJourney rotation/motion code(s): "
+            + ", ".join(str(value) for value in sorted(set(unknown_codes)))
+        )
+    custom_codes = [value for value in rotation_path if value in WONDERJOURNEY_MOTION_DEFINITIONS]
+    if custom_codes and not camera_actions:
+        raise ValueError("custom WonderJourney motion codes require camera_actions metadata")
+    if camera_actions:
+        if len(rotation_path) != required or len(camera_actions) != required:
+            raise ValueError(
+                "WonderJourney camera action plan must contain exactly "
+                f"{required} entries, got {len(rotation_path)} codes and {len(camera_actions)} actions"
+            )
+        for index, (code, action) in enumerate(zip(rotation_path, camera_actions)):
+            expected = WONDERJOURNEY_MOTION_CODES[action]
+            if code != expected:
+                raise ValueError(
+                    f"WonderJourney motion plan mismatch at index {index}: "
+                    f"action {action!r} requires code {expected}, got {code}"
+                )
+        if any(action.startswith(("pan_", "orbit_")) for action in camera_actions):
+            if abs(float(args.rotation_range)) < 1e-8:
+                raise ValueError("WonderJourney pan/orbit actions require a non-zero rotation_range")
+        if any(action.startswith("orbit_") for action in camera_actions):
+            if abs(float(args.camera_speed_multiplier_rotation)) < 1e-8:
+                raise ValueError(
+                    "WonderJourney orbit actions require a non-zero "
+                    "camera_speed_multiplier_rotation"
+                )
+    return rotation_path, camera_actions
+
+
 def _content_prompt(scene_name: str, entities: list[str]) -> str:
     values = [scene_name, *entities]
     return ", ".join(value for value in values if value)
@@ -225,6 +465,7 @@ def _write_example_yaml(
 
 
 def _write_example_config(path: Path, *, args: argparse.Namespace, example_name: str) -> Path:
+    rotation_path, camera_actions = _validated_motion_plan(args)
     payload: dict[str, Any] = {
         "runs_dir": f"output/{example_name}",
         "example_name": example_name,
@@ -254,12 +495,10 @@ def _write_example_config(path: Path, *, args: argparse.Namespace, example_name:
         "num_finetune_decoder_steps_interp": int(args.num_finetune_decoder_steps_interp),
         "camera_speed_multiplier_rotation": float(args.camera_speed_multiplier_rotation),
         "save_fps": int(args.save_fps),
-        "rotation_path": _parse_rotation_path(
-            args.rotation_path,
-            num_scenes=int(args.num_scenes),
-            num_keyframes=int(args.num_keyframes),
-        ),
+        "rotation_path": rotation_path,
     }
+    if camera_actions:
+        payload["worldarena_camera_actions"] = camera_actions
     if args.stable_diffusion_checkpoint:
         payload["stable_diffusion_checkpoint"] = str(args.stable_diffusion_checkpoint)
 
@@ -491,6 +730,7 @@ def _run_one_subprocess(args: argparse.Namespace) -> dict[str, object]:
             entrypoint_path,
             work_dir,
             str(args.stable_diffusion_revision).strip() or None,
+            require_camera_control=bool(args.camera_actions),
         )
         command = [
             sys.executable,
@@ -533,6 +773,7 @@ def _run_one_inprocess(args: argparse.Namespace, runtime: dict[str, object]) -> 
             if not hasattr(module.Image, "ANTIALIAS"):
                 module.Image.ANTIALIAS = module.Image.Resampling.LANCZOS
             _install_singleload_caches(module)
+            install_wonderjourney_camera_control(module)
             runtime["module"] = module
 
         old_cwd = Path.cwd()

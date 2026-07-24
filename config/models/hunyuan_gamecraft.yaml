@@ -21,6 +21,7 @@ model:
   prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
+    require_persistent_batch: true
     model_variant: standard
     checkpoint_filename:
     num_gpus: 1

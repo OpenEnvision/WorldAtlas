@@ -1,3 +1,5 @@
+"""Reference media runtime for metrics that compare against GT references."""
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -13,7 +15,6 @@ from worldarena.benchmark.clip_backend import (
     clip_text_features,
     load_clip_backend,
 )
-from worldarena.benchmark.metrics.base import clamp01
 from worldarena.benchmark.quality_backends import (
     REQUIRED_REFERENCE_QUALITY_COMPONENTS,
     compute_quality_component_scores,
@@ -23,6 +24,10 @@ from worldarena.common.checkpoints import checkpoint_env
 
 
 STYLE_CAPTURE_INDICES = (0, 2, 5, 7, 10)
+
+
+def clamp01(value: float) -> float:
+    return max(0.0, min(1.0, float(value)))
 
 
 def _mean(values: list[float]) -> float | None:
@@ -35,12 +40,31 @@ def _round(values: list[float]) -> list[float]:
     return [round(value, 4) for value in values]
 
 
+def _paired_reference_prediction_frames(
+    reference_frames: Sequence[np.ndarray],
+    prediction_frames: Sequence[np.ndarray],
+) -> tuple[list[tuple[np.ndarray, np.ndarray]], str]:
+    if not reference_frames or not prediction_frames:
+        return [], "empty"
+    if len(reference_frames) == len(prediction_frames):
+        return list(zip(reference_frames, prediction_frames)), "aligned"
+    if len(reference_frames) == 1:
+        reference_frame = reference_frames[0]
+        return [(reference_frame, prediction_frame) for prediction_frame in prediction_frames], "broadcast_reference"
+    if len(prediction_frames) == 1:
+        prediction_frame = prediction_frames[0]
+        return [(reference_frame, prediction_frame) for reference_frame in reference_frames], "broadcast_prediction"
+    pair_count = min(len(reference_frames), len(prediction_frames))
+    return list(zip(reference_frames[:pair_count], prediction_frames[:pair_count])), "truncated"
+
+
 def _frame_to_image(frame: np.ndarray) -> Image.Image:
     return Image.fromarray(frame)
 
 
 @lru_cache(maxsize=1)
 def _reference_prompt_alignment_backend_name() -> str | None:
+    """Reference prompt alignment backend name -> str | None."""
     backend = load_clip_backend()
     if backend is None:
         return None
@@ -50,6 +74,7 @@ def _reference_prompt_alignment_backend_name() -> str | None:
 
 @lru_cache(maxsize=1)
 def _load_reference_style_backend() -> tuple[str, Any, Any, str] | None:
+    """Load reference style backend -> tuple[str, Any, Any, str] | None."""
     try:
         os.environ.update(checkpoint_env())
         import torch
@@ -77,14 +102,17 @@ def _load_reference_style_backend() -> tuple[str, Any, Any, str] | None:
 
 
 def reference_prompt_alignment_available() -> bool:
+    """Reference prompt alignment available -> bool."""
     return clip_backend_available()
 
 
 def reference_style_consistency_available() -> bool:
+    """Reference style consistency available -> bool."""
     return _load_reference_style_backend() is not None
 
 
 def reference_perceptual_quality_available() -> bool:
+    """Reference perceptual quality available -> bool."""
     return all(
         quality_component_available(component_name)
         for component_name in REQUIRED_REFERENCE_QUALITY_COMPONENTS
@@ -178,8 +206,12 @@ def compute_reference_style_consistency(
     frame_scores: list[float] = []
     layer_distances_per_frame: list[list[float]] = []
     backend_name = "vgg19_gram"
+    frame_pairs, pairing_policy = _paired_reference_prediction_frames(
+        reference_frames,
+        prediction_frames,
+    )
 
-    for reference_frame, prediction_frame in zip(reference_frames, prediction_frames):
+    for reference_frame, prediction_frame in frame_pairs:
         backend_name, native_distance, layer_distances = _style_distance(
             reference_frame,
             prediction_frame,
@@ -196,6 +228,10 @@ def compute_reference_style_consistency(
             "native_frame_distances": _round(native_distances),
             "native_layer_distances": layer_distances_per_frame,
             "native_direction": "lower_is_better",
+            "reference_frame_count": len(reference_frames),
+            "prediction_frame_count": len(prediction_frames),
+            "paired_frame_count": len(frame_pairs),
+            "pairing_policy": pairing_policy,
         },
     }
 

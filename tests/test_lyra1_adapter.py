@@ -8,6 +8,7 @@ from worldarena.benchmark.schemas import BenchmarkSample
 from worldarena.common import checkpoints
 from worldarena.models.adapters.base import PreparedGenerationRequest
 from worldarena.models.adapters.lyra1 import Lyra1Adapter
+from worldarena.models.adapters.lyra1_batch_runner import _write_stage1_batch_inputs
 from worldarena.models.config import ModelRuntimeConfig, load_model_config
 
 
@@ -86,10 +87,37 @@ def _touch(path: Path) -> None:
     path.write_bytes(b"x")
 
 
-def test_lyra1_juanxi_config_uses_worldarena_prompt() -> None:
-    config = load_model_config(Path("config/models/lyra1_juanxi.yaml"))
+def test_lyra1_config_uses_worldarena_prompt() -> None:
+    config = load_model_config(Path("config/models/lyra1.yaml"))
 
+    assert config.supported_suites == ["image_static"]
     assert config.prompt_mode == "prompt_target"
+    assert config.generation["multi_trajectory"] is False
+
+
+def test_lyra1_stage1_batch_preserves_full_camera_path(tmp_path: Path) -> None:
+    batch_input_path = tmp_path / "stage1.jsonl"
+    camera_path = ["pan_left", "pull_out", "move_left"]
+    _write_stage1_batch_inputs(
+        rows=[
+            {
+                "prediction_stem": "sample",
+                "conditioning_image": str(tmp_path / "reference.png"),
+                "prompt": "Camera pan left, pull out, then move left.",
+                "generation": {
+                    "trajectory": "left",
+                    "camera_rotation": "trajectory_aligned",
+                    "camera_path": camera_path,
+                },
+            }
+        ],
+        input_root=tmp_path,
+        batch_input_path=batch_input_path,
+    )
+
+    row = json.loads(batch_input_path.read_text(encoding="utf-8"))
+    assert row["camera_path"] == camera_path
+    assert row["trajectory"] == 'worldarena-camera-path:["pan_left","pull_out","move_left"]'
 
 
 def test_lyra1_checkpoint_layout_accepts_official_and_hf_aliases(

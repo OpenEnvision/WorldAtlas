@@ -1,49 +1,166 @@
 # MEt3R Consistency
 
-`met3r_consistency` is a diagnostic multi-view consistency probe built on the wrapped MEt3R runtime.
+**met3r_consistency** is built on MEt3R [[Asim et al., 2025](#reference)] and measures **multi-view 3D consistency between reference and prediction views** at benchmark protocol anchor positions. It asks whether two frames describe the same scene geometrically—for example, whether the same wall, object contour, or depth layout can be mutually explained across both views—rather than whether pixels match ground truth or whether the image simply looks good.
+
+As image and video diffusion models are repurposed for novel-view synthesis and camera-trajectory generation, evaluation increasingly needs a consistency metric that does **not** rely on paired sampling ground truth and does **not** require known camera poses. FID and FVD measure distributional similarity to training data, while epipolar metrics such as TSED and SED usually need relative poses and can be overly sensitive to small geometric violations while missing obvious structural drift. MEt3R is designed to provide a continuous, interpretable 3D-consistency signal without pose inputs, and to stay orthogonal to image-quality metrics.
+
+For any image pair \(I_1, I_2\), MEt3R first uses DUSt3R to recover pixel-aligned dense point maps expressed in a shared camera frame. It then extracts DINO features, upsamples them with FeatUp, projects them into a shared view, and compares feature cosine similarity \(S(I_1, I_2)\) on the valid overlap region. Feature-space comparison reduces sensitivity to view-dependent effects such as lighting and exposure, and is less likely than flow-warped PSNR/SSIM to treat blur as higher consistency. The MEt3R score is
+
+\[
+\mathrm{MEt3R}(I_1, I_2)
+=
+1 - \frac{1}{2}\big(S(I_1, I_2) + S(I_2, I_1)\big)
+\tag{1}
+\]
+
+The raw score lies in \([0, 2]\), with **lower being better**. Real videos usually form a lower bound slightly above zero due to DUSt3R alignment error, while clearly inconsistent generations receive substantially higher scores.
+
+In WorldArena, the runtime sends reference anchor frames and prediction anchor frames through the wrapped MEt3R model in pairs at the benchmark protocol positions, with defaults `backbone = mast3r` and `distance = cosine`. The raw score is the mean over anchor pairs and is reverse-normalized from \([0, 2]\) to \([0, 1]\) (higher normalized score means better consistency). If a pair has almost no valid overlap, it receives the worst raw value for the configured distance rather than being treated as a perfect match. When MEt3R computation succeeds, the metric is **official** in all formal suites and enters the `consistency_3d_4d` aggregate. It complements geometry supervision, but does not replace ground-truth geometry metrics such as camera error or reprojection error.
+
+<!-- met3r-representative-cases:start -->
+## Representative MEt3R Comparisons
+
+These representative comparisons were selected from the official 2026-07-17 `image_static` MEt3R snapshot and manually reviewed as frame strips. Each exhibit fixes one benchmark case—input image and eval-plan prompt target—and compares two prediction videos. The normalized MEt3R score is higher-is-better; raw MEt3R distance is lower-is-better.
+
+Adapter-specific conditioning may differ, so these are metric diagnostics rather than controlled model rankings. Exact paths, hashes, overlap values, and report provenance are in the [machine-readable MEt3R manifest](../../../assets/metric_examples/met3r_representative_manifest.csv).
+
+<div class="metric-case-stack">
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/5cd19d15663a__image_static_photorealistic_aquatic_landscape_0098.jpg" alt="Input image: image_static_photorealistic_aquatic_landscape_0098" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · lower multi-view consistency under visible distortion</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0098</code></h4>
+      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera pan right. An aquatic landscape with pebble beach, calm sea, and blue sky.</p>
+      </div>
+      <p class="metric-case-note">Output A keeps the beach structure stable. Output B develops large view distortions and black borders, reducing valid overlap and increasing raw MEt3R distance.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: ac3d-image-static, aquatic landscape 0098">
+          <source src="../../../assets/metric_examples/d6290f43f723__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
+        </video>
+      </div>
+      <figcaption class="metric-output-caption">
+        <strong>Output A</strong>
+        <span>MEt3R: <strong>0.9730</strong> normalized · 0.0540 raw · 0.7044 overlap</span>
+      </figcaption>
+    </figure>
+    <figure class="metric-output-card">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: LucidDreamer, aquatic landscape 0098">
+          <source src="../../../assets/metric_examples/20dc16268a49__luciddreamer-image-static-8gpu-20260613_151844__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
+        </video>
+      </div>
+      <figcaption class="metric-output-caption">
+        <strong>Output B</strong>
+        <span>MEt3R: <strong>0.6341</strong> normalized · 0.7317 raw · 0.3180 overlap</span>
+      </figcaption>
+    </figure>
+  </div>
+</article>
+
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/f6e5fd26f831__image_static_photorealistic_workspaces_0106.jpg" alt="Input image: image_static_photorealistic_workspaces_0106" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 2 · empty projected overlap receives the worst value</div>
+      <h4><code>image_static_photorealistic_workspaces_0106</code></h4>
+      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / indoor / workspaces</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera move left. A workspaces scene with bookshelf, indoor plants, and adjacent wall.</p>
+      </div>
+      <p class="metric-case-note">Output B does not preserve the reference workspace. MEt3R finds no valid projected overlap and applies the documented worst-value policy: raw 2.0, normalized 0.0.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: ac3d-image-static, workspace 0106">
+          <source src="../../../assets/metric_examples/c0b5d552bebf__ac3d-image-static__image_static_photorealistic_workspaces_0106.mp4" type="video/mp4">
+        </video>
+      </div>
+      <figcaption class="metric-output-caption">
+        <strong>Output A</strong>
+        <span>MEt3R: <strong>0.9948</strong> normalized · 0.0104 raw · 0.9237 overlap</span>
+      </figcaption>
+    </figure>
+    <figure class="metric-output-card">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: CameraCtrl, workspace 0106">
+          <source src="../../../assets/metric_examples/5a90ac712030__cameractrl_image_static__image_static_photorealistic_workspaces_0106.mp4" type="video/mp4">
+        </video>
+      </div>
+      <figcaption class="metric-output-caption">
+        <strong>Output B</strong>
+        <span>MEt3R: <strong>0.0000</strong> normalized · 2.0000 raw · 0.0000 overlap</span>
+      </figcaption>
+    </figure>
+  </div>
+</article>
+
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/c857427716ae__image_static_photorealistic_living_spaces_0140.jpg" alt="Input image: image_static_photorealistic_living_spaces_0140" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 3 · similar anchor consistency under different motion amounts</div>
+      <h4><code>image_static_photorealistic_living_spaces_0140</code></h4>
+      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / indoor / living_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera push in. A living room with sofa, bookshelf, and books.</p>
+      </div>
+      <p class="metric-case-note">Output A moves little, while Output B makes a larger smooth camera move and reveals the bookshelf. At the evaluated MEt3R anchor, both retain high feature and projected-view consistency and therefore receive almost identical scores.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: ac3d-image-static, living space 0140">
+          <source src="../../../assets/metric_examples/3a76d4fa805b__ac3d-image-static__image_static_photorealistic_living_spaces_0140.mp4" type="video/mp4">
+        </video>
+      </div>
+      <figcaption class="metric-output-caption">
+        <strong>Output A</strong>
+        <span>MEt3R: <strong>0.9957</strong> normalized · 0.0087 raw · 0.5406 overlap</span>
+      </figcaption>
+    </figure>
+    <figure class="metric-output-card">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: LongCat-Video, living space 0140">
+          <source src="../../../assets/metric_examples/d43209bc4d20__longcat-video-image-static-8gpu-20260612_133950__image_static_photorealistic_living_spaces_0140.mp4" type="video/mp4">
+        </video>
+      </div>
+      <figcaption class="metric-output-caption">
+        <strong>Output B</strong>
+        <span>MEt3R: <strong>0.9972</strong> normalized · 0.0055 raw · 0.5455 overlap</span>
+      </figcaption>
+    </figure>
+  </div>
+</article>
+
+</div>
+<!-- met3r-representative-cases:end -->
 
 <figure markdown="span">
   ![MEt3R method overview](../../../assets/img/met3r_method_overview.jpg)
   <figcaption>MEt3R measures multi-view consistency in generated images through geometric and representation consistency across views.</figcaption>
 </figure>
-
-## What It Measures {#what-it-measures}
-
-- how similar paired reference and prediction anchor views look under the MEt3R scoring model
-- multi-view or view-to-view consistency between reference and prediction anchors
-- not a headline metric and not a replacement for geometry supervision
-
-## Detailed Algorithm {#algorithm}
-
-1. WorldArena pairs reference anchor frames with prediction anchor frames at the benchmark protocol positions.
-2. It resolves the MEt3R source tree from the configured MEt3R checkout.
-3. The runtime loads the configured model options, which default to:
-    - `backbone = mast3r`
-    - `distance = cosine`
-    - `batch_size = 1`
-4. Anchor-frame pairs are sent through the wrapped MEt3R model in batches.
-5. The runtime returns one score per paired anchor view.
-6. The raw metric is the mean of those per-pair scores.
-7. Normalization follows the configured distance direction:
-    - the default `cosine` distance uses the benchmark range `[0, 2]`
-    - lower is better under the default config
-
-## Inputs And Outputs {#inputs-outputs}
-
-| Item | Current implementation |
-| --- | --- |
-| Prediction input | prediction anchor frames |
-| Reference input | reference anchor frames |
-| Annotation input | none |
-| Raw output | one scalar mean MEt3R score |
-| Normalized output | one scalar in `[0, 1]` after distance-aware scaling |
-| Details payload | `frame_scores`, `pair_count`, `source_root`, `device`, `batch_size`, `img_size`, `use_norm`, `backbone`, `feature_backbone`, `feature_backbone_weights`, `upsampler`, `distance`, `freeze`, `native_direction` |
-| Failure mode | returns `raw = null`, `normalized = null`, and an error string when the checkout, submodules, or side runtime are not ready |
-
-## Integration Notes {#integration}
-
-- Current aggregation: `diagnostic` in all formal suites.
-- The wrapper caches results per prediction path and runtime settings, so repeated access to the same video is cheap after the first run.
 
 ## Reference {#reference}
 

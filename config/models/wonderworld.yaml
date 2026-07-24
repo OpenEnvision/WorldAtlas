@@ -8,7 +8,6 @@ model:
   roles: [candidate]
   # WonderWorld is run through a noninteractive batch path:
   # render benchmark frames, save the main prediction as MP4, and keep 3DGS files only as a sidecar archive.
-  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/wonderworld/bin/python
   repo_root: thirdparty/WonderWorld
   entrypoint: run.py
   output_ext: .mp4
@@ -18,12 +17,13 @@ model:
   prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
+    require_persistent_batch: true
     # Download the upstream RepViT SAM checkpoint under the unified ckpt root.
-    repvit_checkpoint: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/WonderWorld/repvit_sam.pt
-    stable_diffusion_checkpoint: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/sd2-community--stable-diffusion-2-inpainting
-    depth_model_repo: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/prs-eth--marigold-v1-0
-    normal_model_repo: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/prs-eth--marigold-normals-v0-1
-    oneformer_model_repo: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/huggingface/hub/models--shi-labs--oneformer_ade20k_swin_large/snapshots/4a5bac8e64f82681a12db2e151a4c2f4ce6092b2
+    repvit_checkpoint: ckpt/WonderWorld/repvit_sam.pt
+    stable_diffusion_checkpoint: ckpt/sd2-community--stable-diffusion-2-inpainting
+    depth_model_repo: ckpt/prs-eth--marigold-v1-0
+    normal_model_repo: ckpt/prs-eth--marigold-normals-v0-1
+    oneformer_model_repo: ckpt/huggingface/hub/models--shi-labs--oneformer_ade20k_swin_large/snapshots/4a5bac8e64f82681a12db2e151a4c2f4ce6092b2
     scene_name:
     entities:
     entity_limit: 3
@@ -37,6 +37,8 @@ model:
     use_gpt: false
     debug: false
     depth_model: marigold
+    # Synthetic image_static translations inherit this model-native scene scale.
+    # Override with synthetic_translation_scale only when using a custom reconstruction scale.
     camera_speed: 0.001
     fg_depth_range: 0.015
     depth_shift: 0.001
@@ -49,5 +51,8 @@ model:
     keep_work_dir: false
     archive_sidecars: true
     synthetic_focal_scale: 1.875
+    # Fail generation when rendered frames collapse to WonderWorld's empty gray background.
+    min_render_content_fraction: 0.02
+    max_render_blank_frame_ratio: 0.2
   env:
-    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+    WORLDARENA_CHECKPOINT_ROOT: ckpt/

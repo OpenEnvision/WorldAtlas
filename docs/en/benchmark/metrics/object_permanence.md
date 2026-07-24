@@ -1,6 +1,6 @@
 # Object Permanence
 
-`object_permanence` measures whether a masked dynamic object keeps the appearance trajectory implied by the reference rollout.
+**object_permanence** measures whether a masked dynamic object keeps the appearance trajectory implied by the reference rollout.
 
 ## What It Measures
 

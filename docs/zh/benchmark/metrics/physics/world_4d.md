@@ -1,6 +1,6 @@
 # World 4D Metrics
 
-`world_4d` group 比较 predicted world 与 simulator world 在 4D 时空结构上的一致性。它比单帧 depth 更严格，因为它要求几何点和 worldline 轨迹在时间维度上持续合理。
+**world_4d** group 比较 predicted world 与 simulator world 在 4D 时空结构上的一致性。它比单帧 depth 更严格，因为它要求几何点和 worldline 轨迹在时间维度上持续合理。
 
 ## 输入
 

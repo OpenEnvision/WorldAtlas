@@ -73,7 +73,7 @@ worldarena evaluate \
 4. 如果本地参考视频仍然不可用，则直接失败，并返回 `physics_status`、remediation 提示和缺失 artifact 名称。
 5. 如果允许自动生成 `pred_world`，就运行 `main_part2.py` 并导出预测世界状态 artifact。
 6. 运行 `benchmark_eval.py`，写出 `<prediction_stem>_physics_report.json`。
-7. 把 `physics_status`、`world_gt_status`、`pred_world_status`、`metric_contract`、`missing_world_artifacts` 等诊断字段附加到 benchmark 输出里。
+7. 把 `physics_status`、`world_gt_status`、`pred_world_status`、`metric_contract`、`missing_world_artifacts` 等字段附加到 benchmark 输出里。
 
 ## Readiness 状态
 

@@ -1,3 +1,9 @@
+"""InfiniteWorld interactive world model adapter for WorldAtlas Arena.
+
+Maps ``camera_path`` tokens to discrete move/view action indices consumed by the
+InfiniteWorld upstream repo and launches ``infinite_world_runner``.
+"""
+
 from __future__ import annotations
 
 import json
@@ -108,9 +114,8 @@ _WORLD_ARENA_CAMERA_ACTIONS = {
     "pull_out": {"move": "go back", "view": "no-op"},
     "move_left": {"move": "go left", "view": "no-op"},
     "move_right": {"move": "go right", "view": "no-op"},
-    # User-aligned WorldArena convention:
-    # pan left/right move backward diagonally while turning in the same direction;
-    # orbit left/right move forward diagonally while turning toward the target.
+    # WorldScore diagram convention: pan moves backward diagonally while turning
+    # in the same direction; orbit moves forward diagonally toward the subject.
     "pan_left": {"move": "go back and go left", "view": "turn left"},
     "pan_right": {"move": "go back and go right", "view": "turn right"},
     "orbit_left": {"move": "go forward and go left", "view": "turn right"},
@@ -173,15 +178,11 @@ def _worldarena_actions_for_sample(sample: BenchmarkSample) -> tuple[list[str], 
     camera_tokens = [_sanitize_action_token(token) for token in raw_camera_path if str(token).strip()] or ["fixed"]
     control_source = "camera_path" if sample.camera_path else "annotation_or_default_camera_path"
     actions: list[dict[str, str]] = []
-    unsupported = False
     for camera_token in camera_tokens:
         action = _WORLD_ARENA_CAMERA_ACTIONS.get(camera_token)
         if action is None:
-            action = _WORLD_ARENA_CAMERA_ACTIONS["fixed"]
-            unsupported = True
+            raise ValueError(f"unsupported Infinite-World camera token: {camera_token!r}")
         actions.append(dict(action))
-    if unsupported:
-        control_source = f"unsupported_{control_source}"
     return camera_tokens, actions or [dict(_WORLD_ARENA_CAMERA_ACTIONS["fixed"])], control_source
 
 
@@ -274,8 +275,14 @@ def _request_payload_for(
 
 
 class InfiniteWorldAdapter(ModelAdapter):
+    """Generate action-controlled world videos via the InfiniteWorld upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
 
     def generate_batch(
         self,

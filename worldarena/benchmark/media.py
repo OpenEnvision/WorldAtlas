@@ -1,8 +1,11 @@
+"""Media loading, probing, and frame extraction for benchmark evaluation."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 import hashlib
 from pathlib import Path
+import time
 
 import cv2
 import numpy as np
@@ -23,6 +26,26 @@ class LoadedMedia:
     native_frame_count: int | None = None
     window_start_ratio: float = 0.0
     window_end_ratio: float = 1.0
+
+
+def protocol_native_frame_indices(media: LoadedMedia) -> list[int]:
+    indices: list[int] = []
+    for protocol_index in media.protocol_frame_indices:
+        if 0 <= int(protocol_index) < len(media.sampled_frame_indices):
+            indices.append(int(media.sampled_frame_indices[int(protocol_index)]))
+    return indices
+
+
+def protocol_frame_details(media: LoadedMedia) -> dict[str, object]:
+    return {
+        "evaluation_protocol": media.evaluation_protocol,
+        "frame_indices": list(media.protocol_frame_indices),
+        "sampled_frame_indices": list(media.sampled_frame_indices),
+        "protocol_native_frame_indices": protocol_native_frame_indices(media),
+        "protocol_frame_count": len(media.anchor_frames),
+        "loaded_frame_count": len(media.frames),
+        "native_frame_count": media.native_frame_count,
+    }
 
 
 def _sample_positions(length: int, count: int) -> list[int]:
@@ -121,8 +144,16 @@ def _load_video(
     start_ratio: float,
     end_ratio: float,
 ) -> LoadedMedia:
-    capture = cv2.VideoCapture(str(path))
-    if not capture.isOpened():
+    capture = None
+    for attempt in range(5):
+        candidate = cv2.VideoCapture(str(path))
+        if candidate.isOpened():
+            capture = candidate
+            break
+        candidate.release()
+        if attempt < 4:
+            time.sleep(0.2 * (attempt + 1))
+    if capture is None:
         raise RuntimeError(f"failed to open video: {path}")
 
     native_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -220,4 +251,10 @@ def probe_media_frame_count(path: Path, modality: str) -> int:
     return probe_video_frame_count(path)
 
 
-__all__ = ["LoadedMedia", "load_media", "probe_media_frame_count"]
+__all__ = [
+    "LoadedMedia",
+    "load_media",
+    "probe_media_frame_count",
+    "protocol_frame_details",
+    "protocol_native_frame_indices",
+]

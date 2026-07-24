@@ -1,3 +1,5 @@
+"""Physics simulation backend for WorldArena physics benchmark metrics."""
+
 from __future__ import annotations
 
 import io
@@ -84,6 +86,7 @@ class PhysicsCaseSpec:
 
 
 def _utc_timestamp_slug() -> str:
+    """Utc timestamp slug -> str."""
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
@@ -708,6 +711,7 @@ def _metric_contract_violations(
 
 
 def _auto_pred_world_enabled() -> bool:
+    """Auto pred world enabled -> bool."""
     return os.environ.get(AUTO_PRED_WORLD_ENV, "").strip().lower() not in {"1", "true", "yes"}
 
 

@@ -1,1 +1,1 @@
-"""Common utilities for WorldArena."""
+"""Common utilities for WorldAtlas Arena."""

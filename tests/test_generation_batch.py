@@ -1,13 +1,22 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from PIL import Image
+import pytest
 
 from worldarena.benchmark.schemas import BenchmarkSample
 from worldarena.generation.runner import _select_samples, generate_predictions
 from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
-from worldarena.models.config import ModelRuntimeConfig
+from worldarena.models.adapters.stable_virtual_camera_batch_runner import (
+    WORLD_SCORE_PRIOR_PREFIX,
+    _camera_path as _svc_camera_path,
+    _camera_token as _svc_camera_token,
+    _patch_world_score_camera_prior,
+    _traj_prior as _svc_traj_prior,
+)
+from worldarena.models.config import ModelRuntimeConfig, load_model_config
 from worldarena.models.registry import build_model_adapter
 
 
@@ -127,7 +136,6 @@ def test_generate_predictions_uses_batch_adapter(monkeypatch, tmp_path: Path) ->
 
 def test_registered_model_adapters_expose_batch_generation(tmp_path: Path) -> None:
     families = [
-        "astra",
         "lingbot_world",
         "gen3c",
         "luciddreamer",
@@ -141,6 +149,7 @@ def test_registered_model_adapters_expose_batch_generation(tmp_path: Path) -> No
         "inspatio_world",
         "infinite_world",
         "neoverse",
+        "stable_virtual_camera",
         "wonderworld",
         "wonderjourney",
         "worldcam",
@@ -160,6 +169,17 @@ def test_registered_model_adapters_expose_batch_generation(tmp_path: Path) -> No
     for adapter in adapters:
         assert adapter.supports_batch_generation()
         assert adapter.generate_batch.__func__ is not ModelAdapter.generate_batch
+
+
+def test_every_active_model_config_builds_a_registered_adapter() -> None:
+    config_root = Path(__file__).resolve().parents[1] / "config" / "models"
+    config_paths = sorted(config_root.glob("*.yaml"))
+
+    assert config_paths
+    for config_path in config_paths:
+        config = load_model_config(config_path)
+        adapter = build_model_adapter(config)
+        assert adapter.config is config, config_path.name
 
 
 def test_generate_predictions_shards_batch_outputs(monkeypatch, tmp_path: Path) -> None:
@@ -205,3 +225,111 @@ def test_select_samples_limit_zero_returns_empty(tmp_path: Path) -> None:
     )
 
     assert selected == []
+
+
+def test_stable_virtual_camera_config_excludes_dynamic_i2v_suite() -> None:
+    config = load_model_config(
+        Path(__file__).resolve().parents[1] / "config" / "models" / "stable_virtual_camera.yaml"
+    )
+
+    assert config.supported_suites == ["image_static"]
+
+
+def test_stable_virtual_camera_preserves_complete_camera_path() -> None:
+    assert _svc_camera_token({"camera_path": ["fixed"]}) == "fixed"
+    assert _svc_camera_token({}) == "fixed"
+    assert _svc_camera_path({"camera_path": ["pan-left", "move right", "pull_out"]}) == [
+        "pan_left",
+        "move_right",
+        "pull_out",
+    ]
+    assert _svc_traj_prior({"camera_path": ["fixed"]}, {}) == (
+        WORLD_SCORE_PRIOR_PREFIX + "fixed"
+    )
+    assert _svc_traj_prior({"camera_path": ["pan_left", "pull_out"]}, {}) == (
+        WORLD_SCORE_PRIOR_PREFIX + "pan_left,pull_out"
+    )
+
+
+def test_stable_virtual_camera_rejects_unknown_camera_token() -> None:
+    with pytest.raises(ValueError, match="unsupported Stable Virtual Camera token"):
+        _svc_traj_prior({"camera_path": ["teleport"]}, {})
+
+
+def test_stable_virtual_camera_prior_matches_world_score_trajectory() -> None:
+    import numpy as np
+    import torch
+
+    from worldarena.benchmark.synthetic_camera import synthetic_camera_matrices
+
+    calls: list[tuple[str, dict[str, object]]] = []
+
+    def get_preset_pose_fov(option, num_frames, start_w2c, look_at, *args, **kwargs):
+        del num_frames, start_w2c, look_at, args
+        calls.append((option, kwargs))
+        return np.zeros((7, 4, 4), dtype=np.float32), np.full((7,), 0.8)
+
+    module = SimpleNamespace(get_preset_pose_fov=get_preset_pose_fov, torch=torch)
+    _patch_world_score_camera_prior(module)
+
+    camera_path = ["pan_left", "move_right", "pull_out"]
+    poses, fovs = module.get_preset_pose_fov(
+        WORLD_SCORE_PRIOR_PREFIX + ",".join(camera_path),
+        7,
+        torch.eye(4),
+        torch.tensor([0.0, 0.0, 10.0]),
+    )
+
+    expected = synthetic_camera_matrices(camera_path, target_frames=7).matrices
+    np.testing.assert_allclose(poses, expected, atol=1e-6)
+    np.testing.assert_allclose(fovs, np.full((7,), 0.8))
+    assert calls == [("zoom-in", {"zoom_factor": 1.0})]
+
+
+def test_stable_virtual_camera_fixed_prior_keeps_pose_and_fov_constant() -> None:
+    import numpy as np
+    import torch
+
+    def get_preset_pose_fov(option, num_frames, start_w2c, look_at, *args, **kwargs):
+        del option, start_w2c, look_at, args, kwargs
+        return np.zeros((num_frames, 4, 4)), np.full((num_frames,), 0.8)
+
+    module = SimpleNamespace(get_preset_pose_fov=get_preset_pose_fov, torch=torch)
+    _patch_world_score_camera_prior(module)
+    poses, fovs = module.get_preset_pose_fov(
+        WORLD_SCORE_PRIOR_PREFIX + "fixed",
+        8,
+        torch.eye(4),
+        torch.tensor([0.0, 0.0, 10.0]),
+    )
+
+    np.testing.assert_allclose(poses, np.repeat(np.eye(4)[None], 8, axis=0), atol=1e-6)
+    np.testing.assert_allclose(fovs, np.full((8,), 0.8))
+
+
+def test_stable_virtual_camera_left_right_actions_have_opposite_world_score_directions() -> None:
+    import numpy as np
+    import torch
+
+    def get_preset_pose_fov(option, num_frames, start_w2c, look_at, *args, **kwargs):
+        del option, start_w2c, look_at, args, kwargs
+        return np.zeros((num_frames, 4, 4)), np.full((num_frames,), 0.8)
+
+    module = SimpleNamespace(get_preset_pose_fov=get_preset_pose_fov, torch=torch)
+    _patch_world_score_camera_prior(module)
+
+    def trajectory(token: str) -> np.ndarray:
+        poses, _ = module.get_preset_pose_fov(
+            WORLD_SCORE_PRIOR_PREFIX + token,
+            8,
+            torch.eye(4),
+            torch.tensor([0.0, 0.0, 10.0]),
+        )
+        return poses
+
+    assert trajectory("move_left")[-1, 0, 3] < 0
+    assert trajectory("move_right")[-1, 0, 3] > 0
+    assert trajectory("pan_left")[-1, 0, 2] < 0
+    assert trajectory("pan_right")[-1, 0, 2] > 0
+    assert trajectory("orbit_left")[-1, 0, 3] < 0
+    assert trajectory("orbit_right")[-1, 0, 3] > 0

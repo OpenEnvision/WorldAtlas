@@ -1,3 +1,5 @@
+"""Asset preparation helpers for long-horizon sequence metrics."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,6 +12,7 @@ LONG_SEQUENCE_MODULE_ROOT = Path(__file__).resolve().parent
 
 
 def inspect_long_sequence_layout() -> dict[str, Any]:
+    """Inspect long sequence layout -> dict[str, Any]."""
     module_root = LONG_SEQUENCE_MODULE_ROOT.resolve()
     flow_layout = inspect_flow_source_layout()
     ready = bool(flow_layout["ready"])

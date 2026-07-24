@@ -1,3 +1,5 @@
+"""Subprocess runner for Matrix-Game 2 inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -24,7 +26,7 @@ _DEFAULT_CHECKPOINT_BY_MODE = {
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena Matrix-Game-2 runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena Matrix-Game-2 runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", required=True, type=str)
     parser.add_argument("--actions_json", required=True, type=str)

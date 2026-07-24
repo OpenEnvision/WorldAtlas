@@ -24,7 +24,7 @@ model:
     config_path: configs/inference_1.3b.yaml
     checkpoint_path: InSpatio-World-1.3B/InSpatio-World-1.3B.safetensors
     # The upstream DA3 package is a separate repo with a src/ layout.
-    da3_repo_root: ../Depth-Anything-3
+    da3_repo_root: thirdparty/Depth-Anything-3
     da3_model_path: DA3
     step2_gpus: "0"
     step3_gpus: "0"

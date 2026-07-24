@@ -1,0 +1,25 @@
+{
+  "name": "worldarena-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate:css": "node scripts/generate-content-css.mjs",
+    "sync": "node scripts/sync-content.mjs && node scripts/generate-sidebar.mjs",
+    "predev": "npm run sync && npm run generate:css",
+    "prebuild": "npm run sync && npm run generate:css",
+    "dev": "astro dev --host",
+    "build": "astro build",
+    "preview": "astro preview --host"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.39.0",
+    "astro": "^6.0.0",
+    "sharp": "^0.33.5",
+    "starlight-katex": "^0.0.4",
+    "starlight-theme-nova": "^0.12.1"
+  },
+  "devDependencies": {
+    "js-yaml": "^4.1.0",
+    "typescript": "^5.7.3"
+  }
+}

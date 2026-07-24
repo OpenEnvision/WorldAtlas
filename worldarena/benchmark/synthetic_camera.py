@@ -1,3 +1,5 @@
+"""Synthesize camera trajectories from ``camera_path`` tokens for metrics without GT poses."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -30,6 +32,26 @@ _TOKEN_ALIASES = {
     "truck_right": "move_right",
     "stay": "fixed",
 }
+
+SUPPORTED_SYNTHETIC_CAMERA_TOKENS = frozenset(
+    {
+        "fixed",
+        "push_in",
+        "pull_out",
+        "move_left",
+        "move_right",
+        "pedestal_up",
+        "pedestal_down",
+        "pan_left",
+        "pan_right",
+        "tilt_up",
+        "tilt_down",
+        "roll_cw",
+        "roll_ccw",
+        "orbit_left",
+        "orbit_right",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,7 +174,7 @@ def _camera_delta(token: str, runtime: dict[str, Any]) -> np.ndarray:
             @ _rigid_transform(rotation=_rotation_matrix_y(rotation_degrees))
             @ _translation_matrix(z=-orbit_radius)
         ).astype(np.float32)
-    return np.eye(4, dtype=np.float32)
+    raise ValueError(f"unsupported synthetic camera token: {token!r}")
 
 
 def _interpolate_pose_segment(start_pose: np.ndarray, end_pose: np.ndarray, *, frames: int) -> np.ndarray:
@@ -240,6 +262,7 @@ def synthetic_camera_matrices_for_sample(
 
 
 __all__ = [
+    "SUPPORTED_SYNTHETIC_CAMERA_TOKENS",
     "SyntheticCameraTrajectory",
     "synthetic_camera_matrices",
     "synthetic_camera_matrices_for_sample",

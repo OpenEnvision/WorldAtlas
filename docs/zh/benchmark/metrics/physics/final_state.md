@@ -1,6 +1,6 @@
 # Final State Accuracy
 
-`final_state_accuracy` 是面向 final-state classification 任务的场景条件 simulator-backed 指标，例如 lever 最终状态。它判断 prediction 的最终状态是否与 ground truth 最终状态一致。
+**final_state_accuracy** 是面向 final-state classification 任务的场景条件 simulator-backed 指标，例如 lever 最终状态。它判断 prediction 的最终状态是否与 ground truth 最终状态一致。
 
 该指标已经配置在 `config/benchmark_physics.yaml` 中，但只有样本在 `physics_spec.final_state_metric` 中声明 final-state 规则或显式标签时才会计算；否则会记为 `not_applicable`。
 

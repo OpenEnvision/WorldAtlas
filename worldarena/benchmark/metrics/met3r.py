@@ -1,3 +1,5 @@
+"""MeT3R reconstruction-consistency metric implementations."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -12,6 +14,7 @@ MET3R_BACKENDS = {"met3r"}
 
 
 def _default_normalization(distance: str) -> dict[str, Any]:
+    """Pick sensible [0, 1] scaling defaults for each MeT3R distance name."""
     distance_name = distance.lower()
     if distance_name == "psnr":
         return {"lower": 0.0, "upper": 100.0, "higher_is_better": True}
@@ -25,12 +28,15 @@ def _default_normalization(distance: str) -> dict[str, Any]:
 
 
 class Met3RConsistencyMetric(Metric):
+    """Score anchor-frame reconstruction consistency between reference and prediction."""
+
     def __init__(
         self,
         backend: str,
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Merge distance-specific normalization defaults with config overrides."""
         runtime_payload = dict(runtime or {})
         distance = str(runtime_payload.get("distance") or "cosine")
         super().__init__(
@@ -42,6 +48,7 @@ class Met3RConsistencyMetric(Metric):
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the MeT3R reconstruction-consistency backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -50,6 +57,7 @@ class Met3RConsistencyMetric(Metric):
         )
 
     def _details(self, prediction: LoadedMedia) -> dict[str, Any]:
+        """Collect protocol frame indices used during MeT3R scoring."""
         return {
             "frame_indices": list(prediction.protocol_frame_indices),
             "sampled_frame_indices": list(prediction.sampled_frame_indices),
@@ -61,6 +69,7 @@ class Met3RConsistencyMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Compare MeT3R feature consistency on paired anchor frames."""
         del sample
 
         backend = self._resolve_backend()
@@ -78,7 +87,7 @@ class Met3RConsistencyMetric(Metric):
                 normalized=normalize_score(raw, self.normalization),
                 backend=str(result["backend"]),
                 details=details,
-                eligibility_status="diagnostic",
+                eligibility_status="official",
             )
         except Exception as exc:  # pragma: no cover - backend-specific runtime failures
             return MetricOutput(
@@ -86,7 +95,7 @@ class Met3RConsistencyMetric(Metric):
                 normalized=None,
                 backend=backend,
                 details=details,
-                eligibility_status="diagnostic",
+                eligibility_status="official",
                 error=str(exc),
             )
 

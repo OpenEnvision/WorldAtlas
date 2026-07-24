@@ -1,0 +1,82 @@
+model:
+  name: alayaworld-15b
+  family: alayaworld
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  repo_root: thirdparty/AlayaWorld
+  checkpoint_dir: ckpt/AlayaWorld
+  entrypoint: inference/run.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+    - video_static
+    - video_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTORCH_ALLOC_CONF: expandable_segments:True
+  generation:
+    require_persistent_batch: true
+    # Official long-horizon rollout: 45 autoregressive chunks. Each chunk is
+    # 4 latents x stride 8 = 32 frames, yielding 1,440 frames / 60 seconds.
+    rounds: 45
+    chunk_latent_frames: 4
+    temporal_stride: 8
+    sink_latent_frames: 1
+    history_latent_frames: 16
+    height: 544
+    width: 960
+    fps: 24
+    seed: 1234
+    increment_seed: true
+    action_source: worldarena_camera_path
+    # Match the official playground: camera poses move from frame zero while
+    # the first-frame pixels are replicated to seed sink/history latents.
+    camera_prefix_mode: extend_first_action
+
+    # Calibrated from the released playground trajectories and per-axis scales.
+    forward_distance_per_chunk: 2.54
+    lateral_distance_per_chunk: 0.5348
+    vertical_distance_per_chunk: 1.1076
+    rotation_degrees_per_chunk: 12.5
+    tilt_degrees_per_chunk: 10.0
+    roll_degrees_per_chunk: 8.0
+    orbit_radius: 2.0
+    intrinsic_fx: 0.4482019544
+    intrinsic_fy: 0.7965529561
+    pose_orig_width: 1280
+    pose_orig_height: 720
+
+    gemma_dir: ckpt/gemma-3-12b-it-qat-q4_0-unquantized
+    da3_repo: thirdparty/Depth-Anything-3
+    da3_model: depth-anything/DA3NESTED-GIANT-LARGE-1.1
+    da3_cache: ckpt/huggingface
+    attention_type: xformers
+    sampling_steps: 4
+    # One resident engine per GPU shard; weights are loaded once for the batch.
+    persistent: true
+    # Eager xFormers avoids a large one-time compile before production.
+    compile: none
+    flex_attn: false
+    nproc_per_node: 1
+    joystick: false
+    ttc: false
+    video_crf: 28
+    enable_prompt_switching: true
+    skill_seconds: 1.3333333333
+    skill_keep_wrap: false
+    offline: true
+    continue_on_error: true
+  metadata:
+    variant: AlayaWorld distilled autoregressive 15B
+    upstream_model_id: AlayaLab/AlayaWorld
+    upstream_repository: https://github.com/AlayaLab/AlayaWorld
+    project_page: https://alaya-lab.github.io/AlayaWorld/
+    technical_report: https://arxiv.org/abs/2607.06291
+    tested_upstream_revision: e12411bae3f24fe160288cc290da41ad14e23021
+    runtime_variant: a100_bf16_xformers_eager
+    license: LTX-2 Community License Agreement (academic/non-commercial)

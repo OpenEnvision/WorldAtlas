@@ -4,10 +4,9 @@ model:
   backend_type: local_repo
   task_families: [video_generation, scene_3d_generation]
   artifact_types: [video]
-  control_signals: [text, image]
+  control_signals: [text, image, trajectory, camera_pose]
   roles: [candidate]
   # WonderJourney shares the WonderWorld Python 3.10 CUDA environment on this workspace.
-  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/wonderworld/bin/python
   repo_root: thirdparty/WonderJourney
   entrypoint: run.py
   output_ext: .mp4
@@ -17,8 +16,9 @@ model:
   prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
-    stable_diffusion_checkpoint: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/sd2-community--stable-diffusion-2-inpainting
-    midas_checkpoint: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/WonderJourney/dpt_beit_large_512.pt
+    require_persistent_batch: true
+    stable_diffusion_checkpoint: ckpt/sd2-community--stable-diffusion-2-inpainting
+    midas_checkpoint: ckpt/WonderJourney/dpt_beit_large_512.pt
     scene_name:
     entities:
     entity_limit: 3
@@ -29,11 +29,13 @@ model:
     frames: 50
     num_scenes: 1
     num_keyframes: 2
+    # image_static overrides this fallback with the sample's full camera_path.
     rotation_path: [0, 0]
+    use_sample_camera_path: true
     save_fps: 10
     depth_model: midas_v3.1
     camera_speed: 0.0005
-    rotation_range: 0.0
+    rotation_range: 0.45
     init_focal_length: 500
     inpainting_resolution_gen: 512
     inpainting_resolution_interp: 512
@@ -43,7 +45,7 @@ model:
     regenerate_times: 3
     num_finetune_decoder_steps: 100
     num_finetune_decoder_steps_interp: 30
-    camera_speed_multiplier_rotation: 0.0
+    camera_speed_multiplier_rotation: 0.2
     use_gpt: false
     debug: false
     skip_interp: false
@@ -55,4 +57,4 @@ model:
     keep_work_dir: false
     archive_sidecars: true
   env:
-    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+    WORLDARENA_CHECKPOINT_ROOT: ckpt/

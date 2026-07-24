@@ -1,3 +1,5 @@
+"""Base metric types, score normalization, and backend resolution."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -10,10 +12,12 @@ from worldarena.benchmark.schemas import BenchmarkSample, MetricOutput
 
 
 def clamp01(value: float) -> float:
+    """Clamp a value to [0, 1]."""
     return max(0.0, min(1.0, float(value)))
 
 
 def normalize_score(value: float | None, spec: dict[str, Any]) -> float | None:
+    """Scale a raw metric value to [0, 1] using normalization spec."""
     if value is None:
         return None
     lower = float(spec.get("lower", 0.0))
@@ -36,6 +40,7 @@ def resolve_metric_backend(
     supported_backends: set[str],
     disabled_backends: set[str] | None = None,
 ) -> str:
+    """Resolve which backend to use for a metric."""
     if configured_backend == "auto":
         return auto_backend
 
@@ -56,6 +61,7 @@ def resolve_metric_backend(
 
 
 def cosine_similarity(left: np.ndarray, right: np.ndarray) -> float:
+    """Compute cosine similarity between two vectors."""
     left_norm = np.linalg.norm(left)
     right_norm = np.linalg.norm(right)
     if left_norm == 0.0 or right_norm == 0.0:
@@ -64,6 +70,7 @@ def cosine_similarity(left: np.ndarray, right: np.ndarray) -> float:
 
 
 def rgb_histogram(frame: np.ndarray, bins: int = 32) -> np.ndarray:
+    """Concatenate per-channel normalized RGB histograms into one feature vector."""
     histograms = []
     for channel in range(frame.shape[2]):
         counts, _ = np.histogram(frame[:, :, channel], bins=bins, range=(0, 255), density=True)
@@ -72,9 +79,12 @@ def rgb_histogram(frame: np.ndarray, bins: int = 32) -> np.ndarray:
 
 
 class Metric(ABC):
+    """Abstract benchmark metric with backend selection and score normalization."""
+
     name: str
 
     def __init__(self, name: str, backend: str, normalization: dict[str, Any]) -> None:
+        """Bind metric identity, backend override, and normalization spec."""
         self.name = name
         self.backend = backend
         self.normalization = normalization
@@ -86,4 +96,5 @@ class Metric(ABC):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Score one prediction against its reference for a benchmark sample."""
         raise NotImplementedError

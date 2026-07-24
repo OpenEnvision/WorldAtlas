@@ -1,8 +1,9 @@
 paths:
-  image_root: data/image_test_balanced_5000
-  video_root: data/videos_test_split_4971
+  image_root: data/image
+  video_root: data/video
   inventory_dir: artifacts/benchmark/inventory
   manifest_dir: artifacts/benchmark/manifest
+  predictions_dir: artifacts/predictions
   reports_dir: artifacts/benchmark/reports
   cache_dir: .cache/worldarena/benchmark
 benchmark:
@@ -28,18 +29,20 @@ benchmark:
     - semantic_alignment
     - style_consistency
     - image_quality
+    - hpsv3_norm
+    - perceptual_quality
     - brightness_distribution_consistency
     - color_temperature_constraint
     - sharpness_retention
+    - temporal_flickering
+    - background_consistency
+    - segment_continuity
     - camera_error
     - seen_region_preservation
-    - novel_region_fidelity
     - object_detection
     - object_permanence
     - pmf
-    - motion_accuracy
-    - motion_magnitude
-    - motion_smoothness
+    - met3r_consistency
     - reprojection_error
     - optical_flow_aepe
     - epipolar_error
@@ -47,65 +50,78 @@ benchmark:
     - feature_match_coverage
     - depth_accuracy
     - depth_collision
-    - psnr
-    - ssim
     - physical_fps_pct_error
     - physical_fps_intra_video_cv
     - realtime_factor
     - action_response_latency
     - latency_budget_pass_rate
-    - reconstruction_consistency
+    - keystroke_strict_action_accuracy
+    - keystroke_partial_action_accuracy
+    - keystroke_traj_score
+    - keystroke_natet
+    - keystroke_nater
+    - keystroke_action_score
+    - geometric_consistency
+    - photometric_consistency
     - long_sequence_motion_smoothness
     - long_sequence_dynamic_degree
     - long_sequence_aesthetic_quality
     - long_sequence_imaging_quality
+    - rollout_aesthetic_drift
+    - rollout_imaging_drift
+    - scene_memory_f1
     image_dynamic:
     - prompt_alignment
     - semantic_alignment
     - style_consistency
     - image_quality
+    - hpsv3_norm
+    - perceptual_quality
     - brightness_distribution_consistency
     - color_temperature_constraint
     - sharpness_retention
-    - seen_region_preservation
-    - novel_region_fidelity
+    - temporal_flickering
+    - background_consistency
+    - segment_continuity
     - object_detection
-    - object_permanence
     - pmf
     - motion_accuracy
     - motion_magnitude
     - motion_smoothness
-    - reprojection_error
-    - optical_flow_aepe
-    - epipolar_error
-    - epipolar_inlier_rate
-    - feature_match_coverage
-    - depth_accuracy
-    - depth_collision
-    - psnr
-    - ssim
+    - met3r_consistency
     - physical_fps_pct_error
     - physical_fps_intra_video_cv
     - realtime_factor
     - action_response_latency
     - latency_budget_pass_rate
-    - reconstruction_consistency
-    - long_sequence_motion_smoothness
+    - keystroke_strict_action_accuracy
+    - keystroke_partial_action_accuracy
+    - keystroke_traj_score
+    - keystroke_natet
+    - keystroke_nater
+    - keystroke_action_score
     - long_sequence_dynamic_degree
     - long_sequence_aesthetic_quality
     - long_sequence_imaging_quality
+    - rollout_aesthetic_drift
+    - rollout_imaging_drift
     video_static:
     - prompt_alignment
     - semantic_alignment
     - style_consistency
     - image_quality
+    - hpsv3_norm
+    - perceptual_quality
     - brightness_distribution_consistency
     - color_temperature_constraint
     - sharpness_retention
+    - temporal_flickering
+    - background_consistency
+    - segment_continuity
     - camera_error
     - seen_region_preservation
-    - novel_region_fidelity
     - object_detection
+    - met3r_consistency
     - reprojection_error
     - optical_flow_aepe
     - fvmd
@@ -115,20 +131,33 @@ benchmark:
     - feature_match_coverage
     - depth_accuracy
     - depth_collision
-    - psnr
-    - ssim
     - realtime_factor
     - action_response_latency
     - latency_budget_pass_rate
-    - reconstruction_consistency
+    - keystroke_strict_action_accuracy
+    - keystroke_partial_action_accuracy
+    - keystroke_traj_score
+    - keystroke_natet
+    - keystroke_nater
+    - keystroke_action_score
+    - rollout_aesthetic_drift
+    - rollout_imaging_drift
+    - scene_memory_f1
+    - geometric_consistency
+    - photometric_consistency
     video_dynamic:
     - prompt_alignment
     - semantic_alignment
     - style_consistency
     - image_quality
+    - hpsv3_norm
+    - perceptual_quality
     - brightness_distribution_consistency
     - color_temperature_constraint
     - sharpness_retention
+    - temporal_flickering
+    - background_consistency
+    - segment_continuity
     - object_permanence
     - pmf
     - fvmd
@@ -136,26 +165,34 @@ benchmark:
     - motion_accuracy
     - motion_magnitude
     - motion_smoothness
+    - met3r_consistency
     - epipolar_error
     - epipolar_inlier_rate
     - feature_match_coverage
     - depth_accuracy
     - depth_collision
-    - psnr
-    - ssim
     - physical_fps_pct_error
     - physical_fps_intra_video_cv
     - realtime_factor
     - action_response_latency
     - latency_budget_pass_rate
-    - reconstruction_consistency
+    - keystroke_strict_action_accuracy
+    - keystroke_partial_action_accuracy
+    - keystroke_traj_score
+    - keystroke_natet
+    - keystroke_nater
+    - keystroke_action_score
+    - geometric_consistency
+    - photometric_consistency
     - long_sequence_motion_smoothness
     - long_sequence_dynamic_degree
     - long_sequence_aesthetic_quality
     - long_sequence_imaging_quality
+    - rollout_aesthetic_drift
+    - rollout_imaging_drift
+    - scene_memory_f1
     auxiliary: []
     experimental:
-    - perceptual_quality
     - brightness_consistency
     - color_temperature_consistency
     - sharpness_vector_retention
@@ -166,21 +203,33 @@ benchmark:
     - effective_generation_fps
     - met3r_consistency
     - memory_symmetry
+    - keystroke_strict_action_accuracy
+    - keystroke_partial_action_accuracy
+    - keystroke_traj_score
+    - keystroke_natet
+    - keystroke_nater
+    - keystroke_action_score
+    - rollout_aesthetic_drift
+    - rollout_imaging_drift
+    - scene_memory_f1
   metric_backends:
     prompt_alignment: reference
     semantic_alignment: clip
-    style_consistency: reference
+    style_consistency: gram_matrix
     perceptual_quality: reference
     image_quality: musiq
+    hpsv3_norm: hpsv3
     brightness_consistency: luminance_temporal
     brightness_distribution_consistency: distribution
     color_temperature_consistency: hsv_hue_drift
     color_temperature_constraint: hue_distribution
     sharpness_retention: tenengrad_brisque
     sharpness_vector_retention: tenengrad_vector
-    camera_error: droid_slam
+    temporal_flickering: pixel_mae
+    background_consistency: clip_vit_b32
+    segment_continuity: transnet_v2
+    camera_error: megasam
     seen_region_preservation: flow_dino
-    novel_region_fidelity: flow_dino
     object_detection: grounding_dino
     object_permanence: mask_dino
     pmf: numpy_fft
@@ -196,8 +245,6 @@ benchmark:
     motion_smoothness: vfi_mamba
     depth_accuracy: depth_anything
     depth_collision: video_depth_anything
-    psnr: framewise
-    ssim: framewise
     physical_fps_error: pulse_of_motion
     physical_fps_pct_error: pulse_of_motion
     physical_fps_intra_video_cv: pulse_of_motion
@@ -206,11 +253,22 @@ benchmark:
     action_response_latency: action_flow
     latency_budget_pass_rate: action_flow
     met3r_consistency: met3r
-    reconstruction_consistency: world_r1_lpips
+    reconstruction_consistency: da3_reprojection
+    geometric_consistency: da3_reprojection
+    photometric_consistency: da3_reprojection
     long_sequence_motion_smoothness: long_sequence
     long_sequence_dynamic_degree: long_sequence
     long_sequence_aesthetic_quality: long_sequence
     long_sequence_imaging_quality: long_sequence
+    keystroke_strict_action_accuracy: pose_action
+    keystroke_partial_action_accuracy: pose_action
+    keystroke_traj_score: pose_action
+    keystroke_natet: pose_action
+    keystroke_nater: pose_action
+    keystroke_action_score: pose_action
+    rollout_aesthetic_drift: quality_drift
+    rollout_imaging_drift: quality_drift
+    scene_memory_f1: point_cloud_f1
     memory_revisit_consistency: dinov2
     memory_symmetry: mse_symmetry
   metric_runtime:
@@ -218,6 +276,17 @@ benchmark:
     motion_accuracy:
       sam2_offload_video_to_cpu: true
       sam2_offload_state_to_cpu: true
+    hpsv3_norm:
+      p1: 5.21
+      p99: 8.66
+      sample_count: 20
+      batch_size: 8
+      prompt_mode: empty
+    camera_error:
+      camera_gt_policy: native_intended
+      droid_intrinsics: actual_resolution
+      megasam_output_root: .cache/benchmark/megasam_camera_error
+      megasam_skip_existing: true
     brightness_consistency:
       absolute_tau: 0.20
       relative_tau: 0.35
@@ -243,8 +312,13 @@ benchmark:
     sharpness_vector_retention:
       log_factor: 12.0
       temporal_decay: 0.05
+    segment_continuity:
+      threshold: 0.5
+      min_scene_len: 10
     gvgc_geometry:
       feature_detector: sift
+      opencv_num_threads: 1
+      opencv_rng_seed: 17
       max_features: 2000
       ratio_test: 0.75
       min_matches: 12
@@ -254,6 +328,20 @@ benchmark:
       ransac_max_iters: 10000
       pair_stride: 1
       max_pairs: 8
+      fallback_enabled: true
+      fallback_feature_detector: sift
+      fallback_ratio_test: 0.85
+      fallback_min_matches: 8
+      tracking_fallback_enabled: true
+      tracking_min_matches: 8
+      tracking_quality_level: 0.001
+      tracking_min_distance: 3.0
+      tracking_block_size: 3
+      tracking_window_size: 21
+      tracking_max_level: 3
+      tracking_max_iterations: 30
+      tracking_epsilon: 0.01
+      tracking_forward_backward_max_error: 1.5
     depth_accuracy:
       model_name: depth-anything/Depth-Anything-V2-Small-hf
     depth_collision:
@@ -272,22 +360,26 @@ benchmark:
       feature_backbone_weights: facebookresearch/dino:main
       upsampler: bilinear
     reconstruction_consistency:
-      model_name: depth-anything/DA3-GIANT
+      model_name: depth-anything/DA3-GIANT-1.1
       repo_root: thirdparty/Depth-Anything-3/src
-      scorer: lpips
-      lpips_net: alex
-      frame_source: sampled
+      frame_source: wbench_fps
+      fps: 3.0
+      decode_threads: 16
+      decode_mode: sequential_exact
       process_res: 504
-      gs_render_size:
-      - 512
-      - 512
-      trj_mode: extend
-      chunk_size: 4
+      max_pts_per_frame: 5000
+      use_confidence_mask: false
+      conf_threshold: 0.5
     temporal_calibration:
       clip_length: 30
       stride: 4
       resolution: 216
       checkpoint_path: ckpt/Pulse-of-Motion/vc_common_10_60fps.ckpt
+      batch_size: 16
+      short_video_policy: temporal_resample
+      short_video_min_segments: 5
+      disk_cache: true
+      cache_dir: .cache/benchmark/pulse_of_motion_results_batch16
     real_time:
       latency_threshold_seconds: 0.1
       latency_timeout_seconds: 1.0
@@ -298,6 +390,25 @@ benchmark:
       amt_checkpoint_path: ckpt/amt_model/amt-s.pth
       raft_model_path: ckpt/raft_model/models/raft-things.pth
       musiq_model_path: ckpt/musiq/musiq_spaq_ckpt-358bb6af.pth
+    long_horizon_diagnostics:
+      latent_stride: 4
+      move_thresholds:
+      - 0.002
+      - 0.005
+      - 0.01
+      rotation_threshold_degrees: 0.2
+      trajectory_points: 60
+      min_path_length: 0.5
+      min_rotation_degrees: 10.0
+      segment_count: 10
+      max_frames: 300
+      musiq_model_path: ckpt/musiq/musiq_spaq_ckpt-358bb6af.pth
+      imaging_quality_preprocessing_mode: longer
+      distance_threshold_ratio: 0.02
+      voxel_size: 0.0
+      centroid_align: true
+      max_frames_per_segment: 8
+      max_points_per_frame: 4096
     memory_revisit_consistency:
       mse_tau: 0.08
       progress_lower: 0.03
@@ -320,7 +431,7 @@ benchmark:
       min_clip_count: 2
     jedi:
       repo_root: thirdparty/JEDi
-      model_dir: thirdparty/JEDi
+      model_dir: ckpt/JEDi
       config_path: configs/vith16_ssv2_16x2x3.yaml
       clip_frame_count: 16
       analysis_size: 224
@@ -346,13 +457,17 @@ benchmark:
       higher_is_better: true
     style_consistency:
       lower: 0.0
-      upper: 1.0
-      higher_is_better: true
+      upper: 0.007
+      higher_is_better: false
     perceptual_quality:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
     image_quality:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    hpsv3_norm:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
@@ -377,6 +492,18 @@ benchmark:
       upper: 1.0
       higher_is_better: true
     sharpness_vector_retention:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    temporal_flickering:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    background_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    segment_continuity:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
@@ -415,10 +542,6 @@ benchmark:
       - false
       reducer: geometric_mean
     seen_region_preservation:
-      lower: 0.0
-      upper: 1.0
-      higher_is_better: true
-    novel_region_fidelity:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
@@ -479,19 +602,19 @@ benchmark:
       lower: 0.0
       upper: 1.0
       higher_is_better: false
-    psnr:
-      lower: 10.0
-      upper: 40.0
-      higher_is_better: true
-    ssim:
-      lower: 0.0
-      upper: 1.0
-      higher_is_better: true
     met3r_consistency:
       lower: 0.0
       upper: 2.0
       higher_is_better: false
     reconstruction_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    geometric_consistency:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    photometric_consistency:
       lower: 0.0
       upper: 1.0
       higher_is_better: true
@@ -536,6 +659,42 @@ benchmark:
       upper: 1.0
       higher_is_better: true
     long_sequence_imaging_quality:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    keystroke_strict_action_accuracy:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    keystroke_partial_action_accuracy:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    keystroke_traj_score:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    keystroke_natet:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: false
+    keystroke_nater:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: false
+    keystroke_action_score:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: true
+    rollout_aesthetic_drift:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: false
+    rollout_imaging_drift:
+      lower: 0.0
+      upper: 1.0
+      higher_is_better: false
+    scene_memory_f1:
       lower: 0.0
       upper: 1.0
       higher_is_better: true

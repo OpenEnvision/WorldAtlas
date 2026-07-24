@@ -1,6 +1,6 @@
 # Physical Motion Fidelity
 
-`pmf` 用来衡量预测视频是否保留了与参考 rollout 相近的整体运动动态，同时刻意降低对绝对空间位置和整体亮度变化的敏感性。
+**pmf** 用来衡量预测视频是否保留了与参考 rollout 相近的整体运动动态，同时刻意降低对绝对空间位置和整体亮度变化的敏感性。
 WorldArena 当前通过仓内的 NumPy FFT 实现直接计算 PMF。
 该指标来自 PhysInOne [[Zhou et al., 2026](#reference)] 的 Fourier-based motion fidelity 思路：与其逐像素比较预测视频和参考视频，不如比较它们在空间-时间频率域中的归一化运动能量分布。
 

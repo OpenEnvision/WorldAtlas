@@ -54,6 +54,7 @@ site/*.log
 site/._*
 site/**/._*
 site/assets/promo_gallery.mp4
+site/assets/benchmark_hero_cover.txt
 
 # Benchmark and experiment outputs
 bench_output/
@@ -92,8 +93,36 @@ tmp/
 temp/
 cache
 tmp_all_expanded_contact_sheets/
-*.bak_*
+.tools/
+node_modules/
+
+# Backups — directories and files (never commit local snapshots)
+**/backup/
+**/_backup/
+**/*_backup/
+**/repair_backups/
+**/.backup/
 *.orig
+*.backup
+*.bak
+*.bak_*
+*~
+# Explicit legacy backup roots (also matched by **/backup/ above)
+config/backup/
+worldarena/models/backup/
+worldarena/models/adapters/backup/
+
+# Local path overrides and internal debug configs
+config/*.cpfs.yaml
+config/datasets.cpfs.yaml
+config/models/*_local.yaml
+config/models/*_juanxi*.yaml
+config/models/*_debug*.yaml
+
+# Site dev snapshots and stray assets
+site/.versions/
+image.png
+
 runtimes/
 thirdparty/*
 !thirdparty/README.md

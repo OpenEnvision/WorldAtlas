@@ -1,3 +1,9 @@
+"""Base class for adapters that delegate batch generation to external runner modules.
+
+Subclasses set ``runner_module`` to a ``*_batch_runner`` entry point and inherit
+JSONL spec writing, logging, and per-sample result collection.
+"""
+
 from __future__ import annotations
 
 import json
@@ -19,6 +25,7 @@ def run_logged_command(
     log_path: Path,
     label: str,
 ) -> None:
+    """Run a subprocess with stdout/stderr captured to a log file."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("w", encoding="utf-8") as log_file:
         try:
@@ -42,10 +49,13 @@ def run_logged_command(
 
 
 class ExternalBatchAdapter(ModelAdapter):
+    """Run many samples through one long-lived external batch runner subprocess."""
+
     runner_module: str = ""
     label: str = "external model"
 
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
 
     def batch_spec_payload(self, request: PreparedGenerationRequest) -> dict[str, Any]:

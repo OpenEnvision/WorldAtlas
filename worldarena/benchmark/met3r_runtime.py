@@ -1,3 +1,5 @@
+"""Subprocess runtime for MeT3R reconstruction-consistency metrics."""
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -38,6 +40,7 @@ MET3R_BACKBONE_REPOS = {
 
 
 def _project_root() -> Path:
+    """Project root -> Path."""
     return Path(__file__).resolve().parents[2]
 
 
@@ -48,6 +51,7 @@ def _runtime_cache_dir(name: str) -> Path:
 
 
 def resolve_met3r_root() -> Path:
+    """Resolve met3r root -> Path."""
     return (_project_root() / "thirdparty" / "met3r").resolve()
 
 
@@ -69,6 +73,7 @@ def resolve_met3r_runtime_python(runtime: dict[str, Any] | None = None) -> str |
 
 
 def inspect_met3r_layout() -> dict[str, Any]:
+    """Inspect met3r layout -> dict[str, Any]."""
     root = resolve_met3r_root()
     package_dir = root / "met3r"
     init_path = package_dir / "__init__.py"
@@ -112,6 +117,7 @@ def _coerce_runtime_bool(value: Any, default: bool = False) -> bool:
 
 
 def _default_device() -> str:
+    """Default device -> str."""
     try:
         import torch
     except ModuleNotFoundError:
@@ -200,7 +206,8 @@ def _subprocess_runtime_env(runtime: dict[str, Any] | None) -> dict[str, str]:
 def _to_uint8(frame: np.ndarray) -> np.ndarray:
     array = np.asarray(frame)
     if array.dtype == np.uint8:
-        return np.ascontiguousarray(array)
+        contiguous = np.ascontiguousarray(array)
+        return contiguous if contiguous.flags.writeable else contiguous.copy()
     return np.ascontiguousarray(np.clip(array, 0, 255).astype(np.uint8))
 
 
@@ -331,6 +338,7 @@ def _met3r_import_context(root: Path) -> Iterator[None]:
 
 
 def _clear_met3r_modules() -> None:
+    """Clear met3r modules."""
     for name in list(sys.modules):
         if name == "met3r" or name.startswith("met3r."):
             sys.modules.pop(name, None)
@@ -338,6 +346,7 @@ def _clear_met3r_modules() -> None:
 
 @contextmanager
 def _met3r_torch_hub_context() -> Iterator[None]:
+    """Met3r torch hub context -> Iterator[None]."""
     import torch
 
     original_load = torch.hub.load
@@ -359,6 +368,48 @@ def _met3r_torch_hub_context() -> Iterator[None]:
         yield
     finally:
         torch.hub.load = original_load
+
+
+def _adapt_dino_spatial_features(metric: Any, upsampler: str) -> None:
+    """Expose DINO patch tokens as a spatial map for non-FeatUp interpolation."""
+    if upsampler == "featup":
+        return
+    feature_model = getattr(metric, "feature_model", None)
+    if feature_model is None or not hasattr(feature_model, "get_intermediate_layers"):
+        return
+
+    import torch
+
+    class DinoSpatialFeatureAdapter(torch.nn.Module):
+        def __init__(self, model: Any) -> None:
+            super().__init__()
+            self.model = model
+
+        def forward(self, images: Any) -> Any:
+            tokens = self.model.get_intermediate_layers(images, n=1)[0]
+            patch_size = self.model.patch_embed.patch_size
+            if isinstance(patch_size, Sequence):
+                patch_height, patch_width = (int(patch_size[0]), int(patch_size[1]))
+            else:
+                patch_height = patch_width = int(patch_size)
+            grid_height = int(images.shape[-2]) // patch_height
+            grid_width = int(images.shape[-1]) // patch_width
+            patch_count = grid_height * grid_width
+            if int(tokens.shape[1]) == patch_count + 1:
+                tokens = tokens[:, 1:]
+            elif int(tokens.shape[1]) != patch_count:
+                raise ValueError(
+                    "DINO token count does not match the input patch grid: "
+                    f"tokens={int(tokens.shape[1])}, grid={grid_height}x{grid_width}"
+                )
+            return tokens.transpose(1, 2).reshape(
+                int(tokens.shape[0]),
+                int(tokens.shape[2]),
+                grid_height,
+                grid_width,
+            )
+
+    metric.feature_model = DinoSpatialFeatureAdapter(feature_model)
 
 
 @lru_cache(maxsize=4)
@@ -396,6 +447,7 @@ def _load_met3r_model(
                     distance=distance,
                     freeze=freeze,
                 )
+                _adapt_dino_spatial_features(metric, upsampler)
     except Exception:
         _clear_met3r_modules()
         raise
@@ -409,13 +461,33 @@ def _load_met3r_model(
 def _pair_batch_to_tensor(
     pairs: Sequence[tuple[np.ndarray, np.ndarray]],
     device: str,
+    img_size: int | None,
 ):
     import torch
+    from torch.nn import functional as F
+
+    def resize_image(image: Any, target_size: tuple[int, int]) -> Any:
+        if tuple(image.shape[-2:]) == target_size:
+            return image
+        return F.interpolate(
+            image.unsqueeze(0),
+            size=target_size,
+            mode="bilinear",
+            align_corners=False,
+            antialias=True,
+        ).squeeze(0)
 
     batch: list[Any] = []
     for reference_frame, prediction_frame in pairs:
         reference_tensor = torch.from_numpy(_to_uint8(reference_frame)).permute(2, 0, 1).float()
         prediction_tensor = torch.from_numpy(_to_uint8(prediction_frame)).permute(2, 0, 1).float()
+        target_size = (
+            (int(img_size), int(img_size))
+            if img_size is not None
+            else tuple(int(value) for value in prediction_tensor.shape[-2:])
+        )
+        reference_tensor = resize_image(reference_tensor, target_size)
+        prediction_tensor = resize_image(prediction_tensor, target_size)
         batch.append(torch.stack([reference_tensor, prediction_tensor], dim=0))
     tensor = torch.stack(batch, dim=0) / 127.5 - 1.0
     return tensor.to(device)
@@ -428,6 +500,23 @@ def _tensor_to_float_list(value: Any) -> list[float]:
         value = value.cpu()
     array = np.asarray(value, dtype=np.float32).reshape(-1)
     return [float(item) for item in array.tolist()]
+
+
+def _empty_overlap_penalty(distance: str) -> float:
+    """Return the worst raw score when MEt3R has no comparable pixels.
+
+    MEt3R's weighted reducer divides by ``mask.sum() + eps``.  An empty mask
+    therefore produces a raw zero, which is an artificial perfect score for
+    lower-is-better distances.  Treat no overlap as the configured distance's
+    worst endpoint instead, while retaining an explicit zero overlap ratio in
+    the details payload.
+    """
+    distance_name = distance.lower()
+    if distance_name in {"psnr", "ssim"}:
+        return 0.0
+    if distance_name == "mse":
+        return 4.0
+    return 2.0
 
 
 def compute_met3r_consistency(
@@ -467,18 +556,48 @@ def compute_met3r_consistency(
     import torch
 
     frame_scores: list[float] = []
+    overlap_ratios: list[float] = []
+    empty_overlap_pair_indices: list[int] = []
     with torch.inference_mode():
         for start in range(0, len(pairs), int(options["batch_size"])):
             batch_pairs = pairs[start : start + int(options["batch_size"])]
-            batch = _pair_batch_to_tensor(batch_pairs, str(options["device"]))
+            batch = _pair_batch_to_tensor(
+                batch_pairs,
+                str(options["device"]),
+                options["img_size"],
+            )
             outputs = metric(
                 images=batch,
-                return_overlap_mask=False,
+                return_overlap_mask=True,
                 return_score_map=False,
                 return_projections=False,
             )
             batch_scores = outputs[0] if isinstance(outputs, tuple) else outputs
-            frame_scores.extend(_tensor_to_float_list(batch_scores))
+            if not isinstance(outputs, tuple) or len(outputs) < 2:
+                raise RuntimeError("MEt3R did not return the requested overlap mask")
+            overlap_mask = outputs[1]
+            batch_score_values = _tensor_to_float_list(batch_scores)
+            batch_overlap_ratios = _tensor_to_float_list(
+                overlap_mask.float().flatten(start_dim=1).mean(dim=1)
+            )
+            if len(batch_score_values) != len(batch_overlap_ratios):
+                raise RuntimeError(
+                    "MEt3R returned mismatched score and overlap-mask batch sizes"
+                )
+            for offset, (score, overlap_ratio) in enumerate(
+                zip(batch_score_values, batch_overlap_ratios)
+            ):
+                if not np.isfinite(overlap_ratio) or overlap_ratio <= 0.0:
+                    empty_overlap_pair_indices.append(start + offset)
+                    overlap_ratio = 0.0
+                    score = _empty_overlap_penalty(str(options["distance"]))
+                elif not np.isfinite(score):
+                    raise ValueError(
+                        "MEt3R produced a non-finite score for frame pair "
+                        f"{start + offset}"
+                    )
+                frame_scores.append(float(score))
+                overlap_ratios.append(float(overlap_ratio))
 
     raw = float(np.mean(frame_scores))
     return {
@@ -486,7 +605,13 @@ def compute_met3r_consistency(
         "backend": "met3r",
         "details": {
             "frame_scores": [round(value, 4) for value in frame_scores],
+            "overlap_ratios": [round(value, 6) for value in overlap_ratios],
+            "mean_overlap_ratio": float(np.mean(overlap_ratios)),
             "pair_count": len(frame_scores),
+            "valid_pair_count": len(frame_scores) - len(empty_overlap_pair_indices),
+            "empty_overlap_pair_count": len(empty_overlap_pair_indices),
+            "empty_overlap_pair_indices": empty_overlap_pair_indices,
+            "empty_overlap_policy": "worst_raw_score",
             "source_root": str(resolve_met3r_root()),
             "device": str(options["device"]),
             "batch_size": int(options["batch_size"]),

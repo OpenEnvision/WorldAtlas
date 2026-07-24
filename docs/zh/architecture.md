@@ -1,6 +1,6 @@
 # 架构
 
-WorldArena 应该坚持“**基准优先**”，而不是“pipeline 优先”。仓库需要对 manifest、模型配置、指标和报告暴露出一套一致的契约，同时允许本地仓库、API 提供方和重量级指标源码在基准核心之外独立演进。
+WorldAtlas Arena 应该坚持“**基准优先**”，而不是“pipeline 优先”。仓库需要对 manifest、模型配置、指标和报告暴露出一套一致的契约，同时允许本地仓库、API 提供方和重量级指标源码在基准核心之外独立演进。
 
 ## 模块边界
 
@@ -11,13 +11,17 @@ WorldArena 应该坚持“**基准优先**”，而不是“pipeline 优先”�
 | `worldarena/models/` | 被评测模型与辅助运行时 | 本地仓库适配器、API 适配器、provider client、模型配置解析 |
 | `worldarena/common/` | 共享基础设施 | taxonomy、运行时布局、序列化 |
 | `config/models/` | 统一模型注册表 | 适用于本地模型与 API 模型的单一 YAML 格式 |
-| `thirdparty/` | 链接的上游代码 | 模型仓库和重型指标源码 checkout，但不放被 vendoring 的 benchmark 逻辑 |
+| `thirdparty/` | 上游代码 | 模型仓库和锁定版本的重型指标源码 checkout；指标 adapter 保留在主包内 |
+
+Official metric 的编排逻辑位于
+`worldarena/benchmark/official_backends/`。这些 adapter 直接复用
+`thirdparty/` 下的上游 checkout，不再将上游源码复制进 Python 包。
 
 关键约束是：评测逻辑不应按模型家族分叉。无论是 3D 模型、4D 模型、API 视频模型，还是本地 world model，都应该通过同一套模型配置契约和报告契约进入系统。
 
 ## 核心契约
 
-WorldArena 的公开接口应以数据契约为中心。内部 runner 和 adapter 可以演进，但下面这些产物决定了一次 run 是否可复现、可对比、可调试：
+WorldAtlas Arena 的公开接口应以数据契约为中心。内部 runner 和 adapter 可以演进，但下面这些产物决定了一次 run 是否可复现、可对比、可调试：
 
 | 契约 | 归属 | 稳定字段 | 扩展规则 |
 | --- | --- | --- | --- |
@@ -25,7 +29,7 @@ WorldArena 的公开接口应以数据契约为中心。内部 runner 和 adapte
 | Model runtime config | `config/models/*.yaml`，对应 `ModelRuntimeConfig` | 模型身份、`backend_type`、runtime entrypoint 或 API provider、`supported_suites`、`task_families`、`artifact_types`、`control_signals`、`roles`、`generation`、`metric_overrides` | 本地仓库、Python module、SDK API 和 HTTP API 共用一套 YAML 形状。provider 私有信息放进 `api` 或 `metadata`，不要改变顶层契约。 |
 | Prediction artifact | adapter / provider 写到 `predictions/` 的输出 | `<suite>/<prediction_stem>.<ext>` 或 `<prediction_stem>.<ext>`，扩展名由 prediction modality 决定 | prediction 是被评测的主产物。额外帧、mesh、depth map 或日志应作为显式 sidecar，不应改变必需 prediction 文件名。 |
 | Metric output | `per_sample_scores.jsonl` 中的 `MetricOutput` | `raw`、`normalized`、`backend`、`details`、`protocol_name`、`eligibility_status`、`error` | raw measurement 和 normalized score 分开存。用 `official`、`diagnostic`、`not_applicable` 表达聚合语义，不要把这些语义编码进指标名。 |
-| Report bundle | `run_manifest.json`、summary、breakdown 和 `leaderboard.csv` | run metadata、missing prediction 数量、reported metrics、官方 summary、诊断 summary、failure summary、domain breakdown | 保持 official、diagnostic、not-applicable 和 failure 四类输出分离。除非显式版本化权重契约，否则不要新增 benchmark 级总分。 |
+| Report bundle | `run_manifest.json`、summary、breakdown 和 `leaderboard.csv` | run metadata、missing prediction 数量、reported metrics、官方 summary、非 official summary、failure summary、domain breakdown | 保持 official、diagnostic、not-applicable 和 failure 四类输出分离。除非显式版本化权重契约，否则不要新增 benchmark 级总分。 |
 
 生命周期应保持单向：dataset scanner 生成 inventory，manifest 冻结样本语义，model adapter 按 `prediction_stem` 生成 prediction，metric 只读取 manifest 与 prediction artifact，report 只从 metric output 聚合。adapter 不应通过数据集目录结构判断资格，metric 也不应按模型家族分叉。
 

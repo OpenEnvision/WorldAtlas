@@ -1,5 +1,8 @@
+"""Metric implementations for photometric and temporal consistency."""
+
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from worldarena.benchmark.media import LoadedMedia
@@ -25,8 +28,42 @@ GVGC_GEOMETRY_METRICS = {
     "feature_match_coverage",
 }
 
+_GVGC_GEOMETRY_CACHE_KEY: tuple[Any, ...] | None = None
+_GVGC_GEOMETRY_CACHE_PAYLOAD: dict[str, Any] | None = None
+_GVGC_GEOMETRY_CACHE_FRAMES: list[Any] | None = None
+
+
+def _shared_gvgc_geometry_payload(
+    prediction: LoadedMedia,
+    runtime: dict[str, Any],
+) -> dict[str, Any]:
+    """Reuse one geometry analysis across the three per-sample sub-metrics."""
+    global _GVGC_GEOMETRY_CACHE_FRAMES, _GVGC_GEOMETRY_CACHE_KEY, _GVGC_GEOMETRY_CACHE_PAYLOAD
+
+    runtime_key = json.dumps(runtime, sort_keys=True, separators=(",", ":"), default=str)
+    cache_key = (
+        prediction.path,
+        prediction.native_frame_count,
+        tuple(prediction.sampled_frame_indices),
+        runtime_key,
+    )
+    if (
+        prediction.frames is not _GVGC_GEOMETRY_CACHE_FRAMES
+        or cache_key != _GVGC_GEOMETRY_CACHE_KEY
+        or _GVGC_GEOMETRY_CACHE_PAYLOAD is None
+    ):
+        _GVGC_GEOMETRY_CACHE_PAYLOAD = compute_gvgc_geometry(
+            list(prediction.frames),
+            runtime=runtime,
+        )
+        _GVGC_GEOMETRY_CACHE_FRAMES = prediction.frames
+        _GVGC_GEOMETRY_CACHE_KEY = cache_key
+    return _GVGC_GEOMETRY_CACHE_PAYLOAD
+
 
 class ReprojectionErrorMetric(OfficialMetric):
+    """Score multi-view geometric consistency via DROID-SLAM reprojection error."""
+
     supported_backends = REPROJECTION_ERROR_BACKENDS
     auto_backend = "droid_slam"
 
@@ -36,6 +73,7 @@ class ReprojectionErrorMetric(OfficialMetric):
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Attach optional official-runtime overrides for reprojection scoring."""
         super().__init__("reprojection_error", backend, normalization)
         self.runtime = dict(runtime or {})
 
@@ -45,6 +83,7 @@ class ReprojectionErrorMetric(OfficialMetric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Run DROID-SLAM reprojection error on the generated video path."""
         del sample
         del reference
 
@@ -74,6 +113,8 @@ class ReprojectionErrorMetric(OfficialMetric):
 
 
 class OpticalFlowAepeMetric(OfficialMetric):
+    """Score photometric consistency via SEA-RAFT average end-point error."""
+
     supported_backends = OPTICAL_FLOW_AEPE_BACKENDS
     auto_backend = "sea_raft"
 
@@ -83,6 +124,7 @@ class OpticalFlowAepeMetric(OfficialMetric):
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Attach optional official-runtime overrides for optical-flow AEPE."""
         super().__init__("optical_flow_aepe", backend, normalization)
         self.runtime = dict(runtime or {})
 
@@ -92,6 +134,7 @@ class OpticalFlowAepeMetric(OfficialMetric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Run SEA-RAFT optical-flow AEPE on the generated video path."""
         del sample
         del reference
 
@@ -121,6 +164,8 @@ class OpticalFlowAepeMetric(OfficialMetric):
 
 
 class GvgcGeometryMetric(Metric):
+    """Expose GVGC epipolar and feature-match geometry scores from one backend pass."""
+
     def __init__(
         self,
         metric_name: str,
@@ -128,6 +173,7 @@ class GvgcGeometryMetric(Metric):
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Register one GVGC geometry sub-metric and shared runtime options."""
         if metric_name not in GVGC_GEOMETRY_METRICS:
             raise KeyError(f"unsupported GVGC geometry metric: {metric_name}")
         super().__init__(metric_name, backend, normalization)
@@ -135,6 +181,7 @@ class GvgcGeometryMetric(Metric):
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the default GVGC geometry backend for epipolar metrics."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -148,6 +195,7 @@ class GvgcGeometryMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Extract one GVGC geometry sub-metric from a shared video analysis pass."""
         del sample
         del reference
 
@@ -168,7 +216,7 @@ class GvgcGeometryMetric(Metric):
             )
 
         try:
-            payload = compute_gvgc_geometry(list(prediction.frames), runtime=self.runtime)
+            payload = _shared_gvgc_geometry_payload(prediction, self.runtime)
             details.update(payload.get("details", {}))
             raw_payload = dict(payload.get("raw") or {})
             raw_value = raw_payload.get(self.name)

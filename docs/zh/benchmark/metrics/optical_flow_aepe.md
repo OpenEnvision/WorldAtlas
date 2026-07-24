@@ -1,114 +1,102 @@
 # Optical Flow AEPE
 
-`optical_flow_aepe` 用来衡量生成视频的 photometric consistency，也就是模型能否在连续帧之间生成稳定、一致的视觉外观。
-它通过估计相邻帧之间的前向和后向光流，计算点在“前向追踪再反向追踪”之后能否回到原始位置。
-误差越小，说明画面中的纹理、身份、局部结构和可见区域在短时间内越稳定；误差越大，通常意味着存在纹理闪烁、身份漂移、物体消失或局部外观突变等不一致现象。
+Optical Flow AEPE 通过正反向光流往返量化生成视频的**短时 photometric 一致**。它衡量局部外观在相邻帧间是否稳定，而非运动是否与 ground truth 一致。
 
-## 这个指标测什么
+对相邻帧 \(A\)、\(B\)，在中心裁剪区采样点 \(p_{A,i}\)。正向流 \(F_{A\to B}\) 将其跟踪至 \(p_{B,i} = p_{A,i} + F_{A\to B}(p_{A,i})\)；反向流返回 \(p'_{A,i} = p_{B,i} + F_{B\to A}(p_{B,i})\)。帧对平均端点误差为
 
-- 相邻帧之间的短程视觉稳定性。
-- 前向光流和后向光流是否形成一致的 cycle。
-- 生成对象的身份、纹理和局部外观是否在连续帧中保持稳定。
+\[
+e_{\mathrm{AEPE}} = \frac{1}{N}\sum_{i=1}^{N} \left\| p_{A,i} - p'_{A,i} \right\|_2
+\tag{1}
+\]
 
-## 原理说明
+原始得分对所有相邻帧对的 \(e_{\mathrm{AEPE}}\) 取均值。WorldArena 在经验范围 \([0, 1.192]\) 上反向归一化。误差越低（归一化得分越高）表示局部外观越稳定。SEA-RAFT 计算成功时为 **official**。
 
-给定连续两帧 \(A\) 和 \(B\)，指标先在中心裁剪区域内采样一组点 \(p_A\)。
-中心裁剪可以减少边界区域由于遮挡、画幅外运动或光流外推带来的噪声，使分数更集中地反映主体区域的外观一致性。
-
-随后，指标使用从 \(A\) 到 \(B\) 的前向光流 \(F_{A\rightarrow B}\) 把这些点追踪到下一帧：
-
-!!! info "前向追踪"
-
-    \[
-    p_B
-    =
-    p_A
-    +
-    F_{A\rightarrow B}(p_A)
-    \]
-
-接着，再使用从 \(B\) 到 \(A\) 的后向光流 \(F_{B\rightarrow A}\) 把同一批点追踪回原始帧：
-
-!!! info "反向追踪"
-
-    \[
-    p'_A
-    =
-    p_B
-    +
-    F_{B\rightarrow A}(p_B)
-    \]
-
-如果生成视频在视觉外观上是稳定的，同一个局部纹理或物体点从 \(A\) 追踪到 \(B\)，再从 \(B\) 追踪回 \(A\) 后，应当接近原始位置，即 \(p'_A \approx p_A\)。
-如果视频中发生了纹理闪烁、物体身份变化、局部结构漂移或物体突然消失，正反向追踪就很难闭合，最终的 endpoint error 会变大。
-
-## 具体算法
-
-1. WorldArena 会把整段预测视频解码成 PNG 帧。
-2. 对每一对相邻帧 `(I_t, I_{t+1})`，被包装的第三方指标会运行两次 `SEA-RAFT` [[Wang et al., 2024](#reference)]：
-    - 前向光流 `f_{t->t+1}`
-    - 后向光流 `f_{t+1->t}`
-3. 两个光流场都会被裁成中心区域，参数是 `crop = 30`。
-4. 对裁剪区域里的每个采样点 \(p_{A,i}\)，指标执行一次 round trip：
-    - 先用前向光流 \(F_{A\rightarrow B}(p_{A,i})\) 从第 \(A\) 帧追踪到第 \(B\) 帧。
-    - 再在目标位置采样后向光流 \(F_{B\rightarrow A}(p_{B,i})\)，把点追踪回第 \(A\) 帧。
-    - 比较返回位置 \(p'_{A,i}\) 和原始位置 \(p_{A,i}\) 的欧氏距离。
-5. 单对帧的 photometric consistency error 定义为全部采样点的 Average End-Point Error（AEPE）。
-6. 原始指标值是所有相邻帧对的 AEPE 平均值。
-7. WorldArena 用 `empirical_min = 0.0`、`empirical_max = 1.192`、`higher_is_better = false` 做归一化。
-
-## 误差公式
-
-对一对相邻帧，令中心裁剪区域内共有 \(N\) 个采样点。
-第 \(i\) 个点的原始位置为 \(p_{A,i}\)，经过前向和后向光流追踪后返回的位置为 \(p'_{A,i}\)。
-该帧对的 photometric consistency error 为：
-
-!!! info "核心公式"
-
-    \[
-    e_{\mathrm{photometric}}
-    =
-    \frac{1}{N}
-    \sum_{i=1}^{N}
-    \left\lVert
-        p_{A,i}
-        -
-        p'_{A,i}
-    \right\rVert_2
-    \]
-
-其中，\(N\) 是中心裁剪区域内参与计算的采样点数量；\(\lVert\cdot\rVert_2\) 表示二维像素位置之间的欧氏距离。
-最终视频级误差会对整段生成视频中的所有相邻帧对继续求平均；模型级 photometric consistency error 则在评测集内所有生成视频上继续聚合。
-AEPE 越高，表示正反向光流越难闭合，视觉外观越不稳定。
-
-## 输入与输出
-
-| 项目 | 当前实现 |
-| --- | --- |
-| 预测输入 | 完整解码后的预测视频 |
-| 参考输入 | 无 |
-| 标注输入 | 无 |
-| 原始输出 | 单个前后向一致性误差标量 |
-| 归一化输出 | 单个 `[0, 1]` 标量，越高越好 |
-| 细节字段 | `frame_count`、`native_score` |
-| 失败形式 | 如果 SEA-RAFT runtime 不可用，则返回 `raw = null`、`normalized = null` 和错误字符串 |
+<!-- metric-examples:start -->
+## 代表性同 Case 对比
+每个展示块先给出该 case 的 input image 和完全一致的展示 prompt，然后比较模型生成结果。paired 展示必须满足 input image 相同、prompt 文本相同，并且一个模型高分、一个模型低分。若当前正式快照中该 metric 没有这种跨模型同 case pair，则单独展示高分/低分极值样例，不把它们伪装成同 case 对比。
+机器可读 paired 导出： `docs/assets/metric_examples/paired_manifest.csv`.
+### `optical_flow_aepe`
+<div class="metric-case-stack">
+<article class="metric-case-exhibit metric-case-exhibit--fallback">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/fb408b9d36bc__image_static_stylized_terrestrial_landscape_0111.jpg" alt="输入图像: image_static_stylized_terrestrial_landscape_0111" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · 同一输入图像 + 同一 prompt · 分差 0.0000</div>
+      <h4><code>image_static_stylized_terrestrial_landscape_0111</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / terrestrial_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera move left. A stylized mountain landscape with mountain slope, rocks, and vegetation.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+  <p class="metric-case-note">当前正式快照中没有可用的跨模型同 case 配对；以下为各自极值样例，而非同一输入下的模型对比。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_stylized_terrestrial_landscape_0111">
+      <source src="../../../assets/metric_examples/c396bdd2b691__ac3d-image-static__image_static_stylized_terrestrial_landscape_0111.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9841</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_stylized_verdant_landscape_0023">
+      <source src="../../../assets/metric_examples/ae8594b1468b__ac3d-image-static__image_static_stylized_verdant_landscape_0023.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--fallback">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/3e63ea27eb16__image_static_photorealistic_terrestrial_landscape_0016.jpg" alt="输入图像: image_static_photorealistic_terrestrial_landscape_0016" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 2 · 同一输入图像 + 同一 prompt · 分差 0.0000</div>
+      <h4><code>image_static_photorealistic_terrestrial_landscape_0016</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / terrestrial_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera pull out. An expansive valley with forest, distant mountains, and sky.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+  <p class="metric-case-note">当前正式快照中没有可用的跨模型同 case 配对；以下为各自极值样例，而非同一输入下的模型对比。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_terrestrial_landscape_0016">
+      <source src="../../../assets/metric_examples/438437dfd51c__ac3d-image-static__image_static_photorealistic_terrestrial_landscape_0016.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9830</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_living_spaces_0071">
+      <source src="../../../assets/metric_examples/3bf118bc044f__ac3d-image-static__image_static_photorealistic_living_spaces_0071.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->
 
 ## 参考文献 {#reference}
 
 !!! quote "SEA-RAFT: Simple, Efficient, Accurate RAFT for Optical Flow"
 
-    Yihan Wang, Lahav Lipson, and Jia Deng.  
-    European Conference on Computer Vision (ECCV), 2024.
-
-??? note "BibTeX"
-
-    ```bibtex
-    @inproceedings{wang2024sea,
-        title = {Sea-raft: Simple, efficient, accurate raft for optical flow},
-        author = {Wang, Yihan and Lipson, Lahav and Deng, Jia},
-        booktitle = {European Conference on Computer Vision},
-        pages = {36--54},
-        year = {2024},
-        organization = {Springer},
-    }
-    ```
+    Wang et al., ECCV 2024.
+    [https://arxiv.org/abs/2405.14793](https://arxiv.org/abs/2405.14793)

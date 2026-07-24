@@ -1,3 +1,5 @@
+"""Subprocess runner for WonderWorld single-sample inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -31,7 +33,7 @@ def _parse_bool(value: str | bool) -> bool:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena WonderWorld subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena WonderWorld subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--entrypoint", default="run.py", type=str)
     parser.add_argument("--conditioning_image", required=True, type=str)

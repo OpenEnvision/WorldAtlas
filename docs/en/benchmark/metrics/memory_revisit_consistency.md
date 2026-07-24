@@ -1,12 +1,12 @@
 # Memory Revisit Consistency
 
-`memory_revisit_consistency` evaluates 360-degree revisit rollouts: the model should move away from the starting view and return to the same generated scene.
+**memory_revisit_consistency** evaluates 360-degree revisit rollouts: the model should move away from the starting view and return to the same generated scene.
 
 ## What It Measures
 
 - whether the first and last frames close the visual loop
 - whether intermediate frames show enough progress to avoid rewarding a static video
-- a diagnostic signal for orbit, revisit, and loop-closing samples
+- intended for orbit, revisit, and loop-closing samples
 
 ## Current Algorithm
 

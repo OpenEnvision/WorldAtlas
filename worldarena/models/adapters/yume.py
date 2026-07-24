@@ -1,3 +1,9 @@
+"""Yume model adapter for WorldAtlas Arena.
+
+Yume generates camera-controlled videos from a conditioning image. Camera motion
+is derived from ``camera_path`` tokens or explicit movement config fields.
+"""
+
 from __future__ import annotations
 
 import json
@@ -37,7 +43,7 @@ _WORLD_ARENA_ACTION_SOURCE_VALUES = {
     "prompt_target",
 }
 _YUME_TEXT_ACTIONS = {
-    "fixed": ("Person stays still.", "exact_no_motion"),
+    "fixed": ("Camera remains fixed.", "exact_no_motion"),
     "push_in": ("Person moves forward.", "exact_translation"),
     "pull_out": ("Person moves backward.", "exact_translation"),
     "move_left": ("Person moves left.", "exact_translation"),
@@ -98,15 +104,7 @@ def _action_payload_for_sample(generation: dict[str, Any], sample: BenchmarkSamp
     for camera_token in camera_tokens:
         mapped = _YUME_TEXT_ACTIONS.get(camera_token)
         if mapped is None:
-            unsupported_tokens.append(camera_token)
-            approximations.append(
-                {
-                    "camera_token": camera_token,
-                    "text_action": "",
-                    "type": "unsupported_no_text_action",
-                }
-            )
-            continue
+            raise ValueError(f"unsupported YUME camera token: {camera_token!r}")
         text_action, approximation = mapped
         text_actions.append(text_action)
         if not approximation.startswith("exact"):
@@ -119,9 +117,7 @@ def _action_payload_for_sample(generation: dict[str, Any], sample: BenchmarkSamp
             )
 
     control_source = "camera_path_text"
-    if unsupported_tokens:
-        control_source = "unsupported_camera_path_text"
-    elif approximations:
+    if approximations:
         control_source = "coarse_camera_path_text"
 
     return {
@@ -152,8 +148,14 @@ def _aligned_prompt_for_sample(
 
 
 class YumeAdapter(ModelAdapter):
+    """Generate camera-controlled videos via the Yume upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
 
     def generate_batch(
         self,

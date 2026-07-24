@@ -1,3 +1,5 @@
+"""LLM-judge physics metric implementations."""
+
 from __future__ import annotations
 
 import json
@@ -24,6 +26,7 @@ def _cache_key(
     backend: str,
     runtime: dict[str, Any],
 ) -> tuple[str, str, int, int, str, str]:
+    """Key judge calls by sample, video identity, backend, and runtime fingerprint."""
     path = Path(prediction.path)
     stat = path.stat()
     runtime_token = json.dumps(runtime, sort_keys=True, default=str)
@@ -31,11 +34,15 @@ def _cache_key(
 
 
 class PhysicsJudgeMetric(Metric):
+    """Expose one LLM physics-judge sub-score from a shared provider evaluation."""
+
     def __init__(self, metric_name: str, backend: str, normalization: dict[str, Any], runtime: dict[str, Any]) -> None:
+        """Bind a judge sub-metric name with provider runtime and normalization."""
         super().__init__(metric_name, backend, normalization)
         self.runtime = dict(runtime)
 
     def _resolve_backend(self) -> str:
+        """Select OpenAI or Gemini judge backend, honoring runtime default_backend."""
         auto_backend = str(self.runtime.get("default_backend", "openai_judge"))
         return resolve_metric_backend(
             metric_name=self.name,
@@ -52,6 +59,7 @@ class PhysicsJudgeMetric(Metric):
         reference: LoadedMedia,
         backend: str,
     ) -> dict[str, Any]:
+        """Call the physics judge once and cache the full multi-axis response."""
         key = _cache_key(sample=sample, prediction=prediction, backend=backend, runtime=self.runtime)
         cached = _PHYSICS_JUDGE_RESULT_CACHE.get(key)
         if cached is not None:
@@ -72,6 +80,7 @@ class PhysicsJudgeMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Return one physics-judge axis score when physics_spec metadata is present."""
         if not sample.physics_spec:
             return MetricOutput(
                 raw=None,

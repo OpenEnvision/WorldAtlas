@@ -1,3 +1,5 @@
+"""Subprocess runner for InfiniteWorld inference inside the upstream model repo."""
+
 from __future__ import annotations
 
 import argparse

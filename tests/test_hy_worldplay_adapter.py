@@ -20,7 +20,7 @@ from worldarena.models.registry import build_model_adapter
 
 
 def _patch_workspace(monkeypatch, tmp_path: Path) -> tuple[Path, Path]:
-    workspace_root = tmp_path / "WorldArena"
+    workspace_root = tmp_path / "WorldAtlas Arena"
     ckpt_root = workspace_root / "ckpt"
     monkeypatch.setattr(checkpoints, "PROJECT_ROOT", workspace_root)
     monkeypatch.setattr(checkpoints, "CANONICAL_CHECKPOINT_ROOT", ckpt_root)

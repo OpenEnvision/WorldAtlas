@@ -1,3 +1,5 @@
+"""Subprocess runner for Matrix-Game 1 inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -12,7 +14,7 @@ from worldarena.common.checkpoints import apply_checkpoint_env, resolve_checkpoi
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena Matrix-Game-1 runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena Matrix-Game-1 runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", required=True, type=str)
     parser.add_argument("--actions_json", required=True, type=str)

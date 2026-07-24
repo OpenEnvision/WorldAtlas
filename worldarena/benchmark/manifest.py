@@ -1,3 +1,5 @@
+"""Build benchmark manifests from discovered dataset assets."""
+
 from __future__ import annotations
 
 import json

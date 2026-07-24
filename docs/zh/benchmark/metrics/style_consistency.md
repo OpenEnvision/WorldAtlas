@@ -1,133 +1,303 @@
 # Style Consistency
 
-`style_consistency` 用来衡量预测结果在配对锚点帧上保留参考结果整体风格统计的程度。
-它使用 ImageNet 预训练的 VGG19 [[Simonyan and Zisserman, 2014](#reference)] 作为特征提取器，在多个卷积层上比较预测帧和参考帧的 Gram matrix。
-如果两张图在颜色、纹理、局部笔触和粗粒度外观统计上相似，它们的 VGG 特征通道相关性也会更接近，最终 style consistency 分数会更高。
+本指标用于评估生成 rollout 内视觉风格（色彩、纹理与粗粒度外观统计）的跨场景稳定性。给定按评测协议抽取的 anchor 帧序列 $\{I_t\}_{t=1}^{T}$（$T \geq 2$），以首帧 $I_1$ 为风格参考，将后续各幕 anchor $I_{d+1}$（$d \in [1, T-1]$）与 $I_1$ 在 VGG19 多层 Gram 表征上对齐比较；**不使用** ground-truth reference 参与打分。
 
-## 这个指标测什么
+对每帧 $I_t$，先经 resize（CUDA 上为 $512 \times 512$，CPU 上为 $128 \times 128$）、`ToTensor` 及 ImageNet 均值–方差归一化，再送入 VGG19 `features` 前向传播。在卷积层 $\mathrm{conv}_1, \ldots, \mathrm{conv}_5$ 的输出处（ReLU 之前）提取特征图 $F_{t,l} \in \mathbb{R}^{C \times H \times W}$。Gram 矩阵定义为
 
-- 色彩、纹理分布和粗粒度外观统计的相似性。
-- 参考条件下的风格保持。
-- 预测结果是否维持与参考锚点相近的视觉风格、材质感和局部统计。
+\[
+G(F)
+=
+\frac{
+    \mathrm{vec}(F)\,\mathrm{vec}(F)^{\top}
+}{
+    C \cdot H \cdot W
+}
+\tag{1}
+\]
 
-## 原理说明
+其中 $\mathrm{vec}(\cdot)$ 为向量化算子。帧 $d+1$ 在层 $l$ 上的风格距离为
 
-VGG19 是一个深层卷积网络，原本用于大规模图像分类。
-在这里，它不是用来判断图像类别，而是作为固定的视觉特征提取器。
-浅层卷积特征通常更关注颜色、边缘和局部纹理；稍深一些的层会编码更大感受野下的重复结构和粗粒度外观模式。
-因此，在多层 VGG19 特征上比较参考帧和预测帧，可以得到一个关于整体风格是否一致的代理信号。
+\[
+\delta_{d,l}
+=
+\mathrm{MSE}\!\left(
+    G(F_{d+1,l}),\,
+    G(F_{1,l})
+\right)
+\tag{2}
+\]
 
-Gram matrix 用来描述同一层特征通道之间的相关性。
-它会弱化精确空间位置，更多保留“哪些纹理和颜色模式共同出现”这类统计信息。
-这也是神经风格迁移中常用的风格表示方式：两张图即使局部内容位置不同，只要纹理、色彩和通道统计接近，它们的 Gram matrix 仍会相似。
-因此，`style_consistency` 适合衡量生成结果是否在参考约束下保持了整体视觉风格。
+单帧距离为五层距离之和：
 
-## 具体算法
+\[
+d_d
+=
+\sum_{l \in \{\mathrm{conv}_1, \ldots, \mathrm{conv}_5\}}
+\delta_{d,l}
+\tag{3}
+\]
 
-1. WorldArena 会把参考锚点帧和预测锚点帧一一配对。对视频，配对由当前 official 协议帧决定；对图片，就是单张图配单张图。
-2. 每一对图像都会先做 VGG19 特征提取所需的 resize 和 ImageNet normalize。
-3. 默认 `reference` 后端使用 `torchvision.models.vgg19(weights=VGG19_Weights.IMAGENET1K_V1)`，并冻结全部参数。
-4. 在 VGG19 features 的第 `0`、`2`、`5`、`7`、`10` 层提取特征激活。
-5. 对每个提取层 `l`，计算参考和预测特征的 Gram matrix，然后计算层距离 `d_{i,l} = MSE(Gram(ref_{i,l}), Gram(pred_{i,l}))`。
-6. 帧距离定义为 `d_i = mean_l d_{i,l}`。
-7. 帧相似度定义为 `s_i = clamp(1 / (1 + d_i), 0, 1)`。
-8. 原始指标值为 `raw = mean_i s_i`。由于当前输出本来就在 `[0, 1]`，benchmark 归一化实际上是恒等映射。
+原始分数取后续 anchor 帧距离的算术平均（**越低越好**）：
 
-## 误差公式
+\[
+\mathrm{raw}
+=
+\frac{1}{T-1}
+\sum_{d=1}^{T-1} d_d
+\tag{4}
+\]
 
-对第 \(i\) 对参考帧和预测帧，记它们在 VGG19 第 \(l\) 个选定层的特征为 \(F^{ref}_{i,l}\) 和 \(F^{pred}_{i,l}\)。
-若特征形状为 \(C_l \times H_l \times W_l\)，先将空间维度展平为 \(C_l \times H_lW_l\)，Gram matrix 定义为：
+归一化采用配置的经验界 $\varepsilon_{\min}=0$、$\varepsilon_{\max}=0.007$（`higher_is_better=false`）。先将 raw 钳位至经验区间，再映射为 $[0,1]$ 且**越高越好**的归一化分数：
 
-!!! info "Gram matrix"
+\[
+\mathrm{raw}'
+=
+\mathrm{clip}(\mathrm{raw},\, \varepsilon_{\min},\, \varepsilon_{\max})
+\tag{5}
+\]
 
-    \[
-    G(F_{i,l})
-    =
-    \frac{
-        F_{i,l}F_{i,l}^{\top}
-    }{
-        C_l H_l W_l
-    }
-    \]
+\[
+S_{\mathrm{style}}
+=
+1
+-
+\frac{
+    \mathrm{raw}' - \varepsilon_{\min}
+}{
+    \varepsilon_{\max} - \varepsilon_{\min}
+}
+\tag{6}
+\]
 
-其中，\(G(F_{i,l})\) 表示该层不同特征通道之间的归一化相关性。
-每一层的风格距离为：
-
-!!! info "层级风格距离"
-
-    \[
-    d_{i,l}
-    =
-    \operatorname{MSE}
-    \left(
-        G(F^{ref}_{i,l}),
-        G(F^{pred}_{i,l})
-    \right)
-    \]
-
-单帧配对的平均风格距离和相似度为：
-
-!!! info "帧级分数"
-
-    \[
-    d_i
-    =
-    \frac{1}{|\mathcal{L}|}
-    \sum_{l\in\mathcal{L}} d_{i,l},
-    \qquad
-    s_i
-    =
-    \operatorname{clamp}
-    \left(
-        \frac{1}{1+d_i},
-        0,
-        1
-    \right)
-    \]
-
-最终视频或样本级分数为全部配对锚点帧的平均值：
-
-!!! info "最终分数"
-
-    \[
-    s_{\mathrm{style}}
-    =
-    \frac{1}{N}
-    \sum_{i=1}^{N}
-    s_i
-    \]
-
-其中，\(\mathcal{L}=\{0,2,5,7,10\}\) 是当前实现中使用的 VGG19 feature 层索引，\(N\) 是配对锚点帧数量。
-分数越高，表示预测结果和参考结果在 VGG 风格统计上越接近。
-
-## 输入与输出
-
-| 项目 | 当前实现 |
-| --- | --- |
-| 预测输入 | 预测锚点帧 |
-| 参考输入 | 配对的参考锚点帧 |
-| 标注输入 | 无 |
-| 原始输出 | `[0, 1]` 上的单个标量风格相似度 |
-| 归一化输出 | 同一个 `[0, 1]` 标量 |
-| 细节字段 | `frame_scores`、`native_frame_distances`、`native_layer_distances` |
-| 失败形式 | 如果 VGG backend 不可用，则返回 `raw = null`、`normalized = null` 和错误字符串 |
-
+<!-- metric-examples:start -->
+## 代表性同 Case 对比
+每个展示块先给出该 case 的 input image 和完全一致的展示 prompt，然后比较模型生成结果。paired 展示必须满足 input image 相同、prompt 文本相同，并且一个模型高分、一个模型低分。若当前正式快照中该 metric 没有这种跨模型同 case pair，则单独展示高分/低分极值样例，不把它们伪装成同 case 对比。
+机器可读 paired 导出： `docs/assets/metric_examples/paired_manifest.csv`.
+### `style_consistency`
+<div class="metric-case-stack">
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/ce2c23333aee__image_static_stylized_verdant_landscape_0035.jpg" alt="输入图像: image_static_stylized_verdant_landscape_0035" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_static_stylized_verdant_landscape_0035</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / verdant_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera pan right. A mountain valley with stream, rocks, and pine trees. Camera move right. A mountain valley with wooden bridge, stream, and pine trees. Camera pull out. A mountain valley with open meadow, wildflowers, and pine trees.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_stylized_verdant_landscape_0035">
+      <source src="../../../assets/metric_examples/2dbcfaa7a1f7__dreamx_world__image_static_stylized_verdant_landscape_0035.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_stylized_verdant_landscape_0035">
+      <source src="../../../assets/metric_examples/3266a5a9d6da__yume-sample5b-missing-reverse-5s-target__image_static_stylized_verdant_landscape_0035.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/03e3383334ad__image_static_stylized_public_spaces_0059.jpg" alt="输入图像: image_static_stylized_public_spaces_0059" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 2 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_static_stylized_public_spaces_0059</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / indoor / public_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera orbit right. A grand library hall with bookshelves, reading table, and chairs.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_stylized_public_spaces_0059">
+      <source src="../../../assets/metric_examples/f4a431310e49__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_public_spaces_0059.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_stylized_public_spaces_0059">
+      <source src="../../../assets/metric_examples/2d56c790c720__yume-sample5b-missing-reverse-5s-target__image_static_stylized_public_spaces_0059.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/8007f16e0e9e__image_static_stylized_passageways_0059.jpeg" alt="输入图像: image_static_stylized_passageways_0059" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 3 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_static_stylized_passageways_0059</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / indoor / passageways</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera pan right. A passageways scene with hallway, doors, and wall art. Camera move right. A passageways scene with hallway, doors, and window. Camera pull out. A living room with sofa, coffee table, and television.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_stylized_passageways_0059">
+      <source src="../../../assets/metric_examples/aa3d2a84e53a__longcat-video-image-static-8gpu-20260612_133950__image_static_stylized_passageways_0059.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_stylized_passageways_0059">
+      <source src="../../../assets/metric_examples/2434f143dbc5__yume-sample5b-missing-reverse-5s-target__image_static_stylized_passageways_0059.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/daca1c8e0ccc__image_static_photorealistic_dining_spaces_0150.jpg" alt="输入图像: image_static_photorealistic_dining_spaces_0150" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 4 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_static_photorealistic_dining_spaces_0150</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / dining_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera pan left. A living area with fireplace, chairs, and wall sculpture.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_dining_spaces_0150">
+      <source src="../../../assets/metric_examples/0bcc7d417411__wan22-image-static-8gpu-20260612_160808__image_static_photorealistic_dining_spaces_0150.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_dining_spaces_0150">
+      <source src="../../../assets/metric_examples/6122df6dd5c2__yume-sample5b-image-static-dynamic-5s__image_static_photorealistic_dining_spaces_0150.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/5d77fb09f163__image_static_stylized_public_spaces_0146.png" alt="输入图像: image_static_stylized_public_spaces_0146" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 5 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_static_stylized_public_spaces_0146</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / indoor / public_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera pan left. A futuristic facility with control panels, holographic displays, and neon lights. Camera move left. A futuristic facility with interactive kiosks, virtual reality stations, and holographic displays. Camera pull out. A futuristic facility with security checkpoint, automated doors, and interactive kiosks.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_stylized_public_spaces_0146">
+      <source src="../../../assets/metric_examples/5142ed71bc6a__lingbot_world__image_static_stylized_public_spaces_0146.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_stylized_public_spaces_0146">
+      <source src="../../../assets/metric_examples/9f3e178a8bf5__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_public_spaces_0146.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/a87167debc30__image_static_stylized_passageways_0162.png" alt="输入图像: image_static_stylized_passageways_0162" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 6 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_static_stylized_passageways_0162</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / indoor / passageways</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera pan right. An elegant passageway with glass walls, light fixtures, and adjacent corridor. Camera move right. An elegant passageway with skylight, potted plants, and atrium. Camera pull out. A lobby area with seating and reception desk.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_stylized_passageways_0162">
+      <source src="../../../assets/metric_examples/722f5aa4e411__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_passageways_0162.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_stylized_passageways_0162">
+      <source src="../../../assets/metric_examples/a390dd34f900__yume-sample5b-missing-reverse-5s-target__image_static_stylized_passageways_0162.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->
 
 ## 参考文献 {#reference}
 
 !!! quote "Very Deep Convolutional Networks for Large-Scale Image Recognition"
 
-    Karen Simonyan and Andrew Zisserman.  
-    arXiv:1409.1556, 2014.  
+    Karen Simonyan and Andrew Zisserman.
+    arXiv:1409.1556, 2014.
     [https://arxiv.org/pdf/1409.1556](https://arxiv.org/pdf/1409.1556)
-
-??? note "BibTeX"
-
-    ```bibtex
-    @article{simonyan2014very,
-        title = {Very deep convolutional networks for large-scale image recognition},
-        author = {Simonyan, Karen and Zisserman, Andrew},
-        journal = {arXiv preprint arXiv:1409.1556},
-        year = {2014},
-    }
-    ```

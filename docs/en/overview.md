@@ -3,12 +3,59 @@
 !!! info "Generated"
     Run `worldarena build-docs --config config/datasets.yaml` after adding, deleting, or reorganizing source assets.
 
-<div class="metric-grid">
-<div class="metric-card">
-  <div class="metric-label">Benchmark Items</div>
-  <div class="metric-value">11,653</div>
-  <div class="metric-note">Primary benchmark rows</div>
+<p class="doc-provenance">Snapshot note: panels and charts below use cached `docs/generated/` artifacts in this checkout because live dataset roots were unavailable during the last `worldarena build-docs` run. Re-run against local dataset roots when a live rescan is available.</p>
+
+## Summary
+
+<p class="overview-lede">WorldAtlas Arena combines a multi-regime benchmark corpus, a six-axis evaluation contract, and a registry of world-model adapters. The panels below summarize scale from complementary angles—media inventory, task regime, metric surface, and model coverage—before the collection tables and sample galleries.</p>
+
+## Benchmark Scale
+
+<p class="overview-section-lede">Headline totals, media inventory, task regimes, and benchmark contract surface.</p>
+
+<div class="overview-page">
+
+<div class="overview-section">
+  <p class="overview-section-label">Headline totals</p>
+  <p class="overview-section-note">Primary inventory counts, suites, metrics, and model coverage.</p>
+<div class="overview-hero-grid">
+<div class="overview-hero-card overview-hero-card--primary">
+  <div class="overview-hero-label">Benchmark Items</div>
+  <div class="overview-hero-value">11,653</div>
+  <div class="overview-hero-note">Primary rows across image, video, and physics suites</div>
 </div>
+<div class="overview-hero-card overview-hero-card--green">
+  <div class="overview-hero-label">Formal Suites</div>
+  <div class="overview-hero-value">4</div>
+  <div class="overview-hero-note">Public benchmark contracts in `config/benchmark.yaml`</div>
+</div>
+<div class="overview-hero-card overview-hero-card--warm">
+  <div class="overview-hero-label">Documented Metrics</div>
+  <div class="overview-hero-value">47</div>
+  <div class="overview-hero-note">Public metric inventory in the benchmark docs</div>
+</div>
+<div class="overview-hero-card overview-hero-card--blue">
+  <div class="overview-hero-label">Evaluation Dimensions</div>
+  <div class="overview-hero-value">6</div>
+  <div class="overview-hero-note">Axes aggregated in `per_dimension_summary.json`</div>
+</div>
+<div class="overview-hero-card overview-hero-card--ink">
+  <div class="overview-hero-label">Registered Models</div>
+  <div class="overview-hero-value">25</div>
+  <div class="overview-hero-note">Adapter configs under `config/models/`</div>
+</div>
+<div class="overview-hero-card overview-hero-card--green">
+  <div class="overview-hero-label">Annotated Rows</div>
+  <div class="overview-hero-value">5,496</div>
+  <div class="overview-hero-note">47.2% of benchmark rows carry supervision sidecars</div>
+</div>
+</div>
+</div>
+
+<div class="overview-section">
+  <p class="overview-section-label">Media inventory</p>
+  <p class="overview-section-note">Image, video, and physics assets in the benchmark corpus.</p>
+<div class="metric-grid">
 <div class="metric-card">
   <div class="metric-label">Images</div>
   <div class="metric-value">5,000</div>
@@ -24,13 +71,164 @@
   <div class="metric-value">1,400</div>
   <div class="metric-note">Physics-focused video assets</div>
 </div>
+<div class="metric-card">
+  <div class="metric-label">Masked Dynamics</div>
+  <div class="metric-value">2,124</div>
+  <div class="metric-note">Dynamic image and gameplay rows with segmentation masks</div>
+</div>
+</div>
+</div>
+
+<div class="overview-section">
+  <p class="overview-section-label">Task regimes</p>
+  <p class="overview-section-note">How benchmark rows split across static, dynamic, interaction, and physics tracks.</p>
+<div class="overview-regime-grid">
+<div class="overview-regime-card">
+  <div class="overview-regime-top">
+    <span class="overview-regime-label">Static world generation</span>
+    <span class="overview-regime-share">63.3%</span>
+  </div>
+  <div class="overview-regime-value">7,372</div>
+  <div class="overview-regime-note">Camera or layout change with scene preservation</div>
+</div>
+<div class="overview-regime-card">
+  <div class="overview-regime-top">
+    <span class="overview-regime-label">Dynamic world generation</span>
+    <span class="overview-regime-share">20.7%</span>
+  </div>
+  <div class="overview-regime-value">2,416</div>
+  <div class="overview-regime-note">In-scene temporal evolution under controlled viewpoints</div>
+</div>
+<div class="overview-regime-card">
+  <div class="overview-regime-top">
+    <span class="overview-regime-label">Interaction-conditioned</span>
+    <span class="overview-regime-share">4.0%</span>
+  </div>
+  <div class="overview-regime-value">465</div>
+  <div class="overview-regime-note">Gameplay and action-conditioned rollouts</div>
+</div>
+<div class="overview-regime-card">
+  <div class="overview-regime-top">
+    <span class="overview-regime-label">Physics metrics</span>
+    <span class="overview-regime-share">12.0%</span>
+  </div>
+  <div class="overview-regime-value">1,400</div>
+  <div class="overview-regime-note">Reference motion and simulator-backed physics tracks</div>
+</div>
+</div>
+</div>
+
+<div class="overview-section">
+  <p class="overview-section-label">Evaluation Framework</p>
+  <p class="overview-section-note">Formal suites separate static, dynamic, and interaction-conditioned generation while sharing a common reporting contract. Each suite declares an applicable metric vector in `config/benchmark.yaml`.</p>
+
+<table>
+<thead>
+<tr><th align="left">suite</th><th align="left">modality</th><th align="left">regime</th><th align="right">metrics</th></tr>
+</thead>
+<tbody>
+<tr><td align="left">image_static</td><td align="left">image → video</td><td align="left">static</td><td align="right">43</td></tr>
+<tr><td align="left">image_dynamic</td><td align="left">image → video</td><td align="left">dynamic</td><td align="right">33</td></tr>
+<tr><td align="left">video_static</td><td align="left">video → video</td><td align="left">static</td><td align="right">37</td></tr>
+<tr><td align="left">video_dynamic</td><td align="left">video → video</td><td align="left">dynamic</td><td align="right">43</td></tr>
+</tbody>
+</table>
+
+  <p class="overview-section-label">Metrics by Dimension</p>
+
+<div class="overview-dimension-bars">
+<div class="overview-dimension-row">
+  <div class="overview-dimension-meta">
+    <span class="overview-dimension-label">Long Sequence</span>
+    <span class="overview-dimension-count">1 metrics · 0 official</span>
+  </div>
+  <div class="overview-dimension-track">
+    <div class="overview-dimension-fill overview-dimension-fill--long_sequence" style="width: 8%;"></div>
+  </div>
+</div>
+<div class="overview-dimension-row">
+  <div class="overview-dimension-meta">
+    <span class="overview-dimension-label">Action Control</span>
+    <span class="overview-dimension-count">12 metrics · 4 official</span>
+  </div>
+  <div class="overview-dimension-track">
+    <div class="overview-dimension-fill overview-dimension-fill--action_control" style="width: 86%;"></div>
+  </div>
+</div>
+<div class="overview-dimension-row">
+  <div class="overview-dimension-meta">
+    <span class="overview-dimension-label">3D/4D Consistency</span>
+    <span class="overview-dimension-count">7 metrics · 2 official</span>
+  </div>
+  <div class="overview-dimension-track">
+    <div class="overview-dimension-fill overview-dimension-fill--consistency_3d_4d" style="width: 50%;"></div>
+  </div>
+</div>
+<div class="overview-dimension-row">
+  <div class="overview-dimension-meta">
+    <span class="overview-dimension-label">Physics</span>
+    <span class="overview-dimension-count">11 metrics · 10 official</span>
+  </div>
+  <div class="overview-dimension-track">
+    <div class="overview-dimension-fill overview-dimension-fill--physics" style="width: 79%;"></div>
+  </div>
+</div>
+<div class="overview-dimension-row">
+  <div class="overview-dimension-meta">
+    <span class="overview-dimension-label">Quality</span>
+    <span class="overview-dimension-count">14 metrics · 5 official</span>
+  </div>
+  <div class="overview-dimension-track">
+    <div class="overview-dimension-fill overview-dimension-fill--quality" style="width: 100%;"></div>
+  </div>
+</div>
+<div class="overview-dimension-row">
+  <div class="overview-dimension-meta">
+    <span class="overview-dimension-label">Real Time</span>
+    <span class="overview-dimension-count">2 metrics · 2 official</span>
+  </div>
+  <div class="overview-dimension-track">
+    <div class="overview-dimension-fill overview-dimension-fill--real_time" style="width: 14%;"></div>
+  </div>
+</div>
+</div>
+
+  <p class="overview-section-label">Official vs Diagnostic Surface</p>
+
+<div class="overview-split-grid">
+<div class="overview-split-card overview-split-card--official">
+  <div class="overview-split-label">Official surface</div>
+  <div class="overview-split-value">23</div>
+  <div class="overview-split-note">Headline or conditionally official metrics in the public inventory</div>
+</div>
+<div class="overview-split-card overview-split-card--supplementary">
+  <div class="overview-split-label">Diagnostic probes</div>
+  <div class="overview-split-value">24</div>
+  <div class="overview-split-note">Supplemental geometry, reconstruction, and long-horizon probes</div>
+</div>
+<div class="overview-split-card overview-split-card--experimental">
+  <div class="overview-split-label">Experimental suite</div>
+  <div class="overview-split-value">19</div>
+  <div class="overview-split-note">Non-headline slice declared separately in `config/benchmark.yaml`</div>
+</div>
+</div>
+
+  <p class="overview-section-note">See the <a href="benchmark/metrics/index.md">Metrics Overview</a> for eligibility rules, normalization, and aggregation semantics.</p>
+
+  <div class="overview-quick-links">
+    <a href="benchmark/metrics/index.md">Metrics Overview</a>
+    <a href="benchmark/index.md">Benchmark Overview</a>
+    <a href="development.md">Development</a>
+  </div>
+</div>
+
 </div>
 
 ## Topology
 
 ```mermaid
 graph TD
-  root[WorldArena]
+  root[WorldAtlas Arena]
   root --> images[Image]
   root --> videos[Video]
   root --> physics[Physics]
@@ -150,146 +348,23 @@ graph TD
 </figure>
 </div>
 
-## Sample Video Gallery
 
-<div class="sample-grid sample-grid--video">
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/01-aaa_games-002.jpg"><source src="../generated/samples/previews/01-aaa_games-002.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Gameplay / Aaa Games</strong>
-    <span>videos/002.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/02-dynamic_videos-004787088a21__pexels_7486504-hd_1920_1080_30fps.jpg"><source src="../generated/samples/previews/02-dynamic_videos-004787088a21__pexels_7486504-hd_1920_1080_30fps.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Dynamic / Articulated</strong>
-    <span>photorealistic/videos/articulated/004787088a21__pexels_7486504-hd_1920_1080_30fps.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/03-static_videos-002b00c5-12a7-5b15-bbae-f05ad3544d7e.jpg"><source src="../generated/samples/previews/03-static_videos-002b00c5-12a7-5b15-bbae-f05ad3544d7e.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Static / Dining Spaces</strong>
-    <span>photorealistic/indoor/dining_spaces/0-5s/002b00c5-12a7-5b15-bbae-f05ad3544d7e.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/04-dynamic_videos-0003028c30e6__2414312-sd_640_360_30fps.jpg"><source src="../generated/samples/previews/04-dynamic_videos-0003028c30e6__2414312-sd_640_360_30fps.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Dynamic / Deformable</strong>
-    <span>photorealistic/videos/deformable/0003028c30e6__2414312-sd_640_360_30fps.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/05-dynamic_videos-00f1d568f881__pexels_9722325-hd_2048_872_25fps.jpg"><source src="../generated/samples/previews/05-dynamic_videos-00f1d568f881__pexels_9722325-hd_2048_872_25fps.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Dynamic / Fluid</strong>
-    <span>photorealistic/videos/fluid/00f1d568f881__pexels_9722325-hd_2048_872_25fps.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/06-dynamic_videos-0427f9886ee5__pexels_35844496-hd_3840_2160_30fps.jpg"><source src="../generated/samples/previews/06-dynamic_videos-0427f9886ee5__pexels_35844496-hd_3840_2160_30fps.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Dynamic / Multi Motion</strong>
-    <span>photorealistic/videos/multi_motion/0427f9886ee5__pexels_35844496-hd_3840_2160_30fps.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/07-dynamic_videos-011845f3-2474-4b15-9151-157a5a1d95b5.jpg"><source src="../generated/samples/previews/07-dynamic_videos-011845f3-2474-4b15-9151-157a5a1d95b5.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Dynamic / Rigid</strong>
-    <span>photorealistic/videos/rigid/011845f3-2474-4b15-9151-157a5a1d95b5.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/08-static_videos-0092084d-dd8d-57fd-9b9e-fdf66b21e09e.jpg"><source src="../generated/samples/previews/08-static_videos-0092084d-dd8d-57fd-9b9e-fdf66b21e09e.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Static / Living Spaces</strong>
-    <span>photorealistic/indoor/living_spaces/0-5s/0092084d-dd8d-57fd-9b9e-fdf66b21e09e.mp4</span>
-  </figcaption>
-</figure>
-</div>
 
 ## Sample Physics Gallery
 
 <div class="sample-grid sample-grid--physics">
 <figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/01-physics_videos-00c09d36eacc9b6bc61a368fff295cd06af132b25e4ed4613ed984b1c81ff31c.jpg"><source src="../generated/samples/previews/01-physics_videos-00c09d36eacc9b6bc61a368fff295cd06af132b25e4ed4613ed984b1c81ff31c.mp4" type="video/mp4"></video>
+  <img class="sample-media" src="../generated/samples/posters/01-physics_videos-00c09d36eacc9b6bc61a368fff295cd06af132b25e4ed4613ed984b1c81ff31c.jpg" alt="Basic Physics Consistency / Acceleration" loading="lazy">
   <figcaption>
     <strong>Basic Physics Consistency / Acceleration</strong>
     <span>videos_by_category/basic_physics_consistency/acceleration/00c09d36eacc9b6bc61a368fff295cd06af132b25e4ed4613ed984b1c81ff31c.mp4</span>
   </figcaption>
 </figure>
 <figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/02-physics_videos-099a31d25b7b9f27d8dca0d86c286737761571d8c20aa8f45d81c1ce1013c162.jpg"><source src="../generated/samples/previews/02-physics_videos-099a31d25b7b9f27d8dca0d86c286737761571d8c20aa8f45d81c1ce1013c162.mp4" type="video/mp4"></video>
+  <img class="sample-media" src="../generated/samples/posters/15-physics_videos-06fc5a6aabdcb34a7f9d111775787a3d724b53e086081aae2fd6b6dbc5ce09e8.jpg" alt="Basic Physics Consistency / Uniform Motion" loading="lazy">
   <figcaption>
-    <strong>Basic Physics Consistency / Circular Motion</strong>
-    <span>videos_by_category/basic_physics_consistency/circular_motion/099a31d25b7b9f27d8dca0d86c286737761571d8c20aa8f45d81c1ce1013c162.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/03-physics_videos-00e24098bbcee584cb7e8d5d200186b5dfe38b978ec8cfff842f417c520cc967.jpg"><source src="../generated/samples/previews/03-physics_videos-00e24098bbcee584cb7e8d5d200186b5dfe38b978ec8cfff842f417c520cc967.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Basic Physics Consistency / Collision</strong>
-    <span>videos_by_category/basic_physics_consistency/collision/00e24098bbcee584cb7e8d5d200186b5dfe38b978ec8cfff842f417c520cc967.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/04-physics_videos-01891e77e3e9afc366ec41a71d063409c988c3a4a572232e0a3cd3425de31281.jpg"><source src="../generated/samples/previews/04-physics_videos-01891e77e3e9afc366ec41a71d063409c988c3a4a572232e0a3cd3425de31281.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Basic Physics Consistency / Damped Oscillation</strong>
-    <span>videos_by_category/basic_physics_consistency/damped_oscillation/01891e77e3e9afc366ec41a71d063409c988c3a4a572232e0a3cd3425de31281.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/05-physics_videos-019f9c756bb4c7260ad87e2d38469dc5b99287bfdf24438c1975a8aad97771ab.jpg"><source src="../generated/samples/previews/05-physics_videos-019f9c756bb4c7260ad87e2d38469dc5b99287bfdf24438c1975a8aad97771ab.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Basic Physics Consistency / Deceleration</strong>
-    <span>videos_by_category/basic_physics_consistency/deceleration/019f9c756bb4c7260ad87e2d38469dc5b99287bfdf24438c1975a8aad97771ab.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/06-physics_videos-0185106d958eafa893e759d16434ed1ce35482526e5edd7d94d6f01fe2b4c988.jpg"><source src="../generated/samples/previews/06-physics_videos-0185106d958eafa893e759d16434ed1ce35482526e5edd7d94d6f01fe2b4c988.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Basic Physics Consistency / Deformation</strong>
-    <span>videos_by_category/basic_physics_consistency/deformation/0185106d958eafa893e759d16434ed1ce35482526e5edd7d94d6f01fe2b4c988.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/07-physics_videos-0a30d1aa96460386a859a803ec80d60901dd453be737844250cb9c134d7119e2.jpg"><source src="../generated/samples/previews/07-physics_videos-0a30d1aa96460386a859a803ec80d60901dd453be737844250cb9c134d7119e2.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Basic Physics Consistency / Elastic Motion</strong>
-    <span>videos_by_category/basic_physics_consistency/elastic_motion/0a30d1aa96460386a859a803ec80d60901dd453be737844250cb9c134d7119e2.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/08-physics_videos-082e01d1b61f9360305144d49feea870487197c2560475116c79b8425bdde234.jpg"><source src="../generated/samples/previews/08-physics_videos-082e01d1b61f9360305144d49feea870487197c2560475116c79b8425bdde234.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Basic Physics Consistency / Motion 3D</strong>
-    <span>videos_by_category/basic_physics_consistency/motion_3d/082e01d1b61f9360305144d49feea870487197c2560475116c79b8425bdde234.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/09-physics_videos-019c2446b47f1125aaedced3fb5cae96a66e8bd476f3f34642821a8025d569f1.jpg"><source src="../generated/samples/previews/09-physics_videos-019c2446b47f1125aaedced3fb5cae96a66e8bd476f3f34642821a8025d569f1.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Basic Physics Consistency / Parabolic Motion</strong>
-    <span>videos_by_category/basic_physics_consistency/parabolic_motion/019c2446b47f1125aaedced3fb5cae96a66e8bd476f3f34642821a8025d569f1.mp4</span>
-  </figcaption>
-</figure>
-<figure class="sample-card">
-  <video class="sample-media" controls muted preload="metadata" poster="../generated/samples/posters/10-physics_videos-082638c19cc7152742981f17dae9c4c3e8e49f45a4bee420a183ca2f3bece4b1.jpg"><source src="../generated/samples/previews/10-physics_videos-082638c19cc7152742981f17dae9c4c3e8e49f45a4bee420a183ca2f3bece4b1.mp4" type="video/mp4"></video>
-  <figcaption>
-    <strong>Basic Physics Consistency / Parabolic Motion With Rotation</strong>
-    <span>videos_by_category/basic_physics_consistency/parabolic_motion_with_rotation/082638c19cc7152742981f17dae9c4c3e8e49f45a4bee420a183ca2f3bece4b1.mp4</span>
+    <strong>Basic Physics Consistency / Uniform Motion</strong>
+    <span>videos_by_category/basic_physics_consistency/uniform_motion/06fc5a6aabdcb34a7f9d111775787a3d724b53e086081aae2fd6b6dbc5ce09e8.mp4</span>
   </figcaption>
 </figure>
 </div>
-
-## Downloadable Artifacts
-
-- [`summary.json`](../generated/data/summary.json)
-- [`all_records.csv`](../generated/data/all_records.csv)
-- [`image_records.csv`](../generated/data/image_records.csv)
-- [`video_records.csv`](../generated/data/video_records.csv)
-- [`physics_records.csv`](../generated/data/physics_records.csv)

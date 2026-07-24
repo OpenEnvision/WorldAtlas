@@ -29,7 +29,7 @@ The manifest stores this contract per sample, so downstream generation and evalu
 | Status | Included in official aggregates | Typical reason |
 | --- | --- | --- |
 | `official` | yes | the metric produced a numeric value and the sample satisfied the supervision gate |
-| `diagnostic` | no | the metric is intentionally analysis-only |
+| `diagnostic` | no | the metric never enters headline aggregation |
 | `not_applicable` | no | the sample lacks strong supervision for that metric, so no score is computed or aggregated |
 | `normalized = null` | no | runtime failure, missing input, or an inapplicable metric |
 
@@ -43,10 +43,11 @@ The manifest stores this contract per sample, so downstream generation and evalu
 | `motion_accuracy` | requires aligned segmentation masks |
 | `object_permanence` | requires aligned dynamic masks plus a readable reference video |
 | `physical_fps_*` | require a working `Pulse-of-Motion` runtime and usable container FPS or manifest FPS |
-| `depth_collision` | never official; diagnostic only. Requires a video prediction and Video-Depth-Anything runtime |
-| `reconstruction_consistency` | never official; diagnostic only. Requires a video prediction, Depth-Anything-3, and LPIPS |
-| `memory_revisit_consistency` | never official; diagnostic only. Intended for revisit / loop-closing experimental samples |
-| `semantic_alignment`, `depth_accuracy`, `psnr`, `ssim`, `met3r_consistency`, `long_sequence_*` | never official; diagnostic only |
+| `met3r_consistency` | official for readable reference/prediction anchors; an empty overlap mask is recorded and receives the worst normalized score (`0`) instead of being excluded |
+| `depth_collision` | never enters headline aggregation. Requires a video prediction and Video-Depth-Anything runtime |
+| `reconstruction_consistency` | never enters headline aggregation. Requires a video prediction and Depth-Anything-3 depth/pose reprojection runtime |
+| `memory_revisit_consistency` | never enters headline aggregation. Intended for revisit / loop-closing experimental samples |
+| `semantic_alignment`, `depth_accuracy`, `long_sequence_*` | never enters headline aggregation |
 | all remaining metrics in the formal suites | official whenever the metric returns a numeric value |
 
 Two common consequences:
@@ -75,11 +76,11 @@ Current benchmark-specific reducers:
 
 - `per_metric_summary.json` averages only numeric `normalized` values with `eligibility_status = official`.
 - `per_dimension_summary.json` regroups those same official outputs into six top-level dimensions: `long_sequence`, `action_control`, `consistency_3d_4d`, `physics`, `quality`, and `real_time`.
-- `diagnostic_metric_summary.json` averages only metrics that are explicitly designed as diagnostics.
-- `not_applicable_summary.json` records metrics skipped because the sample lacks strong supervision. These entries are not failures and not diagnostic scores.
+- `diagnostic_metric_summary.json` averages only metrics that are explicitly marked non-official.
+- `not_applicable_summary.json` records metrics skipped because the sample lacks strong supervision. These entries are not failures and not non-official scores.
 - `domain_breakdown.json` is also official-only. It slices official scores by `style`, `environment`, `scene`, and `motion_category`.
 - Missing predictions are counted in `run_manifest.json`, but they do not turn into zeros. They remain missing.
 
-The same report contract is reused by the simulator-backed physics configuration, but those runs are kept on a separate manifest and a separate config namespace. That physics config also uses the suite label `experimental`, yet there it names the simulator-backed track rather than the diagnostic-only `experimental` slice from `config/benchmark.yaml`. See [Metrics / Physics](metrics/dimensions/physics.md).
+The same report contract is reused by the simulator-backed physics configuration, but those runs are kept on a separate manifest and a separate config namespace. That physics config also uses the suite label `experimental`, yet there it names the simulator-backed track rather than the non-official `experimental` slice from `config/benchmark.yaml`. See [Metrics / Physics](metrics/dimensions/physics.md).
 
-Compare runs only when the same suites, protocol, metric config, and prediction completeness were used. WorldArena currently has a single test set; the manifest `split` field is fixed to `test` and kept only as a compatibility field.
+Compare runs only when the same suites, protocol, metric config, and prediction completeness were used. WorldAtlas Arena currently has a single test set; the manifest `split` field is fixed to `test` and kept only as a compatibility field.

@@ -1,27 +1,120 @@
 # Image Analytics
 
+!!! info "Generated"
+    Run `worldarena build-docs --config config/datasets.yaml` after adding, deleting, or reorganizing source assets.
+
+## Summary
+
+<p class="overview-lede">The image corpus spans static scene frames and motion-labelled dynamic stills used by the `image_static` and `image_dynamic` benchmark suites. Panels below summarize inventory scale, taxonomy coverage, mask supervision, and applicable metrics before the detailed tables and interactive charts.</p>
+
+## Collection Scale
+
+<p class="overview-section-lede">Headline totals, taxonomy breadth, and static/dynamic regime mix for the image corpus.</p>
+
+<div class="overview-page">
+
+<div class="overview-section">
+  <p class="overview-section-label">Headline totals</p>
+  <p class="overview-section-note">Primary inventory counts and benchmark contract surface.</p>
+<div class="overview-hero-grid">
+<div class="overview-hero-card overview-hero-card--primary">
+  <div class="overview-hero-label">Image Rows</div>
+  <div class="overview-hero-value">5,000</div>
+  <div class="overview-hero-note">All scanned image benchmark rows</div>
+</div>
+<div class="overview-hero-card overview-hero-card--blue">
+  <div class="overview-hero-label">Mask Coverage</div>
+  <div class="overview-hero-value">1,628</div>
+  <div class="overview-hero-note">32.6% of image rows carry segmentation masks</div>
+</div>
+<div class="overview-hero-card overview-hero-card--ink">
+  <div class="overview-hero-label">Formal Image Suites</div>
+  <div class="overview-hero-value">2</div>
+  <div class="overview-hero-note">Public contracts: `image_static`, `image_dynamic`</div>
+</div>
+<div class="overview-hero-card overview-hero-card--green">
+  <div class="overview-hero-label">Applicable Image Metrics</div>
+  <div class="overview-hero-value">46</div>
+  <div class="overview-hero-note">Unique metrics across `image_static` and `image_dynamic`</div>
+</div>
+</div>
+</div>
+
+<div class="overview-section">
+  <p class="overview-section-label">Taxonomy breadth</p>
+  <p class="overview-section-note">Distinct style, environment, motion, and resolution labels in inventory.</p>
 <div class="metric-grid">
 <div class="metric-card">
-  <div class="metric-label">Image Rows</div>
-  <div class="metric-value">5,000</div>
-  <div class="metric-note">All scanned images</div>
+  <div class="metric-label">Visual Styles</div>
+  <div class="metric-value">2</div>
+  <div class="metric-note">Photorealistic + stylized still frames</div>
 </div>
 <div class="metric-card">
-  <div class="metric-label">Static Images</div>
-  <div class="metric-value">3,372</div>
-  <div class="metric-note">Scene-centric still frames</div>
+  <div class="metric-label">Scene Environments</div>
+  <div class="metric-value">2</div>
+  <div class="metric-note">Indoor + outdoor scene buckets</div>
 </div>
 <div class="metric-card">
-  <div class="metric-label">Dynamic Images</div>
-  <div class="metric-value">1,628</div>
-  <div class="metric-note">Motion-labelled still frames</div>
+  <div class="metric-label">Motion Categories</div>
+  <div class="metric-value">5</div>
+  <div class="metric-note">Articulated, rigid, fluid, and multi-motion labels</div>
 </div>
 <div class="metric-card">
-  <div class="metric-label">Rows With Masks</div>
-  <div class="metric-value">1,628</div>
-  <div class="metric-note">Images linked to segmentation masks</div>
+  <div class="metric-label">Unique Resolutions</div>
+  <div class="metric-value">693</div>
+  <div class="metric-note">Distinct resolution labels in inventory</div>
 </div>
 </div>
+</div>
+
+<div class="overview-section">
+  <p class="overview-section-label">Regime mix</p>
+  <p class="overview-section-note">How rows split between static layout evaluation and dynamic motion evaluation.</p>
+<div class="overview-regime-grid">
+<div class="overview-regime-card">
+  <div class="overview-regime-top">
+    <span class="overview-regime-label">Static Images</span>
+    <span class="overview-regime-share">67.4%</span>
+  </div>
+  <div class="overview-regime-value">3,372</div>
+  <div class="overview-regime-note">Scene layout and camera-consistency evaluation</div>
+</div>
+<div class="overview-regime-card">
+  <div class="overview-regime-top">
+    <span class="overview-regime-label">Dynamic Images</span>
+    <span class="overview-regime-share">32.6%</span>
+  </div>
+  <div class="overview-regime-value">1,628</div>
+  <div class="overview-regime-note">Motion, mask, and temporal-structure metrics</div>
+</div>
+</div>
+</div>
+
+</div>
+
+## Benchmark Suites
+
+Image suites declare applicable metrics in `config/benchmark.yaml`. Static rows stress layout and camera consistency; dynamic rows add motion and mask-aware metrics.
+
+| suite         | regime   |   items |   metrics |
+|:--------------|:---------|--------:|----------:|
+| image_static  | static   |    3372 |        43 |
+| image_dynamic | dynamic  |    1628 |        33 |
+
+See the [Metrics Overview](benchmark/metrics/index.md) for eligibility rules and aggregation semantics.
+
+## Taxonomy
+
+```mermaid
+graph TD
+  root[Image Corpus • 5000]
+  root --> static[Static Images • 3372]
+  root --> dynamic[Dynamic Images • 1628]
+  static --> indoor[Indoor Scenes]
+  static --> outdoor[Outdoor Scenes]
+  dynamic --> motion[Motion Categories]
+  dynamic --> masks[Segmentation Masks • 1628]
+```
 
 ## Static Scene Summary
 

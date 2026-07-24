@@ -1,95 +1,145 @@
-# 深度碰撞
+# Depth Collision
 
-`depth_collision` 用 Video Depth Anything [[Chen et al., 2025](#reference)] 的 metric depth 检测生成 rollout 是否出现“相机撞到近处物体”的迹象。
-它关注的是相机前方中心区域是否在生成过程中突然变得过近，从而暴露出穿墙、撞物、贴脸推进等 camera-path failure。
+Depth Collision 是二值标记，检测相机正前方是否出现不合理近距几何。Video Depth Anything 提供逐帧 metric 深度；中心裁剪检验 rollout 过程中前向视廊是否异常逼近。
 
-## 它测什么
+对帧 \(t\) 的深度图 \(D_t\) 与中心裁剪 \(\mathcal{C}\)：
 
-- 相机路径中心区域是否突然贴近前景或障碍物。
-- 生成视频是否出现穿墙、撞物、贴脸推进这类 camera-path failure。
-- rollout 过程中视野前方是否存在异常近距离深度。
+\[
+\bar{d}_t = \frac{1}{|\mathcal{C}|}\sum_{(x,y)\in\mathcal{C}} D_t(x,y)
+\tag{1}
+\]
 
-## 原理说明
+给定阈值 \(\tau\)（默认 \(1.0\)），碰撞指示量为
 
-生成视频中的相机运动如果不稳定，常见现象是相机轨迹穿入物体、贴近墙面、钻入前景，或者在 rollout 中突然推进到不可见的近距离区域。
-这些错误未必能通过单帧图像质量直接发现，但会在深度图上表现为视野中心区域的估计深度异常变小。
+\[
+e_{\mathrm{collision}} = \mathbf{1}\!\left[\min_t \bar{d}_t < \tau\right]
+\tag{2}
+\]
 
-`depth_collision` 因此先使用 Video Depth Anything 的 metric depth 模式为每一帧预测深度。
-Video Depth Anything 面向长视频一致深度估计，适合在连续帧上提供相对稳定的逐帧深度信号。
-随后，指标只检查深度图中心的固定比例窗口，因为相机运动方向通常接近画面中心，中心区域更能反映“相机前方是否出现近距离障碍”。
+原始得分 \(e_{\mathrm{collision}} \in \{0,1\}\) 经反向归一化，无碰撞对应更高得分。该标记在估计深度下代理近距失败（穿墙、贴脸运动），并非物理引擎接触判定。
 
-如果任意一帧的中心窗口平均深度低于阈值，指标就认为该 rollout 触发了 depth collision。
-这里的 collision 表示“估计深度意义上的近距告警”，不是通过三维碰撞体、物理引擎或真实接触标注得到的碰撞事件。
-
-## 当前算法
-
-1. 使用 `Video-Depth-Anything` [[Chen et al., 2025](#reference)] metric 模式预测每帧深度。
-2. 默认读取 benchmark 已采样帧；`frame_source = full_video` 时读取完整预测视频。
-3. 在每帧深度图中心裁一个固定比例窗口，默认 `center_crop_ratio = 0.2`。
-4. 计算中心窗口平均 metric depth：`center_depth_t = mean(depth_t[center_crop])`。
-5. 若任一帧 `center_depth_t < depth_threshold`，默认阈值 `1.0`，判定 collision。
-6. 原始分数是二值 flag：`raw = 1.0` 表示发生 collision，`raw = 0.0` 表示未检测到 collision。
-7. 归一化使用反向缩放：`raw = 0` 映射为 `normalized = 1`，`raw = 1` 映射为 `normalized = 0`。
-
-## 误差公式
-
-对第 \(t\) 帧，Video Depth Anything 预测出的深度图记为 \(D_t\)，中心裁剪区域记为 \(\mathcal{C}\)。
-该帧的中心区域平均深度为：
-
-!!! info "中心深度"
-
-    \[
-    \bar{d}_t
-    =
-    \frac{1}{|\mathcal{C}|}
-    \sum_{(x,y)\in\mathcal{C}}
-    D_t(x,y)
-    \]
-
-给定深度阈值 \(\tau\)，单个视频的 depth collision flag 定义为：
-
-!!! info "碰撞判定"
-
-    \[
-    e_{\mathrm{collision}}
-    =
-    \mathbb{1}
-    \left[
-        \min_t \bar{d}_t < \tau
-    \right]
-    \]
-
-其中，\(\mathbb{1}[\cdot]\) 是指示函数；当任意一帧的中心平均深度低于阈值时，\(e_{\mathrm{collision}}=1\)，表示检测到近距碰撞风险；否则 \(e_{\mathrm{collision}}=0\)。
-当前默认阈值为 \(\tau=1.0\)，默认中心裁剪比例为 `0.2`。
-
-## 输入与输出
-
-| 项目 | 当前实现 |
-| --- | --- |
-| 预测输入 | prediction video 的采样帧或完整帧 |
-| 参考输入 | 不使用 |
-| 标注输入 | 不使用 |
-| 后端 | `video_depth_anything` |
-| 运行时默认 | `repo_root = thirdparty/Video-Depth-Anything`、`checkpoint_path = ckpt/Video-Depth-Anything/metric_video_depth_anything_vits.pth`、`encoder = vits`、`input_size = 256` |
-| 原始输出 | `0.0` / `1.0` collision flag，越低越好 |
-| 归一化输出 | `[0,1]`，越高越好 |
-| 细节字段 | `center_crop_mean_depths`、`collision`、`first_collision_frame`、`threshold_results`、`depth_shape`、`frame_source`、`frame_indices` |
-
+<!-- metric-examples:start -->
+## 代表性同 Case 对比
+每个展示块先给出该 case 的 input image 和完全一致的展示 prompt，然后比较模型生成结果。paired 展示必须满足 input image 相同、prompt 文本相同，并且一个模型高分、一个模型低分。若当前正式快照中该 metric 没有这种跨模型同 case pair，则单独展示高分/低分极值样例，不把它们伪装成同 case 对比。
+机器可读 paired 导出： `docs/assets/metric_examples/paired_manifest.csv`.
+### `depth_collision`
+<div class="metric-case-stack">
+<article class="metric-case-exhibit metric-case-exhibit--fallback">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/d6b1f731ad67__image_static_photorealistic_aquatic_landscape_0001.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0001" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · 当前快照极值样例</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0001</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera orbit left. A coastal landscape with ocean waves, distant hills, and sunset sky.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+  <p class="metric-case-note">当前正式快照中该 metric 没有跨模型同 case 配对；以下为各自极值样例，而非同一输入下的模型对比。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_aquatic_landscape_0001">
+      <source src="../../../assets/metric_examples/e3f37ff52cf2__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_aquatic_landscape_0001">
+      <source src="../../../assets/metric_examples/e3f37ff52cf2__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 1.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--fallback">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/20f6a24367ac__image_static_photorealistic_aquatic_landscape_0017.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0017" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 2 · 当前快照极值样例</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0017</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera orbit left. An aquatic landscape with red lighthouse, ship&#x27;s deck, and harbor.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+  <p class="metric-case-note">当前正式快照中该 metric 没有跨模型同 case 配对；以下为各自极值样例，而非同一输入下的模型对比。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_aquatic_landscape_0017">
+      <source src="../../../assets/metric_examples/d339e4209040__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0017.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_aquatic_landscape_0017">
+      <source src="../../../assets/metric_examples/d339e4209040__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0017.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 1.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--fallback">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/4819b8b280f4__image_static_photorealistic_aquatic_landscape_0033.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0033" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 3 · 当前快照极值样例</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0033</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera move right. A coastal landscape with waves, beach, and vegetation.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+  <p class="metric-case-note">当前正式快照中该 metric 没有跨模型同 case 配对；以下为各自极值样例，而非同一输入下的模型对比。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_aquatic_landscape_0033">
+      <source src="../../../assets/metric_examples/f9f24c8499ad__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0033.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_aquatic_landscape_0033">
+      <source src="../../../assets/metric_examples/f9f24c8499ad__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0033.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 1.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->
 
 ## 参考文献 {#reference}
 
 !!! quote "Video Depth Anything: Consistent Depth Estimation for Super-Long Videos"
 
-    Sili Chen, Hengkai Guo, Shengnan Zhu, Feihu Zhang, Zilong Huang, Jiashi Feng, and Bingyi Kang.  
-    arXiv:2501.12375, 2025.
-
-??? note "BibTeX"
-
-    ```bibtex
-    @article{video_depth_anything,
-        title = {Video Depth Anything: Consistent Depth Estimation for Super-Long Videos},
-        author = {Chen, Sili and Guo, Hengkai and Zhu, Shengnan and Zhang, Feihu and Huang, Zilong and Feng, Jiashi and Kang, Bingyi},
-        journal = {arXiv:2501.12375},
-        year = {2025},
-    }
-    ```
+    Chen et al., arXiv:2501.12375, 2025.

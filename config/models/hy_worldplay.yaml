@@ -9,9 +9,8 @@ model:
   # HY-WorldPlay's published inference stack targets Python 3.10 with a dedicated CUDA environment.
   # Place the upstream repo under thirdparty/ after preparing the environment externally.
   repo_root: thirdparty/HY-WorldPlay
-  python_bin: /share/project/yesliu/miniconda3/envs/worldplay/bin/python
-  # Point this at the prepared HY-WorldPlay weights tree inside the upstream checkout.
-  checkpoint_dir: /share/project/yesliu/hjd/model/tmp/HY-WorldPlay/ckpt
+  # Point this at the prepared HY-WorldPlay weights tree under ckpt/.
+  checkpoint_dir: ckpt/HY-WorldPlay
   entrypoint: hyvideo/generate.py
   output_ext: .mp4
   supported_suites:
@@ -23,7 +22,7 @@ model:
   reference_mode: first_frame
   generation:
     # Distilled AR checkpoint from the HY-WorldPlay release.
-    action_ckpt: /share/project/yesliu/hjd/model/tmp/HY-WorldPlay/ckpt/ar_distilled_action_model/model.safetensors
+    action_ckpt: ckpt/HY-WorldPlay/ar_distilled_action_model/model.safetensors
     launcher: python
     nproc_per_node: 1
     gpu_index: 0

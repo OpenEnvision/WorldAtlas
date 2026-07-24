@@ -1,3 +1,5 @@
+"""Optical-flow computation backends used by consistency metrics."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -19,16 +21,22 @@ from worldarena.common.video_io import probe_video_fps, read_video_frames
 
 
 class _AttrDict(dict):
+    """Dict subclass that exposes keys as attributes for RAFT CLI-style args."""
+
     def __getattr__(self, key: str) -> Any:
+        """Read a pseudo-attribute from the underlying mapping."""
         try:
             return self[key]
         except KeyError as exc:
             raise AttributeError(key) from exc
 
     def __setattr__(self, key: str, value: Any) -> None:
+        """Write pseudo-attribute updates back into the mapping."""
         self[key] = value
 
+
 def _normalize_device(device: str | Any | None) -> str:
+    """Return a torch device string, defaulting to the first CUDA device when available."""
     import torch
 
     if device is None:
@@ -37,6 +45,7 @@ def _normalize_device(device: str | Any | None) -> str:
 
 
 def resolve_amt_config_path(config_path: str | os.PathLike[str] | None = None) -> str:
+    """Locate the AMT network config YAML from flow-source layout or an explicit path."""
     if config_path is None:
         layout = inspect_flow_source_layout()
         resolved = Path(str(layout["amt_config"])).resolve()
@@ -48,6 +57,7 @@ def resolve_amt_config_path(config_path: str | os.PathLike[str] | None = None) -
 
 
 def resolve_amt_s_checkpoint(ckpt_path: str | os.PathLike[str] | None = None) -> str:
+    """Resolve the AMT-S interpolation checkpoint under ``ckpt/amt_model/amt-s.pth``."""
     if ckpt_path is not None:
         resolved = resolve_checkpoint_path(ckpt_path, kind="file", required=True)
         if resolved is None:
@@ -64,6 +74,7 @@ def resolve_amt_s_checkpoint(ckpt_path: str | os.PathLike[str] | None = None) ->
 
 
 def resolve_raft_things_checkpoint(model_path: str | os.PathLike[str] | None = None) -> str:
+    """Resolve the RAFT-things flow checkpoint under ``ckpt/raft_model/models/raft-things.pth``."""
     if model_path is not None:
         resolved = resolve_checkpoint_path(model_path, kind="file", required=True)
         if resolved is None:
@@ -82,6 +93,8 @@ def resolve_raft_things_checkpoint(model_path: str | os.PathLike[str] | None = N
 
 @dataclass
 class AMTMotionSmoothnessBackend:
+    """Cached AMT-S backend used by the motion_smoothness metric."""
+
     model: Any
     device: str
     embt: Any
@@ -95,6 +108,7 @@ class AMTMotionSmoothnessBackend:
     tensor_to_image: Any
 
     def score_video(self, video_path: str | Path) -> dict[str, Any]:
+        """Interpolate every other frame with AMT-S and score mean absolute reconstruction error."""
         import torch
 
         frames = read_video_frames(Path(video_path))
@@ -152,11 +166,14 @@ class AMTMotionSmoothnessBackend:
 
 @dataclass
 class RAFTDynamicDegreeBackend:
+    """Cached RAFT-things backend used by the dynamic_degree metric."""
+
     model: Any
     device: str
     input_padder_cls: Any
 
     def score_video(self, video_path: str | Path) -> dict[str, Any]:
+        """Estimate whether a video has sufficient motion via RAFT flow magnitude thresholds."""
         import torch
 
         path = Path(video_path)
@@ -211,6 +228,7 @@ class RAFTDynamicDegreeBackend:
 
 
 def _raft_max_motion_score(flow: Any) -> float:
+    """Aggregate the top 5% of RAFT flow magnitudes into a single motion score."""
     flow_np = flow[0].permute(1, 2, 0).detach().cpu().numpy()
     rad = np.sqrt(np.square(flow_np[:, :, 0]) + np.square(flow_np[:, :, 1]))
     rad_flat = rad.reshape(-1)
@@ -226,6 +244,7 @@ def load_amt_motion_smoothness_backend(
     config_path: str | None = None,
     ckpt_path: str | None = None,
 ) -> AMTMotionSmoothnessBackend | None:
+    """Load and cache the AMT-S motion-smoothness backend, or None when deps are missing."""
     layout = inspect_flow_source_layout()
     if not bool(layout["amt_ready"]):
         return None
@@ -284,6 +303,7 @@ def load_raft_dynamic_degree_backend(
     *,
     model_path: str | None = None,
 ) -> RAFTDynamicDegreeBackend | None:
+    """Load and cache the RAFT dynamic-degree backend, or None when deps are missing."""
     layout = inspect_flow_source_layout()
     if not bool(layout["raft_ready"]):
         return None
@@ -320,6 +340,7 @@ def compute_amt_motion_smoothness(
     config_path: str | None = None,
     ckpt_path: str | None = None,
 ) -> dict[str, Any]:
+    """Score motion smoothness for one video using the AMT-S backend."""
     backend = load_amt_motion_smoothness_backend(
         device,
         config_path=config_path,
@@ -336,6 +357,7 @@ def compute_raft_dynamic_degree(
     device: str | Any | None = None,
     model_path: str | None = None,
 ) -> dict[str, Any]:
+    """Score dynamic degree for one video using the RAFT-things backend."""
     backend = load_raft_dynamic_degree_backend(
         device,
         model_path=model_path,

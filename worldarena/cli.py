@@ -1,3 +1,5 @@
+"""WorldAtlas Arena command-line interface."""
+
 from __future__ import annotations
 
 import argparse
@@ -22,11 +24,8 @@ from worldarena.benchmark.physics_manifest import build_worldarena_physics_manif
 from worldarena.common.cleanup import clean_project
 from worldarena.generation import generate_predictions
 from worldarena.models import load_model_config
-from worldarena.visualization.showcase import add_showcase_arguments
-
-
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="worldarena")
+    parser = argparse.ArgumentParser(prog="worldatlas-arena")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     build_docs = subparsers.add_parser(
@@ -35,6 +34,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     build_docs.add_argument("--config", default="config/datasets.yaml")
     build_docs.add_argument("--max-workers", type=int, default=8)
+
+    build_site_content = subparsers.add_parser(
+        "build-site-content",
+        help="Export docs/en and docs/zh into site/js/content*.js for the WorldAtlas Arena site.",
+    )
+    build_site_content.add_argument(
+        "--project-root",
+        default=".",
+        help="WorldAtlas Arena repository root (defaults to the current directory).",
+    )
+    build_site_content.add_argument(
+        "--site-root",
+        default="site",
+        help="Site directory relative to the project root.",
+    )
 
     scan = subparsers.add_parser(
         "scan",
@@ -45,13 +59,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     build_inventory_benchmark = subparsers.add_parser(
         "build-inventory",
-        help="Scan raw WorldArena assets and write benchmark inventory artifacts.",
+        help="Scan raw WorldAtlas Arena assets and write benchmark inventory artifacts.",
     )
     build_inventory_benchmark.add_argument("--config", default="config/benchmark.yaml")
 
     build_manifest_benchmark = subparsers.add_parser(
         "build-manifest",
-        help="Build the WorldArena benchmark manifest from the scanned raw assets.",
+        help="Build the WorldAtlas Arena benchmark manifest from the scanned raw assets.",
     )
     build_manifest_benchmark.add_argument("--config", default="config/benchmark.yaml")
 
@@ -157,12 +171,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Also remove generated docs pages and dataset artifacts.",
     )
 
-    showcase = subparsers.add_parser(
-        "showcase",
-        help="Build a static viewer for comparing generated media.",
-    )
-    add_showcase_arguments(showcase)
-
     return parser
 
 
@@ -197,13 +205,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             include_generated=args.generated,
         )
         print(json.dumps({"removed": removed}, indent=2, ensure_ascii=False))
-        return 0
-
-    if args.command == "showcase":
-        from worldarena.visualization.showcase import run_showcase_from_args
-
-        result = run_showcase_from_args(args)
-        print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
 
     if args.command == "build-inventory":
@@ -325,7 +326,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         output_dir = (
             Path(args.output_dir).resolve()
             if args.output_dir
-            else (config.paths.reports_dir.parent.parent / "predictions" / model_config.name).resolve()
+            else (config.paths.predictions_dir / model_config.name).resolve()
         )
         result = generate_predictions(
             model_config=model_config,
@@ -373,7 +374,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         predictions_root = (
             Path(args.predictions_root).resolve()
             if args.predictions_root
-            else (config.paths.reports_dir.parent.parent / "predictions" / model_config.name).resolve()
+            else (config.paths.predictions_dir / model_config.name).resolve()
         )
         generation_result = generate_predictions(
             model_config=model_config,
@@ -411,6 +412,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                 ensure_ascii=False,
             )
         )
+        return 0
+
+    if args.command == "build-site-content":
+        from worldarena.docs.site_export import build_site_content as export_site_content
+
+        result = export_site_content(
+            project_root=Path(args.project_root).resolve(),
+            site_root=Path(args.project_root).resolve() / args.site_root,
+        )
+        print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
 
     from worldarena.docs.builder import build_docs_site

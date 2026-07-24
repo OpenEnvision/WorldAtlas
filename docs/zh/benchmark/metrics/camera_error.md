@@ -1,118 +1,78 @@
 # Camera Error
 
-`camera_error` 用来衡量从预测视频恢复出的相机轨迹，与标注相机位姿之间有多接近。
+Camera Error 量化从生成视频恢复的相机路径与标注 ground-truth 外参之间的**轨迹一致程度**，评估视点控制合规性，而非物体运动或指令跟随。
 
-## 这个指标测什么
-
-- 相对位姿标注的相机运动保真度
-- 视角控制，而不是物体运动控制
-- 在后对齐之后与标注 extrinsics 的一致程度
-
-## 具体算法
-
-1. WorldArena 会把预测视频解码成 PNG 帧，并统计全部可解码帧数。
-2. `load_camera_matrices()` 从样本标注目录加载 `poses.npy`。如果存储的位姿数量和解码帧数不一致，则通过以下方式重采样：
-    - 平移做线性插值
-    - 旋转做 quaternion slerp
-    - 如果存在 `indexes.txt`，优先使用其中的位置索引
-3. 被包装的第三方指标会在这些解码帧上运行 `DROID-SLAM` [[Teed and Deng, 2021](#reference)]，从预测结果中恢复相机轨迹。
-4. 第三方实现随后会把恢复出的轨迹转换到它评估代码期望的坐标系。
-5. 平移项会通过最小二乘尺度 `s` 做 scale-invariant 对齐。
-6. 旋转误差是对齐后的平均相对旋转角度，单位是度。
-7. 平移误差是尺度对齐后的平均欧氏距离。
-8. WorldArena 会对两个分量分别归一化：
-    - 旋转误差范围 `[0.0, 15.0]`，越小越好
-    - 平移误差范围 `[0.0, 0.5]`，越小越好
-9. 最终归一化分数是两个归一化分量的几何平均。
-
-## 误差公式
-
-对第 \(i\) 帧，标注位姿记为 \((R_i^{gt}, t_i^{gt})\)，DROID-SLAM [[Teed and Deng, 2021](#reference)] 从生成视频恢复出的位姿记为 \((R_i, t_i)\)。其中 \(R_i^{gt}, R_i \in SO(3)\)，\(t_i^{gt}, t_i \in \mathbb{R}^3\)。
-
-!!! info "核心公式"
-
-    旋转项使用两个相机旋转矩阵之间的角度偏差：
-
-    \[
-    e_{\theta,i}
-    =
-    \arccos\!\left(
-        \frac{\operatorname{tr}\!\left(R_i^{gt} R_i^\top\right)-1}{2}
-    \right)
-    \cdot \frac{180}{\pi}
-    \]
-
-    平移项先用全部有效帧估计一个最小二乘尺度，再计算尺度不变欧氏距离：
-
-    \[
-    s
-    =
-    \arg\min_{\alpha}
-    \sum_{i=1}^{N}
-    \left\| t_i^{gt} - \alpha t_i \right\|_2^2,
-    \qquad
-    e_{t,i}
-    =
-    \left\| t_i^{gt} - s t_i \right\|_2
-    \]
-
-单个视频的原始 camera error 分量是全部有效帧的均值：
+记 \(\{\mathbf{T}^{\mathrm{gt}}_t\}_{t=1}^{N}\) 与 \(\{\mathbf{T}^{\mathrm{pred}}_t\}_{t=1}^{N}\) 分别为标注与视觉里程计（MegaSAM 或 DROID-SLAM）得到的对齐 $4 \times 4$ camera-to-world 矩阵。从中分解旋转 \(\mathbf{R}_t\) 与平移 \(\mathbf{t}_t\)。平移经尺度对齐：
 
 \[
-e_{\theta}
-=
-\frac{1}{N}
-\sum_{i=1}^{N} e_{\theta,i},
-\qquad
-e_t
-=
-\frac{1}{N}
-\sum_{i=1}^{N} e_{t,i}
+c^\star = \arg\min_{c} \sum_{t=1}^{N} \left\|\mathbf{t}^{\mathrm{gt}}_t - c\,\mathbf{t}^{\mathrm{pred}}_t\right\|_2
+\tag{1}
 \]
 
-统计模型级相机可控性误差时，再对完整评测集内所有生成视频、所有有效帧继续求平均。
+凸优化不可用时回退至均值距离比。平均平移误差为
 
-## 输入与输出
+\[
+E_t = \frac{1}{N}\sum_{t=1}^{N} \left\|c^\star \mathbf{t}^{\mathrm{pred}}_t - \mathbf{t}^{\mathrm{gt}}_t\right\|_2
+\tag{2}
+\]
 
-| 项目 | 当前实现 |
-| --- | --- |
-| 预测输入 | 完整解码后的预测视频 |
-| 参考输入 | 无 |
-| 标注输入 | `poses.npy`；如果要重采样位姿，可选 `indexes.txt` |
-| 原始输出 | `{"rotation_error": float, "translation_error": float}` |
-| 归一化输出 | 经过分量归一化和几何平均之后的单个 `[0, 1]` 标量 |
-| 细节字段 | `frame_count`、`camera_scale`、`native_components` |
-| 失败形式 | 如果位姿数据缺失或 DROID runtime 失败，则返回 `raw = null`、`normalized = null` 和错误字符串 |
+平均旋转误差（度）由相对旋转 \(\mathbf{R}^{\mathrm{rel}}_t = \mathbf{R}^{\mathrm{pred}}_t (\mathbf{R}^{\mathrm{gt}}_t)^\top\) 给出：
 
-## 当前集成说明
+\[
+E_r = \frac{1}{N}\sum_{t=1}^{N} \arccos\!\left(\mathrm{clip}\!\left(\frac{\mathrm{tr}(\mathbf{R}^{\mathrm{rel}}_t) - 1}{2}, -1, 1\right)\right) \cdot \frac{180}{\pi}
+\tag{3}
+\]
 
-| 项目 | 结论 |
-| --- | --- |
-| 当前聚合状态 | 只要存在位姿标注且成功产出数值分数，就是 `official` |
-| 指标定位 | `core camera-control metric` |
-| 论文可用性结论 | 可作为核心相机可控性指标使用，但需要说明固定内参和尺度不变对齐假设 |
+WorldArena 将各分量按经验范围 \([0, 15°]\)（旋转）与 \([0, 0.5]\)（平移）归一化至 \([0,1]\)（越低越好），再取**几何均值**得到 \(S_{\mathrm{cam}} \in [0,1]\)。\(S_{\mathrm{cam}}\) 越高表示相机控制越接近标注。当存在位姿标注或协议对齐的合成相机路径时，该指标为 **official**。
 
-- 当前被包装的 DROID-SLAM [[Teed and Deng, 2021](#reference)] 路径遵循 上游设定，在第三方实现内部使用**固定的 synthetic intrinsics**（`[500, 500, 256, 256]`，再按帧大小缩放）。
-- 这个设定不把指标解释为逐样本真实标定条件下的绝对相机重建误差，而是解释为固定内参假设下、内部自洽的 camera controllability error。
-- 平移分量使用最小二乘尺度做后对齐，因此该指标更强调相机运动方向、旋转控制和尺度不变的轨迹一致性，而不是严格的 metric-space 尺度保真。
-- 建议报告方式：作为核心 camera-control metric 使用，并在方法说明中明确它是基于 DROID-SLAM、固定 synthetic intrinsics 和 scale-invariant alignment 的相机可控性误差。
+<!-- metric-examples:start -->
+## 代表性同 Case 对比
+每个展示块先给出该 case 的 input image 和完全一致的展示 prompt，然后比较模型生成结果。paired 展示必须满足 input image 相同、prompt 文本相同，并且一个模型高分、一个模型低分。若当前正式快照中该 metric 没有这种跨模型同 case pair，则单独展示高分/低分极值样例，不把它们伪装成同 case 对比。
+机器可读 paired 导出： `docs/assets/metric_examples/paired_manifest.csv`.
+### `camera_error`
+<div class="metric-case-stack">
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/d6b1f731ad67__image_static_photorealistic_aquatic_landscape_0001.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0001" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · 同一输入图像 + 同一 prompt · 分差 0.9189</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0001</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera orbit left. A coastal landscape with ocean waves, distant hills, and sunset sky.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_aquatic_landscape_0001">
+      <source src="../../../assets/metric_examples/1a70929b6c9a__camera_error_megasam_smoke_dreamx__image_static_photorealistic_aquatic_landscape_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9189</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_aquatic_landscape_0001">
+      <source src="../../../assets/metric_examples/56c1b531c0e3__camera_error_corrected_smoke_dreamx__image_static_photorealistic_aquatic_landscape_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->
 
 ## 参考文献 {#reference}
 
-!!! quote "DROID-SLAM: Deep Visual SLAM for Monocular, Stereo, and RGB-D Cameras"
+!!! quote "DROID-SLAM — Deep Visual SLAM for Monocular, Stereo, and RGB-D Cameras"
 
-    Zachary Teed and Jia Deng.  
-    Advances in Neural Information Processing Systems (NeurIPS), 2021.
-
-??? note "BibTeX"
-
-    ```bibtex
-    @article{teed2021droid,
-        title = {Droid-slam: Deep visual slam for monocular, stereo, and rgb-d cameras},
-        author = {Teed, Zachary and Deng, Jia},
-        journal = {Advances in neural information processing systems},
-        volume = {34},
-        pages = {16558--16569},
-        year = {2021},
-    }
-    ```
+    Teed & Deng, NeurIPS 2021.
+    [https://arxiv.org/abs/2108.10869](https://arxiv.org/abs/2108.10869)

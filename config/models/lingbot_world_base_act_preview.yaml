@@ -6,8 +6,8 @@ model:
   artifact_types: [video]
   control_signals: [text, image, actions]
   roles: [candidate]
+  python_bin: ../conda/envs/lingbot-world/bin/python
   repo_root: thirdparty/lingbot-world
-  python_bin: /share/project/yesliu/miniconda3/envs/lingbot-world/bin/python
   checkpoint_dir: ckpt/lingbot-world-base-act-preview
   entrypoint: generate.py
   output_ext: .mp4
@@ -17,6 +17,7 @@ model:
   prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
+    require_persistent_batch: true
     task: i2v-A14B
     size: 832*480
     frame_num: 81

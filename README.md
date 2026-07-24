@@ -1,258 +1,800 @@
+<div align="center">
+
 # WorldArena
 
-WorldArena is an extensible benchmark workspace for world model evaluation, dataset inspection, and documentation generation. The repository is designed to stay stable at the benchmark-contract layer while model adapters, third-party repos, checkpoints, and metric backends evolve independently.
+**A Unified, Extensible Benchmark for World Model Evaluation**
 
-This repo does not vendor upstream model repositories or redistribute model weights. Instead, it provides:
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![GitHub](https://img.shields.io/badge/GitHub-OpenEnvision%2FWorldArena-181717.svg)](https://github.com/OpenEnvision/WorldArena)
 
-- the benchmark inventory, manifest, and reporting contract
-- official metric execution for the formal suites
-- a unified model config contract for local repos and API models under `config/models/`
-- a documented runtime layout for `ckpt/` and `thirdparty/`
+[Paper]() · [OpenEnvision](https://openenvision.github.io/index.html) · [Hugging Face]() · [Leaderboard]()
 
-All commands below assume the project's conda environment is already activated.
+<br>
 
-## Repo Shape
+*Is your world model a consistent, controllable, and physically plausible scene renderer?*
 
-WorldArena should stay benchmark-first, not pipeline-first:
+</div>
 
-- `worldarena/benchmark/`: manifests, metrics, normalization, evaluation runner, reporting
-- `worldarena/models/`: evaluated model adapters plus optional API-provider clients
-- `worldarena/datasets/`: dataset discovery and inventory logic
-- `worldarena/common/`: shared taxonomy, runtime layout, serialization
-- `config/models/`: one YAML schema for local-repo models and API-backed models
+---
 
-The current code now carries explicit `backend_type`, `task_families`, `artifact_types`, `control_signals`, and `roles` metadata. That is the mechanism for scaling from today's video benchmark into 3D, 4D, reconstruction, and world-model coverage without creating a second framework inside the repo.
+## Table of Contents
 
-## Benchmark Workflow
+- [Overview](#overview)
+- [News](#news)
+- [Benchmark Design](#benchmark-design)
+- [Installation](#installation)
+- [Path & Environment Configuration](#path--environment-configuration)
+- [Checkpoint Preparation](#checkpoint-preparation)
+- [Dataset Preparation](#dataset-preparation)
+- [File Formats & Contracts](#file-formats--contracts)
+- [Usage](#usage)
+- [Integrating Your Model](#integrating-your-model)
+- [Supported Models](#supported-models)
+- [Documentation & Site](#documentation--site)
+- [Repository Layout](#repository-layout)
+- [Citation](#citation)
+- [License](#license)
 
-WorldArena keeps four formal suites as the public benchmark core:
+---
 
-- `image_static`
-- `image_dynamic`
-- `video_static`
-- `video_dynamic`
+## Overview
 
-Official headline reporting is a per-suite metric vector, not a suite-level scalar and not a benchmark-wide total score.
+**WorldArena** (WorldAtlas Arena) is a research benchmark and evaluation toolkit for **world models** — models that generate or roll out interactive 3D/4D scenes from images, videos, text, camera trajectories, or actions.
 
-Build inventory and manifest:
+The repository provides:
+
+| Component | Description |
+|-----------|-------------|
+| **4 formal benchmark suites** | `image_static`, `image_dynamic`, `video_static`, `video_dynamic` |
+| **6 evaluation dimensions** | Action control, 3D/4D consistency, physics, quality, long sequence, real time |
+| **36+ automatic metrics** | Geometry, flow, depth, perceptual quality, physics, long-horizon diagnostics, and more |
+| **25+ model adapters** | Unified YAML contract for local repos, Python modules, and HTTP APIs |
+| **Reproducible reporting** | Per-sample JSONL, per-metric summaries, dimension aggregates, leaderboard CSV |
+
+---
+
+## News
+
+- **[2026/07]** Initial public release: evaluation core, model adapters, benchmark configs, and documentation site.
+- **[2026/07]** Added `perceptual_quality` and expanded long-horizon diagnostics across formal suites.
+- **[2026/07]** Published 25+ adapter configs under `config/models/`.
+
+---
+
+## Benchmark Design
+
+### Formal suites
+
+| Suite | Conditioning input | Typical control signal | Example tasks |
+|-------|-------------------|------------------------|---------------|
+| `image_static` | Single image | Camera path / pose, text prompt | Novel-view synthesis, camera-controlled rollout |
+| `image_dynamic` | Single image + mask / motion label | Dynamic prompt, object motion | Object motion, scene evolution from a still frame |
+| `video_static` | Video prefix | Camera trajectory | Video continuation with camera control |
+| `video_dynamic` | Video prefix | Instruction / dynamic prompt | Interactive world continuation |
+
+An additional **`experimental`** slice exists for supplemental metrics (e.g. physics-judge probes). It is declared separately in `config/benchmark.yaml` and does **not** contribute to formal headline aggregates.
+
+### Evaluation dimensions (selected metrics)
+
+| Dimension | Representative metrics | What it measures |
+|-----------|------------------------|------------------|
+| **Action control** | `camera_error`, `motion_accuracy`, `prompt_alignment`, `object_detection` | Following camera trajectories, prompts, and object instructions |
+| **3D/4D consistency** | `reprojection_error`, `optical_flow_aepe`, `depth_collision`, `met3r_consistency`, `reconstruction_consistency` | Geometric and photometric self-consistency |
+| **Physics** | `pmf`, `fvmd`, `motion_magnitude`, `motion_smoothness`, `physics_judge_*` | Physical plausibility of motion and interactions |
+| **Quality** | `perceptual_quality`, `style_consistency`, `image_quality`, `hpsv3_norm`, `sharpness_retention` | Visual fidelity and artifact severity |
+| **Long sequence** | `seen_region_preservation`, `object_permanence`, `memory_revisit_consistency`, `scene_memory_f1` | Memory and stability over long rollouts |
+| **Real time** | `physical_fps_error`, `action_response_latency`, `latency_budget_pass_rate` | Interactive latency and throughput |
+
+> Full metric definitions, normalization rules, and suite assignments: [`docs/en/benchmark/metrics/`](docs/en/benchmark/metrics/index.md) (also mirrored in Chinese under `docs/zh/`).
+
+---
+
+## Installation
+
+### Prerequisites
+
+| Requirement | Recommended version | Notes |
+|-------------|---------------------|-------|
+| OS | Linux (x86_64) | Primary development and test platform |
+| Python | **3.10** | Core `worldarena` environment |
+| CUDA | **12.1** (tested) | Metric backends and several adapters |
+| PyTorch | **2.5.1+cu121** | See optional stack below |
+| ffmpeg | any recent | Video decode / encode in metrics and adapters |
+| Git + Git LFS | — | For submodules and large assets |
+| Node.js | **18+** | Documentation site build only |
+
+### 1. Clone the repository
 
 ```bash
-worldarena build-inventory --config config/benchmark.yaml
-worldarena build-manifest --config config/benchmark.yaml
+git clone https://github.com/OpenEnvision/WorldArena.git
+cd WorldArena
+
+# Optional: initialize third-party model/metric submodules
+git submodule update --init --recursive
 ```
 
-Generate outputs with an adapter config:
+### 2. Create the core evaluation environment
+
+The **`worldarena`** Conda environment runs inventory building, metric evaluation, and lightweight adapters.
 
 ```bash
-worldarena generate \
-  --config config/benchmark.yaml \
-  --model-config config/models/lingbot_world.yaml
+export CUDA_HOME=/path/to/cuda-12.1   # adjust to your install
+
+conda create -n worldarena python=3.10 -y
+conda activate worldarena
+
+# PyTorch (tested stack)
+python -m pip install \
+  torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 \
+  --index-url https://download.pytorch.org/whl/cu121
+
+# Editable install of WorldArena
+python -m pip install -e .
+
+# Additional metric / media dependencies (recommended for full evaluation)
+conda install -c conda-forge decord=0.6.0 -y
+
+python -m pip install \
+  transformers==4.46.3 diffusers accelerate pyiqa open3d iopath pycocotools \
+  pytorch-lightning torchmetrics timm==0.4.12 xformers==0.0.28.post3 \
+  easydict roma jaxtyping lpips "pyglet<2" e3nn moviepy==1.0.3 \
+  plyfile pillow-heif pycolmap imageio-ffmpeg OpenEXR kornia gsplat trimesh
+
+python -m pip install \
+  -f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py310_cu121_pyt251/download.html \
+  pytorch3d
 ```
 
-Evaluate an existing predictions folder:
+Verify the CLI:
 
 ```bash
-worldarena evaluate \
-  --config config/benchmark.yaml \
-  --predictions-root /path/to/predictions
+worldarena --help
+# alias: worldatlas-arena
 ```
 
-Or run the one-shot path:
+### 3. Model-specific runtimes (optional)
 
-```bash
-worldarena run-model \
-  --config config/benchmark.yaml \
-  --model-config config/models/lingbot_world.yaml
-```
+Each upstream world model typically needs its **own** Python environment (CUDA version, custom extensions, pinned deps). WorldArena does not bundle all of these into one environment — follow each upstream repo's official install instructions.
 
-Expected prediction layout:
+| Model family | Upstream checkout | Notes |
+|--------------|-------------------|-------|
+| All repos | `git submodule update --init --recursive` — see [`thirdparty/README.md`](thirdparty/README.md) | — |
+| LingBot-World | `thirdparty/lingbot-world` | upstream `requirements/` / README |
+| LingBot-Video | `thirdparty/lingbot-video` | upstream README |
+| CamI2V / RealCam-I2V | `thirdparty/CamI2V`, `thirdparty/RealCam-I2V` | optional: [`scripts/launch_camera_i2v_8gpu.sh`](scripts/launch_camera_i2v_8gpu.sh) |
+| ABot-World | `thirdparty/ABot-World` | upstream README |
+| Matrix-Game 3.5 | `bash scripts/setup_matrix_game_35.sh` | installs from upstream `requirements.txt` + downloads weights |
+
+Point `python_bin` in the model YAML at the interpreter of that dedicated environment, or export `<MODEL>_PYTHON_BIN` in launch scripts.
+
+Detailed runtime notes: [`docs/en/thirdparty.md`](docs/en/thirdparty.md).
+
+---
+
+## Path & Environment Configuration
+
+WorldArena resolves **all paths relative to the repository root** unless an absolute path or environment override is provided.
+
+### Recommended directory layout
 
 ```text
-predictions/
-  image_static/<sample_id>.mp4
-  image_dynamic/<sample_id>.mp4
-  video_static/<sample_id>.mp4
-  video_dynamic/<sample_id>.mp4
+WorldArena/                          # repository root (WORLD_ROOT)
+├── ckpt/                            # default checkpoint root
+│   ├── huggingface/                 # HF_HOME / hub cache
+│   ├── torch/                       # TORCH_HOME
+│   ├── transformers/              # legacy transformers cache (optional)
+│   └── <model-name>/                # per-model weight trees
+├── data/                            # benchmark media (user-provided)
+│   ├── image/
+│   │   ├── static/
+│   │   └── dynamic/
+│   └── video/
+│       ├── static/
+│       └── dynamic/
+├── thirdparty/                      # git submodules (upstream models + metrics)
+│   └── README.md                    # submodule index and init commands
+├── artifacts/                       # generated outputs (gitignored)
+│   ├── predictions/                 # model-generated videos
+│   └── benchmark/
+│       ├── inventory/
+│       ├── manifest/
+│       └── reports/                 # evaluation JSONL / leaderboard
+├── config/                          # YAML contracts
+└── .env                             # local path overrides (not committed)
 ```
 
-Run artifacts include:
+### Environment variables
 
-- `run_manifest.json`
-- `per_sample_scores.jsonl`
-- `per_metric_summary.json`
-- `diagnostic_metric_summary.json` when any diagnostic metric returns a numeric score
-- `not_applicable_summary.json` when any metric is skipped for missing strong supervision
-- `domain_breakdown.json`
-- `leaderboard.csv`
+Create a `.env` file at the repository root (see [`.gitignore`](.gitignore); never commit secrets):
 
-`motion_accuracy` is the heaviest dynamic metric. The default benchmark config enables SAM2 video/state offload so that the official path can run on 80 GB cards more reliably. On multi-GPU hosts, `benchmark.metric_runtime.motion_accuracy` also supports device splitting such as `sam2_device: cuda:0` and `flow_device: cuda:1`.
+```bash
+# ── Checkpoint & cache ─────────────────────────────────────────────
+# When weights live outside the repo, point here. Layout must mirror ckpt/.
+WORLDARENA_CHECKPOINT_ROOT=/path/to/ckpt
 
-## Official Reporting Contract
+HF_HOME=/path/to/ckpt/huggingface
+HUGGINGFACE_HUB_CACHE=/path/to/ckpt/huggingface/hub
+TRANSFORMERS_CACHE=/path/to/ckpt/huggingface/hub
+TORCH_HOME=/path/to/ckpt/torch
 
-Current official metric dimensions are:
+# Offline mode (optional, after caches are populated)
+# HF_HUB_OFFLINE=1
+# TRANSFORMERS_OFFLINE=1
 
-- `content_alignment`: `prompt_alignment`
-- `style_consistency`: `style_consistency`
-- `perceptual_quality`: `perceptual_quality`
-- `camera_control`: `camera_error`
-- `object_control`: `object_detection`
-- `geometry_consistency`: `reprojection_error`
-- `photometric_consistency`: `optical_flow_aepe`
-- `motion_control`: `motion_accuracy`
-- `motion_dynamics`: `motion_magnitude`, `motion_smoothness`
-- `physics_fidelity`: `pmf`, `fvmd`
-- `temporal_calibration`: `physical_fps_error`, `physical_fps_pct_error`, `physical_fps_intra_video_cv`
+# ── Benchmark data roots ─────────────────────────────────────────
+# Used by config/benchmark.yaml paths and the static site server
+WORLDARENA_DATA_ROOT=/path/to/data
+WORLDARENA_IMAGE_DATA=/path/to/data/image
+WORLDARENA_VIDEO_DATA=/path/to/data/video
+WORLDARENA_VIDEO_SPLIT_DATA=/path/to/data/video_vipe_ann
+WORLDARENA_PHYSICS_DATA=/path/to/data/physics
 
-Current suite assignments are:
+# ── CUDA / build ───────────────────────────────────────────────────
+CUDA_HOME=/path/to/cuda-12.1
 
-- `image_static`: image-conditioned video rollout. It now runs the video-output metric superset where inputs permit: prompt/object/style/quality, prediction-only geometry and motion metrics, temporal calibration, depth-collision, self-consistency, and long-sequence diagnostics. Metrics requiring reference video, pose, or masks return unavailable when those sidecars are absent.
-- `image_dynamic`: same video-output metric superset as `image_static`, with dynamic prompts and masks used when available.
-- `video_static`: `style_consistency`, `perceptual_quality`, `camera_error`, `object_detection`, `reprojection_error`, `optical_flow_aepe`, `fvmd`
-- `video_dynamic`: `style_consistency`, `perceptual_quality`, `object_permanence`, `pmf`, `fvmd`, `motion_accuracy`, `motion_magnitude`, `motion_smoothness`, `physical_fps_error`, `physical_fps_pct_error`, `physical_fps_intra_video_cv`
+# ── Legacy path remapping (optional) ───────────────────────────────
+# Remaps stale absolute paths inside old manifests to a new workspace root
+WORLDARENA_LEGACY_WORKSPACE_ROOT=/path/to/old/workspace
 
-The `image_static`, `image_dynamic`, and `video_dynamic` suites also emit diagnostic-only long-video metrics via the bundled native `Long-Sequence` backend: `long_sequence_subject_consistency`, `long_sequence_background_consistency`, `long_sequence_motion_smoothness`, `long_sequence_dynamic_degree`, `long_sequence_aesthetic_quality`, and `long_sequence_imaging_quality`.
+# ── Model interpreter overrides (examples) ───────────────────────
+# WORLDARENA_PYTHON_BIN=python
+# LINGBOT_WORLD_PYTHON_BIN=/path/to/env/bin/python
+# ALAYAWORLD_PYTHON_BIN=/path/to/env/bin/python
 
-All image and video formal suites also emit diagnostic `depth_collision`, which uses Video-Depth-Anything metric depth over a center crop to flag camera-path collisions. Its default checkpoint path is `ckpt/Video-Depth-Anything/metric_video_depth_anything_vits.pth`.
+# ── API models (optional) ──────────────────────────────────────────
+# KLING_API_KEY=...
+# OPENAI_API_KEY=...          # physics judge / optional backends
+```
 
-All image and video formal suites also emit diagnostic `reconstruction_consistency`, the World-R1 `S_recon` signal. It reconstructs a Depth-Anything-3 Gaussian representation from the prediction, renders it back along the input path, and reports `clip(1 - mean LPIPS, 0, 1)` as a prediction-only consistency score.
+Load before every session:
 
-`prompt_alignment` is computed only when the sample has explicit instruction supervision and is not self-conditioned. It always evaluates video predictions: image suites are image-conditioned video rollouts, so their `prompt_target` must describe the intended video, not a still-image output. Otherwise the metric is reported as `not_applicable` and excluded from both official and diagnostic aggregates.
+```bash
+set -a
+source .env
+set +a
+```
 
-`fvmd` is a suite-level Fréchet Video Motion Distance metric, so it is computed once per video suite from the set of valid prediction/reference video pairs and written to `distribution_metric_details.json` alongside the normal summary files. Its default source checkout is `thirdparty/FVMD-frechet-video-motion-distance`.
+### Config files to edit for your machine
 
-`semantic_alignment` is also emitted for image suites as a diagnostic caption-grounded signal. It remains outside the official aggregate.
+| File | Purpose | Default paths |
+|------|---------|---------------|
+| [`config/benchmark.yaml`](config/benchmark.yaml) | Suite definitions, metric lists, benchmark data roots | `data/image`, `data/video` |
+| [`config/datasets.yaml`](config/datasets.yaml) | Dataset analytics scanners | Update `collections[].root` to your media trees |
+| [`config/models/*.yaml`](config/models/) | Per-model runtime (`repo_root`, `checkpoint_dir`, `python_bin`) | Relative to repo / `ckpt/` |
 
-`object_detection` is computed only from explicit structured object annotations. Caption-derived object prompts are reported as `not_applicable`, not scored.
+> **Tip:** Keep machine-specific overrides in `config/models/*_local.yaml` or `config/datasets.cpfs.yaml` — these patterns are listed in [`.gitignore`](.gitignore) and will not be committed.
 
-Non-formal assets stay outside official headline reporting and are routed into separate `auxiliary` or `experimental` reporting.
+---
 
-## Checkpoint Contract
+## Checkpoint Preparation
 
-`WorldArena/ckpt` is the default checkpoint root. Large-disk deployments may point the same layout elsewhere with `WORLDARENA_CHECKPOINT_ROOT=/path/to/ckpt`. All model checkpoints, benchmark weights, reference metric weights, and HF/Torch runtime caches resolve under the active checkpoint root. `thirdparty/` keeps source checkouts only, and `cache/` is scratch runtime output only.
+### Default layout under `ckpt/`
 
-Removed path mechanisms:
+When `WORLDARENA_CHECKPOINT_ROOT` is unset, WorldArena uses **`WorldArena/ckpt/`** as the canonical root. The helper `worldarena.common.checkpoints.checkpoint_root()` creates subfolders on demand.
 
-- `cache/hfd`
-- `~/.cache/worldarena/**`
-- `~/.cache/vbench/**`
-- `thirdparty/**/ckpts`
-- adapter/backend-specific fallback search chains
+```bash
+mkdir -p ckpt/huggingface/hub ckpt/torch ckpt/official_metrics
+```
 
-The tested open-source evaluation environment is `conda` env `worldarena`, Python 3.10.14, PyTorch 2.5.1, torchvision 0.20.1, CUDA 12.1, and ffmpeg exposed on PATH. See `docs/en/thirdparty.md` or `docs/zh/thirdparty.md` for the exact setup order, metric checkpoint layout, and `decord` installation note.
+Typical contents:
 
-Simulator-backed physics evaluation uses the same WorldArena report contract but depends on a separate external `physics-pipeline` checkout and its own Python runtime. WorldArena invokes it through `WORLDARENA_PHYSICS_PYTHON_BIN` or the per-case `python_bin` metadata. The in-tree validation command is `python -m pytest tests/test_physics_simulator_derived_metrics.py`; a full simulator run additionally requires `benchmark_export.py`, `main_part2.py`, `benchmark_eval.py`, and pipeline assets under the configured `--physics-pipeline-root`.
+| Subdirectory | Purpose |
+|--------------|---------|
+| `ckpt/huggingface/` | Hugging Face Hub cache (`HF_HOME`) |
+| `ckpt/torch/` | Torch hub / torchvision weights |
+| `ckpt/official_metrics/` | Metric backbone weights used by the official runtime |
+| `ckpt/<model>/` | Upstream checkpoint trees referenced in model YAML |
 
-Bundled model defaults:
+### Metric evaluation checkpoints
 
-| Config | Source checkout | Checkpoint path(s) under `ckpt/` |
-| --- | --- | --- |
+Benchmark metrics read weights from the same `ckpt/` root (or `WORLDARENA_CHECKPOINT_ROOT`). Missing files raise `FileNotFoundError` at evaluation time — there is no online fallback.
+
+**Quick start** — download the bundled-metric and official-runtime weights:
+
+```bash
+bash scripts/download_metric_checkpoints.sh          # core metric weights
+bash scripts/download_metric_checkpoints.sh --all    # + HPSv3, JEDi, TransNetV2, HF/Torch caches
+```
+
+Full commands and environment notes: [`docs/en/thirdparty.md`](docs/en/thirdparty.md#download-checkpoints-and-assets) (Chinese: [`docs/zh/thirdparty.md`](docs/zh/thirdparty.md)).
+
+#### Metric ↔ checkpoint quick reference
+
+| Metric(s) | Path under `ckpt/` | Download source |
+|-----------|-------------------|-----------------|
+| `depth_collision` | `Video-Depth-Anything/metric_video_depth_anything_vits.pth` | [HF: depth-anything/Metric-Video-Depth-Anything-Small](https://huggingface.co/depth-anything/Metric-Video-Depth-Anything-Small) |
+| `long_sequence_*`, `long_horizon_diagnostics` | `amt_model/amt-s.pth`, `raft_model/models/raft-things.pth`, `musiq/musiq_spaq_ckpt-358bb6af.pth` | [HF: lalala125/AMT](https://huggingface.co/lalala125/AMT), [RAFT Dropbox models.zip](https://dl.dropboxusercontent.com/s/4j4z58wuv8o0mfz/models.zip), [IQA-PyTorch release](https://github.com/chaofengc/IQA-PyTorch/releases/download/v0.1-weights/musiq_spaq_ckpt-358bb6af.pth) |
+| `temporal_calibration`, `physical_fps_*` | `Pulse-of-Motion/vc_common_10_60fps.ckpt` | [HF: xiangbog/Visual_Chronometer](https://huggingface.co/xiangbog/Visual_Chronometer) |
+| `camera_error`, `reprojection_error` (DROID) | `official_metrics/droid.pth` | [Google Drive via gdown](https://drive.google.com/file/d/1PpqVt1H4maBa_GbPJp4NwxRsd9jk-elh) |
+| `object_detection`, `motion_accuracy` | `official_metrics/groundingdino_swint_ogc.pth`, `sam_vit_h_4b8939.pth`, `sam2.1_hiera_base_plus.pt`, `bert-base-uncased/` | [GroundingDINO release](https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth), [SAM ViT-H](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth), [HF: facebook/sam2.1-hiera-base-plus](https://huggingface.co/facebook/sam2.1-hiera-base-plus), [HF: google-bert/bert-base-uncased](https://huggingface.co/google-bert/bert-base-uncased) |
+| `optical_flow_aepe`, `motion_magnitude`, `motion_accuracy` | `official_metrics/Tartan-C-T-TSKH-spring540x960-M.pth`, `official_metrics/models/raft-things.pth` | [HF: Yarimasune/SEA-RAFT](https://huggingface.co/Yarimasune/SEA-RAFT), copy from `raft_model/` |
+| `motion_smoothness` | `official_metrics/VFIMamba.pkl` | [HF: MCG-NJU/VFIMamba](https://huggingface.co/MCG-NJU/VFIMamba) (`model.pkl` → rename) |
+| `long_sequence_aesthetic_quality` (CLIP aesthetic head) | `official_metrics/sac+logos+ava1-l14-linearMSE.pth` | [improved-aesthetic-predictor](https://github.com/christophschuhmann/improved-aesthetic-predictor/raw/main/sac%2Blogos%2Bava1-l14-linearMSE.pth) |
+| `depth_accuracy` | `huggingface/hub` cache for `depth-anything/Depth-Anything-V2-Small-hf` | [HF model card](https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf) |
+| `reconstruction_consistency`, `met3r_consistency` | `DA3-GIANT/`, `huggingface/hub` (`naver/MASt3R_*`), `torch/hub` (DINO) | [HF: depth-anything/DA3-GIANT](https://huggingface.co/depth-anything/DA3-GIANT), [HF: naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric](https://huggingface.co/naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric), `torch.hub.load("facebookresearch/dino:main", "dino_deitsmall16")` |
+| `semantic_alignment`, `background_consistency`, `memory_revisit_consistency` | `huggingface/hub` (`openai/clip-vit-base-patch16`, `facebook/dinov2-base`) | [CLIP](https://huggingface.co/openai/clip-vit-base-patch16), [DINOv2](https://huggingface.co/facebook/dinov2-base) |
+| `hpsv3_norm` | `HPSv3/HPSv3.safetensors`, `HPSv3/HPSv3_7B_local.yaml`, `Qwen2-VL-7B-Instruct/` | [HF: MizzenAI/HPSv3](https://huggingface.co/MizzenAI/HPSv3), [config template](https://raw.githubusercontent.com/MizzenAI/HPSv3/main/hpsv3/config/HPSv3_7B.yaml), [HF: Qwen/Qwen2-VL-7B-Instruct](https://huggingface.co/Qwen/Qwen2-VL-7B-Instruct); also `pip install hpsv3` |
+| `segment_continuity` | `TransNetV2/transnetv2-pytorch-weights.pth` + `thirdparty/TransNetV2/inference-pytorch/` | Clone [soCzech/TransNetV2](https://github.com/soCzech/TransNetV2), `git lfs pull`, run `inference-pytorch/convert_weights.py` |
+| `jedi` (video suite) | `JEDi/vith16.pth.tar`, `JEDi/ssv2-probe.pth.tar` | [Meta JEPA weights](https://dl.fbaipublicfiles.com/jepa/vith16/) |
+
+> **Note:** `camera_error` defaults to the MegaSAM backend in `config/benchmark.yaml`. MegaSAM requires a separate conda env and upstream checkout; set `MEGASAM_PYTHON` or override `metric_runtime.camera_error` when not using the bundled DROID backend.
+
+### Example: download weights for an adapter
+
+```bash
+# Hugging Face CLI (generic pattern)
+huggingface-cli download org/model-name --local-dir ckpt/model-name
+
+# ABot-World example
+huggingface-cli download acvlab/ABot-World-0-5B-LF --local-dir ckpt/ABot-World-0-5B-LF
+```
+
+Then set in `config/models/abot_world.yaml`:
+
+```yaml
+model:
+  repo_root: thirdparty/ABot-World
+  checkpoint_dir: ckpt/ABot-World-0-5B-LF
+```
+
+### Checkpoint ↔ config quick reference
+
+| Config | Upstream code | Weights under `ckpt/` |
+|--------|---------------|----------------------|
 | `lingbot_world.yaml` | `thirdparty/lingbot-world` | `lingbot-world-base-cam` |
-| `lingbot_world_base_act_preview.yaml` | `thirdparty/lingbot-world` | `lingbot-world-base-act-preview`, `generation.shared_checkpoint_dir=lingbot-world-base-cam` |
-| `lingbot_world_fast.yaml` | `thirdparty/lingbot-world` | `lingbot-world-base-cam`, `generation.fast_checkpoint_dir=lingbot-world-fast` |
-| `cosmos_predict25_14b.yaml` | `thirdparty/cosmos-predict2.5` | `Cosmos-Predict2.5-14B`, `Cosmos-Reason1-7B`, `Wan2.1-I2V-14B-480P/Wan2.1_VAE.pth` |
-| `cosmos_predict25_2b.yaml` | `thirdparty/cosmos-predict2.5` | `Cosmos-Predict2.5-2B` plus the same auxiliary text/tokenizer checkpoints as the 14B config |
-| `inspatio_world.yaml` | `thirdparty/inspatio-world` | `inspatio--world` |
-| `infinite_world.yaml` | `thirdparty/Infinite-World` | `MeiGen-AI--Infinite-World` |
-| `neoverse.yaml` | `thirdparty/NeoVerse` | `Yuppie1204--NeoVerse` |
-| `lyra1.yaml` | `thirdparty/Lyra-1` | `Lyra` plus companion `nvidia--GEN3C-Cosmos-7B`, `nvidia--Cosmos-Tokenize1-CV8x8x8-720p`, `google-t5--t5-11b`, `Ruicheng--moge-vitl` |
-| `lyra2.yaml` | `thirdparty/Lyra-2` | `Lyra-2.0` plus companion `depth-anything--DA3NESTED-GIANT-LARGE`, `google/umt5-xxl`, `Ruicheng--moge-vitl` |
-| `gen3c.yaml` | `thirdparty/Lyra-1` | `nvidia--GEN3C-Cosmos-7B` plus companion `nvidia--Cosmos-Tokenize1-CV8x8x8-720p`, `google-t5--t5-11b`, `Ruicheng--moge-vitl` |
-| `flashworld.yaml`, `flashworld_image_static.yaml` | `thirdparty/FlashWorld` | `imlixinyang--FlashWorld` |
-| `worldcam.yaml` | `thirdparty/WorldCam` | `worldcam--worldcam` plus companion `Wan-AI--Wan2.1-T2V-1.3B` |
-| `hunyuanworld.yaml` | `thirdparty/HunyuanWorld-1.0` | `HunyuanWorld-1` plus companion `ZIM/zim_vit_l_2092` |
-| `luciddreamer.yaml` | `thirdparty/LucidDreamer` | `stabilityai--stable-diffusion-2-inpainting` and any upstream HF cache entries under `huggingface/` |
-| `hy_worldplay.yaml` | `thirdparty/HY-WorldPlay` | `HY-WorldPlay`, `HY-WorldPlay/ar_distilled_action_model/model.safetensors` |
-| `wonderjourney.yaml` | `thirdparty/WonderJourney` | `WonderJourney/dpt_beit_large_512.pt` plus `sd2-community--stable-diffusion-2-inpainting` and any upstream HF cache entries under `huggingface/` |
-| `wonderworld.yaml` | `thirdparty/WonderWorld` | `WonderWorld/repvit_sam.pt`, `sd2-community--stable-diffusion-2-inpainting`, `prs-eth--marigold-v1-0`, `prs-eth--marigold-normals-v0-1`, and any upstream HF cache entries under `huggingface/` |
-| `yume.yaml` | `thirdparty/YUME` | `stdstu123--Yume-5B-720P`, `InternVL3-2B-Instruct` |
-| `worldfm.yaml` | `thirdparty/worldfm` | `worldfm` plus companion `ZIM/zim_vit_l_2092` |
-| `matrix_game_1.yaml` | `thirdparty/Matrix-Game-1` | `Matrix-Game-1.0` |
-| `matrix_game_2.yaml` | `thirdparty/Matrix-Game/Matrix-Game-2` | `Skywork--Matrix-Game-2.0` |
-| `matrix_game.yaml` | `thirdparty/Matrix-Game-3.0` | `Matrix-Game-3.0` |
-| `hunyuan_gamecraft.yaml` | `thirdparty/Hunyuan-GameCraft-1.0` | `tencent--Hunyuan-GameCraft-1.0` |
+| `lingbot_video_dense.yaml` | `thirdparty/lingbot-video` | `lingbot-video-dense-1.3b` |
+| `hy_worldplay.yaml` | `thirdparty/HY-WorldPlay` | `HY-WorldPlay` |
+| `worldcam.yaml` | `thirdparty/WorldCam` | `worldcam--worldcam` + Wan2.1 companion weights |
+| `gen3c.yaml` | `thirdparty/GEN3C` | `nvidia--GEN3C-Cosmos-7B` |
+| `matrix_game_35_first.yaml` | `thirdparty/Matrix-Game-3.5` | `Matrix-Game-3.5/*` |
+| `matrix_game.yaml` | `thirdparty/Matrix-Game/Matrix-Game-3` | `Matrix-Game-3.0` |
+| `matrix_game_1.yaml` | `thirdparty/Matrix-Game/Matrix-Game-1` | `Matrix-Game-1.0` |
+| `alayaworld.yaml` | `thirdparty/AlayaWorld` | `AlayaWorld/*` + `gemma-3-12b-it-*` |
+| `cami2v.yaml` | `thirdparty/CamI2V` | `CamI2V/512_cami2v_100k.pt` |
+| `realcam_i2v.yaml` | `thirdparty/RealCam-I2V` | `RealCam-I2V/*.pt` + `CogVideoX1.5-5B-I2V` |
+| `stable_virtual_camera.yaml` | `thirdparty/stable-virtual-camera` | `stable-virtual-camera/*` |
+| `yume.yaml` | `thirdparty/YUME` | `Yume-5B-720P` |
+| `abot_world.yaml` | `thirdparty/ABot-World` | `ABot-World-0-5B-LF` |
 
-Bundled benchmark runtime defaults:
+Model weights retain their **original licenses**. WorldArena code is [MIT](LICENSE).
 
-- `benchmark.metric_runtime.depth_accuracy.model_name: depth-anything/Depth-Anything-V2-Small-hf`
-- `benchmark.metric_runtime.depth_collision.checkpoint_path: ckpt/Video-Depth-Anything/metric_video_depth_anything_vits.pth`
-- `benchmark.metric_runtime.met3r_consistency.backbone: mast3r`
-- `benchmark.metric_runtime.met3r_consistency.feature_backbone_weights: facebookresearch/dino:main`
-- `benchmark.metric_runtime.met3r_consistency.upsampler: bilinear`
-- `benchmark.metric_runtime.reconstruction_consistency.model_name: depth-anything/DA3-GIANT`
-- `benchmark.metric_runtime.temporal_calibration.checkpoint_path: ckpt/Pulse-of-Motion/vc_common_10_60fps.ckpt`
-- `benchmark.metric_runtime.long_sequence.amt_checkpoint_path: ckpt/amt_model/amt-s.pth`
-- `benchmark.metric_runtime.long_sequence.raft_model_path: ckpt/raft_model/models/raft-things.pth`
-- `benchmark.metric_runtime.long_sequence.musiq_model_path: ckpt/musiq/musiq_spaq_ckpt-358bb6af.pth`
-- suite-level optional runtimes: `benchmark.metric_runtime.fvmd.repo_root: thirdparty/FVMD-frechet-video-motion-distance`, `benchmark.metric_runtime.jedi.repo_root: thirdparty/JEDi`
-- HF/Torch caches: `ckpt/huggingface`, `ckpt/huggingface/hub`, `ckpt/transformers`, `ckpt/torch`
+---
 
-Bundled configs also use a single schema for model capability metadata:
+## Dataset Preparation
 
-- `backend_type`: `local_repo`, `python_module`, `sdk_api`, or `http_api`
-- `task_families`: for example `video_generation` or `world_model`
-- `artifact_types`: for example `video`, `image`, `mesh`, `point_cloud`
-- `control_signals`: for example `text`, `image`, `video`, `camera_pose`, `actions`
-- `roles`: `candidate`, `oracle`, `metric_backend`, `reconstruction`, or `foundation`
+### Expected on-disk layout
 
-API-backed models should use the same YAML shape and set `repo_root: null`. The starter template lives at `config/models/template_video_api.yaml.example`.
+Benchmark inventory assumes taxonomy-oriented folder trees. Minimal layout for the four formal image/video suites:
 
-The current API path keeps one benchmark-facing contract for both local repos and remote generation services:
+```text
+data/image/
+├── static/
+│   └── <style>/<environment>/<scene>/<sample_id>.{jpg,png}
+└── dynamic/
+    └── <style>/<motion_category>/...
+        ├── <sample_id>.{jpg,png}
+        ├── <sample_id>_mask.png          # optional
+        └── <sample_id>.json              # annotation (prompt, camera_path, …)
 
-- `backend_type: http_api`
-- the provider contract lives under `model.api`
-- the generation knobs stay under `model.generation`
-- the same `worldarena generate`, `evaluate`, and `run-model` commands work unchanged
+data/video/
+├── static/
+│   └── <style>/<environment>/<scene>/<duration_bucket>/<clip>.mp4
+└── dynamic/
+    └── …                                 # + annotations / masks when available
+```
 
-`config/models/kling_api.yaml.example` is the concrete example for this path.
+Annotation JSON (when present) supplies **`prompt_current`**, **`prompt_target`**, optional **`camera_path`**, and **`prompt_sequence`**. WorldArena normalizes these into the benchmark manifest via `worldarena.benchmark.annotations`.
 
-For `InSpatio-World`, the benchmark adapter uses the upstream `run_test_pipeline.sh` but skips Florence captioning and injects the benchmark prompt directly through a synthetic single-video `new.json`. The main knobs stay under `model.generation`: `traj_txt_path`, `checkpoint_path`, `da3_model_path`, `step2_gpus`, `step3_gpus`, `step3_nproc`, `master_port`, `relative_to_source`, `rotation_only`, `adaptive_frame`, `freeze_repeat`, `use_tae`, `compile_dit`, and `radius_ratio`. Relative checkpoint-like fields are resolved inside `ckpt/inspatio--world`.
+### Build inventory and manifest
 
-For `lingbot-world`, the `model.generation` block is intended to stay close to the upstream CLI. Beyond the core fields (`task`, `size`, `frame_num`, `sample_solver`), the adapter also forwards controls such as `sample_steps`, `sample_shift`, `sample_guide_scale`, `ulysses_size`, `offload_model`, `t5_fsdp`, `t5_cpu`, `dit_fsdp`, `use_prompt_extend`, `prompt_extend_*`, `action_string_by_suite`, and `allow_act2cam`. The bundled configs currently cover the base camera checkpoint, the action-preview checkpoint, and the fast runtime variant. `generation.fast_checkpoint_dir` and `generation.shared_checkpoint_dir` still exist, but they now only accept explicit paths under `ckpt/`; the adapter materializes the upstream runtime layout from those explicit local directories. When a sample carries a usable `annotation_path`, the adapter maps it to upstream `--action_path` automatically and normalizes the benchmark pose/intrinsics layout into the format expected by `lingbot-world`.
+Update roots in `config/benchmark.yaml`:
 
-For `GEN3C`, the benchmark adapter runs the upstream `gen3c_single_image.py` entrypoint against the cached conditioning frame and stages the canonical `ckpt/` layout for the repo. The main knobs under `model.generation` are `num_gpus`, `num_video_frames`, `height`, `width`, `fps`, `seed`, `guidance`, `num_steps`, `trajectory`, `camera_rotation`, `movement_distance`, `filter_points_threshold`, and the memory-offload flags mirrored from the upstream CLI.
+```yaml
+paths:
+  image_root: data/image    # or absolute path
+  video_root: data/video
+  inventory_dir: artifacts/benchmark/inventory
+  manifest_dir: artifacts/benchmark/manifest
+  predictions_dir: artifacts/predictions
+  reports_dir: artifacts/benchmark/reports
+  cache_dir: .cache/worldarena/benchmark
+```
 
-For `Infinite-World`, the `model.generation` block keeps the benchmark-side knobs small: `config_path`, `bucket_config_name`, `num_chunks`, `num_sampling_steps`, `sample_shift`, `sample_guide_scale`, `fps`, and an `action_plan` that expands suite-specific symbolic interactions like `forward`, `forward_right`, and `camera_left` into the framewise move/view JSON expected by the upstream model.
+Then run:
 
-For `NeoVerse`, the adapter supports both bundled video suites but uses different defaults by suite: `video_static` runs from the cached first frame plus an annotation-derived camera trajectory, while `video_dynamic` uses the reference video as the source sequence and keeps the original camera path unless you override `model.generation`. The main knobs are `input_mode`, `trajectory_source`, `trajectory`, `traj_mode`, `zoom_ratio`, `num_frames`, `height`, `width`, `alpha_threshold`, `low_vram`, and the checkpoint layout fields `model_subdir` / `reconstructor_filename`.
+```bash
+conda activate worldarena
 
-For `HunyuanWorld`, the adapter targets static suites only. It uses the reference image or first video frame to run `demo_panogen.py`, feeds the resulting `panorama.png` into `demo_scenegen.py`, and archives the generated `mesh_layer*.ply` files and intermediates into a single `.zip`. This is generation-only plumbing for now: the current `evaluate` path does not score those mesh archives. All runtime caches now resolve under `ckpt/`, and the upstream ZIM checkpoint is staged from `ckpt/ZIM/zim_vit_l_2092` into the expected source-relative location at launch time.
+worldarena build-inventory --config config/benchmark.yaml
+worldarena build-manifest  --config config/benchmark.yaml
+```
 
-For `LucidDreamer`, the adapter targets static suites only. It runs the upstream `run.py` CLI against the cached reference image or first video frame, stages the rendered `campath_render`.mp4 back into the benchmark prediction path, and preserves the generated `gsplat.ply` plus depth video as sidecars next to the prediction. Any upstream HF downloads must already be present under `ckpt/`, because the runtime now runs in offline mode with caches pinned to `ckpt/huggingface` and `ckpt/torch`.
+Outputs:
 
-For `HY-WorldPlay`, the bundled config expects a local repo under `thirdparty/HY-WorldPlay`, a prepared local weights tree under `checkpoint_dir`, and the released action checkpoint under `model.generation.action_ckpt`. The adapter converts benchmark `poses.npy` / `intrinsics.npy` pairs, or image-suite `camera_path` prompts when no pose sidecar exists, into the pose JSON consumed by `hyvideo/generate.py`, then stages the generated `gen.mp4` or `gen_sr.mp4` back into the benchmark prediction path.
+| Artifact | Location |
+|----------|----------|
+| Inventory tables | `artifacts/benchmark/inventory/` |
+| Benchmark manifest | `artifacts/benchmark/manifest/worldarena_manifest.jsonl` |
 
-For `WonderJourney`, the adapter targets static suites and keeps the benchmark output contract: the benchmark prediction is an `.mp4` rendered from generated frames, not a zip archive. It materializes a benchmark conditioning frame plus prompt into `examples/examples.yaml`, stages the MiDaS `dpt_beit_large_512.pt` checkpoint into the temporary run directory, runs upstream `run.py`, and copies the merged `output.mp4` back as the prediction with optional reverse/keyframe sidecars. Upstream HF loads are expected to resolve from `ckpt/huggingface` or explicit paths under `ckpt/`.
-
-For `WonderWorld`, the adapter targets static suites through a noninteractive batch runner. It uses benchmark `poses.npy` / `intrinsics.npy`, or synthesizes image-suite camera poses from the prompt contract, renders `all_interpframes`, writes the benchmark prediction as `.mp4`, and only stores generated frames plus 3DGS files in an optional `.sidecar.zip` archive. The explicit RepViT checkpoint now lives under `ckpt/WonderWorld`, and any remaining upstream HF cache lookups are pinned to `ckpt/huggingface`.
-
-For `WorldFM`, the adapter converts each sample's `poses.npy` and `intrinsics.npy` into the upstream `meta.json` format and then runs `run_pipeline.py` against the cached first frame. The bundled config intentionally stays narrow: `model_filename`, `vae_subdir`, `step`, `image_size`, `cfg_scale`, `render_size`, `fps`, and `gpu_index`. It is registered for `video_static` only because the upstream model is a single-image, pose-driven novel-view generator rather than a dynamic scene model. The runner also stages the upstream ZIM checkpoint from `ckpt/ZIM/zim_vit_l_2092` into the expected source-relative location before execution.
-
-For `YUME`, the adapter imports the upstream `webapp_single_gpu.py` entrypoint directly inside a subprocess, rewires its checkpoint paths, and calls `LongGenArgs` / `long_generate()` without starting the Flask server. The bundled config defaults to a single-segment `I2V` pass from the cached first frame and exposes the core upstream knobs under `model.generation`: `sample_steps`, `sample_num`, `frame_zero`, `shift`, `resolution`, optional `caption_model_dir`, and suite-specific `camera_movement*_by_suite` overrides. Both the base model and the optional caption model must now be prepared under `ckpt/`.
-
-For `FlashWorld`, the adapter converts each sample's `poses.npy` and `intrinsics.npy` into the
-upstream JSON camera trajectory format and then runs `cli.py` against the cached first frame plus
-the benchmark prompt. The main knobs stay narrow: `num_frames`, `image_height`, `image_width`,
-`image_index`, `video_fps`, the three offload flags, and optional `export_ply` / `export_spz`
-sidecars. It is currently registered for `video_static` only because the upstream model is a
-single-image static-scene generator rather than a dynamic world model.
-
-## Dataset Analytics And Docs
-
-Refresh the dataset analytics pages:
+For dataset **statistics panels** (docs site / analytics), additionally configure [`config/datasets.yaml`](config/datasets.yaml) and run:
 
 ```bash
 worldarena build-docs --config config/datasets.yaml
 ```
 
-Preview the documentation site locally:
+---
 
-```bash
-mkdocs serve
+## File Formats & Contracts
+
+### Benchmark manifest (`*.jsonl`)
+
+One UTF-8 JSON object per line (`BenchmarkSample`). Required fields for generation / evaluation:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sample_id` | string | Stable identifier, e.g. `image_static_photorealistic_indoor_living_spaces_0001` |
+| `suite` | string | `image_static` \| `image_dynamic` \| `video_static` \| `video_dynamic` |
+| `path` | string | Absolute or resolvable path to source asset |
+| `reference_path` | string | Conditioning reference (usually same as `path`) |
+| `prediction_stem` | string | Filename stem for predictions (defaults to `sample_id`) |
+| `prompt_current` | string | Scene description at conditioning time |
+| `prompt_target` | string | Target prompt for generation |
+| `camera_path` | string[] | Symbolic camera / motion tokens (static suites) |
+| `conditioning_strategy` | string | `reference_image`, `first_frame`, `reference_video`, … |
+| `mask_path` | string \| null | Optional mask for dynamic image metrics |
+
+Example (truncated):
+
+```json
+{
+  "sample_id": "image_static_photorealistic_outdoor_city_0042",
+  "suite": "image_static",
+  "path": "data/image/static/photorealistic/outdoor/city/0042.jpg",
+  "prediction_stem": "image_static_photorealistic_outdoor_city_0042",
+  "prompt_current": "A wide street in a modern city at dusk.",
+  "prompt_target": "A wide street in a modern city at dusk.",
+  "camera_path": ["forward", "camera_left", "forward"],
+  "conditioning_strategy": "reference_image"
+}
 ```
 
-Additional documentation:
+### Prediction outputs
 
-- `docs/architecture.md`: repo boundaries, task families, unified model config, and API integration pattern
-- `docs/benchmark/`: benchmark scope, metric policy, reporting contract, and per-metric notes
-- `docs/thirdparty.md`: third-party repos, cache layout, and checkpoint integration
-- `docs/development.md`: maintainer workflow, validation commands, release hygiene
+WorldArena resolves predictions in this order:
+
+1. `{predictions_root}/{suite}/{prediction_stem}{ext}`
+2. `{predictions_root}/{prediction_stem}{ext}`
+
+Supported video extensions: `.mp4`, `.mov`, `.avi`, `.mkv`, `.webm`. Default adapter output: **`.mp4`**.
+
+**Flat layout (common for external submissions):**
+
+```text
+predictions/
+├── image_static/
+│   └── image_static_photorealistic_outdoor_city_0042.mp4
+├── image_dynamic/
+├── video_static/
+└── video_dynamic/
+```
+
+**Generation run layout** ( produced by `worldarena generate` ):
+
+```text
+artifacts/predictions/<run-name>/
+├── image_static_<sample_id>.mp4
+├── generation_manifest.json
+├── generation_records.jsonl
+├── prompt_map.json
+└── _conditioning/                 # cached conditioning frames (internal)
+```
+
+Sharded runs append `.shard<N>` suffixes to manifest / record files.
+
+### Evaluation reports
+
+`worldarena evaluate` writes to `artifacts/benchmark/reports/<model-name>/` (or `--output-dir`):
+
+| File | Contents |
+|------|----------|
+| `run_manifest.json` | Run metadata, suite list, missing predictions |
+| `per_sample_scores.jsonl` | One JSON object per sample with all metric outputs |
+| `per_metric_summary.json` | Suite-level headline metric aggregates |
+| `per_dimension_summary.json` | Dimension-level aggregates |
+| `leaderboard.csv` | Flat comparison table |
+| `not_applicable_summary.json` | Metrics skipped (missing supervision) |
+| `diagnostic_metric_summary.json` | Non-headline diagnostic metrics |
+
+Each metric output carries:
+
+| Field | Meaning |
+|-------|---------|
+| `raw` | Metric-native value |
+| `normalized` | Score in `[0, 1]` (higher is better unless documented otherwise) |
+| `eligibility_status` | `official`, `diagnostic`, or `not_applicable` |
+| `error` | Runtime failure message when `normalized` is null |
+
+### Model config YAML (`config/models/*.yaml`)
+
+Minimal local-repo template:
+
+```yaml
+model:
+  name: my-world-model
+  family: my_world_model
+  repo_root: thirdparty/MyModel     # relative to repo root
+  checkpoint_dir: ckpt/my-model     # under WORLDARENA_CHECKPOINT_ROOT
+  python_bin: python                # or /path/to/dedicated/env/bin/python
+  entrypoint: infer.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - video_static
+  prompt_mode: prompt_target          # prompt_current | prompt_target
+  reference_mode: first_frame         # first_frame | image | …
+  generation:
+    num_frames: 81
+    fps: 24
+  env:
+    WORLDARENA_CHECKPOINT_ROOT: ckpt
+    HF_HOME: ckpt/huggingface
+```
+
+HTTP API template: [`config/models/template_video_api.yaml.example`](config/models/template_video_api.yaml.example).
+
+---
+
+## Usage
+
+### End-to-end benchmark (generate + evaluate)
+
+```bash
+conda activate worldarena
+source .env   # if used
+
+# 1) Build manifest (once per dataset snapshot)
+worldarena build-inventory --config config/benchmark.yaml
+worldarena build-manifest  --config config/benchmark.yaml
+
+# 2) Generate with a registered adapter
+worldarena generate \
+  --config config/benchmark.yaml \
+  --model-config config/models/lingbot_world.yaml \
+  --output-dir artifacts/predictions/lingbot-world-demo \
+  --suites video_static \
+  --limit 4
+
+# 3) Evaluate predictions
+worldarena evaluate \
+  --config config/benchmark.yaml \
+  --model-config config/models/lingbot_world.yaml \
+  --predictions-root artifacts/predictions/lingbot-world-demo \
+  --suites video_static
+
+# One-shot alternative
+worldarena run-model \
+  --config config/benchmark.yaml \
+  --model-config config/models/lingbot_world.yaml \
+  --suites video_static \
+  --limit 4
+```
+
+### Evaluate externally generated videos
+
+If you already produced videos in the expected layout, skip `generate`:
+
+```bash
+worldarena evaluate \
+  --config config/benchmark.yaml \
+  --predictions-root /path/to/your/predictions \
+  --model-name my_custom_model
+```
+
+### Sharded multi-GPU generation
+
+```bash
+# Shard 0 of 8
+worldarena generate \
+  --config config/benchmark.yaml \
+  --model-config config/models/lingbot_world.yaml \
+  --output-dir artifacts/predictions/lingbot-world-sharded \
+  --num-shards 8 \
+  --shard-index 0
+```
+
+For CamI2V / RealCam-I2V, see [`scripts/launch_camera_i2v_8gpu.sh`](scripts/launch_camera_i2v_8gpu.sh). For sharded evaluation, see [`scripts/run_eval_shards.py`](scripts/run_eval_shards.py) and [`scripts/README.md`](scripts/README.md).
+
+### CLI reference
+
+| Command | Description |
+|---------|-------------|
+| `worldarena build-inventory` | Scan benchmark media → inventory artifacts |
+| `worldarena build-manifest` | Inventory → `worldarena_manifest.jsonl` |
+| `worldarena generate` | Run a model adapter over manifest samples |
+| `worldarena evaluate` | Score predictions against the manifest |
+| `worldarena run-model` | `generate` + `evaluate` in one step |
+| `worldarena build-docs` | Refresh dataset statistics (`config/datasets.yaml`) |
+| `worldarena build-site-content` | Export docs into the static site bundle |
+| `worldarena build-physics-manifest` | Simulator-backed physics track |
+| `worldarena clean` | Remove caches / generated outputs |
+
+---
+
+## Integrating Your Model
+
+**Steps:**
+
+1. Place upstream code under `thirdparty/<Name>/` (or set `repo_root` elsewhere).
+2. Download weights to `ckpt/<name>/`.
+3. Add `config/models/<name>.yaml` following the schema above.
+4. Implement or extend an adapter in `worldarena/models/adapters/` and register it in `worldarena/models/registry.py`.
+5. Smoke test: `worldarena generate --limit 1 …` then `worldarena evaluate …`.
+
+For remote video APIs, start from [`config/models/template_video_api.yaml.example`](config/models/template_video_api.yaml.example). Adapter contracts: [`docs/en/architecture.md`](docs/en/architecture.md).
+
+### Example integrations
+
+<details>
+<summary><b>LingBot-World</b></summary>
+
+```bash
+git submodule update --init thirdparty/lingbot-world
+# prepare env per upstream README / requirements
+
+worldarena run-model \
+  --config config/benchmark.yaml \
+  --model-config config/models/lingbot_world.yaml \
+  --limit 1
+```
+
+</details>
+
+<details>
+<summary><b>LingBot-Video (TI2V)</b></summary>
+
+```bash
+git submodule update --init thirdparty/lingbot-video
+# prepare env per upstream README (e.g. pip install -r thirdparty/lingbot-video/requirements.txt)
+
+worldarena generate \
+  --config config/benchmark.yaml \
+  --model-config config/models/lingbot_video_dense.yaml
+```
+
+</details>
+
+<details>
+<summary><b>ABot-World</b></summary>
+
+```bash
+git submodule update --init thirdparty/ABot-World
+# prepare env per upstream README
+huggingface-cli download acvlab/ABot-World-0-5B-LF --local-dir ckpt/ABot-World-0-5B-LF
+
+worldarena generate \
+  --config config/benchmark.yaml \
+  --model-config config/models/abot_world.yaml
+```
+
+</details>
+
+<details>
+<summary><b>Matrix-Game 3.5</b></summary>
+
+```bash
+bash scripts/setup_matrix_game_35.sh
+
+worldarena generate \
+  --config config/benchmark.yaml \
+  --model-config config/models/matrix_game_35_first.yaml
+```
+
+</details>
+
+---
+
+## Supported Models
+
+| Model | Config | Formal suites |
+|-------|--------|---------------|
+| CamI2V | `cami2v.yaml` | image_static, image_dynamic |
+| RealCam-I2V | `realcam_i2v.yaml` | image_static, image_dynamic |
+| ABot-World 0.5B | `abot_world.yaml` | image_static, image_dynamic |
+| AlayaWorld 15B | `alayaworld.yaml` | all four (first-frame rollout) |
+| LingBot-World | `lingbot_world.yaml` | all four |
+| LingBot-World (fast) | `lingbot_world_fast.yaml` | all four |
+| LingBot-Video Dense | `lingbot_video_dense.yaml` | all four (TI2V) |
+| LingBot-Video MoE | `lingbot_video_moe.yaml` | all four (TI2V) |
+| HY-WorldPlay | `hy_worldplay.yaml` | image_static, video_static, video_dynamic |
+| WorldCam | `worldcam.yaml` | image_static |
+| FlashWorld | `flashworld.yaml` | video_static |
+| NeoVerse | `neoverse.yaml` | video_static, video_dynamic |
+| GEN3C | `gen3c.yaml` | image_static |
+| Lyra-1 / Lyra-2 | `lyra1.yaml`, `lyra2.yaml` | image / video static |
+| InSpatio-World | `inspatio_world.yaml` | image_static, video_static |
+| Infinite-World | `infinite_world.yaml` | image_static, video_dynamic |
+| WonderWorld / WonderJourney | `wonderworld.yaml`, `wonderjourney.yaml` | image / video static |
+| HunyuanWorld | `hunyuanworld.yaml` | image_static |
+| LucidDreamer | `luciddreamer.yaml` | image_static, video_static |
+| YUME | `yume.yaml` | image_static, video_static |
+| WorldFM | `worldfm.yaml` | video_static |
+| MatrixGame 1/2/3 | `matrix_game*.yaml` | image_dynamic, video_dynamic |
+| Matrix-Game 3.5 | `matrix_game_35_*.yaml` | image_static, image_dynamic |
+| Hunyuan GameCraft | `hunyuan_gamecraft.yaml` | image_dynamic, video_dynamic |
+| Cosmos-Predict 2.5 | `cosmos_predict25_*.yaml` | image_static, video_static |
+
+---
+
+## Documentation & Site
+
+| Resource | Path / command |
+|----------|----------------|
+| English docs source | `docs/en/` |
+| Chinese docs source | `docs/zh/` |
+| Build docs (Astro + Starlight) | `npm run docs:build` |
+| Preview docs locally | `npm run docs:dev` → `http://localhost:4321/doc/` |
+| Leaderboard & arena site | `npm run site` → `http://localhost:4173/` |
+| Site OAuth setup | [`site/AUTH.md`](site/AUTH.md), [`site/.env.example`](site/.env.example) |
+
+Full contributor workflow: [`docs/en/development.md`](docs/en/development.md).
+
+---
+
+## Repository Layout
+
+```text
+WorldArena/
+├── worldarena/                 # Python package
+│   ├── benchmark/              # inventory, manifest, metrics, runner, reports
+│   │   ├── metrics/            # 30+ metric implementations
+│   │   └── official_backends/  # in-tree adapters over upstream checkouts
+│   ├── models/adapters/        # per-model generation adapters
+│   ├── generation/             # prediction runner
+│   ├── datasets/               # dataset scanners & summarizers
+│   └── cli.py                  # `worldarena` entry point
+├── config/
+│   ├── benchmark.yaml          # suites, metrics, paths
+│   ├── datasets.yaml           # analytics scanners
+│   └── models/                 # adapter YAML configs
+├── docs/                       # authoritative Markdown (en/zh)
+├── docs-site/                  # Astro / Starlight builder
+├── site/                       # static leaderboard & arena UI
+├── scripts/                    # optional helpers (see scripts/README.md)
+├── tests/                      # adapter & metric unit tests
+├── thirdparty/                 # git submodules (upstream models)
+├── artifacts/                  # generated outputs (gitignored)
+├── data/                       # benchmark media (gitignored, user-provided)
+└── ckpt/                       # weights & HF cache (gitignored)
+```
+
+---
+
+## Citation
+
+If you use WorldArena in your research, please cite:
+
+```bibtex
+@article{worldarena2026,
+  title   = {WorldArena: A Unified Benchmark for World Model Evaluation},
+  author  = {OpenEnvision},
+  year    = {2026},
+  url     = {https://github.com/OpenEnvision/WorldArena}
+}
+```
+
+---
+
+## License
+
+- **Code in this repository:** [MIT License](LICENSE)
+- **Model weights:** subject to each upstream project's license
+- **Benchmark media:** subject to the dataset license under which you obtained the assets
+
+---
+
+<div align="center">
+
+**WorldArena** · [OpenEnvision](https://openenvision.github.io/index.html) · [GitHub](https://github.com/OpenEnvision/WorldArena) · [Documentation](docs/en/index.md)
+
+</div>

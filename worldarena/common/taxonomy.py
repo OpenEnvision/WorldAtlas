@@ -1,3 +1,5 @@
+"""Shared taxonomy normalization for model configs and benchmark metadata."""
+
 from __future__ import annotations
 
 from typing import Iterable

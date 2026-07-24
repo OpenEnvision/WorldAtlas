@@ -1,4 +1,4 @@
-"""WorldArena entry for Cosmos-Predict2.5 inference with local aux checkpoints."""
+"""WorldAtlas Arena entry for Cosmos-Predict2.5 inference with local aux checkpoints."""
 
 from __future__ import annotations
 
@@ -32,6 +32,7 @@ from cosmos_predict2.config import (
 
 
 def _install_local_checkpoint_aliases() -> None:
+    """Install local checkpoint aliases."""
     raw = os.environ.get("WORLDARENA_COSMOS_PREDICT25_LOCAL_ALIASES", "").strip()
     if not raw:
         return
@@ -86,6 +87,7 @@ def _install_local_checkpoint_aliases() -> None:
 
 
 def _load_experiment_opts() -> list[str]:
+    """Load experiment opts -> list[str]."""
     raw = os.environ.get("WORLDARENA_COSMOS_PREDICT25_EXPERIMENT_OPTS", "").strip()
     if not raw:
         return []
@@ -235,6 +237,7 @@ class Inference:
 
 
 def main(args: Args) -> None:
+    """Entry point for the module."""
     inference_samples = InferenceArguments.from_files(
         args.input_files, overrides=args.overrides, setup_args=args.setup
     )

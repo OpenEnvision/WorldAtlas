@@ -1,3 +1,5 @@
+"""Subprocess runner for Lyra-2 inference inside the upstream model repo."""
+
 from __future__ import annotations
 
 import argparse
@@ -436,7 +438,7 @@ TRANSFORMER_ENGINE_ATTENTION_SHIM = textwrap.dedent(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena Lyra-2 subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena Lyra-2 subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", required=True, type=str)
     parser.add_argument("--annotation_path", required=True, type=str)
@@ -669,6 +671,7 @@ def _prepare_transformer_engine_shim(workspace_root: Path) -> None:
 
 
 def _use_transformer_engine_shim() -> bool:
+    """Use transformer engine shim -> bool."""
     backend = os.environ.get("WORLDARENA_LYRA2_ATTENTION_BACKEND", "native").strip().lower()
     return backend in {"shim", "pytorch", "torch", "sdpa"}
 

@@ -1,3 +1,9 @@
+"""Matrix-Game interactive world model adapter for WorldAtlas Arena.
+
+Encodes keyboard/mouse action sequences from ``camera_path`` tokens and routes
+inference to Matrix-Game 1/2/3 runner modules depending on model variant.
+"""
+
 from __future__ import annotations
 
 import json
@@ -249,15 +255,12 @@ def _worldarena_matrix_game_actions(sample: BenchmarkSample) -> tuple[list[str],
 
     camera_tokens, source = _worldarena_camera_tokens(sample)
     actions: list[str] = []
-    unsupported = False
     for camera_token in camera_tokens:
         action = _WORLD_ARENA_CAMERA_ACTIONS.get(camera_token)
         if action is None:
-            action = "idle"
-            unsupported = True
+            raise ValueError(f"unsupported Matrix-Game camera token: {camera_token!r}")
         actions.append(action)
-    control_source = f"unsupported_{source}" if unsupported else source
-    return camera_tokens, actions or ["idle"], control_source
+    return camera_tokens, actions or ["idle"], source
 
 
 def _worldarena_matrix_game_2_action(sample: BenchmarkSample) -> tuple[str, str, str]:
@@ -441,7 +444,7 @@ def _matrix_game_2_worldarena_prompt_payload(
             "prompt_control_note": (
                 "image_dynamic uses idle/no-action controls so Matrix-Game-2 can freely evolve the scene"
                 if sample.suite == "image_dynamic" or sample.generation_mode == "dynamic"
-                else "image_static maps the full WorldArena camera_path to Matrix-Game-2 universal controls"
+                else "image_static maps the full WorldAtlas Arena camera_path to Matrix-Game-2 universal controls"
             ),
         }
     )
@@ -1178,7 +1181,7 @@ def _matrix_game_3_payload(
                 "prompt_control_note": (
                     "dynamic suites use idle/no-action controls so Matrix-Game-3 can freely evolve the scene"
                     if sample.suite == "image_dynamic" or sample.generation_mode == "dynamic"
-                    else "static suites map the full WorldArena camera_path to Matrix-Game-3 controls"
+                    else "static suites map the full WorldAtlas Arena camera_path to Matrix-Game-3 controls"
                 ),
             }
         )
@@ -1372,8 +1375,14 @@ def _matrix_game_2_command(
 
 
 class MatrixGameAdapter(ModelAdapter):
+    """Generate interactive game-world videos via Matrix-Game runner modules."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "reload_per_sample"
 
     def generate_batch(
         self,

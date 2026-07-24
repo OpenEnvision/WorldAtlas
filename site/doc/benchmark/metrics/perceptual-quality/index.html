@@ -1,0 +1,528 @@
+<!DOCTYPE html><html lang="en" dir="ltr" data-theme="dark" data-has-toc data-has-sidebar class="astro-bguv2lll"> <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Perceptual Quality | WorldAtlas Arena</title><link rel="canonical" href="https://worldarena.example.com/doc/benchmark/metrics/perceptual-quality/"/><link rel="alternate" hreflang="en" href="https://worldarena.example.com/doc/benchmark/metrics/perceptual-quality/"/><link rel="alternate" hreflang="zh-CN" href="https://worldarena.example.com/doc/zh/benchmark/metrics/perceptual-quality/"/><link rel="alternate" hreflang="x-default" href="https://worldarena.example.com/doc/benchmark/metrics/perceptual-quality/"/><link rel="sitemap" href="/doc/sitemap-index.xml"/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&amp;display=swap"/><script>document.documentElement.dataset.theme = 'dark';</script><link rel="stylesheet" href="/assets/worldarena/assets/stylesheets/extra.css"/><script type="module" src="/doc/mermaid-init.js"></script><link rel="shortcut icon" href="/doc/favicon.svg" type="image/svg+xml"/><meta name="generator" content="Astro v6.4.8"/><meta name="generator" content="Starlight v0.39.3"/><meta property="og:title" content="Perceptual Quality"/><meta property="og:type" content="article"/><meta property="og:url" content="https://worldarena.example.com/doc/benchmark/metrics/perceptual-quality/"/><meta property="og:locale" content="en"/><meta property="og:description" content="Documentation for the WorldAtlas Arena world-model benchmark."/><meta property="og:site_name" content="WorldAtlas Arena"/><meta name="twitter:card" content="summary_large_image"/><meta name="description" content="Documentation for the WorldAtlas Arena world-model benchmark."/><script>
+"use strict";(()=>{(()=>{let t="theme-toggle",n;function r(){return window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}function l(){let e=localStorage.getItem(t);return e==="dark"||e==="light"?e:null}function m(){return n||l()||r()}function s(e){e===r()?localStorage.removeItem(t):localStorage.setItem(t,e)}function h(e){let o=document.documentElement;o.classList.toggle("dark",e==="dark"),o.dataset.theme=e,o.style.colorScheme=e}function a(e){n=e,s(e),h(e)}function c(){a(m())}c(),document.addEventListener("astro:after-swap",c),window.astroThemeToggle={setTheme:a,getTheme:m}})();})();
+</script><link rel="stylesheet" href="/doc/_astro/print.DNXP8c50.css" media="print"><link rel="stylesheet" href="/doc/_astro/common.Bzn2gdOR.css"><script type="module" src="/doc/_astro/page.B_tncCx8.js"></script></head> <body class="astro-bguv2lll"> <a href="#_top" class="astro-7q3lir66">Skip to content</a> <div class="flex min-h-screen flex-col astro-fwdtyf2y"> <header class="fixed inset-0 z-(--sl-z-index-navbar) box-border h-(--sl-nav-height) w-full border-0 border-b border-solid border-(--sl-color-hairline) bg-(--sl-color-bg-nav) px-(--sl-nav-pad-x) py-(--sl-nav-pad-y) backdrop-blur astro-fwdtyf2y"> <div class="box-border flex h-full items-center gap-2"> <div class="-m-3 overflow-clip p-3 flex min-w-0"> <span class="-m-1.5 rounded-md p-1.5 **:text-lg **:font-semibold **:text-(--sl-color-text) focus-visible:outline-offset-0"> <a href="/doc/" class="site-title sl-flex astro-m46x6ez3">  <img class="light:sl-hidden print:hidden astro-m46x6ez3" alt="WorldAtlas Arena" src="/doc/_astro/worldatlas-logo-cropped2-dark.C1IEwSet.svg" width="906" height="173"> <img class="dark:sl-hidden print:block astro-m46x6ez3" alt="WorldAtlas Arena" src="/doc/_astro/worldatlas-logo-cropped2.Dy2Q5gf2.svg" width="906" height="173"> <span class="sr-only astro-m46x6ez3" translate="no"> WorldAtlas Arena </span> </a> </span> </div> <nav class="flex flex-1 flex-row gap-4 overflow-x-auto py-3 pr-4 pl-4 text-sm font-medium max-md:**:hidden xl:gap-6 xl:pl-6">  </nav> <div class="flex md:max-w-60 md:flex-1 print:hidden"> <site-search class=" astro-ukakap6x" data-translations="{&quot;placeholder&quot;:&quot;Search&quot;}"> <button class="flex size-8 rounded-md p-2 text-(--sl-color-text) transition hover:bg-gray-400/30 focus-visible:outline-offset-1 active:scale-90 md:h-9 md:w-full md:max-w-88 md:rounded-md md:border md:border-solid md:border-(--sl-color-gray-5) md:p-2 md:text-(--sl-color-text) md:transition-colors md:hover:bg-gray-400/10 astro-ukakap6x" data-open-modal disabled aria-label="Search" aria-keyshortcuts="Control+K"> <svg width="1em" height="1em" viewBox="0 0 24 24" class="size-4 astro-ukakap6x"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><path d="m21 21l-4.34-4.34" /><circle cx="11" cy="11" r="8" /></g></svg> <span class="sl-hidden md:sl-block astro-ukakap6x" aria-hidden="true">Search</span> <kbd class="sl-hidden md:sl-flex astro-ukakap6x" style="display: none;"> <kbd class="astro-ukakap6x">Ctrl</kbd><kbd class="astro-ukakap6x">K</kbd> </kbd> </button> <dialog style="padding:0" aria-label="Search" class="astro-ukakap6x"> <div class="dialog-frame sl-flex astro-ukakap6x">  <button data-close-modal class="sl-flex md:sl-hidden astro-ukakap6x"> Cancel </button> <div class="search-container astro-ukakap6x"> <div id="starlight__search" class="astro-ukakap6x"></div> </div> </div> </dialog> </site-search>  <script>
+  ;(() => {
+    const openBtn = document.querySelector('button[data-open-modal]')
+    const shortcut = openBtn?.querySelector('kbd')
+    if (!openBtn || !(shortcut instanceof HTMLElement)) return
+    const platformKey = shortcut.querySelector('kbd')
+    if (platformKey && /(Mac|iPhone|iPod|iPad)/i.test(navigator.platform)) {
+      platformKey.textContent = '⌘'
+      openBtn.setAttribute('aria-keyshortcuts', 'Meta+K')
+    }
+    shortcut.style.display = ''
+  })()
+</script> <script type="module" src="/doc/_astro/Search.astro_astro_type_script_index_0_lang.Cmlrle0V.js"></script>   </div> <div class="hidden items-center gap-2 md:flex print:hidden"> <a href="/" class="header-home-link">Home</a> <a href="https://github.com/OpenEnvision/WorldArena" rel="me" class="flex size-8 rounded-md p-2 text-(--sl-color-text) transition hover:bg-gray-400/30 focus-visible:outline-offset-1 active:scale-90"><span class="sr-only">GitHub</span><svg aria-hidden="true" class=" astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-color: currentColor;--sl-icon-size: 1rem;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a> <starlight-lang-select><label style="--sl-select-width: 7em" class="astro-4yphtoen"> <span class="sr-only astro-4yphtoen">Select language</span> <svg aria-hidden="true" class="icon label-icon astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path fill-rule="evenodd" d="M8.516 3a.94.94 0 0 0-.941.94v1.15H2.94a.94.94 0 1 0 0 1.882h7.362a7.422 7.422 0 0 1-1.787 3.958 7.42 7.42 0 0 1-1.422-2.425.94.94 0 1 0-1.774.627 9.303 9.303 0 0 0 1.785 3.043 7.422 7.422 0 0 1-4.164 1.278.94.94 0 1 0 0 1.881 9.303 9.303 0 0 0 5.575-1.855 9.303 9.303 0 0 0 4.11 1.74l-.763 1.525a.968.968 0 0 0-.016.034l-1.385 2.77a.94.94 0 1 0 1.683.841l1.133-2.267h5.806l1.134 2.267a.94.94 0 0 0 1.683-.841l-1.385-2.769a.95.95 0 0 0-.018-.036l-3.476-6.951a.94.94 0 0 0-1.682 0l-1.82 3.639a7.423 7.423 0 0 1-3.593-1.256 9.303 9.303 0 0 0 2.27-5.203h1.894a.94.94 0 0 0 0-1.881H9.456V3.94A.94.94 0 0 0 8.516 3Zm6.426 11.794a1.068 1.068 0 0 1-.02.039l-.703 1.407h3.924l-1.962-3.924-1.24 2.478Z" clip-rule="evenodd"/></svg> <select autocomplete="off" class="astro-4yphtoen"> <option value="/doc/benchmark/metrics/perceptual-quality/" class="astro-4yphtoen">English</option><option value="/doc/zh/benchmark/metrics/perceptual-quality/" class="astro-4yphtoen">简体中文</option> </select> <svg aria-hidden="true" class="icon caret astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg> </label></starlight-lang-select><script type="module">class s extends HTMLElement{constructor(){super();const e=this.querySelector("select");e&&(e.addEventListener("change",t=>{t.currentTarget instanceof HTMLSelectElement&&(window.location.pathname=t.currentTarget.value)}),window.addEventListener("pageshow",t=>{if(!t.persisted)return;const n=e.querySelector("option[selected]")?.index;n!==e.selectedIndex&&(e.selectedIndex=n??0)}))}}customElements.define("starlight-lang-select",s);</script> <div class="size-8 overflow-visible"> <astro-theme-toggle class="flex size-8 rounded-md p-2 text-(--sl-color-text) transition hover:bg-gray-400/30 focus-visible:outline-offset-1 active:scale-90"> <div class="astro-theme-toggle-icon-light">  <svg width="1em" height="1em" viewBox="0 0 24 24" class="size-4"><!-- Icon from Tabler Icons by Paweł Kuna - https://github.com/tabler/tabler-icons/blob/master/LICENSE --><path fill="currentColor" d="M12 19a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1m-4.95-2.05a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0m11.314 0l1.414 1.414a1 1 0 0 1-1.414 1.414l-1.414-1.414a1 1 0 0 1 1.414-1.414m-5.049-9.836a5 5 0 1 1-2.532 9.674a5 5 0 0 1 2.532-9.674M4 11a1 1 0 0 1 0 2H2a1 1 0 0 1 0-2zm18 0a1 1 0 0 1 0 2h-2a1 1 0 0 1 0-2zM5.636 4.222L7.05 5.636A1 1 0 0 1 5.636 7.05L4.222 5.636a1 1 0 0 1 1.414-1.414m14.142 0a1 1 0 0 1 0 1.414L18.364 7.05a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0M12 1a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1" /></svg>  </div> <div class="astro-theme-toggle-icon-dark">  <svg width="1em" height="1em" viewBox="0 0 24 24" class="size-4"><!-- Icon from Tabler Icons by Paweł Kuna - https://github.com/tabler/tabler-icons/blob/master/LICENSE --><path fill="currentColor" d="M12 1.992a10 10 0 1 0 9.236 13.838c.341-.82-.476-1.644-1.298-1.31a6.5 6.5 0 0 1-6.864-10.787l.077-.08c.551-.63.113-1.653-.758-1.653h-.266l-.068-.006z" /></svg>  </div> </astro-theme-toggle> <script type="module">function u(){return typeof window>"u"?"light":window.astroThemeToggle?.getTheme?.()||"light"}function f(t){typeof window>"u"||window.astroThemeToggle?.setTheme?.(t)}function w(){const t=u();f(t==="light"?"dark":"light")}const l="astro-theme-toggle-temporary-styles",p="::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }";function c(){document.getElementById(l)?.remove()}function T(){c();const t=document.createElement("style");t.id=l,t.textContent=p,document.head.appendChild(t)}async function y(t,n,e){const i=document;if(typeof i.startViewTransition!="function"){t();return}T();const o=i.startViewTransition(()=>{t()});await o?.ready,o?.finished?.then(c);const a=.7,m=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><defs><radialGradient id="toggle-theme-gradient"><stop offset="${a}"/><stop offset="1" stop-opacity="0"/></radialGradient></defs><circle cx="4" cy="4" r="4" fill="url(#toggle-theme-gradient)"/></svg>`,r=`data:image/svg+xml;base64,${window.btoa(m)}`,h=window.innerWidth,g=window.innerHeight,s=Math.ceil(Math.hypot(Math.max(n,h-n),Math.max(e,g-e))/a);document.documentElement.animate({maskImage:[`url('${r}')`,`url('${r}')`],maskRepeat:["no-repeat","no-repeat"],maskPosition:[`${n}px ${e}px`,`${n-s}px ${e-s}px`],maskSize:["0",`${2*s}px`]},{duration:500,easing:"ease-in",pseudoElement:"::view-transition-new(root)"})}function d(t){y(w,t.clientX,t.clientY)}class x extends HTMLElement{connectedCallback(){this.hasAttribute("tabindex")||this.setAttribute("tabindex","0"),this.hasAttribute("role")||this.setAttribute("role","button"),this.addEventListener("click",d),this.addEventListener("keydown",n=>{if(n.key==="Enter"||n.key===" "){n.preventDefault();const e=this.getBoundingClientRect(),i=e.left+e.width/2,o=e.top+e.height/2;d({clientX:i,clientY:o})}})}}customElements.define("astro-theme-toggle",x);</script> </div> </div> <div class="flex items-center gap-2 md:hidden print:hidden"> <a href="/" class="header-home-link">Home</a> <nova-mobile-menu-toggle class="flex size-8 rounded-md p-2 text-(--sl-color-text) transition hover:bg-gray-400/30 focus-visible:outline-offset-1 active:scale-90 print:hidden" aria-label="Menu" aria-controls="starlight__sidebar"> <div class="transition-transform [body[data-mobile-menu-expanded]_&]:rotate-90"> <svg width="1em" height="1em" viewBox="0 0 24 24" class="block [body[data-mobile-menu-expanded]_&amp;]:hidden"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5h16M4 12h16M4 19h16" /></svg> <svg width="1em" height="1em" viewBox="0 0 24 24" class="hidden [body[data-mobile-menu-expanded]_&amp;]:block"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 6L6 18M6 6l12 12" /></svg> </div> </nova-mobile-menu-toggle> <script type="module" src="/doc/_astro/MobileMenuToggle.astro_astro_type_script_index_0_lang.JMzLy9Sh.js"></script> </div> </div> </header> <nav class="sidebar print:hidden astro-fwdtyf2y" aria-label="Main" id="nova-sidebar-nav"> <div id="starlight__sidebar" class="nova-scroll-container invisible md:visible [body[data-mobile-menu-expanded]_&amp;]:max-md:visible fixed top-(--sl-nav-height) bottom-0 left-0 z-(--sl-z-index-menu) overflow-y-auto border-0 border-solid border-(--sl-color-hairline) bg-(--sl-color-black) max-md:w-full md:w-(--sl-sidebar-width) md:border-r astro-fwdtyf2y"> <div class="sidebar-content flex h-full min-h-max flex-col px-(--sl-sidebar-pad-x) py-4 astro-fwdtyf2y"> <sl-sidebar-state-persist data-hash="0j4xc8f" class="astro-kku4brbg"> <script aria-hidden="true">
+		(() => {
+			try {
+				if (!matchMedia('(min-width: 50em)').matches) return;
+				/** @type {HTMLElement | null} */
+				const target = document.querySelector('sl-sidebar-state-persist');
+				const state = JSON.parse(sessionStorage.getItem('sl-sidebar-state') || '0');
+				if (!target || !state || target.dataset.hash !== state.hash) return;
+				window._starlightScrollRestore = state.scroll;
+				customElements.define(
+					'sl-sidebar-restore',
+					class SidebarRestore extends HTMLElement {
+						connectedCallback() {
+							try {
+								const idx = parseInt(this.dataset.index || '');
+								const details = this.closest('details');
+								if (details && typeof state.open[idx] === 'boolean') details.open = state.open[idx];
+							} catch {}
+						}
+					}
+				);
+			} catch {}
+		})();
+	</script>  <ul class="top-level astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/doc/" class="large astro-3ii7xxms"> <span class="astro-3ii7xxms">Home</span>  </a> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Benchmark</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="0"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/doc/benchmark/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Overview</span>  </a> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Metrics</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="1"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Overview</span>  </a> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Action Control</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="2"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/dimensions/action-control/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Overview</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/prompt-alignment/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Prompt Alignment</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/semantic-alignment/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Semantic Alignment</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/camera-error/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Camera Error</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/object-detection/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Object Detection</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/motion-accuracy/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Motion Accuracy</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/keystroke-strict-action-accuracy/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Keystroke Strict Action Accuracy</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/keystroke-partial-action-accuracy/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Keystroke Partial Action Accuracy</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/keystroke-traj-score/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Keystroke Trajectory Score</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/keystroke-natet/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Keystroke nATEt</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/keystroke-nater/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Keystroke nATEr</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/keystroke-action-score/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Keystroke Action Score</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">3D/4D Consistency</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="3"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/dimensions/consistency-3d-4d/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Overview</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/met3r-consistency/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">MEt3R Consistency</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/reconstruction-consistency/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Reconstruction Consistency</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/gvgc-geometry/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Epipolar Geometry</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/reprojection-error/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Reprojection Error</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/depth-accuracy/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Depth Accuracy</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/depth-collision/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Depth Collision</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/optical-flow-aepe/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Optical Flow AEPE</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Physics</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="4"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/dimensions/physics/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Overview</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/pmf/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Physical Motion Fidelity</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/motion-magnitude/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Motion Magnitude</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/motion-smoothness/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Motion Smoothness</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/physics/physics-judge/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Physics Judge</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Quality</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="5"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/dimensions/quality/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Overview</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/style-consistency/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Style Consistency</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/perceptual-quality/" aria-current="page" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Perceptual Quality</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/hpsv3-norm/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">HPSv3-Norm</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/brightness-consistency/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Brightness Consistency</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/color-temperature-consistency/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Color Temperature Constraint</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/sharpness-retention/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Sharpness Retention</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/temporal-flickering/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Temporal Flickering</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/background-consistency/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Background Consistency</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/segment-continuity/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Segment Continuity</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/long-sequence-aesthetic-quality/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Long Sequence Aesthetic Quality</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/long-sequence-imaging-quality/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Long Sequence Imaging Quality</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/rollout-aesthetic-drift/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Rollout Aesthetic Drift</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/rollout-imaging-drift/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Rollout Imaging Drift</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Long Sequence</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="6"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/dimensions/long-sequence/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Overview</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/scene-memory-f1/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Scene Memory F1</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Real Time</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="7"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/dimensions/real-time/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Overview</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/realtime-throughput-latency/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Realtime Throughput and Latency</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/benchmark/metrics/temporal-calibration/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Temporal Calibration</span>  </a> </li> </ul> </details> </li> </ul> </details> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <a href="/doc/thirdparty/" class="large astro-3ii7xxms"> <span class="astro-3ii7xxms">Runtime Setup</span>  </a> </li><li class="astro-3ii7xxms"> <details open class="astro-3ii7xxms"> <summary class="astro-3ii7xxms"> <span class="group-label astro-3ii7xxms"> <span class="large astro-3ii7xxms">Dataset Analytics</span>  </span> <svg aria-hidden="true" class="caret astro-3ii7xxms astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1.25rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg> </summary> <sl-sidebar-restore data-index="8"></sl-sidebar-restore> <ul class="astro-3ii7xxms"> <li class="astro-3ii7xxms"> <a href="/doc/overview/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Overview</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/images/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Images</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/videos/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Videos</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/physics/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Physics Dataset</span>  </a> </li><li class="astro-3ii7xxms"> <a href="/doc/captions/" class="astro-3ii7xxms"> <span class="astro-3ii7xxms">Captions</span>  </a> </li> </ul> </details> </li><li class="astro-3ii7xxms"> <a href="/doc/development/" class="large astro-3ii7xxms"> <span class="astro-3ii7xxms">Development</span>  </a> </li> </ul>  <script aria-hidden="true">
+		(() => {
+			const scroller = document.getElementById('starlight__sidebar');
+			if (!window._starlightScrollRestore || !scroller) return;
+			scroller.scrollTop = window._starlightScrollRestore;
+			delete window._starlightScrollRestore;
+		})();
+	</script> </sl-sidebar-state-persist> <div class="md:sl-hidden"> <div class="flex items-center justify-end gap-2 py-4 print:hidden"> <a href="https://github.com/OpenEnvision/WorldArena" rel="me" class="flex size-8 rounded-md p-2 text-(--sl-color-text) transition hover:bg-gray-400/30 focus-visible:outline-offset-1 active:scale-90"><span class="sr-only">GitHub</span><svg aria-hidden="true" class=" astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-color: currentColor;--sl-icon-size: 1rem;"><path d="M12 .3a12 12 0 0 0-3.8 23.38c.6.12.83-.26.83-.57L9 21.07c-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.08-.74.09-.73.09-.73 1.2.09 1.83 1.24 1.83 1.24 1.08 1.83 2.81 1.3 3.5 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.14-.3-.54-1.52.1-3.18 0 0 1-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.64 1.66.24 2.88.12 3.18a4.65 4.65 0 0 1 1.23 3.22c0 4.61-2.8 5.63-5.48 5.92.42.36.81 1.1.81 2.22l-.01 3.29c0 .31.2.69.82.57A12 12 0 0 0 12 .3Z"/></svg></a> <starlight-lang-select><label style="--sl-select-width: 7em" class="astro-4yphtoen"> <span class="sr-only astro-4yphtoen">Select language</span> <svg aria-hidden="true" class="icon label-icon astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path fill-rule="evenodd" d="M8.516 3a.94.94 0 0 0-.941.94v1.15H2.94a.94.94 0 1 0 0 1.882h7.362a7.422 7.422 0 0 1-1.787 3.958 7.42 7.42 0 0 1-1.422-2.425.94.94 0 1 0-1.774.627 9.303 9.303 0 0 0 1.785 3.043 7.422 7.422 0 0 1-4.164 1.278.94.94 0 1 0 0 1.881 9.303 9.303 0 0 0 5.575-1.855 9.303 9.303 0 0 0 4.11 1.74l-.763 1.525a.968.968 0 0 0-.016.034l-1.385 2.77a.94.94 0 1 0 1.683.841l1.133-2.267h5.806l1.134 2.267a.94.94 0 0 0 1.683-.841l-1.385-2.769a.95.95 0 0 0-.018-.036l-3.476-6.951a.94.94 0 0 0-1.682 0l-1.82 3.639a7.423 7.423 0 0 1-3.593-1.256 9.303 9.303 0 0 0 2.27-5.203h1.894a.94.94 0 0 0 0-1.881H9.456V3.94A.94.94 0 0 0 8.516 3Zm6.426 11.794a1.068 1.068 0 0 1-.02.039l-.703 1.407h3.924l-1.962-3.924-1.24 2.478Z" clip-rule="evenodd"/></svg> <select autocomplete="off" class="astro-4yphtoen"> <option value="/doc/benchmark/metrics/perceptual-quality/" class="astro-4yphtoen">English</option><option value="/doc/zh/benchmark/metrics/perceptual-quality/" class="astro-4yphtoen">简体中文</option> </select> <svg aria-hidden="true" class="icon caret astro-4yphtoen astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1em;"><path d="M17 9.17a1 1 0 0 0-1.41 0L12 12.71 8.46 9.17a1 1 0 1 0-1.41 1.42l4.24 4.24a1.002 1.002 0 0 0 1.42 0L17 10.59a1.002 1.002 0 0 0 0-1.42Z"/></svg> </label></starlight-lang-select> <div class="size-8 overflow-visible"> <astro-theme-toggle class="flex size-8 rounded-md p-2 text-(--sl-color-text) transition hover:bg-gray-400/30 focus-visible:outline-offset-1 active:scale-90"> <div class="astro-theme-toggle-icon-light">  <svg width="1em" height="1em" viewBox="0 0 24 24" class="size-4"><!-- Icon from Tabler Icons by Paweł Kuna - https://github.com/tabler/tabler-icons/blob/master/LICENSE --><path fill="currentColor" d="M12 19a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0v-2a1 1 0 0 1 1-1m-4.95-2.05a1 1 0 0 1 0 1.414l-1.414 1.414a1 1 0 1 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0m11.314 0l1.414 1.414a1 1 0 0 1-1.414 1.414l-1.414-1.414a1 1 0 0 1 1.414-1.414m-5.049-9.836a5 5 0 1 1-2.532 9.674a5 5 0 0 1 2.532-9.674M4 11a1 1 0 0 1 0 2H2a1 1 0 0 1 0-2zm18 0a1 1 0 0 1 0 2h-2a1 1 0 0 1 0-2zM5.636 4.222L7.05 5.636A1 1 0 0 1 5.636 7.05L4.222 5.636a1 1 0 0 1 1.414-1.414m14.142 0a1 1 0 0 1 0 1.414L18.364 7.05a1 1 0 0 1-1.414-1.414l1.414-1.414a1 1 0 0 1 1.414 0M12 1a1 1 0 0 1 1 1v2a1 1 0 0 1-2 0V2a1 1 0 0 1 1-1" /></svg>  </div> <div class="astro-theme-toggle-icon-dark">  <svg width="1em" height="1em" viewBox="0 0 24 24" class="size-4"><!-- Icon from Tabler Icons by Paweł Kuna - https://github.com/tabler/tabler-icons/blob/master/LICENSE --><path fill="currentColor" d="M12 1.992a10 10 0 1 0 9.236 13.838c.341-.82-.476-1.644-1.298-1.31a6.5 6.5 0 0 1-6.864-10.787l.077-.08c.551-.63.113-1.653-.758-1.653h-.266l-.068-.006z" /></svg>  </div> </astro-theme-toggle>  </div> </div> </div> </div> </div> </nav> <div class="main-frame astro-fwdtyf2y">  <script type="module">const a=document.getElementById("starlight__sidebar"),n=a?.querySelector("sl-sidebar-state-persist"),o="sl-sidebar-state",i=()=>{let t=[];const e=n?.dataset.hash||"";try{const s=sessionStorage.getItem(o),r=JSON.parse(s||"{}");Array.isArray(r.open)&&r.hash===e&&(t=r.open)}catch{}return{hash:e,open:t,scroll:a?.scrollTop||0}},c=t=>{try{sessionStorage.setItem(o,JSON.stringify(t))}catch{}},d=()=>c(i()),l=(t,e)=>{const s=i();s.open[e]=t,c(s)};n?.addEventListener("click",t=>{if(!(t.target instanceof Element))return;const e=t.target.closest("summary")?.closest("details");if(!e)return;const s=e.querySelector("sl-sidebar-restore"),r=parseInt(s?.dataset.index||"");isNaN(r)||l(!e.open,r)});addEventListener("visibilitychange",()=>{document.visibilityState==="hidden"&&d()});addEventListener("pageHide",d);</script> <div class="lg:sl-flex astro-wxn7k47k"> <aside class="right-sidebar-container print:hidden astro-wxn7k47k"> <div class="right-sidebar astro-wxn7k47k"> <div class="lg:sl-hidden astro-pb3aqygn"><div class="[&_nav]:backdrop-blur [&_summary]:border-b-(--sl-color-hairline)"><mobile-starlight-toc data-min-h="2" data-max-h="3" class="astro-doynk5tl"><nav aria-labelledby="starlight__on-this-page--mobile" class="astro-doynk5tl"><details id="starlight__mobile-toc" class="astro-doynk5tl"><summary id="starlight__on-this-page--mobile" class="sl-flex astro-doynk5tl"><span class="toggle sl-flex astro-doynk5tl">On this page<svg aria-hidden="true" class="caret astro-doynk5tl astro-c6vsoqas" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="--sl-icon-size: 1rem;"><path d="m14.83 11.29-4.24-4.24a1 1 0 1 0-1.42 1.41L12.71 12l-3.54 3.54a1 1 0 0 0 0 1.41 1 1 0 0 0 .71.29 1 1 0 0 0 .71-.29l4.24-4.24a1.002 1.002 0 0 0 0-1.42Z"/></svg></span><span class="display-current astro-doynk5tl"></span></summary><div class="dropdown astro-doynk5tl"><ul class="isMobile astro-gnoq344e" style="--depth: 0;"> <li class="astro-gnoq344e" style="--depth: 0;"> <a href="#_top" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Overview</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#clip-iqa-component" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">CLIP-IQA+ Component</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#aesthetic-component" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Aesthetic Component</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#frame-level-and-video-level-aggregation" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Frame-Level and Video-Level Aggregation</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#representative-same-case-comparisons" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Representative Same-Case Comparisons</span> </a> <ul class="isMobile astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#perceptual_quality" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">perceptual_quality</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#references" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">References</span> </a>  </li> </ul></div></details></nav></mobile-starlight-toc><script type="module" src="/doc/_astro/MobileTableOfContents.astro_astro_type_script_index_0_lang.hwBsy0Mo.js"></script></div></div><div class="right-sidebar-panel sl-hidden lg:sl-block astro-pb3aqygn"><div class="sl-container astro-pb3aqygn"><starlight-toc data-min-h="2" data-max-h="3"><nav aria-labelledby="starlight__on-this-page"><h2 id="starlight__on-this-page">On this page</h2><ul class="astro-gnoq344e" style="--depth: 0;"> <li class="astro-gnoq344e" style="--depth: 0;"> <a href="#_top" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Overview</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#clip-iqa-component" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">CLIP-IQA+ Component</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#aesthetic-component" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Aesthetic Component</span> </a>  </li><li class="astro-gnoq344e" style="--depth: 1;"> <a href="#frame-level-and-video-level-aggregation" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">Frame-Level and Video-Level Aggregation</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#representative-same-case-comparisons" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">Representative Same-Case Comparisons</span> </a> <ul class="astro-gnoq344e" style="--depth: 1;"> <li class="astro-gnoq344e" style="--depth: 1;"> <a href="#perceptual_quality" class="astro-gnoq344e" style="--depth: 1;"> <span class="astro-gnoq344e" style="--depth: 1;">perceptual_quality</span> </a>  </li> </ul> </li><li class="astro-gnoq344e" style="--depth: 0;"> <a href="#references" class="astro-gnoq344e" style="--depth: 0;"> <span class="astro-gnoq344e" style="--depth: 0;">References</span> </a>  </li> </ul></nav></starlight-toc><script type="module" src="/doc/_astro/TableOfContents.astro_astro_type_script_index_0_lang.FuRcXuRY.js"></script></div></div> </div> </aside> <div class="main-pane astro-wxn7k47k">  <main data-pagefind-body class="astro-bguv2lll" lang="en" dir="ltr">    <div class="content-panel astro-7nkwcw3z"> <div class="sl-container astro-7nkwcw3z"> <h1 id="_top" class="astro-j6tvhyss">Perceptual Quality</h1> </div> </div> <div class="content-panel astro-7nkwcw3z"> <div class="sl-container astro-7nkwcw3z"> <div class="sl-markdown-content">  <p><strong>perceptual_quality</strong> measures the <strong>no-reference visual quality of the prediction itself</strong>, without pairing prediction frames against a ground-truth reference rollout. It evaluates sharpness, cleanliness, and aesthetic plausibility at prediction anchor frames. It does <strong>not</strong> measure semantic correctness, prompt alignment, or geometric/physical compliance.</p>
+<p>WorldArena fuses two complementary no-reference IQA signals into one perceptual score: <strong>CLIP-IQA+</strong> captures overall visual naturalness and perceptual coherence, while the <strong>LAION aesthetic predictor</strong> captures aesthetic appeal. Both are scored independently on prediction anchors and then aggregated.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="clip-iqa-component">CLIP-IQA+ Component</h3><a class="sl-anchor-link" href="#clip-iqa-component"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “CLIP-IQA+ Component”</span></a></div>
+<p>CLIP-IQA+ assesses holistic perceptual quality from CLIP visual–language representations. For anchor frame <span class="katex not-content"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">I_i</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>, the model outputs a native score <span class="katex not-content"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mi>q</mi><mi>i</mi><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">v</mi><mi mathvariant="normal">e</mi></mrow></msubsup></mrow><annotation encoding="application/x-tex">q_i^{\mathrm{native}}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0892em;vertical-align:-0.2587em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8305em;"><span style="top:-2.4413em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">native</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2587em;"><span></span></span></span></span></span></span></span></span></span>, normalized as:</p>
+<span class="katex-display"><span class="katex not-content"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mtable width="100%"><mtr><mtd width="50%"></mtd><mtd><mrow><msubsup><mi>s</mi><mi>i</mi><mrow><mi mathvariant="normal">i</mi><mi mathvariant="normal">q</mi><mi mathvariant="normal">a</mi></mrow></msubsup><mo>=</mo><mrow><mi mathvariant="normal">c</mi><mi mathvariant="normal">l</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">p</mi></mrow><mtext> ⁣</mtext><mrow><mo fence="true">(</mo><mfrac><msubsup><mi>q</mi><mi>i</mi><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">v</mi><mi mathvariant="normal">e</mi></mrow></msubsup><mn>1</mn></mfrac><mo separator="true">,</mo><mtext> </mtext><mn>0</mn><mo separator="true">,</mo><mtext> </mtext><mn>1</mn><mo fence="true">)</mo></mrow></mrow></mtd><mtd width="50%"></mtd><mtd><mtext>(1)</mtext></mtd></mtr></mtable><annotation encoding="application/x-tex">s_i^{\mathrm{iqa}}
+=
+\mathrm{clip}\!\left(\frac{q_i^{\mathrm{native}}}{1},\, 0,\, 1\right)
+\tag{1}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.2253em;vertical-align:-0.2769em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9484em;"><span style="top:-2.4231em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.1809em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">iqa</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2769em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.4575em;vertical-align:-0.95em;"></span><span class="mord"><span class="mord mathrm">clip</span></span><span class="mspace" style="margin-right:-0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size3">(</span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.5075em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">q</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.8305em;"><span style="top:-2.4413em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">native</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2587em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size3">)</span></span></span></span><span class="tag"><span class="strut" style="height:2.4575em;vertical-align:-0.95em;"></span><span class="mord text"><span class="mord">(</span><span class="mord"><span class="mord">1</span></span><span class="mord">)</span></span></span></span></span></span>
+<div class="sl-heading-wrapper level-h3"><h3 id="aesthetic-component">Aesthetic Component</h3><a class="sl-anchor-link" href="#aesthetic-component"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Aesthetic Component”</span></a></div>
+<p>The aesthetic score uses CLIP ViT-L/14 features with a LAION-Aesthetics linear regressor (pyiqa <code dir="auto">laion_aes</code>). For anchor frame <span class="katex not-content"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>I</mi><mi>i</mi></msub></mrow><annotation encoding="application/x-tex">I_i</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span>:</p>
+<span class="katex-display"><span class="katex not-content"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mtable width="100%"><mtr><mtd width="50%"></mtd><mtd><mrow><msubsup><mi>s</mi><mi>i</mi><mrow><mi mathvariant="normal">a</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">s</mi></mrow></msubsup><mo>=</mo><mrow><mi mathvariant="normal">c</mi><mi mathvariant="normal">l</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">p</mi></mrow><mtext> ⁣</mtext><mrow><mo fence="true">(</mo><mfrac><mrow><mi>g</mi><mo stretchy="false">(</mo><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">m</mi></mrow><mo stretchy="false">(</mo><mrow><mi mathvariant="normal">C</mi><mi mathvariant="normal">L</mi><mi mathvariant="normal">I</mi><mi mathvariant="normal">P</mi></mrow><mo stretchy="false">(</mo><msub><mi>I</mi><mi>i</mi></msub><mo stretchy="false">)</mo><mo stretchy="false">)</mo><mo stretchy="false">)</mo></mrow><mn>10</mn></mfrac><mo separator="true">,</mo><mtext> </mtext><mn>0</mn><mo separator="true">,</mo><mtext> </mtext><mn>1</mn><mo fence="true">)</mo></mrow></mrow></mtd><mtd width="50%"></mtd><mtd><mtext>(2)</mtext></mtd></mtr></mtable><annotation encoding="application/x-tex">s_i^{\mathrm{aes}}
+=
+\mathrm{clip}\!\left(\frac{g(\mathrm{norm}(\mathrm{CLIP}(I_i)))}{10},\, 0,\, 1\right)
+\tag{2}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.9614em;vertical-align:-0.247em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.7144em;"><span style="top:-2.453em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">aes</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.247em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.4em;vertical-align:-0.95em;"></span><span class="mord"><span class="mord mathrm">clip</span></span><span class="mspace" style="margin-right:-0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="minner"><span class="mopen delimcenter" style="top:0em;"><span class="delimsizing size3">(</span></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.427em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">10</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0359em;">g</span><span class="mopen">(</span><span class="mord"><span class="mord mathrm">norm</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathrm">CLIP</span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0785em;">I</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:-0.0785em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)))</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">1</span><span class="mclose delimcenter" style="top:0em;"><span class="delimsizing size3">)</span></span></span></span><span class="tag"><span class="strut" style="height:2.4em;vertical-align:-0.95em;"></span><span class="mord text"><span class="mord">(</span><span class="mord"><span class="mord">2</span></span><span class="mord">)</span></span></span></span></span></span>
+<div class="sl-heading-wrapper level-h3"><h3 id="frame-level-and-video-level-aggregation">Frame-Level and Video-Level Aggregation</h3><a class="sl-anchor-link" href="#frame-level-and-video-level-aggregation"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Frame-Level and Video-Level Aggregation”</span></a></div>
+<p>Per-frame perceptual quality is the arithmetic mean of both components:</p>
+<span class="katex-display"><span class="katex not-content"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mtable width="100%"><mtr><mtd width="50%"></mtd><mtd><mrow><msub><mi>s</mi><mi>i</mi></msub><mo>=</mo><mfrac><mrow><msubsup><mi>s</mi><mi>i</mi><mrow><mi mathvariant="normal">i</mi><mi mathvariant="normal">q</mi><mi mathvariant="normal">a</mi></mrow></msubsup><mo>+</mo><msubsup><mi>s</mi><mi>i</mi><mrow><mi mathvariant="normal">a</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">s</mi></mrow></msubsup></mrow><mn>2</mn></mfrac></mrow></mtd><mtd width="50%"></mtd><mtd><mtext>(3)</mtext></mtd></mtr></mtable><annotation encoding="application/x-tex">s_i
+=
+\frac{s_i^{\mathrm{iqa}} + s_i^{\mathrm{aes}}}{2}
+\tag{3}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.5806em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.3114em;vertical-align:-0.686em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.6254em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">2</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.9484em;"><span style="top:-2.4231em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.1809em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">iqa</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2769em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.6644em;"><span style="top:-2.4413em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">aes</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2587em;"><span></span></span></span></span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span><span class="tag"><span class="strut" style="height:2.3114em;vertical-align:-0.686em;"></span><span class="mord text"><span class="mord">(</span><span class="mord"><span class="mord">3</span></span><span class="mord">)</span></span></span></span></span></span>
+<p>Given <span class="katex not-content"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi></mrow><annotation encoding="application/x-tex">N</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathnormal" style="margin-right:0.109em;">N</span></span></span></span> protocol-selected prediction anchor frames, the raw metric is:</p>
+<span class="katex-display"><span class="katex not-content"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mtable width="100%"><mtr><mtd width="50%"></mtd><mtd><mrow><msub><mi>S</mi><mrow><mi mathvariant="normal">p</mi><mi mathvariant="normal">q</mi></mrow></msub><mo>=</mo><mfrac><mn>1</mn><mi>N</mi></mfrac><munderover><mo>∑</mo><mrow><mi>i</mi><mo>=</mo><mn>1</mn></mrow><mi>N</mi></munderover><msub><mi>s</mi><mi>i</mi></msub></mrow></mtd><mtd width="50%"></mtd><mtd><mtext>(4)</mtext></mtd></mtr></mtable><annotation encoding="application/x-tex">S_{\mathrm{pq}}
+=
+\frac{1}{N}\sum_{i=1}^{N} s_i
+\tag{4}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.9694em;vertical-align:-0.2861em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.0576em;">S</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0576em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">pq</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:3.106em;vertical-align:-1.2777em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.3214em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.109em;">N</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.686em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mop op-limits"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.8283em;"><span style="top:-1.8723em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight">i</span><span class="mrel mtight">=</span><span class="mord mtight">1</span></span></span></span><span style="top:-3.05em;"><span class="pstrut" style="height:3.05em;"></span><span><span class="mop op-symbol large-op">∑</span></span></span><span style="top:-4.3em;margin-left:0em;"><span class="pstrut" style="height:3.05em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.109em;">N</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:1.2777em;"><span></span></span></span></span></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3117em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">i</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span><span class="tag"><span class="strut" style="height:3.106em;vertical-align:-1.2777em;"></span><span class="mord text"><span class="mord">(</span><span class="mord"><span class="mord">4</span></span><span class="mord">)</span></span></span></span></span></span>
+<!-- metric-examples:start -->
+<div class="sl-heading-wrapper level-h2"><h2 id="representative-same-case-comparisons">Representative Same-Case Comparisons</h2><a class="sl-anchor-link" href="#representative-same-case-comparisons"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “Representative Same-Case Comparisons”</span></a></div>
+<p>Each exhibit first shows the input image and the exact displayed prompt for the case, then compares generated outputs. Paired exhibits require the same input image and the same prompt text, with one high-scoring and one low-scoring model output. Metrics without such a cross-model pair in the current formal snapshot are separated as high/low extrema rather than presented as same-case comparisons.
+Machine-readable paired export: <code dir="auto">docs/assets/metric_examples/paired_manifest.csv</code>.</p>
+<div class="sl-heading-wrapper level-h3"><h3 id="perceptual_quality"><code dir="auto">perceptual_quality</code></h3><a class="sl-anchor-link" href="#perceptual_quality"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “perceptual_quality”</span></a></div>
+<div class="metric-case-stack">
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/77af2a47a3fc__image_static_photorealistic_verdant_landscape_0106.png" alt="Input image: image_static_photorealistic_verdant_landscape_0106" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · same input image + same prompt · score gap 0.4311</div>
+      <h4><code>image_static_photorealistic_verdant_landscape_0106</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / verdant_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera orbit left. A japanese garden with stone lantern, bamboo grove, and koi fish.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_photorealistic_verdant_landscape_0106">
+      <source src="/assets/worldarena/assets/metric_examples/d1b4ca3b2695__wan22-ti2v-5b-image-static-plan-missing__image_static_photorealistic_verdant_landscape_0106.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.7091</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_photorealistic_verdant_landscape_0106">
+      <source src="/assets/worldarena/assets/metric_examples/bb17307d3ff1__motionctrl__image_static_photorealistic_verdant_landscape_0106.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.2780</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/ad8488bc0315__image_static_photorealistic_aquatic_landscape_0079.png" alt="Input image: image_static_photorealistic_aquatic_landscape_0079" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 2 · same input image + same prompt · score gap 0.3998</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0079</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera move right. A stone archway with pathway, grassy area, and mountains.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_photorealistic_aquatic_landscape_0079">
+      <source src="/assets/worldarena/assets/metric_examples/f47c73e21fbd__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0079.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.7155</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_photorealistic_aquatic_landscape_0079">
+      <source src="/assets/worldarena/assets/metric_examples/faeffc40fff5__matrix-game-1-image-static-worldarena-prompt-min5-lowmem-rmsnorm-v2__image_static_photorealistic_aquatic_landscape_0079.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.3157</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/7a94518de11c__image_static_stylized_aquatic_landscape_0110.png" alt="Input image: image_static_stylized_aquatic_landscape_0110" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 3 · same input image + same prompt · score gap 0.3910</div>
+      <h4><code>image_static_stylized_aquatic_landscape_0110</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera orbit right. An aquatic landscape with oil rig, industrial buildings, and rocky platform.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_stylized_aquatic_landscape_0110">
+      <source src="/assets/worldarena/assets/metric_examples/0476470e1b85__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_aquatic_landscape_0110.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.6485</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_stylized_aquatic_landscape_0110">
+      <source src="/assets/worldarena/assets/metric_examples/dc4ffb2550a8__matrix_game2_5s__image_static_stylized_aquatic_landscape_0110.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.2576</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/97c1fa371084__image_static_stylized_aquatic_landscape_0159.png" alt="Input image: image_static_stylized_aquatic_landscape_0159" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 4 · same input image + same prompt · score gap 0.3892</div>
+      <h4><code>image_static_stylized_aquatic_landscape_0159</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera move left. A river bend with cliffs and wooden walkway.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_stylized_aquatic_landscape_0159">
+      <source src="/assets/worldarena/assets/metric_examples/6163a4ccce16__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_aquatic_landscape_0159.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.6969</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_stylized_aquatic_landscape_0159">
+      <source src="/assets/worldarena/assets/metric_examples/93aadbcab64b__motionctrl__image_static_stylized_aquatic_landscape_0159.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.3076</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/97e18bbee690__image_static_photorealistic_aquatic_landscape_0019.jpg" alt="Input image: image_static_photorealistic_aquatic_landscape_0019" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 5 · same input image + same prompt · score gap 0.3814</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0019</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera pull out. A mountain lake with peaks, snow, and trees. Camera move left. A mountain lake with rocky outcrop, trees, and snow. Camera pan left. A mountain lake with forested area, distant peaks, and trees.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_photorealistic_aquatic_landscape_0019">
+      <source src="/assets/worldarena/assets/metric_examples/d53862d95f4c__motionctrl__image_static_photorealistic_aquatic_landscape_0019.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.6923</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_photorealistic_aquatic_landscape_0019">
+      <source src="/assets/worldarena/assets/metric_examples/2a96e6da2a98__matrix_game2_5s__image_static_photorealistic_aquatic_landscape_0019.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.3109</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/a30d7296046a__image_static_stylized_suburb_0024.jpg" alt="Input image: image_static_stylized_suburb_0024" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 6 · same input image + same prompt · score gap 0.3805</div>
+      <h4><code>image_static_stylized_suburb_0024</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / suburb</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera pull out. A suburban park with benches, trees, and path.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_stylized_suburb_0024">
+      <source src="/assets/worldarena/assets/metric_examples/46b43c5c9caf__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_suburb_0024.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.6923</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_stylized_suburb_0024">
+      <source src="/assets/worldarena/assets/metric_examples/93fbd626848b__motionctrl__image_static_stylized_suburb_0024.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.3119</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+### `rollout_visual_score`
+<div class="metric-case-stack">
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/7912e6ed25d2__image_static_stylized_public_spaces_0133.jpg" alt="Input image: image_static_stylized_public_spaces_0133" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · same input image + same prompt · score gap 0.4454</div>
+      <h4><code>image_static_stylized_public_spaces_0133</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / indoor / public_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera orbit left. A grand interior with artwork, seating, and decorative lighting.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_stylized_public_spaces_0133">
+      <source src="/assets/worldarena/assets/metric_examples/b91e9726b01d__yume-sample5b-missing-reverse-5s-target__image_static_stylized_public_spaces_0133.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.8511</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_stylized_public_spaces_0133">
+      <source src="/assets/worldarena/assets/metric_examples/a83e4016b584__stable_virtual_camera__image_static_stylized_public_spaces_0133.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.4057</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/e2c0e965c86c__image_static_photorealistic_suburb_0067.jpg" alt="Input image: image_static_photorealistic_suburb_0067" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 2 · same input image + same prompt · score gap 0.4277</div>
+      <h4><code>image_static_photorealistic_suburb_0067</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / suburb</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera push in. A suburban street with house, front yard, and garden.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_photorealistic_suburb_0067">
+      <source src="/assets/worldarena/assets/metric_examples/41f4e3499573__ac3d-image-static__image_static_photorealistic_suburb_0067.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.8223</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_photorealistic_suburb_0067">
+      <source src="/assets/worldarena/assets/metric_examples/65b2958f9c9a__warp-as-history-image-static-8gpu-20260612_152000__image_static_photorealistic_suburb_0067.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.3946</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/72be231a2142__image_static_stylized_terrestrial_landscape_0001.jpg" alt="Input image: image_static_stylized_terrestrial_landscape_0001" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 3 · same input image + same prompt · score gap 0.4214</div>
+      <h4><code>image_static_stylized_terrestrial_landscape_0001</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / terrestrial_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera move right. A stone church with pathway, wildflowers, and distant hills.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_stylized_terrestrial_landscape_0001">
+      <source src="/assets/worldarena/assets/metric_examples/5a5135ed4314__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_terrestrial_landscape_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.8615</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_stylized_terrestrial_landscape_0001">
+      <source src="/assets/worldarena/assets/metric_examples/c643ca835a4a__stable_virtual_camera__image_static_stylized_terrestrial_landscape_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.4401</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/9e5e269a38e1__image_static_stylized_aquatic_landscape_0154.png" alt="Input image: image_static_stylized_aquatic_landscape_0154" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 4 · same input image + same prompt · score gap 0.4090</div>
+      <h4><code>image_static_stylized_aquatic_landscape_0154</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera pan left. A lakeside walkway with mountains, forest, and railings. Camera pull out. A lakeside walkway with forest, boat, and vegetation. Camera move left. A forest path with trees and sunlight.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_stylized_aquatic_landscape_0154">
+      <source src="/assets/worldarena/assets/metric_examples/3678bcdb9f33__ac3d-image-static__image_static_stylized_aquatic_landscape_0154.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.8264</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_stylized_aquatic_landscape_0154">
+      <source src="/assets/worldarena/assets/metric_examples/932f6930bab3__stable_virtual_camera__image_static_stylized_aquatic_landscape_0154.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.4174</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/206d59234120__image_static_stylized_terrestrial_landscape_0077.png" alt="Input image: image_static_stylized_terrestrial_landscape_0077" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 5 · same input image + same prompt · score gap 0.3895</div>
+      <h4><code>image_static_stylized_terrestrial_landscape_0077</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / terrestrial_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera move right. A stylized mountain with grassy banks, lake, and distant hills.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_stylized_terrestrial_landscape_0077">
+      <source src="/assets/worldarena/assets/metric_examples/6b076bcdd0fb__ac3d-image-static__image_static_stylized_terrestrial_landscape_0077.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.8581</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_stylized_terrestrial_landscape_0077">
+      <source src="/assets/worldarena/assets/metric_examples/ebffbdf45283__motionctrl__image_static_stylized_terrestrial_landscape_0077.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.4687</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="/assets/worldarena/assets/metric_examples/inputs/eb6b1cc75d0f__image_static_photorealistic_city_0080.png" alt="Input image: image_static_photorealistic_city_0080" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 6 · same input image + same prompt · score gap 0.3887</div>
+      <h4><code>image_static_photorealistic_city_0080</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / city</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera orbit left. An abandoned parking lot with weeds, derelict buildings, and side street.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_photorealistic_city_0080">
+      <source src="/assets/worldarena/assets/metric_examples/cb357d2cde00__wan22-image-static-8gpu-20260612_160808__image_static_photorealistic_city_0080.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.8288</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_photorealistic_city_0080">
+      <source src="/assets/worldarena/assets/metric_examples/da3e80c4c375__sana-wm-image-static__image_static_photorealistic_city_0080.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.4400</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->
+<p><a id="reference"></a></p>
+<div class="sl-heading-wrapper level-h2"><h2 id="references">References</h2><a class="sl-anchor-link" href="#references"><span aria-hidden="true" class="sl-anchor-icon"><svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentcolor" d="m12.11 15.39-3.88 3.88a2.52 2.52 0 0 1-3.5 0 2.47 2.47 0 0 1 0-3.5l3.88-3.88a1 1 0 0 0-1.42-1.42l-3.88 3.89a4.48 4.48 0 0 0 6.33 6.33l3.89-3.88a1 1 0 1 0-1.42-1.42Zm8.58-12.08a4.49 4.49 0 0 0-6.33 0l-3.89 3.88a1 1 0 0 0 1.42 1.42l3.88-3.88a2.52 2.52 0 0 1 3.5 0 2.47 2.47 0 0 1 0 3.5l-3.88 3.88a1 1 0 1 0 1.42 1.42l3.88-3.89a4.49 4.49 0 0 0 0-6.33ZM8.83 15.17a1 1 0 0 0 1.1.22 1 1 0 0 0 .32-.22l4.92-4.92a1 1 0 0 0-1.42-1.42l-4.92 4.92a1 1 0 0 0 0 1.42Z"></path></svg></span><span class="sr-only" data-pagefind-ignore="">Section titled “References”</span></a></div>
+<aside class="doc-admonition doc-admonition-note">
+<strong>Exploring CLIP for Assessing the Look and Feel of Images (CLIP-IQA+)</strong>
+<p>Jianyi Wang, Kelvin CK Chan, Chen Change Loy.
+AAAI 2023.
+<a href="https://arxiv.org/abs/2207.12396">https://arxiv.org/abs/2207.12396</a></p>
+</aside>
+<aside class="doc-admonition doc-admonition-note">
+<strong>LAION-Aesthetics Predictor</strong>
+<p>CLIP ViT-L/14 features with a linear head trained on human aesthetic ratings; exposed via pyiqa <code dir="auto">laion_aes</code>.</p>
+</aside>
+<details class="doc-admonition doc-admonition-note doc-admonition-collapsible">
+<summary><strong>BibTeX — CLIP-IQA+</strong></summary>
+<div class="expressive-code"><link rel="stylesheet" href="/doc/_astro/ec.w8rqx.css"><script type="module" src="/doc/_astro/ec.0vx5m.js"></script><figure class="frame not-content"><figcaption class="header"></figcaption><pre data-language="bibtex"><code><div class="ec-line"><div class="code"><span style="--0:#F97583;--1:#BF3441">@inproceedings</span><span style="--0:#E1E4E8;--1:#24292E">{</span><span style="--0:#B392F0;--1:#6F42C1">wang2022exploring</span><span style="--0:#E1E4E8;--1:#24292E">,</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#79B8FF;--1:#005CC5">author</span><span style="--0:#E1E4E8;--1:#24292E"> = </span><span style="--0:#9ECBFF;--1:#032F62">{</span><span style="--0:#E1E4E8;--1:#24292E">Wang, Jianyi and Chan, Kelvin CK and Loy, Chen Change</span><span style="--0:#9ECBFF;--1:#032F62">}</span><span style="--0:#E1E4E8;--1:#24292E">,</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#79B8FF;--1:#005CC5">title</span><span style="--0:#E1E4E8;--1:#24292E"> = </span><span style="--0:#9ECBFF;--1:#032F62">{</span><span style="--0:#E1E4E8;--1:#24292E">Exploring CLIP for Assessing the Look and Feel of Images</span><span style="--0:#9ECBFF;--1:#032F62">}</span><span style="--0:#E1E4E8;--1:#24292E">,</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#79B8FF;--1:#005CC5">booktitle</span><span style="--0:#E1E4E8;--1:#24292E"> = </span><span style="--0:#9ECBFF;--1:#032F62">{</span><span style="--0:#E1E4E8;--1:#24292E">AAAI</span><span style="--0:#9ECBFF;--1:#032F62">}</span><span style="--0:#E1E4E8;--1:#24292E">,</span></div></div><div class="ec-line"><div class="code"><span class="indent">    </span><span style="--0:#79B8FF;--1:#005CC5">year</span><span style="--0:#E1E4E8;--1:#24292E"> = </span><span style="--0:#9ECBFF;--1:#032F62">{</span><span style="--0:#E1E4E8;--1:#24292E">2023</span><span style="--0:#9ECBFF;--1:#032F62">}</span></div></div><div class="ec-line"><div class="code"><span style="--0:#E1E4E8;--1:#24292E">}</span></div></div></code></pre><div class="copy"><div aria-live="polite"></div><button title="Copy to clipboard" data-copied="Copied!" data-code="@inproceedings{wang2022exploring,    author = {Wang, Jianyi and Chan, Kelvin CK and Loy, Chen Change},    title = {Exploring CLIP for Assessing the Look and Feel of Images},    booktitle = {AAAI},    year = {2023}}"><div></div></button></div></figure></div>
+</details>  </div>  <script type="module">const n='<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></g></svg>',s='<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 6L9 17l-5-5"/></svg>';class i extends HTMLElement{constructor(){super()}connectedCallback(){const e=()=>{const o=t==="ready"?n:s;this.innerHTML='<span class="w-full h-full block [&_svg]:w-full [&_svg]:h-full">'+o+"</span>"};let t="ready";e(),this.addEventListener("click",()=>{if(t==="ready"){t="success",e();const o=this.dataset.code||"";navigator.clipboard.writeText(o),setTimeout(()=>{t="ready",e()},1500)}})}}customElements.define("nova-code-copy-button",i);</script> <script type="module" src="/doc/_astro/MarkdownContent.astro_astro_type_script_index_0_lang.Cy5qyouG.js"></script> <footer class="sl-flex astro-3yyafb3n"> <div class="meta sl-flex astro-3yyafb3n">   </div> <div class="flex min-w-full flex-row items-stretch justify-between gap-2 px-1 pt-0 pb-6 print:hidden" dir="ltr"> <a href="/doc/benchmark/metrics/style-consistency/" rel="prev" data-side="left" class="group m-0 flex items-center justify-end gap-2 rounded-xl p-2 font-medium text-(--sl-color-gray-2) no-underline transition hover:text-(--sl-color-white) md:text-lg [[rel='next']]:flex-row [[rel='prev']]:flex-row-reverse"> <span>Style Consistency</span> <svg width="1em" height="1em" viewBox="0 0 24 24" class="block min-h-5 min-w-5 transition group-hover:-translate-x-1"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 18l-6-6l6-6" /></svg> </a> <div class="flex-1"></div> <a href="/doc/benchmark/metrics/hpsv3-norm/" rel="next" data-side="right" class="group m-0 flex items-center justify-end gap-2 rounded-xl p-2 font-medium text-(--sl-color-gray-2) no-underline transition hover:text-(--sl-color-white) md:text-lg [[rel='next']]:flex-row [[rel='prev']]:flex-row-reverse"> <span>HPSv3-Norm</span> <svg width="1em" height="1em" viewBox="0 0 24 24" class="block min-h-5 min-w-5 transition group-hover:translate-x-1"><!-- Icon from Lucide by Lucide Contributors - https://github.com/lucide-icons/lucide/blob/main/LICENSE --><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m9 18l6-6l-6-6" /></svg> </a> </div>  </footer> </div> </div>  </main> </div> </div> </div> </div> </body></html>

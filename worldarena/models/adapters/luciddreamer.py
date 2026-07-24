@@ -1,3 +1,9 @@
+"""LucidDreamer model adapter for WorldAtlas Arena.
+
+Maps ``camera_path`` tokens to LucidDreamer render presets and launches
+``luciddreamer_runner`` or ``luciddreamer_batch_runner``.
+"""
+
 from __future__ import annotations
 
 import json
@@ -6,12 +12,12 @@ import tempfile
 from typing import Any
 
 from worldarena.benchmark.schemas import BenchmarkSample
+from worldarena.benchmark.synthetic_camera import SUPPORTED_SYNTHETIC_CAMERA_TOKENS
 from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
 from worldarena.models.adapters.common import (
     build_env,
     extend_command_with_options,
     run_command,
-    run_sequential_generate_batch,
 )
 
 DEFAULT_CAMERA_PATH_RENDER_PRESET = {
@@ -58,24 +64,23 @@ def _generation_for_sample(generation: dict[str, Any], sample: BenchmarkSample) 
     if not bool(resolved.get("use_camera_path_render", True)) or not camera_path:
         return resolved
 
-    mapping = dict(DEFAULT_CAMERA_PATH_RENDER_PRESET)
-    configured_mapping = resolved.get("campath_render_by_camera_token")
-    if isinstance(configured_mapping, dict):
-        mapping.update({str(key).strip().lower(): str(value).strip() for key, value in configured_mapping.items()})
-
-    primary_token = camera_path[0]
-    mapped_render = mapping.get(primary_token)
-    if mapped_render:
-        resolved["campath_render"] = mapped_render
-        resolved["_campath_render_source"] = "sample_camera_path"
-    else:
-        resolved["_campath_render_source"] = "config_unknown_camera_path"
+    unsupported = [token for token in camera_path if token not in SUPPORTED_SYNTHETIC_CAMERA_TOKENS]
+    if unsupported:
+        raise ValueError(f"unsupported LucidDreamer camera token(s): {unsupported!r}")
+    resolved["campath_render"] = "worldarena_camera_path"
+    resolved["_campath_render_source"] = "worldarena_camera_path"
     return resolved
 
 
 class LucidDreamerAdapter(ModelAdapter):
+    """Generate 3D-consistent videos via the LucidDreamer upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
 
     def generate_batch(
         self,
@@ -121,6 +126,10 @@ class LucidDreamerAdapter(ModelAdapter):
                         "input_size": int(generation.get("input_size", 512)),
                         "keep_work_dir": bool(generation.get("keep_work_dir", False)),
                         "min_seconds": float(generation.get("min_seconds", 5.0)),
+                        "camera_path_frames": int(generation.get("camera_path_frames", 300)),
+                        "camera_path_translation_scale": float(
+                            generation.get("camera_path_translation_scale", 1.0)
+                        ),
                     }
                     file.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
@@ -162,6 +171,21 @@ class LucidDreamerAdapter(ModelAdapter):
         output_path: Path,
         prompt: str,
     ) -> dict[str, Any]:
+        if sample.suite == "image_static" and sample.camera_path:
+            result = self.generate_batch(
+                [
+                    PreparedGenerationRequest(
+                        sample=sample,
+                        conditioning_image=conditioning_image,
+                        output_path=output_path,
+                        prompt=prompt,
+                    )
+                ]
+            )[sample.sample_id]
+            if result.get("status") != "generated":
+                raise RuntimeError(str(result.get("error") or "LucidDreamer batch generation failed"))
+            return result
+
         repo_root = self.config.repo_root
         if repo_root is None:
             raise ValueError("LucidDreamer adapter requires repo_root")

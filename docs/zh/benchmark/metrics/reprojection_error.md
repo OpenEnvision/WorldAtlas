@@ -1,71 +1,27 @@
 # Reprojection Error
 
-`reprojection_error` 用来衡量预测视频在被包装的 DROID-SLAM [[Teed and Deng, 2021](#reference)] 重建路径下，三维几何与跨帧投影是否自洽。
-它关注的是：由生成视频自身恢复出的相机位姿和稠密深度，在重新投影回其他帧时，能否落在与实际观测一致的位置。
-误差越小，说明视频中的空间结构、相机运动和跨帧对应关系越容易被同一个三维重建解释。
+**reprojection_error** 衡量预测视频在被包装的 DROID-SLAM [[Teed and Deng, 2021](#reference)] 重建路径下，**三维几何与跨帧投影是否自洽**。它只依赖 prediction 本身，不需要 reference video 或相机真值；核心问题是：由生成视频恢复出的相机位姿和稠密深度，能否把场景点重新投影到其他帧的观测位置附近。
 
-## 这个指标测什么
+与 COLMAP [[Schönberger and Frahm, 2016](#reference-colmap-sfm), [Schönberger et al., 2016](#reference-colmap-mvs)] 等稀疏重建方法主要依赖少量高质量特征点不同，DROID-SLAM 采用**稠密 SLAM** 路径：通过可微分的 Dense Bundle Adjustment（DBA）层，在优化过程中联合细化相机位姿与逐像素深度，使其与光流对应关系保持一致。生成视频的几何错误往往不只出现在少数匹配点附近，也可能表现为背景扭曲、物体局部漂移、深度层次不稳定或跨帧结构无法闭合；稠密 DBA 会利用尽可能多的有效像素和共视点，因此更贴近“整段 rollout 能否被同一个三维解释”的评测目标。
 
-- 预测结果在 SLAM backend 下是否容易被一致地重建和重投影。
-- 生成视频中场景几何、相机运动和跨帧对应点的空间一致性。
+DBA 细化完成后，对有效共视点集合 \(\mathcal{V}\)，重投影误差可写为
 
-## 原理说明
+\[
+e_{\mathrm{reproj}}
+=
+\frac{1}{|\mathcal{V}|}
+\sum_{(i,j)\in\mathcal{V}}
+\left\lVert
+    p^{*}_{ij}
+    -
+    \Pi(P_{ij})
+\right\rVert_2
+\tag{1}
+\]
 
-DROID-SLAM 的一个关键优势是它采用稠密 SLAM 路径。
-与 COLMAP [[Schönberger and Frahm, 2016](#reference-colmap-sfm), [Schönberger et al., 2016](#reference-colmap-mvs)] 这类稀疏重建方法不同，稀疏方法通常会选择质量较高的特征匹配点，并丢弃大量不稳定或低置信的区域。
-DROID-SLAM 会使用可微分的 Dense Bundle Adjustment（DBA）层，在优化过程中持续联合细化相机位姿和稠密的逐像素深度估计，使它们与当前光流对应关系保持一致。
+其中 \(p^{*}_{ij}\) 是第 \(i\) 帧中的观测像素位置，\(P_{ij}\) 是由位姿与深度恢复的三维点，\(\Pi(\cdot)\) 为投影算子。若生成视频在三维上自洽，同一 scene point 投影回其他帧应接近对应观测；几何漂移、深度不稳定或跨帧结构不一致都会使该距离增大。
 
-这种稠密重建方式更适合用来评估生成视频的 3D consistency。
-原因是生成视频的几何错误不一定只出现在少量特征点附近，也可能表现为背景扭曲、物体局部漂移、深度层次不稳定、跨帧结构不能闭合等全局或局部问题。
-稠密 DBA 会利用尽可能多的有效像素和共视点，而不是只依赖部分“好匹配”，因此更贴近“整幅画面在三维空间中是否协调一致”的评测目标。
-
-## 具体算法
-
-1. WorldArena 会把整段预测视频解码成 PNG 帧。
-2. 被包装的第三方指标会在这些帧上运行 `DROID-SLAM`，估计相机轨迹、稠密深度和内部几何结构。
-3. DROID-SLAM 通过 DBA 层细化位姿和深度后，对共视区域内的有效点计算重投影误差。
-4. 在 DROID-SLAM 完成整段视频的优化后，它会返回一组有效观测点的重投影误差 `valid_errors`；这些误差表示重建出的三维点重新投影到图像平面后，与对应观测像素位置之间的距离。
-5. 原始指标值定义为 `raw = mean(valid_errors)`。
-6. WorldArena 会按经验边界对这个标量做归一化：
-    - `empirical_min = 0.0`
-    - `empirical_max = 1.0719`
-    - 越小越好
-7. 因而归一化分数本质上等价于 `1 - clamp((raw - 0.0) / (1.0719 - 0.0), 0, 1)`。
-
-## 误差公式
-
-DBA 细化完成后，重投影误差可以写成：
-
-!!! info "核心公式"
-
-    \[
-    e_{\mathrm{reproj}}
-    =
-    \frac{1}{|\mathcal{V}|}
-    \sum_{(i,j)\in\mathcal{V}}
-    \left\lVert
-        p^{*}_{ij}
-        -
-        \Pi(P_{ij})
-    \right\rVert_2
-    \]
-
-其中，\(\mathcal{V}\) 表示有效的共视点集合；\(p^{*}_{ij}\) 是第 \(i\) 帧中与第 \(j\) 个三维点对应的观测像素位置；\(P_{ij}\) 是由 DBA 细化后的深度和相机位姿恢复出的三维点；\(\Pi(\cdot)\) 表示用当前相机模型把三维点投影回图像平面；\(\lVert\cdot\rVert_2\) 表示二维像素位置之间的欧氏距离。
-
-直观地说，如果生成视频在三维上自洽，那么同一个场景点从一帧恢复到三维空间后，再投影到另一帧，应当落在对应的观测位置附近。
-如果画面中存在明显的几何漂移、深度不稳定或跨帧结构不一致，投影位置和观测位置之间的距离会变大，`reprojection_error` 也会升高。
-
-## 输入与输出
-
-| 项目 | 当前实现 |
-| --- | --- |
-| 预测输入 | 完整解码后的预测视频 |
-| 参考输入 | 无 |
-| 标注输入 | 无 |
-| 原始输出 | 单个 reprojection error 标量 |
-| 归一化输出 | 单个 `[0, 1]` 标量，越高越好 |
-| 细节字段 | `frame_count`、`native_score` |
-| 失败形式 | 如果 SLAM 重建失败或没有得到有效分数，则返回 `raw = null`、`normalized = null` 和错误字符串 |
+在 WorldArena 中，runtime 将整段 prediction 解码为帧序列，运行 DROID-SLAM 估计轨迹与内部几何，并取有效观测重投影误差 `valid_errors` 的均值作为原始分数 `raw = mean(valid_errors)`。WorldArena 在经验范围 \([0, 1.0719]\) 上反向归一化到 \([0, 1]\)（**归一化分数越高越好**）。若 SLAM 重建失败或未产生有效分数，则返回 `raw = null`、`normalized = null`。DROID-SLAM 计算成功时，该指标在所有 formal suite 中为 **official**，并写入 `consistency_3d_4d` 聚合；它是有用的几何一致性信号，但不能替代 camera error 等几何真值监督，且受固定内参 SLAM 假设影响，跨异构数据解读时应保持谨慎。
 
 ## 参考文献 {#reference}
 
@@ -73,6 +29,20 @@ DBA 细化完成后，重投影误差可以写成：
 
     Zachary Teed and Jia Deng.  
     Advances in Neural Information Processing Systems (NeurIPS), 2021.
+
+<a id="reference-colmap-sfm"></a>
+
+!!! quote "Structure-from-Motion Revisited"
+
+    Johannes L. Schönberger and Jan-Michael Frahm.  
+    IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2016.
+
+<a id="reference-colmap-mvs"></a>
+
+!!! quote "Pixelwise View Selection for Unstructured Multi-View Stereo"
+
+    Johannes L. Schönberger, Enliang Zheng, Jan-Michael Frahm, and Marc Pollefeys.  
+    European Conference on Computer Vision (ECCV), 2016.
 
 ??? note "BibTeX"
 
@@ -86,19 +56,3 @@ DBA 细化完成后，重投影误差可以写成：
         year = {2021},
     }
     ```
-
-
-<a id="reference-colmap-sfm"></a>
-
-!!! quote "Structure-from-Motion Revisited"
-
-    Johannes L. Schönberger and Jan-Michael Frahm.  
-    IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2016.
-
-
-<a id="reference-colmap-mvs"></a>
-
-!!! quote "Pixelwise View Selection for Unstructured Multi-View Stereo"
-
-    Johannes L. Schönberger, Enliang Zheng, Jan-Michael Frahm, and Marc Pollefeys.  
-    European Conference on Computer Vision (ECCV), 2016.

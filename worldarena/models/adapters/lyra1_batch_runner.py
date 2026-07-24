@@ -1,3 +1,5 @@
+"""Batch subprocess runner for Lyra-1 that keeps the model loaded across samples."""
+
 from __future__ import annotations
 
 import argparse
@@ -13,6 +15,7 @@ import time
 from typing import Any
 
 from worldarena.common.checkpoints import apply_checkpoint_env, resolve_checkpoint_path
+from worldarena.models.adapters.gen3c_runner import WORLD_ARENA_GEN3C_TRAJECTORY_PREFIX
 from worldarena.models.adapters.lyra1_runner import (
     DEFAULT_STATIC_VIEW_INDICES,
     _checkpoint_layout,
@@ -29,7 +32,7 @@ from worldarena.models.adapters.lyra2_runner import _prepare_transformer_engine_
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena Lyra-1 batch subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena Lyra-1 batch subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", required=True, type=str)
     parser.add_argument("--batch_spec_path", required=True, type=str)
@@ -110,6 +113,7 @@ def _write_stage1_batch_inputs(
         "total_movement_distance_factor",
         "negative_prompt",
         "camera_path_primary",
+        "camera_path",
     )
     with batch_input_path.open("w", encoding="utf-8") as file:
         for row in rows:
@@ -125,6 +129,12 @@ def _write_stage1_batch_inputs(
                 for key in per_sample_keys:
                     if generation.get(key) is not None:
                         payload[key] = generation[key]
+                camera_path = generation.get("camera_path")
+                if isinstance(camera_path, list) and camera_path:
+                    payload["trajectory"] = (
+                        WORLD_ARENA_GEN3C_TRAJECTORY_PREFIX
+                        + json.dumps(camera_path, separators=(",", ":"))
+                    )
             file.write(
                 json.dumps(
                     payload,
@@ -136,13 +146,14 @@ def _write_stage1_batch_inputs(
 
 def _stage1_batch_command(
     *,
+    script_path: Path,
     batch_input_path: Path,
     generated_root: Path,
     args: argparse.Namespace,
 ) -> list[str]:
     stage1_num_gpus = _stage1_num_gpus(args)
     script_and_args = [
-        "cosmos_predict1/diffusion/inference/gen3c_single_image_sdg.py",
+        str(script_path),
         "--checkpoint_dir",
         "checkpoints",
         "--num_gpus",
@@ -209,6 +220,30 @@ def _stage1_batch_command(
         if getattr(args, flag_name):
             command.append(f"--{flag_name}")
     return command
+
+
+def _patched_stage1_script(repo_root: Path, workspace_root: Path) -> Path:
+    source_path = (
+        repo_root
+        / "cosmos_predict1"
+        / "diffusion"
+        / "inference"
+        / "gen3c_single_image_sdg.py"
+    )
+    source = source_path.read_text(encoding="utf-8")
+    upstream_import = (
+        "from cosmos_predict1.diffusion.inference.camera_utils import "
+        "generate_camera_trajectory"
+    )
+    replacement = (
+        "from worldarena.models.adapters.gen3c_runner import "
+        "dispatch_gen3c_camera_trajectory as generate_camera_trajectory"
+    )
+    if upstream_import not in source:
+        raise RuntimeError("Lyra-1 stage-1 entrypoint is incompatible with camera-path patch")
+    patched_path = workspace_root / "worldarena_gen3c_single_image_sdg.py"
+    patched_path.write_text(source.replace(upstream_import, replacement, 1), encoding="utf-8")
+    return patched_path
 
 
 def _find_stage1_video(generated_root: Path, stem: str, output_view_index: int) -> Path | None:
@@ -476,6 +511,7 @@ def main() -> None:
         if env.get("PYTHONPATH"):
             pythonpath.append(env["PYTHONPATH"])
         env["PYTHONPATH"] = os.pathsep.join(pythonpath)
+        stage1_script_path = _patched_stage1_script(repo_root, workspace_root)
 
         errors: list[dict[str, str]] = []
         sync_log_path = output_dir / "final_recon_sync.log"
@@ -523,6 +559,7 @@ def main() -> None:
                 try:
                     _run_command(
                         _stage1_batch_command(
+                            script_path=stage1_script_path,
                             batch_input_path=batch_input_path,
                             generated_root=generated_root,
                             args=args,

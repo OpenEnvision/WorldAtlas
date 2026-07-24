@@ -6,9 +6,8 @@ model:
   artifact_types: [video]
   control_signals: [text, video, camera_pose]
   roles: [candidate]
-  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/worldcam/bin/python
-  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/WorldCam
-  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/worldcam
+  repo_root: thirdparty/WorldCam
+  checkpoint_dir: ckpt/worldcam
   entrypoint: inference.py
   output_ext: .mp4
   supported_suites:
@@ -16,7 +15,7 @@ model:
   prompt_mode: prompt_current
   reference_mode: reference_video
   env:
-    WORLDARENA_CHECKPOINT_ROOT: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+    WORLDARENA_CHECKPOINT_ROOT: ckpt/
     PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
   generation:
     height: 480

@@ -1,1 +1,1 @@
-"""Documentation builders for WorldArena."""
+"""Documentation builders for WorldAtlas Arena."""

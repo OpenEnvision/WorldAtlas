@@ -1,12 +1,12 @@
 # Showcase Viewer
 
-WorldArena includes a lightweight showcase viewer for inspecting generated media before or after scoring. It supports three visualization workflows: multi-view browsing, method-to-method comparison, and GIF/image comparison.
+WorldAtlas Arena includes a lightweight showcase viewer for inspecting generated media before or after scoring. It supports three visualization workflows: multi-view browsing, method-to-method comparison, and GIF/image comparison.
 
 The viewer is static. It scans prediction folders, writes `showcase_manifest.json`, links media into a local `media/` folder, and renders `index.html`. No Dash, Gradio, or remote service is required.
 
 ## Method Comparison
 
-Compare two or more WorldArena prediction roots:
+Compare two or more WorldAtlas Arena prediction roots:
 
 ```bash
 python scripts/showcase/video_method_compare_app.py \
@@ -41,7 +41,7 @@ python scripts/showcase/gif_method_compare_app.py \
 
 This mode filters out video-only files and keeps `.gif`, `.png`, `.jpg`, `.jpeg`, and `.webp`.
 
-## WorldArena Generation Records
+## WorldAtlas Arena Generation Records
 
 If a method root contains `generation_records*.jsonl`, the viewer uses the recorded `sample_id`, `suite`, `prediction_path`, and prompt fields instead of inferring sample names from filenames. Add `--include-conditioning` to show conditioning inputs next to predictions.
 

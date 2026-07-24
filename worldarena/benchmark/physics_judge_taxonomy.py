@@ -1,3 +1,5 @@
+"""Taxonomy helpers for physics judge benchmark categories."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -305,6 +307,7 @@ _DIMENSION_OVERRIDES: dict[str, dict[str, Any]] = {
 
 
 def known_physics_dimensions() -> set[str]:
+    """Known physics dimensions -> set[str]."""
     return set(_DIMENSION_OVERRIDES)
 
 

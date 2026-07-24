@@ -1,3 +1,5 @@
+"""Core dataclasses shared across benchmark inventory, manifest, and scoring."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -6,6 +8,7 @@ from typing import Any
 
 @dataclass()
 class DiscoveredAsset:
+    """A raw asset discovered during dataset scanning."""
     asset_level: str
     modality: str
     is_formal: bool
@@ -39,11 +42,13 @@ class DiscoveredAsset:
     size_bytes: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict -> dict[str, Any]."""
         return asdict(self)
 
 
 @dataclass()
 class BenchmarkSample:
+    """One benchmark sample with metadata and prediction paths."""
     sample_id: str
     suite: str
     split: str
@@ -95,11 +100,13 @@ class BenchmarkSample:
     physics_spec: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict -> dict[str, Any]."""
         return asdict(self)
 
 
 @dataclass()
 class MetricOutput:
+    """The output of a single metric evaluation."""
     raw: Any | None
     normalized: float | None
     backend: str
@@ -109,11 +116,13 @@ class MetricOutput:
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict -> dict[str, Any]."""
         return asdict(self)
 
 
 @dataclass()
 class SampleScore:
+    """Per-sample scores with all metric outputs."""
     sample_id: str
     suite: str
     metrics: dict[str, MetricOutput]
@@ -126,6 +135,7 @@ class SampleScore:
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        """To dict -> dict[str, Any]."""
         payload = asdict(self)
         payload["metrics"] = {name: output.to_dict() for name, output in self.metrics.items()}
         return payload

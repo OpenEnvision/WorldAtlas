@@ -1,4 +1,4 @@
-"""WorldArena benchmark toolkit."""
+"""WorldAtlas Arena benchmark toolkit."""
 
 __all__ = ["__version__"]
 

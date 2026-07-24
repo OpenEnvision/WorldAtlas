@@ -29,7 +29,7 @@ manifest 会把这个契约写到每个样本里，因此下游生成和评测�
 | 状态 | 是否进入 official 聚合 | 典型原因 |
 | --- | --- | --- |
 | `official` | 是 | 指标产出了数值，且样本满足监督门槛 |
-| `diagnostic` | 否 | 指标设计上就是分析信号 |
+| `diagnostic` | 否 | 指标不进 headline 聚合 |
 | `not_applicable` | 否 | 样本没有足够强的监督来支撑该指标结论，因此不计算、不聚合 |
 | `normalized = null` | 否 | runtime 失败、输入缺失或指标不适用 |
 
@@ -43,10 +43,11 @@ manifest 会把这个契约写到每个样本里，因此下游生成和评测�
 | `motion_accuracy` | 需要对齐好的 segmentation mask |
 | `object_permanence` | 需要对齐好的动态 mask，以及可读取的参考视频 |
 | `physical_fps_*` | 需要可用的 `Pulse-of-Motion` 运行时，以及可读取的 container FPS 或 manifest FPS |
-| `depth_collision` | 永远不属于 official；仅诊断。需要 video prediction 和 Video-Depth-Anything runtime |
-| `reconstruction_consistency` | 永远不属于 official；仅诊断。需要 video prediction、Depth-Anything-3 和 LPIPS |
-| `memory_revisit_consistency` | 永远不属于 official；仅诊断。只适合回访/闭环类 experimental 样本 |
-| `semantic_alignment`、`depth_accuracy`、`psnr`、`ssim`、`met3r_consistency`、`long_sequence_*` | 永远不属于 official；仅诊断 |
+| `met3r_consistency` | reference/prediction 锚点可读取时进入 official；空 overlap mask 会被记录并计为最低归一化分（`0`），而不是从均值中排除 |
+| `depth_collision` | 永远不进 headline 聚合。需要 video prediction 和 Video-Depth-Anything runtime |
+| `reconstruction_consistency` | 永远不进 headline 聚合。需要 video prediction 与 Depth-Anything-3 深度/位姿重投影运行时 |
+| `memory_revisit_consistency` | 永远不进 headline 聚合。只适合回访/闭环类 experimental 样本 |
+| `semantic_alignment`、`depth_accuracy`、`long_sequence_*` | 永远不进 headline 聚合 |
 | formal suite 中其余指标 | 只要成功返回数值，就属于 official |
 
 三个常见后果：
@@ -75,12 +76,12 @@ manifest 会把这个契约写到每个样本里，因此下游生成和评测�
 
 - `per_metric_summary.json` 只会平均那些 `eligibility_status = official` 的数值型 `normalized` 分数。
 - `per_dimension_summary.json` 会把同一批 official 分数重新汇总到六个顶层维度：`long_sequence`、`action_control`、`consistency_3d_4d`、`physics`、`quality`、`real_time`。
-- `diagnostic_metric_summary.json` 只平均设计上明确为诊断的数值型分数。
-- `not_applicable_summary.json` 记录因强监督不足而没有计算的指标；这些条目不是失败，也不是诊断分数。
+- `diagnostic_metric_summary.json` 只平均明确标记为非 official 的数值型分数。
+- `not_applicable_summary.json` 记录因强监督不足而没有计算的指标；这些条目不是失败，也不是非 official 分数。
 - `domain_breakdown.json` 也只统计 official 分数，并按 `style`、`environment`、`scene` 和 `motion_category` 切分。
 - 缺失预测会在 `run_manifest.json` 中被计数，但不会被自动当作 0 分。它们就是缺失。
 - `experimental` 不是 formal headline suite；当前实现中 `motion_magnitude` 和 `motion_smoothness` 如果在该 suite 成功产出，会按默认 `official` 路由写入报告。
 
-simulator-backed physics 配置会复用同一套 report contract，但它会落到独立 manifest 和单独的配置 namespace 上。需要注意的是，physics 配置同样使用了 suite 名 `experimental`，但这里指的是 simulator-backed physics track，而不是 `config/benchmark.yaml` 里那个仅用于诊断的 `experimental` 切片。详见 Metrics 下的 [Physics](metrics/dimensions/physics.md)。
+simulator-backed physics 配置会复用同一套 report contract，但它会落到独立 manifest 和单独的配置 namespace 上。需要注意的是，physics 配置同样使用了 suite 名 `experimental`，但这里指的是 simulator-backed physics track，而不是 `config/benchmark.yaml` 里那个仅作补充的 `experimental` 切片。详见 Metrics 下的 [Physics](metrics/dimensions/physics.md)。
 
-只有在 suite、protocol、metric config 和预测完整度都一致时，两个 run 才可直接比较。WorldArena 当前只有一个测试集；manifest 中的 `split` 字段固定为 `test`，仅作为兼容字段保留。
+只有在 suite、protocol、metric config 和预测完整度都一致时，两个 run 才可直接比较。WorldAtlas Arena 当前只有一个测试集；manifest 中的 `split` 字段固定为 `test`，仅作为兼容字段保留。

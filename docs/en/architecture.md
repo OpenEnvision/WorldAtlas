@@ -1,6 +1,6 @@
 # Architecture
 
-WorldArena should stay benchmark-first, not pipeline-first. The repo should expose one coherent contract for manifests, model configs, metrics, and reports, while letting local repos, API providers, and heavy metric sources evolve outside the benchmark core.
+WorldAtlas Arena should stay benchmark-first, not pipeline-first. The repo should expose one coherent contract for manifests, model configs, metrics, and reports, while letting local repos, API providers, and heavy metric sources evolve outside the benchmark core.
 
 ## Module Boundaries
 
@@ -11,13 +11,17 @@ WorldArena should stay benchmark-first, not pipeline-first. The repo should expo
 | `worldarena/models/` | evaluated models and helper runtimes | local-repo adapters, API adapters, provider clients, model config parsing |
 | `worldarena/common/` | shared primitives | taxonomy, runtime layout, serialization |
 | `config/models/` | unified model registry | one YAML format for local repos and API models |
-| `thirdparty/` | linked upstream code | model repos and heavy metric-source checkouts, but not vendored benchmark logic |
+| `thirdparty/` | upstream code | model repositories and pinned metric-source checkouts; metric adapters stay in the main package |
+
+Official metric orchestration lives in `worldarena/benchmark/official_backends/`.
+Those adapters reuse upstream checkouts from `thirdparty/`; upstream source is
+not copied into the Python package.
 
 The important constraint is that benchmark logic should not fork by model family. A 3D model, a 4D model, an API video model, and a local world model should still enter through the same model config contract and the same report contract.
 
 ## Core Contracts
 
-WorldArena's public surface is data-first. Internal runners and adapters can evolve, but the artifacts below are the contracts that make runs comparable and debuggable:
+WorldAtlas Arena's public surface is data-first. Internal runners and adapters can evolve, but the artifacts below are the contracts that make runs comparable and debuggable:
 
 | Contract | Owner | Stable fields | Extension rule |
 | --- | --- | --- | --- |
@@ -25,7 +29,7 @@ WorldArena's public surface is data-first. Internal runners and adapters can evo
 | Model runtime config | `config/models/*.yaml`, backed by `ModelRuntimeConfig` | model identity, `backend_type`, runtime entrypoint or API provider, `supported_suites`, `task_families`, `artifact_types`, `control_signals`, `roles`, `generation`, and `metric_overrides` | Keep one YAML shape for local repos, Python modules, SDK APIs, and HTTP APIs. Add provider-specific details under `api` or `metadata` rather than changing the top-level contract. |
 | Prediction artifact | adapter/provider outputs under `predictions/` | `<suite>/<prediction_stem>.<ext>` or `<prediction_stem>.<ext>`, with extensions chosen from the prediction modality | The prediction is the evaluated artifact. Extra frames, meshes, depth maps, or logs should be explicit sidecars and should not change the required prediction filename. |
 | Metric output | `MetricOutput` inside `per_sample_scores.jsonl` | `raw`, `normalized`, `backend`, `details`, `protocol_name`, `eligibility_status`, and `error` | Store the raw measurement and the normalized score separately. Use `official`, `diagnostic`, and `not_applicable` statuses instead of encoding aggregation behavior in metric names. |
-| Report bundle | `run_manifest.json`, summaries, breakdowns, and `leaderboard.csv` | run metadata, missing prediction count, reported metrics, official summaries, diagnostic summaries, failure summaries, and domain breakdowns | Preserve official, diagnostic, not-applicable, and failure channels as separate outputs. Do not introduce a benchmark-wide total score unless the weighting contract is explicitly versioned. |
+| Report bundle | `run_manifest.json`, summaries, breakdowns, and `leaderboard.csv` | run metadata, missing prediction count, reported metrics, official summaries, non-official summaries, failure summaries, and domain breakdowns | Preserve official, diagnostic, not-applicable, and failure channels as separate outputs. Do not introduce a benchmark-wide total score unless the weighting contract is explicitly versioned. |
 
 The lifecycle is intentionally one-directional: dataset scanners create inventory, the manifest freezes sample semantics, model adapters create predictions keyed by `prediction_stem`, metrics read manifest plus prediction artifacts, and reports aggregate only from metric outputs. Adapters should not inspect dataset layout to decide eligibility, and metrics should not branch on model family.
 

@@ -1,3 +1,5 @@
+"""SDPA-based fallback implementations of flash-attn public APIs."""
+
 from __future__ import annotations
 
 import torch

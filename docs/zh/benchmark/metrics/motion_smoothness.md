@@ -1,222 +1,249 @@
 # Motion Smoothness
 
-`motion_smoothness` 用来衡量预测视频的生成运动是否平滑、连续，并且是否符合视频插帧模型学到的运动先验。
-它的核心思想是：如果一段视频的运动是平滑的，那么只保留偶数帧后，标准视频帧插值模型应该能够较准确地重建被丢弃的奇数帧。
-重建帧与原始奇数帧越接近，说明生成视频在时间上越可插值，运动突变和闪烁越少。
+Motion Smoothness 在帧插值先验下衡量生成视频的**时序可插值性**。VFIMamba 由相邻偶数帧重建被丢弃的奇数帧；重建误差越低表示运动越平滑连续，而非语义或幅度正确。
 
-## 这个指标测什么
+对窗口 \(k\)，\(\hat{I}_{2k+1} = \Phi(I_{2k}, I_{2k+2})\) 与真实奇数帧 \(I_{2k+1}\) 通过 MSE、SSIM、LPIPS 比较。原始分量对 \(K\) 个窗口取均值：
 
-- 时间稳定性与可插值性。
-- 相邻帧之间是否存在突兀跳变、闪烁或局部结构断裂。
-- 生成运动是否符合视频帧插值模型的常见运动先验。
+\[
+E_{\mathrm{mse}} = \frac{1}{K}\sum_k \mathrm{MSE}(\hat{I}_{2k+1}, I_{2k+1}),\quad
+S_{\mathrm{ssim}} = \frac{1}{K}\sum_k \mathrm{SSIM}(\hat{I}_{2k+1}, I_{2k+1}),\quad
+E_{\mathrm{lpips}} = \frac{1}{K}\sum_k \mathrm{LPIPS}(\hat{I}_{2k+1}, I_{2k+1})
+\tag{1}
+\]
 
-## 原理说明
+各分量独立归一化后取算术均值。\(S_{\mathrm{smooth}}\) 越高表示生成运动越平滑。计算成功时为 **official**，无需参考视频。
 
-视频帧插值模型通常学习的是“给定前后两帧，中间帧应该如何自然过渡”。
-因此，它可以作为一种 motion prior：如果生成视频中的运动轨迹平滑，偶数帧之间应当足以推断中间的奇数帧；如果生成视频存在突变、抖动、闪烁或身份漂移，插值模型就难以重建原始奇数帧。
+<!-- metric-examples:start -->
+## 代表性同 Case 对比
+每个展示块先给出该 case 的 input image 和完全一致的展示 prompt，然后比较模型生成结果。paired 展示必须满足 input image 相同、prompt 文本相同，并且一个模型高分、一个模型低分。若当前正式快照中该 metric 没有这种跨模型同 case pair，则单独展示高分/低分极值样例，不把它们伪装成同 case 对比。
+机器可读 paired 导出： `docs/assets/metric_examples/paired_manifest.csv`.
+### `motion_smoothness`
+<div class="metric-case-stack">
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/a0d0000e939d__image_dynamic_photorealistic_articulated_0136.jpg" alt="输入图像: image_dynamic_photorealistic_articulated_0136" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · 同一输入图像 + 同一 prompt · 分差 0.9546</div>
+      <h4><code>image_dynamic_photorealistic_articulated_0136</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. A cheetah sprints across the dry grassy savannah, its legs cycling rapidly and body stretching low with each stride. Golden grass, sunlight, and shadows remain consistent around it.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: matrix-game-3-image-dynamic-5s image_dynamic_photorealistic_articulated_0136">
+      <source src="../../../assets/metric_examples/b03e9f8572a3__matrix-game-3-image-dynamic-5s__image_dynamic_photorealistic_articulated_0136.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9557</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: longcat-video-image-dynamic image_dynamic_photorealistic_articulated_0136">
+      <source src="../../../assets/metric_examples/c079d2132671__longcat-video-image-dynamic__image_dynamic_photorealistic_articulated_0136.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0011</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/88eeba3490ce__image_dynamic_photorealistic_deformable_0088.jpg" alt="输入图像: image_dynamic_photorealistic_deformable_0088" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 2 · 同一输入图像 + 同一 prompt · 分差 0.9533</div>
+      <h4><code>image_dynamic_photorealistic_deformable_0088</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. Coarse burlap fabric fills the frame, showing interlaced brown fibers and a rough woven pattern. The textile remains completely still, with no folds or fibers shifting.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: ac3d-image-dynamic image_dynamic_photorealistic_deformable_0088">
+      <source src="../../../assets/metric_examples/5baf7f981cca__ac3d-image-dynamic__image_dynamic_photorealistic_deformable_0088.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9533</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: astra image_dynamic_photorealistic_deformable_0088">
+      <source src="../../../assets/metric_examples/407c86893682__astra__image_dynamic_photorealistic_deformable_0088.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/bc6229f39d56__image_dynamic_stylized_fluid_0153.png" alt="输入图像: image_dynamic_stylized_fluid_0153" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 3 · 同一输入图像 + 同一 prompt · 分差 0.9450</div>
+      <h4><code>image_dynamic_stylized_fluid_0153</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: stylized</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. Water flows through the patterned canyon in wavy channels while smoke rises and curls from the canyon floor. Rock formations and green hills remain steady around the moving streams.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: matrix-game-3-image-dynamic-5s image_dynamic_stylized_fluid_0153">
+      <source src="../../../assets/metric_examples/11d16fea29f8__matrix-game-3-image-dynamic-5s__image_dynamic_stylized_fluid_0153.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9450</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: sana-wm-image-dynamic image_dynamic_stylized_fluid_0153">
+      <source src="../../../assets/metric_examples/bc33c7917ae4__sana-wm-image-dynamic__image_dynamic_stylized_fluid_0153.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/18d88e7e9117__image_dynamic_stylized_fluid_0083.png" alt="输入图像: image_dynamic_stylized_fluid_0083" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 4 · 同一输入图像 + 同一 prompt · 分差 0.9402</div>
+      <h4><code>image_dynamic_stylized_fluid_0083</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: stylized</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. The stylized waterfall flows over forest rocks in energetic swirls, sending water downward while colorful trees, foliage, and the nearby path remain still.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: ac3d-image-dynamic image_dynamic_stylized_fluid_0083">
+      <source src="../../../assets/metric_examples/d2cd8d49f61b__ac3d-image-dynamic__image_dynamic_stylized_fluid_0083.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9494</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: astra image_dynamic_stylized_fluid_0083">
+      <source src="../../../assets/metric_examples/5727ac3581d7__astra__image_dynamic_stylized_fluid_0083.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0092</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/0e26c207eead__image_dynamic_photorealistic_deformable_0085.jpg" alt="输入图像: image_dynamic_photorealistic_deformable_0085" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 5 · 同一输入图像 + 同一 prompt · 分差 0.9360</div>
+      <h4><code>image_dynamic_photorealistic_deformable_0085</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. In monochrome, dense wheat heads with long awns sway slightly, leaning and returning among overlapping stalks. The tight field view remains filled entirely with textured grain.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: ltx23-image-dynamic-8gpu-full_20260702_233041 image_dynamic_photorealistic_deformable_0085">
+      <source src="../../../assets/metric_examples/7264ef47efca__ltx23-image-dynamic-8gpu-full_20260702_233041__image_dynamic_photorealistic_deformable_0085.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9753</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: astra image_dynamic_photorealistic_deformable_0085">
+      <source src="../../../assets/metric_examples/0d06447fc8b1__astra__image_dynamic_photorealistic_deformable_0085.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0393</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/5ba4124f8123__image_dynamic_stylized_deformable_0018.jpg" alt="输入图像: image_dynamic_stylized_deformable_0018" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 6 · 同一输入图像 + 同一 prompt · 分差 0.8809</div>
+      <h4><code>image_dynamic_stylized_deformable_0018</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: stylized</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. Leaves blow across the windy landscape as the two trees bend slightly under the force of the air. The muted sky and earthy ground remain steady behind the motion.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: sana-wm-image-dynamic image_dynamic_stylized_deformable_0018">
+      <source src="../../../assets/metric_examples/6e26739d6044__sana-wm-image-dynamic__image_dynamic_stylized_deformable_0018.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.8809</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: cogvideo-x1.5-5b-i2v-image-dynamic image_dynamic_stylized_deformable_0018">
+      <source src="../../../assets/metric_examples/53df8db0b16b__cogvideo-x1.5-5b-i2v-image-dynamic__image_dynamic_stylized_deformable_0018.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->
 
-WorldArena 当前使用被包装的 `VFIMamba` [[Zhang et al., 2024](#reference-vfimamba)] backend 作为插帧模型。
-评测时不需要参考视频，也不使用标注；它只检查 prediction video 自身的时间连续性。
-具体做法是先丢弃奇数帧，得到一个低帧率版本，再用插帧模型从相邻偶数帧重建这些被丢弃的奇数帧，最后用 MSE、SSIM [[Wang et al., 2004](#reference-ssim)] 和 LPIPS [[Zhang et al., 2018](#reference-lpips)] 三个指标比较重建帧和原始奇数帧。
-
-三个分量分别覆盖不同误差视角：
-
-- `MSE` 衡量像素级重建误差，越低越好。
-- `SSIM` [[Wang et al., 2004](#reference-ssim)] 衡量局部结构相似度，越高越好。
-- `LPIPS` [[Zhang et al., 2018](#reference-lpips)] 衡量感知特征距离，越低越好。
-
-三者归一化后取平均，可以同时考虑像素误差、结构保持和感知一致性。
-
-## 具体算法
-
-1. WorldArena 会把整段预测视频解码成 PNG 帧。
-2. 被包装的第三方指标会把解码帧按索引拆成：
-    - 偶数帧：`I_0, I_2, I_4, ...`
-    - 奇数帧：`I_1, I_3, I_5, ...`
-3. 丢弃奇数帧后，偶数帧构成低帧率视频。
-4. 对每一对相邻偶数帧 `(I_{2k}, I_{2k+2})`，`VFIMamba` [[Zhang et al., 2024](#reference-vfimamba)] 会预测中间帧 `Î_{2k+1}`。
-5. 预测出的中间帧再和真实奇数帧 `I_{2k+1}` 做三种比较：
-    - `MSE`
-    - `SSIM`
-    - `LPIPS`
-6. 原始指标值是对所有插值窗口求平均后的三分量结果：
-    - `raw.mse = mean window MSE`
-    - `raw.ssim = mean window SSIM`
-    - `raw.lpips = mean window LPIPS`
-7. WorldArena 对三个分量分别归一化：
-    - `mse` 在 `[0.0, 82.4014]` 上，越小越好
-    - `ssim` 在 `[0.9224, 1.0]` 上，越大越好
-    - `lpips` 在 `[0.0, 0.0228]` 上，越小越好
-8. 最终归一化分数是三个归一化分量的算术平均。
-
-## 误差公式
-
-给定生成视频帧序列 \(\{I_0,I_1,I_2,\ldots\}\)，对第 \(k\) 个插值窗口，视频帧插值模型 \(\Phi\) 根据相邻偶数帧预测中间帧：
-
-!!! info "插值重建"
-
-    \[
-    \hat{I}_{2k+1}
-    =
-    \Phi(I_{2k}, I_{2k+2})
-    \]
-
-然后比较 \(\hat{I}_{2k+1}\) 和原始被丢弃的奇数帧 \(I_{2k+1}\)。
-像素级误差为：
-
-!!! info "MSE 分量"
-
-    \[
-    e^{\mathrm{mse}}_k
-    =
-    \operatorname{MSE}
-    \left(
-        \hat{I}_{2k+1},
-        I_{2k+1}
-    \right)
-    \]
-
-结构相似度分量为：
-
-!!! info "SSIM 分量"
-
-    \[
-    s^{\mathrm{ssim}}_k
-    =
-    \operatorname{SSIM}
-    \left(
-        \hat{I}_{2k+1},
-        I_{2k+1}
-    \right)
-    \]
-
-感知距离分量为：
-
-!!! info "LPIPS 分量"
-
-    \[
-    e^{\mathrm{lpips}}_k
-    =
-    \operatorname{LPIPS}
-    \left(
-        \hat{I}_{2k+1},
-        I_{2k+1}
-    \right)
-    \]
-
-对所有插值窗口求平均，得到原始三分量：
-
-!!! info "原始三分量"
-
-    \[
-    E_{\mathrm{mse}}
-    =
-    \frac{1}{K}
-    \sum_{k=1}^{K}
-    e^{\mathrm{mse}}_k,
-    \qquad
-    S_{\mathrm{ssim}}
-    =
-    \frac{1}{K}
-    \sum_{k=1}^{K}
-    s^{\mathrm{ssim}}_k,
-    \qquad
-    E_{\mathrm{lpips}}
-    =
-    \frac{1}{K}
-    \sum_{k=1}^{K}
-    e^{\mathrm{lpips}}_k
-    \]
-
-WorldArena 分别把三个分量归一化到 `[0,1]`，其中 MSE 和 LPIPS 是反向缩放，SSIM 是正向缩放。
-最终分数为：
-
-!!! info "最终分数"
-
-    \[
-    s_{\mathrm{smooth}}
-    =
-    \frac{
-        \tilde{s}_{\mathrm{mse}}
-        +
-        \tilde{s}_{\mathrm{ssim}}
-        +
-        \tilde{s}_{\mathrm{lpips}}
-    }{3}
-    \]
-
-分数越高，表示插值模型越容易从相邻偶数帧恢复被丢弃的奇数帧，生成运动越平滑。
-
-## 输入与输出
-
-| 项目 | 当前实现 |
-| --- | --- |
-| 预测输入 | 完整解码后的预测视频 |
-| 参考输入 | 无 |
-| 标注输入 | 无 |
-| 原始输出 | `{"mse": float, "ssim": float, "lpips": float}` |
-| 归一化输出 | 经分量归一化和算术平均后的单个 `[0, 1]` 标量 |
-| 细节字段 | `frame_count`、`native_components`、`frame_indices`、`sampled_frame_indices` |
-| 失败形式 | 如果插值 runtime 失败，则返回 `raw = null`、`normalized = null` 和错误字符串 |
-
-
-## 参考文献 {#reference-vfimamba}
+## 参考文献 {#reference}
 
 !!! quote "VFIMamba: Video Frame Interpolation with State Space Models"
 
-    Guozhen Zhang, Chunxu Liu, Yutao Cui, Xiaotong Zhao, Kai Ma, and Limin Wang.  
-    Advances in Neural Information Processing Systems, 37:107225-107248, 2024.
-
-??? note "BibTeX"
-
-    ```bibtex
-    @article{zhang2024vfimamba,
-        title = {Vfimamba: Video frame interpolation with state space models},
-        author = {Zhang, Guozhen and Liu, Chunxu and Cui, Yutao and Zhao, Xiaotong and Ma, Kai and Wang, Limin},
-        journal = {Advances in Neural Information Processing Systems},
-        volume = {37},
-        pages = {107225--107248},
-        year = {2024},
-    }
-    ```
-
-### SSIM {#reference-ssim}
-
-!!! quote "Image Quality Assessment: From Error Visibility to Structural Similarity"
-
-    Zhou Wang, Alan C. Bovik, Hamid R. Sheikh, and Eero P. Simoncelli.  
-    IEEE Transactions on Image Processing, 13(4):600-612, 2004.
-
-??? note "BibTeX"
-
-    ```bibtex
-    @article{wang2004image,
-        title = {Image quality assessment: from error visibility to structural similarity},
-        author = {Wang, Zhou and Bovik, Alan C and Sheikh, Hamid R and Simoncelli, Eero P},
-        journal = {IEEE transactions on image processing},
-        volume = {13},
-        number = {4},
-        pages = {600--612},
-        year = {2004},
-        publisher = {IEEE},
-    }
-    ```
-
-### LPIPS {#reference-lpips}
+    Zhang et al., NeurIPS 2024.
 
 !!! quote "The Unreasonable Effectiveness of Deep Features as a Perceptual Metric"
 
-    Richard Zhang, Phillip Isola, Alexei A. Efros, Eli Shechtman, and Oliver Wang.  
-    Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2018.
-
-??? note "BibTeX"
-
-    ```bibtex
-    @inproceedings{zhang2018unreasonable,
-        title = {The unreasonable effectiveness of deep features as a perceptual metric},
-        author = {Zhang, Richard and Isola, Phillip and Efros, Alexei A and Shechtman, Eli and Wang, Oliver},
-        booktitle = {Proceedings of the IEEE conference on computer vision and pattern recognition},
-        pages = {586--595},
-        year = {2018},
-    }
-    ```
+    Zhang et al., CVPR 2018.

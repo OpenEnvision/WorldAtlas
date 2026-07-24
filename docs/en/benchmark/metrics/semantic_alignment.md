@@ -1,47 +1,71 @@
 # Semantic Alignment
 
-`semantic_alignment` measures whether the prediction matches the annotated reference content, not merely
-the benchmark prompt.
+Semantic Alignment measures whether a generated video preserves scene-level content described in annotation sidecars, independent of the benchmark prompt \(T\). It complements Prompt Alignment by scoring agreement with caption-derived reference text rather than the explicit generation instruction.
 
-## What It Measures
+WorldArena constructs reference text \(R\) from `caption.json` under `sample.annotation_path`, optionally appending camera-instruction labels. When annotation text is unavailable, \(R\) falls back to `sample.prompt_current` or `sample.prompt_target`. For decoded frame \(f_i\), CLIP ViT-B/16 yields L2-normalized image embedding \(\mathbf{e}_i\) and text embedding \(\mathbf{r} = \phi_T(R)\). The per-frame score is
 
-- semantic closeness to the reference video's caption-side content
-- reference-conditioned content agreement, not prompt following
-- a diagnostic proxy for "does this look like the same scene content?"
+\[
+\tilde{s}_i = \mathrm{clamp}\!\left(\frac{\cos(\mathbf{e}_i, \mathbf{r}) + 1}{2},\, 0,\, 1\right)
+\tag{1}
+\]
 
-## Detailed Algorithm
+The raw metric aggregates over all evaluated frames:
 
-1. WorldArena builds a reference text string from `caption.json` under `sample.annotation_path`. If
-   instruction labels exist, it appends them as auxiliary context. If annotation text is missing, it
-   falls back to `sample.prompt_current` or `sample.prompt_target`.
-2. The prediction's sampled frames are encoded with the CLIP image encoder
-   `openai/clip-vit-base-patch16`.
-3. The reference text is encoded with the matching CLIP text encoder.
-4. For each sampled frame, WorldArena computes cosine similarity to the reference text embedding and
-   maps it into `[0, 1]` with `(cos + 1) / 2`.
-5. The raw metric is the mean frame score. Current normalization is identity-like in the default
-   config because the score is already bounded in `[0, 1]`.
+\[
+S_{\mathrm{sem}} = \frac{1}{N}\sum_{i=1}^{N} \tilde{s}_i
+\tag{2}
+\]
 
-## Inputs And Outputs
+Higher \(S_{\mathrm{sem}}\) indicates closer semantic match to the annotated reference description. The metric does not substitute for instruction-following scores or object-level verification.
 
-| Item | Current implementation |
-| --- | --- |
-| Prediction input | sampled prediction frames |
-| Reference input | reference annotation text, not reference pixels |
-| Annotation input | `caption.json`, optional `instructions.json`, fallback prompt text |
-| Raw output | one scalar mean semantic score in `[0, 1]` |
-| Normalized output | the same bounded scalar under the default config |
-| Details payload | `reference_text_source`, `reference_text`, `frame_scores`, frame index metadata |
-| Failure mode | returns `raw = null`, `normalized = null`, and an error string if CLIP is unavailable or no reference text can be built |
+<!-- metric-examples:start -->
+## Representative Same-Case Comparisons
+Each exhibit first shows the input image and the exact displayed prompt for the case, then compares generated outputs. Paired exhibits require the same input image and the same prompt text, with one high-scoring and one low-scoring model output. Metrics without such a cross-model pair in the current formal snapshot are separated as high/low extrema rather than presented as same-case comparisons.
+Machine-readable paired export: `docs/assets/metric_examples/paired_manifest.csv`.
+### `semantic_alignment`
+<div class="metric-case-stack">
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/fe16fdec2c52__image_dynamic_photorealistic_articulated_0001.jpg" alt="Input image: image_dynamic_photorealistic_articulated_0001" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · same input image + same prompt · score gap 0.0678</div>
+      <h4><code>image_dynamic_photorealistic_articulated_0001</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>Prompt target</span>
+        <p>Camera fixed. A bird of prey glides forward low over a grassy field, wings spread wide with subtle body and wing adjustments. The wooden fence post, wild grasses, and vines remain still.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: _readiness_echo_dynamic_smoke_after image_dynamic_photorealistic_articulated_0001">
+      <source src="../../../assets/metric_examples/8f778faac6c6___readiness_echo_dynamic_smoke_after__image_dynamic_photorealistic_articulated_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">Good output · Score 0.6668</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: stable-virtual-camera-image-dynamic-5s image_dynamic_photorealistic_articulated_0001">
+      <source src="../../../assets/metric_examples/73ddbcad1071__stable-virtual-camera-image-dynamic-5s__image_dynamic_photorealistic_articulated_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.5990</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->
 
-## Integration Readiness
+## References {#reference}
 
-| Item | Verdict |
-| --- | --- |
-| Current aggregation | `diagnostic` only |
-| Publication verdict | `Supporting only` |
+!!! quote "CLIP — Learning Transferable Visual Models From Natural Language Supervision"
 
-- Why it is useful: unlike `prompt_alignment`, it is anchored to reference-side content.
-- Why it is limited: it still depends on annotation text quality and CLIP as a semantic proxy.
-- Recommended use: pair it with prompt-following and quality metrics to separate prompt mismatch from
-  reference-content mismatch.
+    Radford et al., ICML 2021.
+    [https://arxiv.org/abs/2103.00020](https://arxiv.org/abs/2103.00020)

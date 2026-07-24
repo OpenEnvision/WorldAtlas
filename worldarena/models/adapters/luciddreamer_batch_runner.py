@@ -1,3 +1,5 @@
+"""Batch subprocess runner for LucidDreamer inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -12,6 +14,10 @@ import tempfile
 import time
 import traceback
 from typing import Any, Iterator
+
+import numpy as np
+
+from worldarena.benchmark.synthetic_camera import synthetic_camera_matrices
 
 
 def parse_args() -> argparse.Namespace:
@@ -183,6 +189,47 @@ def _reset_per_sample_state(lucid: Any) -> None:
             delattr(lucid, attr)
 
 
+def _worldarena_camera_preset_data(
+    camera_path: list[str],
+    *,
+    frame_count: int,
+    translation_scale: float,
+) -> dict[str, dict[str, list[dict[str, list[list[float]]]]]]:
+    poses = synthetic_camera_matrices(
+        camera_path,
+        target_frames=max(int(frame_count), 1),
+    ).matrices.copy()
+    poses[:, :3, 3] *= float(translation_scale)
+    frames: list[dict[str, list[list[float]]]] = []
+    for pose in poses:
+        # LucidDreamer's loader expects Blender axes and converts them back to
+        # its internal COLMAP camera convention.
+        blender_c2w = np.asarray(pose, dtype=np.float32).copy()
+        blender_c2w[:3, 1:3] *= -1
+        frames.append({"transform_matrix": blender_c2w.tolist()})
+    return {"worldarena_camera_path": {"frames": frames}}
+
+
+def _install_worldarena_camera_path(
+    lucid: Any,
+    camera_path: list[str],
+    *,
+    frame_count: int,
+    translation_scale: float,
+) -> None:
+    from scene.dataset_readers import loadCameraPreset
+
+    preset_data = _worldarena_camera_preset_data(
+        camera_path,
+        frame_count=frame_count,
+        translation_scale=translation_scale,
+    )
+    loaded = loadCameraPreset(lucid.traindata, presetdata=preset_data)
+    lucid.scene.preset_cameras["worldarena_camera_path"] = loaded[
+        "worldarena_camera_path"
+    ]
+
+
 def _copy_outputs(
     *,
     save_dir: Path,
@@ -251,6 +298,8 @@ def _generate_one(lucid: Any, item: dict[str, Any]) -> dict[str, Any]:
     input_size = int(item.get("input_size", 512))
     model_name = _optional_text(item.get("model_name"))
     min_seconds = float(item.get("min_seconds", 5.0))
+    camera_path_frames = int(item.get("camera_path_frames", 300))
+    camera_path_translation_scale = float(item.get("camera_path_translation_scale", 1.0))
 
     with _sample_work_dir(keep_work_dir) as work_dir:
         save_dir = work_dir / "outputs"
@@ -270,6 +319,13 @@ def _generate_one(lucid: Any, item: dict[str, Any]) -> dict[str, Any]:
             diff_steps,
             model_name=model_name,
         )
+        if campath_render_source == "worldarena_camera_path":
+            _install_worldarena_camera_path(
+                lucid,
+                camera_path,
+                frame_count=camera_path_frames,
+                translation_scale=camera_path_translation_scale,
+            )
         lucid.render_video(campath_render)
         payload = _copy_outputs(
             save_dir=save_dir,

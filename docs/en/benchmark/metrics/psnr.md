@@ -1,6 +1,6 @@
 # PSNR
 
-`psnr` measures frame-wise signal fidelity between prediction and reference.
+**psnr** measures frame-wise signal fidelity between prediction and reference.
 
 ## What It Measures
 
@@ -26,7 +26,7 @@
 | Reference input   | sampled reference frames                                                                          |
 | Annotation input  | none                                                                                              |
 | Raw output        | one scalar mean PSNR value                                                                        |
-| Normalized output | min/max scaled diagnostic score from `config/benchmark.yaml`                                      |
+| Normalized output | min/max scaled score from `config/benchmark.yaml`                                      |
 | Details payload   | `frame_scores`, frame index metadata                                                              |
 | Failure mode      | returns `raw = null`, `normalized = null`, and an error string if no aligned frames are available |
 

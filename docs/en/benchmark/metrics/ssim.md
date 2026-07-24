@@ -1,6 +1,6 @@
 # SSIM
 
-`ssim` measures frame-wise structural similarity between prediction and reference.
+**ssim** measures frame-wise structural similarity between prediction and reference.
 
 ## What It Measures
 
@@ -38,4 +38,4 @@
 - Why it is useful: it is more structure-aware than raw PSNR.
 - Why it is limited: like PSNR, it still rewards reference copying and should not stand in for semantic
   or control correctness.
-- Recommended use: report it only as a supporting, full-reference diagnostic.
+- Recommended use: report it only as a supporting full-reference metric.

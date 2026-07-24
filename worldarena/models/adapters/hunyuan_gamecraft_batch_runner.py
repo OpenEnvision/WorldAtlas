@@ -1,3 +1,5 @@
+"""Batch subprocess runner for Hunyuan GameCraft inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +29,7 @@ from worldarena.models.adapters.hunyuan_gamecraft_runner import (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="WorldArena Hunyuan-GameCraft batch subprocess runner."
+        description="WorldAtlas Arena Hunyuan-GameCraft batch subprocess runner."
     )
     parser.add_argument("--distributed_worker", "--distributed-worker", action="store_true")
     parser.add_argument("--local_rank", "--local-rank", default=None)
@@ -285,6 +287,7 @@ def _hymm_args_for(args: argparse.Namespace, first_row: dict[str, Any]) -> argpa
 
 
 def _sync_distributed() -> None:
+    """Sync distributed."""
     import torch
 
     if torch.cuda.is_available():
@@ -379,7 +382,7 @@ def _generate_one(
     negative_prompt = str(args.add_neg_prompt)
 
     if not args.image_start:
-        raise ValueError("WorldArena Hunyuan-GameCraft batch runner currently expects image_start")
+        raise ValueError("WorldAtlas Arena Hunyuan-GameCraft batch runner currently expects image_start")
 
     ref_images, last_latents, ref_latents = _encode_reference_image(
         sampler=sampler,

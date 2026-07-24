@@ -1,3 +1,5 @@
+"""Minimal bert-padding helpers for the flash-attn fallback package."""
+
 from __future__ import annotations
 
 import torch

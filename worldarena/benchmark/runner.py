@@ -1,3 +1,9 @@
+"""Benchmark evaluation orchestrator.
+
+Resolves prediction paths, loads media, runs configured metrics per sample,
+and writes aggregated scores through ``report.write_run_outputs``.
+"""
+
 from __future__ import annotations
 
 from collections import defaultdict

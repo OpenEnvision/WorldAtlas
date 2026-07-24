@@ -20,23 +20,26 @@ from worldarena.models.adapters.batch_runner_common import (
 )
 
 
-CAMERA_TOKEN_TO_TRAJ_PRIOR = {
-    "orbit_left": "orbit",
-    "orbit_right": "orbit",
-    "pan_left": "move-left",
-    "pan_right": "move-right",
-    "move_left": "move-left",
-    "move_right": "move-right",
-    "push_in": "move-forward",
-    "pull_out": "move-backward",
-    "tilt_up": "move-up",
-    "tilt_down": "move-down",
-    "pedestal_up": "move-up",
-    "pedestal_down": "move-down",
-    "roll_cw": "roll",
-    "roll_ccw": "roll",
-    "fixed": "zoom-out",
-}
+WORLD_SCORE_CAMERA_TOKENS = frozenset(
+    {
+        "fixed",
+        "push_in",
+        "pull_out",
+        "move_left",
+        "move_right",
+        "pan_left",
+        "pan_right",
+        "tilt_up",
+        "tilt_down",
+        "pedestal_up",
+        "pedestal_down",
+        "roll_cw",
+        "roll_ccw",
+        "orbit_left",
+        "orbit_right",
+    }
+)
+WORLD_SCORE_PRIOR_PREFIX = "worldarena-camera-path:"
 
 
 def parse_args() -> argparse.Namespace:
@@ -135,23 +138,105 @@ def _patch_local_dependencies(ckpt_root: Path | None) -> None:
         open_clip.create_model_and_transforms = create_model_and_transforms
 
 
-def _camera_token(row: dict[str, Any]) -> str:
+def _camera_path(row: dict[str, Any]) -> list[str]:
     camera_path = row.get("camera_path") or []
     if isinstance(camera_path, str):
         camera_path = [camera_path]
+    normalized_path: list[str] = []
     for token in camera_path:
-        normalized = str(token).strip().lower()
+        normalized = str(token).strip().lower().replace("-", "_").replace(" ", "_")
         if normalized:
-            return normalized
-    return "orbit_left"
+            normalized_path.append(normalized)
+    return normalized_path or ["fixed"]
+
+
+def _camera_token(row: dict[str, Any]) -> str:
+    """Return the primary token for status output and legacy override lookup."""
+    return _camera_path(row)[0]
 
 
 def _traj_prior(row: dict[str, Any], generation: dict[str, Any]) -> str:
-    token = _camera_token(row)
+    camera_path = _camera_path(row)
+    unknown = [token for token in camera_path if token not in WORLD_SCORE_CAMERA_TOKENS]
+    if unknown:
+        raise ValueError(f"unsupported Stable Virtual Camera token(s): {unknown!r}")
+
+    token = camera_path[0]
     overrides = generation.get("trajectory_by_camera_token")
-    if isinstance(overrides, dict) and token in overrides:
+    if len(camera_path) == 1 and isinstance(overrides, dict) and token in overrides:
         return str(overrides[token])
-    return str(generation.get("traj_prior") or CAMERA_TOKEN_TO_TRAJ_PRIOR.get(token, "orbit"))
+    configured = generation.get("traj_prior")
+    if configured:
+        return str(configured)
+    return WORLD_SCORE_PRIOR_PREFIX + ",".join(camera_path)
+
+
+def _patch_world_score_camera_prior(
+    demo_module: Any,
+    *,
+    generation: dict[str, Any] | None = None,
+) -> None:
+    """Make SVC consume the exact camera convention used by WorldArena scoring.
+
+    Upstream SVC only offers coarse presets: both orbit directions collapse to
+    ``orbit``, and it has no in-place pan/tilt presets.  Reusing WorldArena's
+    synthetic scoring trajectory keeps generation and evaluation semantics in
+    lockstep and also supports the benchmark's full multi-segment camera path.
+    """
+    original_get_preset_pose_fov = demo_module.get_preset_pose_fov
+    trajectory_runtime = {
+        key: value
+        for key, value in (generation or {}).items()
+        if key.startswith("synthetic_camera_")
+    }
+
+    def get_preset_pose_fov(option, num_frames, start_w2c, look_at, *args, **kwargs):
+        option_text = str(option)
+        if not option_text.startswith(WORLD_SCORE_PRIOR_PREFIX):
+            return original_get_preset_pose_fov(
+                option,
+                num_frames,
+                start_w2c,
+                look_at,
+                *args,
+                **kwargs,
+            )
+
+        camera_path = [
+            token
+            for token in option_text.removeprefix(WORLD_SCORE_PRIOR_PREFIX).split(",")
+            if token
+        ]
+        unknown = [token for token in camera_path if token not in WORLD_SCORE_CAMERA_TOKENS]
+        if not camera_path or unknown:
+            raise ValueError(f"invalid WorldArena camera path prior: {option_text!r}")
+
+        from worldarena.benchmark.synthetic_camera import synthetic_camera_matrices
+
+        relative_c2ws = synthetic_camera_matrices(
+            camera_path,
+            target_frames=int(num_frames),
+            runtime=trajectory_runtime,
+        ).matrices
+        start_c2w = demo_module.torch.linalg.inv(start_w2c).detach().cpu().numpy()
+        poses = start_c2w[None] @ relative_c2ws
+
+        # Ask upstream for its default field of view while forcing it to remain
+        # constant.  This preserves SVC's intrinsics contract without using its
+        # incorrect zoom-out fallback for a fixed camera.
+        fixed_kwargs = dict(kwargs)
+        fixed_kwargs["zoom_factor"] = 1.0
+        _, fovs = original_get_preset_pose_fov(
+            "zoom-in",
+            num_frames,
+            start_w2c,
+            look_at,
+            *args,
+            **fixed_kwargs,
+        )
+        return poses, fovs
+
+    demo_module.get_preset_pose_fov = get_preset_pose_fov
 
 
 def _prepare_input(row: dict[str, Any], data_dir: Path) -> Path:
@@ -413,6 +498,8 @@ def main() -> int:
         sys.path.insert(0, str(repo_root))
     import demo as svc_demo
 
+    _patch_world_score_camera_prior(svc_demo, generation=generation)
+
     output_parents = {Path(str(row["output_path"])).expanduser().resolve().parent for row in rows}
     work_root = (next(iter(output_parents)) / "_stable_virtual_camera_work").resolve()
     work_root.mkdir(parents=True, exist_ok=True)
@@ -427,6 +514,15 @@ def main() -> int:
     failed = 0
     for row_index, row in enumerate(rows):
         sample_id = str(row.get("sample_id", row_index))
+        requested_output = Path(str(row["output_path"])).expanduser().resolve()
+        if requested_output.is_file() and requested_output.stat().st_size > 0:
+            print_status(
+                sample_id,
+                "skipped_existing",
+                output_path=str(requested_output),
+                reason="output appeared after batch planning",
+            )
+            continue
         try:
             output_path = _generate_one(
                 demo_module=svc_demo,
@@ -441,7 +537,9 @@ def main() -> int:
                 "generated",
                 output_path=str(output_path),
                 camera_token=_camera_token(row),
+                camera_path=_camera_path(row),
                 traj_prior=_traj_prior(row, generation),
+                control_source="worldarena_score_camera_path",
             )
         except Exception as exc:
             failed += 1

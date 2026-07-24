@@ -1,3 +1,9 @@
+"""WorldFM model adapter for WorldAtlas Arena.
+
+WorldFM renders camera-guided videos from panoramas. The adapter resolves pose
+annotations and delegates batch inference to ``worldfm_batch_runner``.
+"""
+
 from __future__ import annotations
 
 import json
@@ -31,8 +37,14 @@ def _panorama_prompt_for_sample(sample: BenchmarkSample, generation: dict[str, A
 
 
 class WorldFMAdapter(ModelAdapter):
+    """Generate panorama-based world videos via the WorldFM upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
 
     def generate_batch(
         self,

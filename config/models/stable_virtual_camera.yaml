@@ -6,18 +6,19 @@ model:
   artifact_types: [video]
   control_signals: [image, camera_pose]
   roles: [candidate]
-  python_bin: /mnt/cpfs/yangboxue/visual_generation/juanxi/conda/envs/stabel-visual-camera/bin/python
-  repo_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/github_repos/stable-virtual-camera
-  checkpoint_dir: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt/stable-virtual-camera
+  repo_root: thirdparty/stable-virtual-camera
+  checkpoint_dir: ckpt/stable-virtual-camera
   entrypoint: demo.py
   output_ext: .mp4
   supported_suites:
     - image_static
-    - image_dynamic
+  # Stable Virtual Camera is a trajectory novel-view model. It does not consume
+  # motion prompts and must not be evaluated as fixed-camera dynamic I2V.
   prompt_mode: none
   reference_mode: reference_image
   generation:
-    checkpoint_root: /mnt/cpfs/yangboxue/visual_generation/juanxi/ckpt
+    require_persistent_batch: true
+    checkpoint_root: ckpt
     model_version: 1.1
     weight_name: modelv1.1.safetensors
     task: img2trajvid_s-prob
@@ -32,6 +33,8 @@ model:
     guider_types: [1, 2]
     cfg_min: 1.2
     camera_scale: 2.0
+    # Camera paths are synthesized with the same convention and default
+    # magnitudes as WorldArena's camera scorer (see synthetic_camera.py).
     chunk_strategy: interp
     chunk_strategy_first_pass: gt-nearest
     replace_or_include_input: true

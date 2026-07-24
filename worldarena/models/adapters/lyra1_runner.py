@@ -1,3 +1,10 @@
+"""Subprocess runner for Lyra-1 inference inside the upstream model repo.
+
+This module bootstraps compatibility shims (Apex, transformer-engine), prepares
+local HuggingFace checkpoints, and drives the two-stage Lyra pipeline before
+copying the rendered mp4 to the benchmark output path.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -23,6 +30,7 @@ from worldarena.models.adapters.lyra2_runner import (
 
 
 DEFAULT_STATIC_VIEW_INDICES = ("5", "0", "1", "2", "3", "4")
+# Minimal Apex shims so Lyra-1 can import fused optimizers without a full Apex install.
 APEX_INIT_SHIM = "from __future__ import annotations\n"
 APEX_MULTI_TENSOR_APPLY_SHIM = textwrap.dedent(
     """
@@ -86,7 +94,7 @@ AMP_C_SHIM = textwrap.dedent(
 
 
     def _unavailable_adam(*args, **kwargs):
-        raise RuntimeError("WorldArena Lyra-1 inference shim does not implement Apex fused Adam.")
+        raise RuntimeError("WorldAtlas Arena Lyra-1 inference shim does not implement Apex fused Adam.")
 
 
     multi_tensor_adam = _unavailable_adam
@@ -97,7 +105,7 @@ AMP_C_SHIM = textwrap.dedent(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena Lyra-1 subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena Lyra-1 subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", required=True, type=str)
     parser.add_argument("--conditioning_image", required=True, type=str)

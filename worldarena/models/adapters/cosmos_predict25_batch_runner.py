@@ -1,3 +1,5 @@
+"""Batch subprocess runner for Cosmos-Predict2.5 inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -173,7 +175,7 @@ def _build_local_experiment_opts(local_aux: dict[str, Path]) -> list[str]:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena Cosmos-Predict2.5 batch runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena Cosmos-Predict2.5 batch runner.")
     add_common_batch_args(parser)
     return parser.parse_args()
 

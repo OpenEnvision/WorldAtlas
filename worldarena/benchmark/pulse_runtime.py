@@ -1,6 +1,9 @@
+"""Subprocess runtime for PULSE perceptual quality metrics."""
+
 from __future__ import annotations
 
 from functools import lru_cache
+import hashlib
 import importlib.util
 import json
 import os
@@ -24,9 +27,11 @@ from worldarena.common.checkpoints import (
 
 PULSE_RUNTIME_WORKER_ENV = "WORLDARENA_PULSE_RUNTIME_WORKER"
 PULSE_OF_MOTION_CHECKPOINT = "vc_common_10_60fps.ckpt"
+PULSE_RESULT_CACHE_SCHEMA = 2
 
 
 def _project_root() -> Path:
+    """Project root -> Path."""
     return Path(__file__).resolve().parents[2]
 
 
@@ -43,6 +48,7 @@ DEFAULT_PULSE_RUNTIME_PYTHONPATHS = (
 
 
 def resolve_pulse_of_motion_root() -> Path:
+    """Resolve pulse of motion root -> Path."""
     return (_project_root() / "thirdparty" / "Pulse-of-Motion").resolve()
 
 
@@ -311,6 +317,7 @@ def _load_predict_module(root: str) -> ModuleType:
 
 
 def _default_device() -> str:
+    """Default device -> str."""
     try:
         import torch
     except ModuleNotFoundError:
@@ -351,6 +358,174 @@ def _container_fps(video_path: str) -> float | None:
     return fps if fps > 0 else None
 
 
+def _pulse_result_cache_path(
+    video_path: str,
+    *,
+    runtime: dict[str, Any],
+    fallback_meta_fps: float | None,
+) -> tuple[Path, str] | None:
+    if not bool(runtime.get("disk_cache", False)):
+        return None
+    video = Path(video_path).expanduser().resolve()
+    video_stat = video.stat()
+    checkpoint = resolve_pulse_of_motion_checkpoint(runtime, required=True)
+    checkpoint_stat = checkpoint.stat()
+    semantic_runtime = {
+        key: value
+        for key, value in runtime.items()
+        if key not in {"cache_dir", "device", "disk_cache"}
+    }
+    identity = {
+        "schema": PULSE_RESULT_CACHE_SCHEMA,
+        "video_path": str(video),
+        "video_size": video_stat.st_size,
+        "video_mtime_ns": video_stat.st_mtime_ns,
+        "fallback_meta_fps": fallback_meta_fps,
+        "checkpoint_path": str(checkpoint),
+        "checkpoint_size": checkpoint_stat.st_size,
+        "checkpoint_mtime_ns": checkpoint_stat.st_mtime_ns,
+        "runtime": semantic_runtime,
+    }
+    digest = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()
+    configured_root = runtime.get("cache_dir")
+    if configured_root:
+        cache_root = Path(str(configured_root)).expanduser()
+        if not cache_root.is_absolute():
+            cache_root = _project_root() / cache_root
+    else:
+        cache_root = _runtime_cache_dir("pulse_of_motion_results")
+    path = cache_root.resolve() / digest[:2] / f"{digest}.json"
+    return path, digest
+
+
+def _read_pulse_result_cache(path: Path, digest: str) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        wrapper = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if wrapper.get("schema") != PULSE_RESULT_CACHE_SCHEMA or wrapper.get("key") != digest:
+        return None
+    result = wrapper.get("result")
+    if not isinstance(result, dict) or not isinstance(result.get("metrics"), dict):
+        return None
+    copied = json.loads(json.dumps(result))
+    copied.setdefault("details", {})["disk_cache_hit"] = True
+    copied["details"]["disk_cache_key"] = digest[:16]
+    return copied
+
+
+def _write_pulse_result_cache(path: Path, digest: str, result: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
+    wrapper = {
+        "schema": PULSE_RESULT_CACHE_SCHEMA,
+        "key": digest,
+        "result": result,
+    }
+    try:
+        temporary.write_text(
+            json.dumps(wrapper, ensure_ascii=False, allow_nan=False),
+            encoding="utf-8",
+        )
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def _decode_analysis_frames(
+    video_path: str,
+    *,
+    clip_length: int,
+    stride: int,
+    resolution: int,
+    short_video_policy: str,
+    short_video_min_segments: int,
+) -> tuple[np.ndarray, float | None, dict[str, Any]]:
+    capture = cv2.VideoCapture(video_path)
+    if not capture.isOpened():
+        raise RuntimeError(f"Cannot open video: {video_path}")
+    container_fps = float(capture.get(cv2.CAP_PROP_FPS) or 0.0) or None
+    decoded: list[np.ndarray] = []
+    while True:
+        ok, frame = capture.read()
+        if not ok:
+            break
+        frame = cv2.resize(frame, (resolution, resolution))
+        decoded.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    capture.release()
+    source_count = len(decoded)
+    if source_count == 0:
+        raise RuntimeError(f"No decodable frames: {video_path}")
+
+    temporal_scale = 1.0
+    resampled = False
+    if source_count < clip_length:
+        if short_video_policy != "temporal_resample":
+            raise RuntimeError(f"Video too short ({source_count} frames < {clip_length})")
+        if source_count < 2:
+            raise RuntimeError("At least two frames are required for temporal resampling")
+        target_count = clip_length + stride * (max(short_video_min_segments, 1) - 1)
+        temporal_scale = float(target_count - 1) / float(source_count - 1)
+        source = np.stack(decoded, axis=0)
+        positions = np.linspace(0.0, float(source_count - 1), target_count)
+        lower = np.floor(positions).astype(np.int64)
+        upper = np.minimum(lower + 1, source_count - 1)
+        alpha = (positions - lower).astype(np.float32)[:, None, None, None]
+        frames = np.rint(
+            source[lower].astype(np.float32) * (1.0 - alpha)
+            + source[upper].astype(np.float32) * alpha
+        ).clip(0, 255).astype(np.uint8)
+        resampled = True
+    else:
+        frames = np.stack(decoded, axis=0)
+
+    return frames, container_fps, {
+        "total_frames": source_count,
+        "analysis_total_frames": int(frames.shape[0]),
+        "short_video_policy": short_video_policy,
+        "short_video_resampled": resampled,
+        "temporal_resample_factor": temporal_scale,
+    }
+
+
+def _predict_phyfps_batched(
+    model: Any,
+    frames: np.ndarray,
+    *,
+    device: str,
+    clip_length: int,
+    stride: int,
+    batch_size: int,
+) -> tuple[list[float], list[int]]:
+    import torch
+
+    starts = list(range(0, int(frames.shape[0]) - clip_length + 1, stride))
+    if not starts:
+        raise RuntimeError(
+            f"Video too short ({int(frames.shape[0])} frames < {clip_length})"
+        )
+    predicted: list[float] = []
+    with torch.inference_mode():
+        for offset in range(0, len(starts), batch_size):
+            batch_starts = starts[offset : offset + batch_size]
+            clips = np.stack(
+                [frames[start : start + clip_length] for start in batch_starts], axis=0
+            ).astype(np.float32)
+            clips = clips / 127.5 - 1.0
+            tensor = torch.from_numpy(clips).permute(0, 4, 1, 2, 3).to(device)
+            values = torch.exp(model(tensor)).detach().float().cpu().reshape(-1).tolist()
+            if len(values) != len(batch_starts):
+                raise RuntimeError(
+                    f"Pulse returned {len(values)} values for a batch of {len(batch_starts)} clips"
+                )
+            predicted.extend(round(float(value), 1) for value in values)
+    return predicted, starts
+
+
 def compute_pulse_metrics(
     video_path: str,
     *,
@@ -358,6 +533,15 @@ def compute_pulse_metrics(
     fallback_meta_fps: float | None = None,
 ) -> dict[str, Any]:
     runtime = dict(runtime or {})
+    cache_target = _pulse_result_cache_path(
+        video_path,
+        runtime=runtime,
+        fallback_meta_fps=fallback_meta_fps,
+    )
+    if cache_target is not None:
+        cached = _read_pulse_result_cache(*cache_target)
+        if cached is not None:
+            return cached
     delegated = _maybe_run_in_subprocess(
         video_path,
         runtime=runtime,
@@ -375,29 +559,40 @@ def compute_pulse_metrics(
     clip_length = int(runtime.get("clip_length", 30))
     stride = int(runtime.get("stride", 4))
     resolution = int(runtime.get("resolution", 216))
+    batch_size = max(int(runtime.get("batch_size", 1)), 1)
+    short_video_policy = str(runtime.get("short_video_policy", "error"))
+    short_video_min_segments = max(int(runtime.get("short_video_min_segments", 5)), 1)
 
-    module = _load_predict_module(root)
     model = _load_model(root, device, checkpoint_file)
-    segments, avg_phyfps, total_frames = module.predict_video(
-        model,
+    frames, container_fps, preprocessing_details = _decode_analysis_frames(
         video_path,
-        device,
         clip_length=clip_length,
         stride=stride,
         resolution=resolution,
+        short_video_policy=short_video_policy,
+        short_video_min_segments=short_video_min_segments,
     )
-    segment_phyfps = [float(item["predicted_phyfps"]) for item in segments]
-    container_fps = _container_fps(video_path)
+    analysis_segment_phyfps, segment_starts = _predict_phyfps_batched(
+        model,
+        frames,
+        device=device,
+        clip_length=clip_length,
+        stride=stride,
+        batch_size=batch_size,
+    )
     meta_fps = container_fps if container_fps is not None else fallback_meta_fps
     meta_fps_source = "prediction_container_fps" if container_fps is not None else "fallback"
     if meta_fps is None or meta_fps <= 0:
         raise RuntimeError("meta fps is unavailable for Pulse-of-Motion")
 
-    avg_phyfps = float(avg_phyfps)
+    temporal_scale = float(preprocessing_details["temporal_resample_factor"])
+    segment_phyfps = [float(value) / temporal_scale for value in analysis_segment_phyfps]
+    analysis_avg_phyfps = round(float(np.mean(analysis_segment_phyfps)), 1)
+    avg_phyfps = analysis_avg_phyfps / temporal_scale
     abs_error = abs(avg_phyfps - float(meta_fps))
     pct_error = abs_error / max(float(meta_fps), 1e-6)
     intra_video_cv = float(np.std(segment_phyfps) / max(np.mean(segment_phyfps), 1e-6))
-    return {
+    result = {
         "backend": "pulse_of_motion",
         "metrics": {
             "physical_fps_error": float(abs_error),
@@ -408,15 +603,31 @@ def compute_pulse_metrics(
             "avg_phyfps": avg_phyfps,
             "segment_phyfps": [round(value, 4) for value in segment_phyfps],
             "segment_count": len(segment_phyfps),
-            "total_frames": int(total_frames),
+            "segment_start_frames": segment_starts,
             "meta_fps": float(meta_fps),
             "meta_fps_source": meta_fps_source,
             "device": device,
             "clip_length": clip_length,
             "stride": stride,
             "resolution": resolution,
+            "batch_size": batch_size,
+            **preprocessing_details,
         },
     }
+    if preprocessing_details["short_video_resampled"]:
+        result["details"].update(
+            {
+                "analysis_avg_phyfps": analysis_avg_phyfps,
+                "analysis_segment_phyfps": analysis_segment_phyfps,
+                "analysis_meta_fps": float(meta_fps) * temporal_scale,
+            }
+        )
+    if cache_target is not None:
+        cache_path, digest = cache_target
+        result["details"]["disk_cache_hit"] = False
+        result["details"]["disk_cache_key"] = digest[:16]
+        _write_pulse_result_cache(cache_path, digest, result)
+    return result
 
 
 __all__ = [

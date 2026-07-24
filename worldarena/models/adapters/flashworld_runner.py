@@ -1,3 +1,5 @@
+"""Subprocess runner for FlashWorld inference inside the upstream model repo."""
+
 from __future__ import annotations
 
 import argparse
@@ -16,8 +18,25 @@ from worldarena.benchmark.annotations import load_camera_matrices, load_intrinsi
 from worldarena.common.checkpoints import apply_checkpoint_env, resolve_checkpoint_path
 
 
+def _ffmpeg_executable() -> str:
+    """Resolve ffmpeg without requiring it to be installed system-wide."""
+    executable = shutil.which("ffmpeg")
+    if executable is not None:
+        return executable
+    try:
+        import imageio_ffmpeg
+    except ImportError as exc:
+        raise FileNotFoundError(
+            "FlashWorld reference-video encoding requires ffmpeg or imageio-ffmpeg"
+        ) from exc
+    executable = imageio_ffmpeg.get_ffmpeg_exe()
+    if not Path(executable).is_file():
+        raise FileNotFoundError(f"imageio-ffmpeg executable not found: {executable}")
+    return executable
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena FlashWorld subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena FlashWorld subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", required=True, type=str)
     parser.add_argument("--annotation_path", required=True, type=str)
@@ -265,7 +284,7 @@ def write_flashworld_aligned_reference_video(
 
     output_path.unlink(missing_ok=True)
     command = [
-        "ffmpeg",
+        _ffmpeg_executable(),
         "-y",
         "-v",
         "error",

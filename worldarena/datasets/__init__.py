@@ -1,1 +1,1 @@
-"""Dataset scanners and summarizers for WorldArena."""
+"""Dataset scanners and summarizers for WorldAtlas Arena."""

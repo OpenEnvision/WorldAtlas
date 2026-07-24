@@ -59,6 +59,7 @@ def _config(tmp_path: Path) -> BenchmarkConfig:
             video_root=tmp_path / "videos",
             inventory_dir=tmp_path / "inventory",
             manifest_dir=tmp_path / "manifest",
+            predictions_dir=tmp_path / "predictions",
             reports_dir=tmp_path / "reports",
             cache_dir=tmp_path / "cache",
         ),

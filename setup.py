@@ -2,7 +2,7 @@ from setuptools import find_namespace_packages, setup
 
 
 setup(
-    name="worldarena",
+    name="worldatlas-arena",
     version="1.0.0",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -29,8 +29,10 @@ setup(
         "requests",
     ],
     include_package_data=True,
+    package_data={"worldarena.benchmark.official_backends": ["LICENSE", "UPSTREAM.md"]},
     entry_points={
         "console_scripts": [
+            "worldatlas-arena=worldarena.cli:main",
             "worldarena=worldarena.cli:main",
         ],
     },

@@ -73,7 +73,7 @@ Per-sample evaluation follows this lifecycle:
 4. If the local reference video is still missing, fail early with `physics_status`, remediation hints, and missing artifact names.
 5. If automatic `pred_world` generation is enabled, run `main_part2.py` and export the predicted world artifacts.
 6. Run `benchmark_eval.py` and write `<prediction_stem>_physics_report.json`.
-7. Attach diagnostics such as `physics_status`, `world_gt_status`, `pred_world_status`, `metric_contract`, and `missing_world_artifacts` to the benchmark output.
+7. Attach fields such as `physics_status`, `world_gt_status`, `pred_world_status`, `metric_contract`, and `missing_world_artifacts` to the benchmark output.
 
 ## Readiness States
 

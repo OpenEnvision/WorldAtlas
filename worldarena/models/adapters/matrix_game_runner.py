@@ -1,3 +1,5 @@
+"""Subprocess router for Matrix-Game inference (delegates to variant runners)."""
+
 from __future__ import annotations
 
 import argparse
@@ -51,6 +53,7 @@ def _install_config_aliases(config_module, alias_map: dict[str, str]) -> None:
 
 
 def patch_torch_dynamo_config_aliases() -> None:
+    """Patch torch dynamo config aliases."""
     import torch._dynamo
 
     alias_map = {

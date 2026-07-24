@@ -1,6 +1,6 @@
 # Physical Motion Fidelity
 
-`pmf` measures whether the prediction preserves the same broad motion dynamics as the reference rollout, while deliberately reducing sensitivity to absolute spatial position and global brightness.
+**pmf** measures whether the prediction preserves the same broad motion dynamics as the reference rollout, while deliberately reducing sensitivity to absolute spatial position and global brightness.
 
 WorldArena currently implements PMF directly in-repo with a NumPy FFT backend. The metric follows the Fourier-based motion-fidelity idea used by PhysInOne [[Zhou et al., 2026](#reference)]: instead of comparing prediction and reference videos pixel by pixel, it compares their normalized motion-energy distributions in the joint space-time frequency domain.
 

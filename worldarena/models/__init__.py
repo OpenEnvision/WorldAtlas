@@ -1,3 +1,5 @@
+"""Public model loading and adapter factory entry points."""
+
 from __future__ import annotations
 
 from worldarena.models.config import ModelRuntimeConfig, load_model_config

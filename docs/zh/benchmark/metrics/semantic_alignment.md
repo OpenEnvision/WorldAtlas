@@ -1,43 +1,71 @@
-# 语义对齐
+# Semantic Alignment
 
-`semantic_alignment` 用来衡量预测结果是否接近参考视频的标注语义内容，而不只是接近 benchmark
-prompt。
+Semantic Alignment 衡量生成视频是否保留标注侧车（annotation sidecar）所描述的场景级内容，与 benchmark 提示 \(T\) 无关。它通过 caption 侧车衍生的参考文本评分，补充 Prompt Alignment 对显式生成指令的评估。
 
-## 它测什么
+WorldArena 从 `sample.annotation_path` 下的 `caption.json` 构造参考文本 \(R\)，可选附加相机指令标签；若无标注文本，则回退至 `sample.prompt_current` 或 `sample.prompt_target`。对解码帧 \(f_i\)，CLIP ViT-B/16 给出 L2 归一化图像嵌入 \(\mathbf{e}_i\) 与文本嵌入 \(\mathbf{r} = \phi_T(R)\)。逐帧得分为
 
-- 预测内容与参考 caption 内容的语义接近度
-- 相对参考内容的语义一致，而不是 prompt following
-- 一个诊断性代理信号，用来看“这个视频像不像同一类内容”
+\[
+\tilde{s}_i = \mathrm{clamp}\!\left(\frac{\cos(\mathbf{e}_i, \mathbf{r}) + 1}{2},\, 0,\, 1\right)
+\tag{1}
+\]
 
-## 当前算法
+原始指标对所有评测帧取均值：
 
-1. WorldArena 从 `sample.annotation_path` 下的 `caption.json` 组装参考文本；如果存在指令标签，
-   会把它们追加进去作为补充上下文。
-2. 如果标注文本缺失，则回退到 `sample.prompt_current` 或 `sample.prompt_target`。
-3. 使用 `openai/clip-vit-base-patch16` 的图像编码器对预测采样帧做编码。
-4. 使用同一个 CLIP 的文本编码器对参考文本做编码。
-5. 对每一帧计算图像特征和参考文本特征的 cosine，相似度再用 `(cos + 1) / 2` 映射到 `[0, 1]`。
-6. 原始分数是所有采样帧分数的平均值。
+\[
+S_{\mathrm{sem}} = \frac{1}{N}\sum_{i=1}^{N} \tilde{s}_i
+\tag{2}
+\]
 
-## 输入与输出
+\(S_{\mathrm{sem}}\) 越高，表示与标注参考描述的语义越接近。该指标不能替代指令跟随得分或物体级验证。
 
-| 项目 | 当前实现 |
-| --- | --- |
-| 预测输入 | 预测的采样帧 |
-| 参考输入 | 参考标注文本，不直接读取参考像素 |
-| 标注输入 | `caption.json`、可选 `instructions.json`、回退 prompt |
-| 原始输出 | `[0, 1]` 内的单个平均语义分数 |
-| 归一化输出 | 默认配置下与原始值基本相同 |
-| 细节字段 | `reference_text_source`、`reference_text`、`frame_scores`、帧索引元数据 |
-| 失败方式 | 若 CLIP 不可用或参考文本无法构造，则返回 `raw = null`、`normalized = null` 和错误字符串 |
+<!-- metric-examples:start -->
+## 代表性同 Case 对比
+每个展示块先给出该 case 的 input image 和完全一致的展示 prompt，然后比较模型生成结果。paired 展示必须满足 input image 相同、prompt 文本相同，并且一个模型高分、一个模型低分。若当前正式快照中该 metric 没有这种跨模型同 case pair，则单独展示高分/低分极值样例，不把它们伪装成同 case 对比。
+机器可读 paired 导出： `docs/assets/metric_examples/paired_manifest.csv`.
+### `semantic_alignment`
+<div class="metric-case-stack">
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/fe16fdec2c52__image_dynamic_photorealistic_articulated_0001.jpg" alt="输入图像: image_dynamic_photorealistic_articulated_0001" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · 同一输入图像 + 同一 prompt · 分差 0.0678</div>
+      <h4><code>image_dynamic_photorealistic_articulated_0001</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. A bird of prey glides forward low over a grassy field, wings spread wide with subtle body and wing adjustments. The wooden fence post, wild grasses, and vines remain still.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: _readiness_echo_dynamic_smoke_after image_dynamic_photorealistic_articulated_0001">
+      <source src="../../../assets/metric_examples/8f778faac6c6___readiness_echo_dynamic_smoke_after__image_dynamic_photorealistic_articulated_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.6668</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: stable-virtual-camera-image-dynamic-5s image_dynamic_photorealistic_articulated_0001">
+      <source src="../../../assets/metric_examples/73ddbcad1071__stable-virtual-camera-image-dynamic-5s__image_dynamic_photorealistic_articulated_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.5990</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->
 
-## 集成状态
+## 参考文献 {#reference}
 
-| 项目 | 结论 |
-| --- | --- |
-| 当前聚合 | 仅 `diagnostic` |
-| 论文可用性 | `仅作辅助` |
+!!! quote "CLIP — Learning Transferable Visual Models From Natural Language Supervision"
 
-- 它的价值：和 `prompt_alignment` 不同，它锚定的是参考侧内容。
-- 它的限制：仍然依赖标注文本质量，也仍然是 CLIP 语义代理。
-- 建议用法：和 prompt-following、质量指标一起看，用来区分“没跟 prompt”还是“没接近参考内容”。
+    Radford et al., ICML 2021.
+    [https://arxiv.org/abs/2103.00020](https://arxiv.org/abs/2103.00020)

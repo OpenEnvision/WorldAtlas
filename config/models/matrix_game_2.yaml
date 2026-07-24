@@ -6,7 +6,6 @@ model:
   artifact_types: [video]
   control_signals: [image, actions]
   roles: [candidate]
-  python_bin: /share/project/yesliu/miniconda3/envs/matrix-game-2.0/bin/python
   repo_root: thirdparty/Matrix-Game/Matrix-Game-2
   checkpoint_dir: ckpt/Skywork--Matrix-Game-2.0
   entrypoint: inference.py

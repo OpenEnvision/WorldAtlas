@@ -1,112 +1,95 @@
 # Caption 统计
 
+!!! info "生成内容"
+    当你新增、删除或重组源数据资产后，请运行 `worldarena build-docs --config config/datasets.yaml`。
+
+## 概述
+
+<p class="overview-lede">Caption 侧车为视频与 physics 条目附加 weather、time-of-day、brightness、crowd-density 与 scene-type 等标签。下列面板按集合汇总 caption 覆盖情况，再进入明细表与交互图表。</p>
+
+## 集合规模
+
+<p class="overview-section-lede">视频与 physics 集合的 headline caption 计数与归一化标签覆盖。</p>
+
+<div class="overview-page">
+
+<div class="overview-section">
+  <p class="overview-section-label">总量指标</p>
+  <p class="overview-section-note">主 caption 库存与归一化标签覆盖。</p>
+<div class="overview-hero-grid">
+<div class="overview-hero-card overview-hero-card--primary">
+  <div class="overview-hero-label">带 Caption 的媒体</div>
+  <div class="overview-hero-value">377</div>
+  <div class="overview-hero-note">带 caption 的视频与 physics 条目</div>
+</div>
+<div class="overview-hero-card overview-hero-card--blue">
+  <div class="overview-hero-label">Weather 标注</div>
+  <div class="overview-hero-value">0</div>
+  <div class="overview-hero-note">含归一化 weather 标签的视频</div>
+</div>
+<div class="overview-hero-card overview-hero-card--warm">
+  <div class="overview-hero-label">Time-Of-Day 标注</div>
+  <div class="overview-hero-value">0</div>
+  <div class="overview-hero-note">含归一化 time-of-day 标签的视频</div>
+</div>
+<div class="overview-hero-card overview-hero-card--ink">
+  <div class="overview-hero-label">主场景类型</div>
+  <div class="overview-hero-value">0</div>
+  <div class="overview-hero-note">不同归一化主场景标签</div>
+</div>
+</div>
+</div>
+
+<div class="overview-section">
+  <p class="overview-section-label">标签广度</p>
+  <p class="overview-section-note">库存中不同的 weather、time-of-day、brightness 与 crowd-density 标签。</p>
 <div class="metric-grid">
 <div class="metric-card">
-  <div class="metric-label">带 Caption 的媒体</div>
-  <div class="metric-value">873</div>
-  <div class="metric-note">Video and physics rows with captions</div>
+  <div class="metric-label">Weather 标签</div>
+  <div class="metric-value">0</div>
+  <div class="metric-note">不同归一化 weather 标签</div>
 </div>
 <div class="metric-card">
-  <div class="metric-label">Weather Tagged</div>
-  <div class="metric-value">496</div>
-  <div class="metric-note">Videos with normalized weather labels</div>
+  <div class="metric-label">Time-Of-Day 标签</div>
+  <div class="metric-value">0</div>
+  <div class="metric-note">不同归一化 time-of-day 标签</div>
 </div>
 <div class="metric-card">
-  <div class="metric-label">Time-Of-Day Tagged</div>
-  <div class="metric-value">496</div>
-  <div class="metric-note">Videos with normalized time-of-day labels</div>
+  <div class="metric-label">Brightness 标签</div>
+  <div class="metric-value">0</div>
+  <div class="metric-note">不同归一化 brightness 标签</div>
 </div>
 <div class="metric-card">
-  <div class="metric-label">Primary Scene Types</div>
-  <div class="metric-value">52</div>
-  <div class="metric-note">Unique normalized primary scene labels</div>
+  <div class="metric-label">Crowd Density 标签</div>
+  <div class="metric-value">0</div>
+  <div class="metric-note">不同归一化 crowd-density 标签</div>
 </div>
+</div>
+</div>
+
+<div class="overview-section">
+  <p class="overview-section-label">按集合的 caption 覆盖</p>
+  <p class="overview-section-note">caption 侧车在 static、physics、dynamic 与 gameplay 集合中的分布。</p>
+<div class="overview-regime-grid">
+<div class="overview-regime-card">
+  <div class="overview-regime-top">
+    <span class="overview-regime-label">Physics 视频</span>
+    <span class="overview-regime-share">26.9% 含 caption</span>
+  </div>
+  <div class="overview-regime-value">377</div>
+  <div class="overview-regime-note">部分 caption 覆盖的仿真 physics 片段</div>
+</div>
+</div>
+</div>
+
 </div>
 
 ## 覆盖率汇总
 
 | collection     |   items |   captions | caption_rate   | weather_rate   | time_of_day_rate   | brightness_rate   | crowd_density_rate   | scene_primary_rate   |
 |:---------------|--------:|-----------:|:---------------|:---------------|:-------------------|:------------------|:---------------------|:---------------------|
-| static_videos  |    4000 |         31 | 0.78%          | 0.78%          | 0.78%              | 0.78%             | 0.78%                | 0.78%                |
 | physics_videos |    1400 |        377 | 26.93%         | 0.00%          | 0.00%              | 0.00%             | 0.00%                | 0.00%                |
-| dynamic_videos |     788 |          0 | 0.00%          | 0.00%          | 0.00%              | 0.00%             | 0.00%                | 0.00%                |
-| aaa_games      |     465 |        465 | 100.00%        | 100.00%        | 100.00%            | 100.00%           | 100.00%              | 100.00%              |
 
-## Top Weather Labels
+## Caption 覆盖
 
-| value   |   items | share   |
-|:--------|--------:|:--------|
-| Clear   |     294 | 59.27%  |
-| Sunny   |      62 | 12.50%  |
-| Cloudy  |      46 | 9.27%   |
-| Foggy   |      29 | 5.85%   |
-| Snowy   |      26 | 5.24%   |
-| Rainy   |      20 | 4.03%   |
-| Unknown |      13 | 2.62%   |
-| Stormy  |       6 | 1.21%   |
-
-## Top Time-Of-Day Labels
-
-| value        |   items | share   |
-|:-------------|--------:|:--------|
-| Daytime      |     257 | 51.81%  |
-| Dusk/Evening |      93 | 18.75%  |
-| Unknown      |      65 | 13.10%  |
-| Night        |      59 | 11.90%  |
-| Dawn         |      22 | 4.44%   |
-
-## Top Primary Scene Types
-
-| value              |   items | share   |
-|:-------------------|--------:|:--------|
-| Forest             |     104 | 20.97%  |
-| Village            |      59 | 11.90%  |
-| Landscape          |      52 | 10.48%  |
-| Urban              |      35 | 7.06%   |
-| Indoor             |      31 | 6.25%   |
-| Historical Fantasy |      24 | 4.84%   |
-| Natural            |      18 | 3.63%   |
-| Fantasy            |      17 | 3.43%   |
-| Rural              |      15 | 3.02%   |
-| Historical         |      14 | 2.82%   |
-| Nature             |      14 | 2.82%   |
-| Courtyard          |      10 | 2.02%   |
-| Garden             |      10 | 2.02%   |
-| Combat             |       7 | 1.41%   |
-| Medieval           |       7 | 1.41%   |
-
-## Caption Coverage
-
-<iframe class="chart-frame" src="../../generated/charts/captions-coverage.html" title="Caption Coverage" loading="lazy"></iframe>
-
-## Weather Distribution
-
-<iframe class="chart-frame" src="../../generated/charts/captions-weather-by-collection.html" title="Weather Distribution" loading="lazy"></iframe>
-
-## Time-Of-Day Distribution
-
-<iframe class="chart-frame" src="../../generated/charts/captions-time-of-day-by-collection.html" title="Time-Of-Day Distribution" loading="lazy"></iframe>
-
-## Brightness And Crowd Density
-
-<iframe class="chart-frame" src="../../generated/charts/captions-attribute-mix.html" title="Brightness And Crowd Density" loading="lazy"></iframe>
-
-## Primary Scene Types
-
-<iframe class="chart-frame" src="../../generated/charts/captions-scene-types.html" title="Primary Scene Types" loading="lazy"></iframe>
-
-## Weather Versus Time Of Day
-
-<iframe class="chart-frame" src="../../generated/charts/captions-weather-time.html" title="Weather Versus Time Of Day" loading="lazy"></iframe>
-
-## Brightness Versus Crowd Density
-
-<iframe class="chart-frame" src="../../generated/charts/captions-brightness-crowd.html" title="Brightness Versus Crowd Density" loading="lazy"></iframe>
-
-## 产物
-
-- [`caption_distribution_summary.csv`](../generated/data/caption_distribution_summary.csv)
-- [`caption_collection_summary.csv`](../generated/data/caption_collection_summary.csv)
-- [`caption_coverage_summary.csv`](../generated/data/caption_coverage_summary.csv)
-- [`caption_weather_time_summary.csv`](../generated/data/caption_weather_time_summary.csv)
-- [`caption_brightness_crowd_summary.csv`](../generated/data/caption_brightness_crowd_summary.csv)
+<iframe class="chart-frame" src="../../generated/charts/captions-coverage.html" title="Caption 覆盖" loading="lazy"></iframe>

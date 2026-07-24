@@ -1,3 +1,5 @@
+"""JEDI (Joint Embedding Distance for Images) backend for video quality."""
+
 from __future__ import annotations
 
 import importlib

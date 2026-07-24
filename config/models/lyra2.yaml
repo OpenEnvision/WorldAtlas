@@ -7,10 +7,9 @@ model:
   control_signals: [text, image, camera_pose]
   roles: [candidate]
   # Lyra-2's published environment targets Python 3.10 plus compiled CUDA extensions.
-  python_bin: ../conda/envs/lyra2/bin/python
   repo_root: thirdparty/Lyra-2
-  # This workspace stores the large shared checkpoint tree next to WorldArena.
-  checkpoint_dir: ../ckpt/Lyra-2.0
+  # Store the Lyra-2 weights under ckpt/Lyra-2.0 and keep companion checkpoints under ckpt/.
+  checkpoint_dir: ckpt/Lyra-2.0
   entrypoint: lyra_2/_src/inference/lyra2_custom_traj_inference.py
   output_ext: .mp4
   supported_suites:
@@ -19,6 +18,7 @@ model:
   prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
+    require_persistent_batch: true
     experiment: lyra2
     height: 480
     width: 832
@@ -37,5 +37,3 @@ model:
     da3_max_history_frames: 10
     synthetic_focal_scale: 0.6
     offload: false
-  env:
-    WORLDARENA_CHECKPOINT_ROOT: ../ckpt

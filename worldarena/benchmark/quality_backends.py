@@ -1,6 +1,11 @@
+"""Backend implementations for image and video quality metrics."""
+
 from __future__ import annotations
 
+import importlib.util
+from contextlib import contextmanager
 from functools import lru_cache
+import gc
 import os
 from pathlib import Path
 import sys
@@ -10,8 +15,15 @@ from typing import Any, Sequence
 os.environ.setdefault("SETUPTOOLS_USE_DISTUTILS", "stdlib")
 
 import numpy as np
+from PIL import Image
 
-from worldarena.common.checkpoints import checkpoint_env, checkpoint_path, resolve_checkpoint_path
+from worldarena.common.checkpoints import (
+    checkpoint_env,
+    checkpoint_path,
+    project_root,
+    resolve_checkpoint_path,
+    resolve_project_path,
+)
 from worldarena.benchmark.pkg_resources_compat import (
     ensure_openai_clip_cache_compat,
     ensure_pkg_resources_compat,
@@ -25,6 +37,8 @@ QUALITY_COMPONENT_SPECS = {
 }
 REQUIRED_REFERENCE_QUALITY_COMPONENTS = ("clip_iqa", "aesthetic")
 MUSIQ_NATIVE_SCORE_SCALE = 100.0
+HPSV3_DEFAULT_P1 = 5.21
+HPSV3_DEFAULT_P99 = 8.66
 
 
 def clamp01(value: float) -> float:
@@ -42,18 +56,34 @@ def _round(values: Sequence[float]) -> list[float]:
 
 
 def _quality_cache_dir() -> Path:
+    """Quality cache dir -> Path."""
     base = checkpoint_path("quality")
     base.mkdir(parents=True, exist_ok=True)
     return base
 
 
 def _quality_device() -> str:
+    """Quality device -> str."""
+    override = os.environ.get("WORLDARENA_QUALITY_DEVICE")
+    if override in {"cpu", "cuda"}:
+        return override
     import torch
 
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
+def _resolve_local_path(value: str | os.PathLike[str] | None) -> Path | None:
+    if value in (None, ""):
+        return None
+    path = Path(str(value)).expanduser()
+    if path.is_absolute():
+        return path
+    resolved = resolve_project_path(path)
+    return resolved if resolved is not None else project_root() / path
+
+
 def _ensure_numpy_compat_for_imgaug() -> None:
+    """Ensure numpy compat for imgaug."""
     if hasattr(np, "sctypes"):
         return
     np.sctypes = {
@@ -67,6 +97,7 @@ def _ensure_numpy_compat_for_imgaug() -> None:
 
 
 def _ensure_timm_compat_for_pyiqa() -> None:
+    """Ensure timm compat for pyiqa."""
     try:
         from timm.models.helpers import build_model_with_cfg
         import timm.models.layers as timm_layers
@@ -87,6 +118,7 @@ def _ensure_timm_compat_for_pyiqa() -> None:
 
 
 def _patch_pyiqa_clip_cache() -> None:
+    """Patch pyiqa clip cache."""
     cache_dir = resolve_openai_clip_cache_dir()
     if cache_dir is None:
         return
@@ -123,6 +155,24 @@ def _to_float(value: Any) -> float:
     return float(value)
 
 
+def _to_float_list(value: Any) -> list[float]:
+    if hasattr(value, "detach"):
+        value = value.detach()
+    if hasattr(value, "reshape") and hasattr(value, "cpu"):
+        return [float(item) for item in value.reshape(-1).cpu().tolist()]
+    if isinstance(value, (list, tuple)):
+        return [float(item) for item in value]
+    return [_to_float(value)]
+
+
+def _quality_batch_size() -> int:
+    value = os.environ.get("WORLDARENA_QUALITY_BATCH_SIZE", "8")
+    try:
+        return max(1, int(value))
+    except ValueError:
+        return 8
+
+
 def _prepare_quality_runtime_compat(*, enable_clip_cache_compat: bool) -> None:
     os.environ["SETUPTOOLS_USE_DISTUTILS"] = "stdlib"
     os.environ.update(checkpoint_env())
@@ -135,7 +185,15 @@ def _prepare_quality_runtime_compat(*, enable_clip_cache_compat: bool) -> None:
         ensure_openai_clip_cache_compat()
 
 
+def _prepare_hpsv3_runtime_compat() -> None:
+    """Prepare hpsv3 runtime compat."""
+    os.environ["SETUPTOOLS_USE_DISTUTILS"] = "stdlib"
+    os.environ.update(checkpoint_env())
+    ensure_pkg_resources_compat()
+
+
 def _configure_pyiqa_cache() -> None:
+    """Configure pyiqa cache."""
     try:
         from pyiqa.utils import download_util
     except Exception:
@@ -144,6 +202,32 @@ def _configure_pyiqa_cache() -> None:
     pyiqa_cache_dir = Path(os.environ["TORCH_HOME"]).expanduser() / "hub" / "pyiqa"
     pyiqa_cache_dir.mkdir(parents=True, exist_ok=True)
     download_util.DEFAULT_CACHE_DIR = str(pyiqa_cache_dir)
+
+
+@contextmanager
+def _force_laion_clip_cpu_load(component_name: str):
+    """Avoid hard exits from OpenAI CLIP ViT-L/14 direct CUDA construction."""
+    if component_name != "aesthetic":
+        yield
+        return
+    try:
+        import clip
+    except Exception:
+        yield
+        return
+
+    original_load = clip.load
+
+    def load_with_cpu_default(name: str, *args: Any, **kwargs: Any) -> Any:
+        if name == "ViT-L/14" and len(args) == 0 and "device" not in kwargs:
+            kwargs["device"] = "cpu"
+        return original_load(name, *args, **kwargs)
+
+    clip.load = load_with_cpu_default
+    try:
+        yield
+    finally:
+        clip.load = original_load
 
 
 def _frame_to_float_tensor(frame: np.ndarray, device: str) -> Any:
@@ -172,7 +256,8 @@ def load_quality_component(
     _configure_pyiqa_cache()
     backend_name, metric_name, scale = component_spec
     device = _quality_device()
-    metric = pyiqa.create_metric(metric_name).to(device)
+    with _force_laion_clip_cpu_load(component_name):
+        metric = pyiqa.create_metric(metric_name, device=device).to(device)
     metric.eval()
     return backend_name, metric, device, scale
 
@@ -182,6 +267,20 @@ def quality_component_available(component_name: str) -> bool:
         return load_quality_component(component_name) is not None
     except Exception:
         return False
+
+
+def clear_quality_component_cache() -> None:
+    """Release cached PyIQA component models before loading another CLIP stack."""
+    load_quality_component.cache_clear()
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+    except Exception:
+        pass
 
 
 def compute_quality_component_scores(
@@ -205,11 +304,23 @@ def compute_quality_component_scores(
 
     native_scores: list[float] = []
     normalized_scores: list[float] = []
-    for frame in frames:
-        native_score = _to_float(metric(_frame_to_float_tensor(frame, device)))
-        normalized_score = clamp01(native_score / scale)
-        native_scores.append(native_score)
-        normalized_scores.append(normalized_score)
+    import torch
+
+    batch_size = _quality_batch_size()
+    with torch.inference_mode():
+        for start in range(0, len(frames), batch_size):
+            chunk = frames[start : start + batch_size]
+            batch = torch.cat([_frame_to_float_tensor(frame, device) for frame in chunk], dim=0)
+            chunk_scores = _to_float_list(metric(batch))
+            if len(chunk_scores) != len(chunk):
+                chunk_scores = [
+                    _to_float(metric(_frame_to_float_tensor(frame, device)))
+                    for frame in chunk
+                ]
+            for native_score in chunk_scores:
+                normalized_score = clamp01(native_score / scale)
+                native_scores.append(native_score)
+                normalized_scores.append(normalized_score)
 
     return {
         "backend": backend_name,
@@ -319,9 +430,15 @@ def compute_musiq_scores(
     images = _musiq_transform_frames(frames, preprocess_mode=preprocess_mode)
     native_scores: list[float] = []
     with torch.inference_mode():
-        for image in images:
-            native_score = _to_float(metric(image.unsqueeze(0).to(device)))
-            native_scores.append(native_score)
+        batch_size = _quality_batch_size()
+        for image_batch in images.split(batch_size):
+            chunk_scores = _to_float_list(metric(image_batch.to(device)))
+            if len(chunk_scores) != len(image_batch):
+                chunk_scores = [
+                    _to_float(metric(image.unsqueeze(0).to(device)))
+                    for image in image_batch
+                ]
+            native_scores.extend(chunk_scores)
     normalized_scores = [
         clamp01(native_score / MUSIQ_NATIVE_SCORE_SCALE)
         for native_score in native_scores
@@ -337,13 +454,229 @@ def compute_musiq_scores(
     }
 
 
+def _resolve_hpsv3_root(root_path: str | os.PathLike[str] | None = None) -> Path | None:
+    explicit = _resolve_local_path(root_path or os.environ.get("HPSV3_ROOT"))
+    if explicit is not None:
+        return explicit
+    for candidate in (
+        project_root() / "thirdparty" / "HPSv3",
+        project_root() / "third_party" / "HPSv3",
+    ):
+        if candidate.is_dir():
+            return candidate
+    return None
+
+
+def _resolve_hpsv3_checkpoint(checkpoint: str | os.PathLike[str] | None = None) -> Path:
+    explicit = _resolve_local_path(checkpoint)
+    if explicit is not None:
+        if not explicit.is_file():
+            raise FileNotFoundError(f"HPSv3 checkpoint not found: {explicit}")
+        return explicit
+    return checkpoint_path("HPSv3", "HPSv3.safetensors", kind="file", required=True)
+
+
+def resolve_hpsv3_checkpoint(checkpoint: str | os.PathLike[str] | None = None) -> Path:
+    return _resolve_hpsv3_checkpoint(checkpoint)
+
+
+def _resolve_hpsv3_config(config_path: str | os.PathLike[str] | None = None) -> Path:
+    explicit = _resolve_local_path(config_path)
+    if explicit is not None:
+        if not explicit.is_file():
+            raise FileNotFoundError(f"HPSv3 config not found: {explicit}")
+        return explicit
+    return checkpoint_path("HPSv3", "HPSv3_7B_local.yaml", kind="file", required=True)
+
+
+def resolve_hpsv3_config(config_path: str | os.PathLike[str] | None = None) -> Path:
+    return _resolve_hpsv3_config(config_path)
+
+
+def _resolved_hpsv3_config(
+    config_path: Path,
+    *,
+    qwen_model_path: str | os.PathLike[str] | None = None,
+) -> Path:
+    qwen_path = _resolve_local_path(qwen_model_path)
+    if qwen_path is None:
+        default_qwen = checkpoint_path("Qwen2-VL-7B-Instruct", kind="dir", required=False)
+        qwen_path = default_qwen if default_qwen.is_dir() else None
+    if qwen_path is None:
+        return config_path
+    if not qwen_path.is_dir():
+        raise FileNotFoundError(f"HPSv3 Qwen model directory not found: {qwen_path}")
+
+    try:
+        import yaml
+    except (ImportError, ModuleNotFoundError) as exc:
+        raise ModuleNotFoundError("PyYAML is required to rewrite HPSv3 config") from exc
+
+    payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+    payload["model_name_or_path"] = str(qwen_path)
+    resolved_config = checkpoint_path("HPSv3", "_HPSv3_7B_resolved.yaml")
+    resolved_config.parent.mkdir(parents=True, exist_ok=True)
+    # Multiple evaluation shards can initialize HPSv3 at the same time.  A
+    # direct write lets another process observe a truncated YAML file, which
+    # then surfaces as seemingly unrelated missing TrainingConfig fields.
+    temporary_config = resolved_config.with_name(
+        f".{resolved_config.name}.{os.getpid()}.tmp"
+    )
+    temporary_config.write_text(
+        yaml.safe_dump(payload, sort_keys=False),
+        encoding="utf-8",
+    )
+    temporary_config.replace(resolved_config)
+    return resolved_config
+
+
+def _prepare_hpsv3_import(root_path: Path | None) -> None:
+    try:
+        import transformers.image_utils as image_utils
+    except Exception:
+        image_utils = None
+    if image_utils is not None and not hasattr(image_utils, "VideoInput"):
+        image_utils.VideoInput = list[np.ndarray]
+
+    if root_path is not None:
+        root_text = str(root_path)
+        if root_path.is_dir() and root_text not in sys.path:
+            sys.path.insert(0, root_text)
+
+
+@lru_cache(maxsize=16)
+def load_hpsv3_backend(
+    root_path: str | None = None,
+    checkpoint: str | None = None,
+    config_path: str | None = None,
+    qwen_model_path: str | None = None,
+    device: str | None = None,
+) -> tuple[str, Any, str, str, str] | None:
+    try:
+        _prepare_hpsv3_runtime_compat()
+        root = _resolve_hpsv3_root(root_path)
+        if root is None and importlib.util.find_spec("hpsv3") is None:
+            return None
+        _prepare_hpsv3_import(root)
+        from hpsv3.inference import HPSv3RewardInferencer
+    except (ImportError, ModuleNotFoundError):
+        return None
+
+    checkpoint_path_resolved = _resolve_hpsv3_checkpoint(checkpoint)
+    config_path_resolved = _resolved_hpsv3_config(
+        _resolve_hpsv3_config(config_path),
+        qwen_model_path=qwen_model_path,
+    )
+    device_name = device or _quality_device()
+    inferencer = HPSv3RewardInferencer(
+        config_path=str(config_path_resolved),
+        checkpoint_path=str(checkpoint_path_resolved),
+        device=device_name,
+    )
+    return (
+        "hpsv3",
+        inferencer,
+        device_name,
+        str(checkpoint_path_resolved),
+        str(config_path_resolved),
+    )
+
+
+def compute_hpsv3_norm_scores(
+    frames: Sequence[np.ndarray],
+    *,
+    prompt: str = "",
+    p1: float = HPSV3_DEFAULT_P1,
+    p99: float = HPSV3_DEFAULT_P99,
+    batch_size: int = 8,
+    root_path: str | None = None,
+    checkpoint: str | None = None,
+    config_path: str | None = None,
+    qwen_model_path: str | None = None,
+    device: str | None = None,
+) -> dict[str, Any]:
+    payload = load_hpsv3_backend(
+        root_path=root_path,
+        checkpoint=checkpoint,
+        config_path=config_path,
+        qwen_model_path=qwen_model_path,
+        device=device,
+    )
+    if payload is None:
+        raise ModuleNotFoundError("HPSv3 backend is unavailable")
+    if p99 <= p1:
+        raise ValueError(f"HPSv3 normalization requires p99 > p1, got p1={p1}, p99={p99}")
+    if batch_size <= 0:
+        raise ValueError(f"HPSv3 batch_size must be positive, got {batch_size}")
+
+    backend_name, inferencer, device_name, checkpoint_path_resolved, config_path_resolved = payload
+    if not frames:
+        return {
+            "backend": backend_name,
+            "raw": None,
+            "raw_reward_mean": None,
+            "raw_rewards": [],
+            "normalization_percentiles": [float(p1), float(p99)],
+            "score_0_100": None,
+            "checkpoint_path": checkpoint_path_resolved,
+            "config_path": config_path_resolved,
+            "device": device_name,
+        }
+
+    prompts = [prompt] * len(frames)
+    raw_rewards: list[float] = []
+    # HPSv3's fetch_image accepts PIL images directly.  Keeping lossless RGB
+    # frames in memory avoids writing and reopening up to 20 large PNG files
+    # per video while preserving exactly the same pixels.
+    image_inputs = [Image.fromarray(np.asarray(frame, dtype=np.uint8)) for frame in frames]
+
+    import torch
+
+    with torch.inference_mode():
+        for start in range(0, len(image_inputs), batch_size):
+            stop = start + batch_size
+            rewards = inferencer.reward(
+                prompts[start:stop],
+                image_inputs[start:stop],
+            )
+            for reward in rewards:
+                if hasattr(reward, "reshape"):
+                    value = reward.reshape(-1)[0]
+                elif isinstance(reward, (list, tuple)):
+                    value = reward[0]
+                else:
+                    value = reward
+                raw_rewards.append(_to_float(value))
+
+    raw_reward_mean = float(np.mean(raw_rewards))
+    normalized = clamp01((raw_reward_mean - float(p1)) / (float(p99) - float(p1)))
+    return {
+        "backend": backend_name,
+        "raw": normalized,
+        "raw_reward_mean": raw_reward_mean,
+        "raw_rewards": _round(raw_rewards),
+        "normalization_percentiles": [float(p1), float(p99)],
+        "score_0_100": round(normalized * 100.0, 4),
+        "checkpoint_path": checkpoint_path_resolved,
+        "config_path": config_path_resolved,
+        "device": device_name,
+    }
+
+
 __all__ = [
+    "HPSV3_DEFAULT_P1",
+    "HPSV3_DEFAULT_P99",
     "QUALITY_COMPONENT_SPECS",
     "REQUIRED_REFERENCE_QUALITY_COMPONENTS",
+    "compute_hpsv3_norm_scores",
     "compute_musiq_scores",
     "compute_quality_component_scores",
+    "clear_quality_component_cache",
+    "load_hpsv3_backend",
     "load_musiq_backend",
     "load_quality_component",
     "quality_component_available",
+    "resolve_hpsv3_checkpoint",
+    "resolve_hpsv3_config",
     "resolve_musiq_spaq_weights",
 ]

@@ -1,6 +1,6 @@
 # Physics Judge Metrics
 
-`physics_judge` 指标族来自 `config/benchmark_physics_judge.yaml`。它不依赖 simulator world artifact，而是抽取 prediction frames，并可选抽取 reference frames，让 VLM judge 按 `physics_spec.judge_card` 中的物理 rubric 输出 `0..1` 分数。
+**physics_judge** 指标族来自 `config/benchmark_physics_judge.yaml`。它不依赖 simulator world artifact，而是抽取 prediction frames，并可选抽取 reference frames，让 VLM judge 按 `physics_spec.judge_card` 中的物理 rubric 输出 `0..1` 分数。
 
 默认 backend 是 `openai_judge`，也支持 `gemini_judge`。所有 judge 指标都是越高越好。
 

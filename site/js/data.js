@@ -1,7 +1,7 @@
-import { awesomeWorldModelsPage, docsNavigation, docsPages } from "./content.js?v=20260502-ux-v30";
-import { docsNavigationZh, docsPagesZh } from "./content.zh.js?v=20260502-ux-v30";
+import { docsNavigation, docsPages } from "./content.js?v=20260718-dimension-overview-v1";
+import { docsNavigationZh, docsPagesZh } from "./content.zh.js?v=20260718-dimension-overview-v1";
 
-export { awesomeWorldModelsPage, docsNavigation, docsNavigationZh, docsPages, docsPagesZh };
+export { docsNavigation, docsNavigationZh, docsPages, docsPagesZh };
 
 export const docsPagesByLanguage = {
   en: docsPages,
@@ -13,65 +13,85 @@ export const docsNavigationByLanguage = {
   zh: docsNavigationZh
 };
 
-export const siteTitle = "WorldArena";
+export const siteTitle = "WorldAtlas Arena";
+
+export const openEnvisionUrl = "https://openenvision.github.io/index.html";
 
 const pagesByRoute = new Map(docsPages.map((page) => [page.route, page]));
-const benchmarkPage = pagesByRoute.get("/docs/benchmark/");
-const metricsPage = pagesByRoute.get("/docs/benchmark/metrics/");
-const architecturePage = pagesByRoute.get("/docs/architecture/");
-const workflowPage = pagesByRoute.get("/docs/benchmark/workflow/");
-const runtimePage = pagesByRoute.get("/docs/thirdparty/");
-const developmentPage = pagesByRoute.get("/docs/development/");
+const benchmarkPage = pagesByRoute.get("/doc/benchmark/");
+const metricsPage = pagesByRoute.get("/doc/benchmark/metrics/");
+const developmentPage = pagesByRoute.get("/doc/development/");
+
+const awesomeWorldModelingUrl = "https://github.com/OpenEnvision/Awesome-World-Modeling";
+
+const worldFoundryHomePost = {
+  title: "WorldFoundry",
+  date: "GitHub",
+  image: "/assets/worldfoundry-cover.png",
+  href: "https://github.com/OpenEnvision/WorldFoundry",
+  body: "The inference and evaluation framework behind WorldAtlas Arena."
+};
+
+const awesomeWorldModelingHomePost = {
+  title: "Awesome World Modeling",
+  date: "GitHub",
+  image: "/assets/awesome-world-models/image/generative_wm.png?v=20260502-doc-polish-v2",
+  href: awesomeWorldModelingUrl,
+  body: "Curated papers, code, and taxonomy for world model research."
+};
+
+const gaiaHomePost = {
+  title: "Gaia",
+  date: "GitHub",
+  image: "/assets/d1622eb1-620e-4dcc-965a-7143127d089c.png",
+  href: "https://github.com/OpenEnvision/Gaia",
+  body: "OpenEnvision research repository for generative world modeling."
+};
 
 export const menuSections = [
   {
     title: "Start",
     links: [
-      { label: "WorldArena Home", href: "/" },
-      { label: "Docs Index", href: "/docs/" },
-      { label: "Architecture", href: "/docs/architecture/" }
+      { label: "WorldAtlas Arena Home", href: "/" },
+      { label: "Docs Index", href: "/doc/" }
     ]
   },
   {
     title: "Benchmark",
     links: [
-      { label: "Benchmark Overview", href: "/docs/benchmark/" },
-      { label: "Leaderboard", href: "/#home-leaderboard" },
+      { label: "Benchmark Overview", href: "/doc/benchmark/" },
+      { label: "Leaderboard", href: "/leaderboard/" },
       { label: "Arena Battle", href: "/arena/" },
-      { label: "Protocol & Eligibility", href: "/docs/benchmark/protocol/" },
-      { label: "Workflow & Outputs", href: "/docs/benchmark/workflow/" },
-      { label: "Metrics Overview", href: "/docs/benchmark/metrics/" },
-      { label: "Showcase Viewer", href: "/docs/benchmark/showcase/" }
+      { label: "Metrics Overview", href: "/doc/benchmark/metrics/" }
     ]
   },
   {
     title: "Dataset Analytics",
     links: [
-      { label: "Dataset Overview", href: "/docs/overview/" },
-      { label: "Images", href: "/docs/images/" },
-      { label: "Videos", href: "/docs/videos/" },
-      { label: "Physics Dataset", href: "/docs/physics/" },
-      { label: "Captions", href: "/docs/captions/" },
-      { label: "Collections", href: "/docs/collections/" }
+      { label: "Dataset Overview", href: "/doc/overview/" },
+      { label: "Images", href: "/doc/images/" },
+      { label: "Videos", href: "/doc/videos/" },
+      { label: "Physics Dataset", href: "/doc/physics/" },
+      { label: "Captions", href: "/doc/captions/" }
     ]
   },
   {
     title: "Resources",
     links: [
-      { label: "Awesome World Models", href: "/awesome-world-models/" },
-      { label: "Hugging Face Leaderboard", href: "https://huggingface.co/spaces/OpenEnvisionLab/WorldArena" },
+      { label: "OpenEnvision", href: openEnvisionUrl },
+      { label: "OpenEnvision GitHub", href: "https://github.com/OpenEnvision" },
+      { label: "WorldFoundry", href: "https://github.com/OpenEnvision/WorldFoundry" },
+      { label: "Gaia", href: "https://github.com/OpenEnvision/Gaia" },
+      { label: "Awesome World Modeling", href: "https://github.com/OpenEnvision/Awesome-World-Modeling" },
+      { label: "Leaderboard", href: "/leaderboard/" },
       { label: "Free Exploration", href: "/uncertain/" },
-      { label: "Runtime Setup", href: "/docs/thirdparty/" },
-      { label: "Development", href: "/docs/development/" }
+      { label: "Runtime Setup", href: "/doc/thirdparty/" },
+      { label: "Development", href: "/doc/development/" }
     ]
   }
 ];
 
-export const footerLinks = [
-  { label: "WorldArena benchmark docs", href: "/docs/" },
-  { label: "Awesome World Models", href: "/awesome-world-models/" },
-  { label: "Source docs imported from /Users/ichubai/Desktop/tmp/WorldArena", href: "#" }
-];
+export const footerLinks = [];
 
 const palette = [
   "#d7e9ff",
@@ -106,12 +126,12 @@ export const homeHeroVisuals = [
   {
     label: "Physics Tracks",
     src: homeVisuals[1],
-    href: "/docs/benchmark/metrics/dimensions/physics/"
+    href: "/doc/benchmark/metrics/dimensions/physics/"
   },
   {
     label: "3D / 4D Consistency",
     src: homeVisuals[2],
-    href: "/docs/benchmark/metrics/dimensions/consistency-3d-4d/"
+    href: "/doc/benchmark/metrics/dimensions/consistency-3d-4d/"
   },
   {
     label: "Video Rollouts",
@@ -129,17 +149,17 @@ export const homeSignals = [
   {
     value: "126",
     label: "models & runs",
-    href: "#home-leaderboard"
+    href: "/leaderboard/"
   },
   {
     value: "26",
     label: "fine-grained categories",
-    href: "/docs/benchmark/"
+    href: "/doc/benchmark/"
   },
   {
     value: "32+",
     label: "suite metric vectors",
-    href: "/docs/benchmark/metrics/"
+    href: "/doc/benchmark/metrics/"
   }
 ];
 
@@ -147,52 +167,261 @@ export const homePillars = [
   {
     title: "Action Control",
     body: "Prompt, camera, object, and motion compliance are separated from appearance-only quality.",
-    href: "/docs/benchmark/metrics/dimensions/action-control/"
+    href: "/doc/benchmark/metrics/dimensions/action-control/"
   },
   {
     title: "3D / 4D Consistency",
     body: "Geometry, reprojection, depth, motion fields, and multiview diagnostics share one reporting contract.",
-    href: "/docs/benchmark/metrics/dimensions/consistency-3d-4d/"
+    href: "/doc/benchmark/metrics/dimensions/consistency-3d-4d/"
   },
   {
     title: "Physics",
     body: "Motion realism and simulator-backed tracks stay visible instead of being hidden inside a single score.",
-    href: "/docs/benchmark/metrics/dimensions/physics/"
+    href: "/doc/benchmark/metrics/dimensions/physics/"
   },
   {
     title: "Runtime Contract",
     body: "Local repositories, API models, and evaluator backends enter through the same manifest and report shape.",
-    href: "/docs/architecture/"
+    href: "/doc/thirdparty/"
   }
 ];
 
 export const homeLeaderboard = {
-  eyebrow: "WorldArena leaderboard",
-  title: "WorldArena leaderboard",
+  eyebrow: "WorldAtlas Arena leaderboard",
+  title: "Leaderboard",
   body:
-    "Browse the OpenEnvisionLab WorldArena Space without leaving this site. The Space is generated from /share/project/bench/WorldArena and keeps the benchmark contract as metric vectors instead of borrowing an unrelated public ranking.",
-  embedUrl: "https://openenvisionlab-worldarena.hf.space?__theme=light",
-  openUrl: "https://huggingface.co/spaces/OpenEnvisionLab/WorldArena",
-  submissionUrl: "https://huggingface.co/spaces/OpenEnvisionLab/WorldArena",
-  badges: ["OpenEnvisionLab Space", "4 formal suites", "Metric-vector reporting"],
+    "Browse benchmark rankings across formal image and video suites. Scores are aggregated from metric-vector reports in the WorldAtlas Arena protocol rather than a single headline scalar.",
+  protocolUrl: "/doc/benchmark/",
+  badges: ["4 formal suites", "Metric-vector reporting", "Aggregated scores"],
   tracks: [
     {
       value: "4 suites",
       label: "Formal benchmark tracks",
       body: "image_static, image_dynamic, video_static, and video_dynamic remain separate headline suites.",
-      href: "/docs/benchmark/metrics/"
+      href: "/doc/benchmark/metrics/"
     },
     {
-      value: "134 metrics",
+      value: "160 metrics",
       label: "Configured metric slots",
-      body: "The Space reflects 38/38/26/32 metric coverage from config/benchmark.yaml.",
-      href: "/docs/benchmark/metrics/"
+      body: "Leaderboard columns reflect suite-level metric coverage from config/benchmark.yaml.",
+      href: "/doc/benchmark/metrics/"
     },
     {
       value: "Reports",
       label: "Submission-ready contract",
       body: "Runs publish leaderboard.csv plus per-metric, per-dimension, manifest, and domain-breakdown artifacts.",
-      href: "/docs/benchmark/workflow/"
+      href: "/doc/benchmark/"
+    }
+  ]
+};
+
+export const leaderboardSuites = [
+  { id: "image_static", labelEn: "Image Static", labelZh: "Image Static" },
+  { id: "image_dynamic", labelEn: "Image Dynamic", labelZh: "Image Dynamic" },
+  { id: "video_static", labelEn: "Video Static", labelZh: "Video Static" },
+  { id: "video_dynamic", labelEn: "Video Dynamic", labelZh: "Video Dynamic" }
+];
+
+export const leaderboardHiddenMetrics = new Set(["psnr", "ssim"]);
+
+export const leaderboardMetricDimensions = [
+  {
+    id: "action_control",
+    labelEn: "Action Control",
+    labelZh: "Action Control",
+    href: "/doc/benchmark/metrics/dimensions/action-control/",
+    metrics: [
+      "prompt_alignment",
+      "semantic_alignment",
+      "camera_error",
+      "object_detection",
+      "motion_accuracy",
+      "keystroke_strict_action_accuracy",
+      "keystroke_partial_action_accuracy",
+      "keystroke_traj_score",
+      "keystroke_natet",
+      "keystroke_nater",
+      "keystroke_action_score"
+    ]
+  },
+  {
+    id: "quality",
+    labelEn: "Quality",
+    labelZh: "Quality",
+    href: "/doc/benchmark/metrics/dimensions/quality/",
+    metrics: [
+      "style_consistency",
+      "perceptual_quality",
+      "image_quality",
+      "hpsv3_norm",
+      "brightness_distribution_consistency",
+      "color_temperature_constraint",
+      "sharpness_retention",
+      "temporal_flickering",
+      "background_consistency",
+      "segment_continuity",
+      "rollout_aesthetic_drift",
+      "rollout_imaging_drift",
+      "long_sequence_aesthetic_quality",
+      "long_sequence_imaging_quality"
+    ]
+  },
+  {
+    id: "consistency_3d_4d",
+    labelEn: "3D / 4D Consistency",
+    labelZh: "3D / 4D Consistency",
+    href: "/doc/benchmark/metrics/dimensions/consistency-3d-4d/",
+    metrics: [
+      "met3r_consistency",
+      "reprojection_error",
+      "optical_flow_aepe",
+      "epipolar_error",
+      "epipolar_inlier_rate",
+      "feature_match_coverage",
+      "depth_accuracy",
+      "depth_collision",
+      "geometric_consistency",
+      "photometric_consistency",
+      "reconstruction_consistency",
+      "novel_region_fidelity",
+      "fvmd",
+      "jedi"
+    ]
+  },
+  {
+    id: "physics",
+    labelEn: "Physics",
+    labelZh: "Physics",
+    href: "/doc/benchmark/metrics/dimensions/physics/",
+    metrics: ["pmf", "motion_magnitude", "motion_smoothness", "long_sequence_dynamic_degree"]
+  },
+  {
+    id: "real_time",
+    labelEn: "Real-Time",
+    labelZh: "Real-Time",
+    href: "/doc/benchmark/metrics/dimensions/real-time/",
+    metrics: [
+      "realtime_factor",
+      "action_response_latency",
+      "latency_budget_pass_rate",
+      "effective_generation_fps",
+      "physical_fps_error",
+      "physical_fps_pct_error",
+      "physical_fps_intra_video_cv"
+    ]
+  },
+  {
+    id: "long_sequence",
+    labelEn: "Long Sequence",
+    labelZh: "Long Sequence",
+    href: "/doc/benchmark/metrics/dimensions/long_sequence/",
+    metrics: [
+      "scene_memory_f1",
+      "object_permanence",
+      "memory_revisit_consistency",
+      "memory_symmetry",
+      "long_sequence_motion_smoothness",
+      "seen_region_preservation"
+    ]
+  }
+];
+
+export const homePaper = {
+  titleEn: "WorldArena: A Unified Benchmark for World Model Evaluation",
+  titleZh: "WorldArena：面向世界模型评测的统一基准",
+  authorsEn: "Author One*, Author Two*, Author Three†",
+  authorsZh: "作者一*，作者二*，作者三†",
+  authorNoteEn: "* Equal contribution · † Corresponding author",
+  authorNoteZh: "* 同等贡献 · † 通讯作者",
+  affiliationsSuffixEn: " · Partner Institution · Placeholder University",
+  affiliationsSuffixZh: " · 合作单位 · 占位院校",
+  publishedEn: "Preprint · 2026 (forthcoming)",
+  publishedZh: "预印本 · 2026（待发布）",
+  reportLinks: [
+    { labelEn: "arXiv", labelZh: "arXiv", href: "#", placeholder: true },
+    { labelEn: "PDF", labelZh: "PDF", href: "#", placeholder: true }
+  ],
+  repositoryHref: "https://github.com/OpenEnvision/WorldArena",
+  repositoryLabelEn: "GitHub",
+  repositoryLabelZh: "GitHub",
+  leaderboardHref: "/leaderboard/",
+  email: "worldarena@openenvision.org",
+  communityLinks: [
+    { labelEn: "OpenEnvision", labelZh: "OpenEnvision", href: openEnvisionUrl },
+    { labelEn: "GitHub", labelZh: "GitHub", href: "https://github.com/OpenEnvision/WorldArena" },
+    { labelEn: "Hugging Face", labelZh: "Hugging Face", href: "#", placeholder: true },
+    { labelEn: "Discord", labelZh: "Discord", href: "#", placeholder: true }
+  ],
+  shareTextEn: "WorldArena — unified benchmark for world model evaluation",
+  shareTextZh: "WorldArena — 面向世界模型评测的统一基准"
+};
+
+export const homeNewsItems = [
+  {
+    date: "Jul 2026",
+    textEn: "WorldAtlas Arena site refresh with native leaderboard and benchmark documentation.",
+    textZh: "WorldAtlas Arena 站点更新：原生排行榜与基准文档。",
+    links: [
+      { labelEn: "Leaderboard", labelZh: "排行榜", href: "/leaderboard/" },
+      { labelEn: "Docs", labelZh: "文档", href: "/doc/benchmark/" }
+    ]
+  },
+  {
+    date: "TBD",
+    textEn: "Technical report and formal paper submission — coming soon.",
+    textZh: "技术报告与正式论文提交 — 即将发布。",
+    links: [{ labelEn: "Paper", labelZh: "论文", href: "#", placeholder: true }]
+  }
+];
+
+export const homeCitation = {
+  nameEn: "WorldAtlas Arena",
+  nameZh: "WorldAtlas Arena",
+  bibtex: `@article{worldarena2026,
+  title={WorldAtlas Arena: A Large-Scale Benchmark for Controllable World Generation},
+  author={TBD},
+  journal={arXiv preprint},
+  year={2026},
+  note={Placeholder citation — update before publication}
+}`
+};
+
+export const homeFooterContent = {
+  name: "WorldAtlas Arena",
+  taglineEn: "Large-scale benchmark for controllable world generation",
+  taglineZh: "面向可控世界生成的大规模评测基准",
+  contactEn: "worldarena@placeholder.org",
+  contactZh: "worldarena@placeholder.org",
+  columns: [
+    {
+      titleEn: "Explore",
+      titleZh: "探索",
+      links: [
+        { labelEn: "Home", labelZh: "首页", href: "/" },
+        { labelEn: "Leaderboard", labelZh: "排行榜", href: "/leaderboard/" },
+        { labelEn: "Arena Battle", labelZh: "Arena Battle", href: "/arena/" },
+        { labelEn: "Archive", labelZh: "自由探索", href: "/uncertain/" }
+      ]
+    },
+    {
+      titleEn: "Resources",
+      titleZh: "资源",
+      links: [
+        { labelEn: "Benchmark", labelZh: "基准评测", href: "/doc/benchmark/" },
+        { labelEn: "Metrics", labelZh: "指标体系", href: "/doc/benchmark/metrics/" },
+        { labelEn: "OpenEnvision", labelZh: "OpenEnvision", href: openEnvisionUrl },
+        { labelEn: "OpenEnvision GitHub", labelZh: "OpenEnvision GitHub", href: "https://github.com/OpenEnvision" },
+        { labelEn: "WorldFoundry", labelZh: "WorldFoundry", href: "https://github.com/OpenEnvision/WorldFoundry" },
+        { labelEn: "Gaia", labelZh: "Gaia", href: "https://github.com/OpenEnvision/Gaia" }
+      ]
+    },
+    {
+      titleEn: "Contact",
+      titleZh: "联系",
+      links: [
+        { labelEn: "Report an issue", labelZh: "反馈问题", href: "#", placeholder: true },
+        { labelEn: "Submission guide", labelZh: "提交说明", href: "/doc/benchmark/" }
+      ]
     }
   ]
 };
@@ -200,33 +429,25 @@ export const homeLeaderboard = {
 export const homeDocGroups = [
   {
     level: "01",
-    titleZh: "起步与架构",
-    titleEn: "Start & architecture",
-    summaryZh: "先理解仓库边界、任务家族、模型配置和运行时布局，再进入具体指标。",
-    summaryEn: "Begin with repo boundaries, task families, model configs, and runtime layout before reading individual metrics.",
+    titleZh: "起步",
+    titleEn: "Getting started",
+    summaryZh: "先理解运行时布局与文档结构，再进入具体指标。",
+    summaryEn: "Begin with runtime layout and the docs index before reading individual metrics.",
     links: [
       {
         titleZh: "文档总览",
         titleEn: "Docs index",
-        bodyZh: "按推荐顺序串起架构、基准、运行时、数据分析和开发文档。",
-        bodyEn: "The guided reading order across architecture, benchmark, runtime, analytics, and development.",
-        href: "/docs/",
+        bodyZh: "按推荐顺序串起基准、运行时、数据分析和开发文档。",
+        bodyEn: "The guided reading order across benchmark, runtime, analytics, and development.",
+        href: "/doc/",
         source: "docs/en|zh/index.md"
-      },
-      {
-        titleZh: "架构",
-        titleEn: "Architecture",
-        bodyZh: "统一 manifest、模型配置、指标和报告契约，避免按模型家族分叉。",
-        bodyEn: "A single contract for manifests, model configs, metrics, and reports.",
-        href: "/docs/architecture/",
-        source: "docs/en|zh/architecture.md"
       },
       {
         titleZh: "运行时布局",
         titleEn: "Runtime setup",
         bodyZh: "说明 cache、thirdparty、checkpoint 与适配器仓库如何接线。",
         bodyEn: "How cache, thirdparty checkouts, checkpoints, and adapters are wired.",
-        href: "/docs/thirdparty/",
+        href: "/doc/thirdparty/",
         source: "docs/en|zh/thirdparty.md"
       }
     ]
@@ -243,56 +464,32 @@ export const homeDocGroups = [
         titleEn: "Benchmark overview",
         bodyZh: "解释 image/video static/dynamic 四个 suite 以及不使用单一总分的原因。",
         bodyEn: "Explains the four image/video static/dynamic suites and why no single total score is used.",
-        href: "/docs/benchmark/",
+        href: "/doc/benchmark/",
         source: "docs/en|zh/benchmark/index.md"
-      },
-      {
-        titleZh: "协议与资格",
-        titleEn: "Protocol & eligibility",
-        bodyZh: "采样、条件输入、official/diagnostic/not_applicable 门控规则。",
-        bodyEn: "Sampling, conditioning, and official/diagnostic/not_applicable gates.",
-        href: "/docs/benchmark/protocol/",
-        source: "docs/en|zh/benchmark/protocol.md"
-      },
-      {
-        titleZh: "工作流与输出",
-        titleEn: "Workflow & outputs",
-        bodyZh: "从 build-manifest、run-model 到 leaderboard.csv 的完整产物流。",
-        bodyEn: "The artifact flow from build-manifest and run-model to leaderboard.csv.",
-        href: "/docs/benchmark/workflow/",
-        source: "docs/en|zh/benchmark/workflow.md"
       },
       {
         titleZh: "指标总览",
         titleEn: "Metrics overview",
         bodyZh: "按 suite 和维度阅读 config/benchmark.yaml 中的完整指标面。",
         bodyEn: "Read the full config/benchmark.yaml metric surface by suite and dimension.",
-        href: "/docs/benchmark/metrics/",
+        href: "/doc/benchmark/metrics/",
         source: "docs/en|zh/benchmark/metrics/index.md"
       }
     ]
   },
   {
     level: "03",
-    titleZh: "六个评测支柱",
-    titleEn: "Six evaluation pillars",
-    summaryZh: "指标不是平铺列表，而是按能力层级组织成长序列、控制、3D/4D、物理、质量和实时。",
-    summaryEn: "Metrics are organized by capability: long sequence, control, 3D/4D, physics, quality, and real time.",
+    titleZh: "五个评测支柱",
+    titleEn: "Five evaluation pillars",
+    summaryZh: "指标按能力层级组织为控制、3D/4D、物理、质量和实时。",
+    summaryEn: "Metrics are organized by capability: control, 3D/4D, physics, quality, and real time.",
     links: [
-      {
-        titleZh: "长序列记忆",
-        titleEn: "Long sequence",
-        bodyZh: "状态记忆、外观保持与长时序 rollout 稳定性。",
-        bodyEn: "State retention, appearance persistence, and long-horizon rollout stability.",
-        href: "/docs/benchmark/metrics/dimensions/long-sequence/",
-        source: "docs/en|zh/benchmark/metrics/dimensions/long_sequence.md"
-      },
       {
         titleZh: "动作控制",
         titleEn: "Action control",
         bodyZh: "scene control、camera control、object/action control 的统一入口。",
         bodyEn: "Unified entry for scene, camera, object, and action control.",
-        href: "/docs/benchmark/metrics/dimensions/action-control/",
+        href: "/doc/benchmark/metrics/dimensions/action-control/",
         source: "docs/en|zh/benchmark/metrics/dimensions/action_control.md"
       },
       {
@@ -300,7 +497,7 @@ export const homeDocGroups = [
         titleEn: "3D/4D consistency",
         bodyZh: "几何、多视角、重投影与运动场一致性。",
         bodyEn: "Geometry, multiview, reprojection, and motion-field consistency.",
-        href: "/docs/benchmark/metrics/dimensions/consistency-3d-4d/",
+        href: "/doc/benchmark/metrics/dimensions/consistency-3d-4d/",
         source: "docs/en|zh/benchmark/metrics/dimensions/consistency_3d_4d.md"
       },
       {
@@ -308,7 +505,7 @@ export const homeDocGroups = [
         titleEn: "Physics",
         bodyZh: "运动物理真实性与 simulator-backed physics 指标。",
         bodyEn: "Physical motion realism and simulator-backed physics metrics.",
-        href: "/docs/benchmark/metrics/dimensions/physics/",
+        href: "/doc/benchmark/metrics/dimensions/physics/",
         source: "docs/en|zh/benchmark/metrics/dimensions/physics.md"
       },
       {
@@ -316,7 +513,7 @@ export const homeDocGroups = [
         titleEn: "Quality",
         bodyZh: "风格、感知质量、低层外观稳定性与重建式保真。",
         bodyEn: "Style, perceptual quality, low-level appearance stability, and reconstruction fidelity.",
-        href: "/docs/benchmark/metrics/dimensions/quality/",
+        href: "/doc/benchmark/metrics/dimensions/quality/",
         source: "docs/en|zh/benchmark/metrics/dimensions/quality.md"
       },
       {
@@ -324,7 +521,7 @@ export const homeDocGroups = [
         titleEn: "Real time",
         bodyZh: "节奏、FPS 标定、生成效率和实时性约束。",
         bodyEn: "Tempo, FPS calibration, generation efficiency, and latency constraints.",
-        href: "/docs/benchmark/metrics/dimensions/real-time/",
+        href: "/doc/benchmark/metrics/dimensions/real-time/",
         source: "docs/en|zh/benchmark/metrics/dimensions/real_time.md"
       }
     ]
@@ -341,7 +538,7 @@ export const homeDocGroups = [
         titleEn: "Dataset overview",
         bodyZh: "11,653 条 benchmark item，以及 image/video/physics 的层级拓扑。",
         bodyEn: "11,653 benchmark items and the image/video/physics hierarchy.",
-        href: "/docs/overview/",
+        href: "/doc/overview/",
         source: "docs/en|zh/overview.md"
       },
       {
@@ -349,7 +546,7 @@ export const homeDocGroups = [
         titleEn: "Images & videos",
         bodyZh: "静态/动态图像、视频集合、标注覆盖率和样例画廊。",
         bodyEn: "Static/dynamic images, video collections, annotation coverage, and galleries.",
-        href: "/docs/images/",
+        href: "/doc/images/",
         source: "docs/en|zh/images.md"
       },
       {
@@ -357,7 +554,7 @@ export const homeDocGroups = [
         titleEn: "Captions & collections",
         bodyZh: "天气、时间、场景标签、collection volume 与分布统计。",
         bodyEn: "Weather, time, scene tags, collection volume, and distribution summaries.",
-        href: "/docs/captions/",
+        href: "/doc/captions/",
         source: "docs/en|zh/captions.md"
       },
       {
@@ -365,14 +562,14 @@ export const homeDocGroups = [
         titleEn: "Development",
         bodyZh: "维护者命令、校验流程、生成文档和发布卫生。",
         bodyEn: "Maintainer commands, validation, generated docs, and release hygiene.",
-        href: "/docs/development/",
+        href: "/doc/development/",
         source: "docs/en|zh/development.md"
       }
     ]
   }
 ];
 
-const allContentPages = [...docsPages, awesomeWorldModelsPage];
+const allContentPages = [...docsPages];
 const derivedTags = allContentPages.flatMap((page) => page.tags || []);
 
 export const archiveTags = Array.from(
@@ -400,12 +597,12 @@ export const archiveItems = allContentPages.map((page, index) => ({
   id: page.id,
   title: page.title,
   type: page.section,
-  year: page.route === "/awesome-world-models/" ? "2026" : "Docs",
-  image: page.route === "/awesome-world-models/" ? "/assets/awesome-world-models/image/generative_wm.png?v=20260502-doc-polish-v2" : "",
+  year: "Docs",
+  image: "",
   href: page.route,
   accent: palette[index % palette.length],
   tags: page.tags?.length ? page.tags : [page.section.toLowerCase()],
-  summary: page.summary || "WorldArena documentation page."
+  summary: page.summary || "WorldAtlas Arena documentation page."
 }));
 
 const arenaBattleHomePost = {
@@ -421,11 +618,10 @@ const selectedHomeEntries = [
   benchmarkPage,
   metricsPage,
   arenaBattleHomePost,
-  architecturePage,
-  workflowPage,
-  runtimePage,
-  awesomeWorldModelsPage,
-  developmentPage
+  developmentPage,
+  awesomeWorldModelingHomePost,
+  worldFoundryHomePost,
+  gaiaHomePost
 ].filter(Boolean);
 
 export const homePosts = selectedHomeEntries.map((entry, index) => ({
@@ -434,5 +630,5 @@ export const homePosts = selectedHomeEntries.map((entry, index) => ({
   image: entry.image || homeVisuals[index % homeVisuals.length],
   accent: entry.accent || palette[index % palette.length],
   href: entry.href || entry.route,
-  body: entry.body || entry.summary || "Open this WorldArena documentation section."
+  body: entry.body || entry.summary || "Open this WorldAtlas Arena documentation section."
 }));

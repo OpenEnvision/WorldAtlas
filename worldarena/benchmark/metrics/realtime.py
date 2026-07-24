@@ -1,3 +1,5 @@
+"""Real-time interaction metric implementations (latency, action response)."""
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -25,6 +27,7 @@ SUPPORTED_REALTIME_BACKENDS = {"generation_metadata", "action_flow"}
 
 
 def _not_applicable(metric_name: str, backend: str, reason: str, **details: Any) -> MetricOutput:
+    """Build a skipped MetricOutput when a realtime metric cannot run."""
     return MetricOutput(
         raw=None,
         normalized=None,
@@ -36,6 +39,7 @@ def _not_applicable(metric_name: str, backend: str, reason: str, **details: Any)
 
 
 def _coerce_float(value: Any) -> float | None:
+    """Parse a value to a finite float or return None when invalid."""
     if value is None:
         return None
     try:
@@ -48,6 +52,7 @@ def _coerce_float(value: Any) -> float | None:
 
 
 def _coerce_int(value: Any) -> int | None:
+    """Round a coerced float to the nearest integer frame or count."""
     number = _coerce_float(value)
     if number is None:
         return None
@@ -56,6 +61,7 @@ def _coerce_int(value: Any) -> int | None:
 
 @lru_cache(maxsize=128)
 def _load_generation_record_file(path_text: str) -> tuple[dict[str, Any], ...]:
+    """Parse JSONL generation records from a cached file path."""
     path = Path(path_text)
     records: list[dict[str, Any]] = []
     if not path.exists():
@@ -73,6 +79,7 @@ def _load_generation_record_file(path_text: str) -> tuple[dict[str, Any], ...]:
 
 
 def _candidate_record_files(prediction_path: Path) -> list[Path]:
+    """Search parent directories for generation_records JSONL sidecars."""
     directories: list[Path] = []
     current = prediction_path.resolve().parent
     for _ in range(3):
@@ -88,6 +95,7 @@ def _candidate_record_files(prediction_path: Path) -> list[Path]:
 
 
 def _resolve_record_path(value: Any, *, base_dir: Path) -> Path | None:
+    """Resolve a possibly relative generation-record path against a base dir."""
     if not value:
         return None
     path = Path(str(value)).expanduser()
@@ -100,6 +108,7 @@ def _resolve_record_path(value: Any, *, base_dir: Path) -> Path | None:
 
 
 def _find_generation_record(sample: BenchmarkSample, prediction_path: Path) -> dict[str, Any] | None:
+    """Match a prediction video to its generation timing/action record."""
     resolved_prediction = prediction_path.resolve()
     fallback_by_sample: dict[str, Any] | None = None
     for records_file in _candidate_record_files(prediction_path):
@@ -118,6 +127,7 @@ def _find_generation_record(sample: BenchmarkSample, prediction_path: Path) -> d
 
 
 def _video_probe(path: Path) -> dict[str, float | int | None]:
+    """Read frame count, FPS, and duration from a video with OpenCV."""
     import cv2
 
     capture = cv2.VideoCapture(str(path))
@@ -141,6 +151,7 @@ def _target_fps(
     sample: BenchmarkSample,
     probe_fps: float | None,
 ) -> float | None:
+    """Resolve target FPS from runtime, records, sample metadata, or probe."""
     for value in [
         runtime.get("target_fps"),
         (record or {}).get("target_fps"),
@@ -156,6 +167,7 @@ def _target_fps(
 
 
 def _generation_wall_time(record: dict[str, Any] | None) -> float | None:
+    """Extract wall-clock generation time from a generation record."""
     if not record:
         return None
     for key in [
@@ -171,6 +183,7 @@ def _generation_wall_time(record: dict[str, Any] | None) -> float | None:
 
 
 class RealtimeThroughputMetric(Metric):
+    """Score effective FPS or realtime factor from generation metadata."""
     def __init__(
         self,
         metric_name: str,
@@ -178,6 +191,7 @@ class RealtimeThroughputMetric(Metric):
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Validate generation-metadata backend and store runtime options."""
         super().__init__(metric_name, backend, normalization)
         self.runtime = dict(runtime or {})
         resolve_metric_backend(
@@ -193,6 +207,7 @@ class RealtimeThroughputMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Derive throughput from wall time, frame count, and video duration."""
         del reference
 
         backend = resolve_metric_backend(
@@ -267,6 +282,7 @@ class RealtimeThroughputMetric(Metric):
 
 
 def _load_action_payload(record: dict[str, Any] | None, prediction_path: Path) -> dict[str, Any] | None:
+    """Load inline or sidecar action JSON referenced by a generation record."""
     if not record:
         return None
     inline = record.get("action_payload")
@@ -283,12 +299,14 @@ def _load_action_payload(record: dict[str, Any] | None, prediction_path: Path) -
 
 
 def _row_tuple(keyboard_row: Any, mouse_row: Any) -> tuple[tuple[float, ...], tuple[float, ...]]:
+    """Normalize keyboard and mouse rows into hashable tuples for segmentation."""
     keyboard = tuple(float(value) for value in (keyboard_row or []))
     mouse = tuple(float(value) for value in (mouse_row or []))
     return keyboard, mouse
 
 
 def _action_segments(payload: dict[str, Any], frame_count: int) -> list[dict[str, Any]]:
+    """Split keyboard/mouse timelines into constant-action frame segments."""
     keyboard_rows = list(payload.get("keyboard_condition") or [])
     mouse_rows = list(payload.get("mouse_condition") or [])
     total_rows = max(len(keyboard_rows), len(mouse_rows), int(payload.get("total_frames") or 0), 0)
@@ -325,6 +343,7 @@ def _action_segments(payload: dict[str, Any], frame_count: int) -> list[dict[str
 
 
 def _response_spec(segment: dict[str, Any]) -> tuple[str, float] | None:
+    """Infer expected horizontal or radial motion direction from an action segment."""
     keyboard = np.asarray(segment.get("keyboard") or [], dtype=np.float32)
     mouse = np.asarray(segment.get("mouse") or [], dtype=np.float32)
 
@@ -344,6 +363,7 @@ def _response_spec(segment: dict[str, Any]) -> tuple[str, float] | None:
 
 
 def _decode_video_frames(path: Path, *, max_width: int) -> list[np.ndarray]:
+    """Decode grayscale frames downscaled for optical-flow latency analysis."""
     import cv2
 
     capture = cv2.VideoCapture(str(path))
@@ -365,6 +385,7 @@ def _decode_video_frames(path: Path, *, max_width: int) -> list[np.ndarray]:
 
 
 def _flow_signal(left: np.ndarray, right: np.ndarray, spec: tuple[str, float]) -> float:
+    """Measure signed optical-flow response along the expected action axis."""
     import cv2
 
     flow = cv2.calcOpticalFlowFarneback(
@@ -402,6 +423,7 @@ def _first_response_latency_frames(
     min_response_signal: float,
     baseline_window_frames: int,
 ) -> int | None:
+    """Detect the first frame where flow exceeds a baseline threshold."""
     start = int(segment["start_frame"])
     search_start = max(start - 1, 0)
     search_end = min(max(next_start, start + 1), len(frames) - 1)
@@ -435,6 +457,7 @@ def _measure_action_latencies(
     fps: float,
     runtime: dict[str, Any],
 ) -> dict[str, Any]:
+    """Estimate per-action response latencies from flow in the prediction video."""
     probe = _video_probe(prediction_path)
     frame_count = int(probe["frame_count"] or 0)
     if frame_count <= 1:
@@ -497,6 +520,7 @@ def _measure_action_latencies(
 
 
 class InteractionLatencyMetric(Metric):
+    """Measure mean action latency or latency-budget pass rate from flow cues."""
     def __init__(
         self,
         metric_name: str,
@@ -504,6 +528,7 @@ class InteractionLatencyMetric(Metric):
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Validate action-flow backend and store latency runtime options."""
         super().__init__(metric_name, backend, normalization)
         self.runtime = dict(runtime or {})
         resolve_metric_backend(
@@ -519,6 +544,7 @@ class InteractionLatencyMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Score action-response latency or budget pass rate from flow events."""
         del reference
 
         backend = resolve_metric_backend(
@@ -608,6 +634,7 @@ def build_realtime_metric(
     normalization: dict[str, Any],
     runtime: dict[str, Any] | None = None,
 ) -> Metric:
+    """Factory that returns throughput or interaction latency metric instances."""
     if metric_name in REALTIME_THROUGHPUT_METRICS:
         return RealtimeThroughputMetric(
             metric_name=metric_name,

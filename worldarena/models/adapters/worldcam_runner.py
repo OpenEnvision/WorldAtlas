@@ -1,3 +1,10 @@
+"""Subprocess entry point that runs WorldCam inference inside the model repo.
+
+Loaded by ``WorldCamAdapter`` via ``python -m worldarena.models.adapters.worldcam_runner``.
+The runner bootstraps Wan2.1 base weights, loads fine-tuned DiT checkpoints, and
+writes the predicted video to ``--output_path``.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -13,6 +20,8 @@ from worldarena.benchmark.annotations import load_camera_matrices, load_intrinsi
 from worldarena.common.checkpoints import apply_checkpoint_env, hf_local_dir, resolve_checkpoint_path
 
 
+# Latent-window constants from WorldCam's autoregressive rollout; used to derive
+# the minimum number of camera frames required for a given num_ar_steps.
 CAMERA_WINDOW_LATENTS = 8
 GENERATED_WINDOW_LATENTS = 8
 CAMERA_SAMPLES_PER_LATENT = 4
@@ -28,7 +37,7 @@ DTYPE_MAP = {
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldCam subprocess runner for WorldArena.")
+    parser = argparse.ArgumentParser(description="WorldCam subprocess runner for WorldAtlas Arena.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", default=None, type=str)
     parser.add_argument("--input_video", required=True, type=str)
@@ -40,7 +49,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--width", default=832, type=int)
     parser.add_argument("--cond_frames", default=65, type=int)
     parser.add_argument("--camera_frames", default=233, type=int)
-    parser.add_argument("--output_fps", default=30, type=int)
+    parser.add_argument("--output_fps", default=30.0, type=float)
+    parser.add_argument("--output_frames", default=None, type=int)
     parser.add_argument("--output_quality", default=4, type=int)
     parser.add_argument("--cfg_scale", default=4.0, type=float)
     parser.add_argument("--seed", default=0, type=int)
@@ -60,6 +70,7 @@ def _minimum_camera_frames(
     num_ar_steps: int,
     padding_frames: int = CAMERA_PADDING_FRAMES,
 ) -> int:
+    """Return the shortest pose sequence that can sustain ``num_ar_steps`` AR rollout."""
     required_after_drop = CAMERA_SAMPLES_PER_LATENT * (
         num_ar_steps + CAMERA_WINDOW_LATENTS + GENERATED_WINDOW_LATENTS - 1
     )
@@ -67,6 +78,7 @@ def _minimum_camera_frames(
 
 
 def _conditioning_frames(video_path: Path, *, cond_frames: int, height: int, width: int) -> list[Image.Image]:
+    """Decode the first ``cond_frames`` from the conditioning video, padding by repeating the last frame."""
     capture = cv2.VideoCapture(str(video_path))
     if not capture.isOpened():
         raise RuntimeError(f"failed to open conditioning video: {video_path}")
@@ -91,6 +103,7 @@ def _conditioning_frames(video_path: Path, *, cond_frames: int, height: int, wid
 
 
 def _camera_inputs(annotation_path: str, *, camera_frames: int) -> tuple[np.ndarray, np.ndarray]:
+    """Load and align GT camera extrinsics/intrinsics to the requested frame count."""
     extrinsics = load_camera_matrices(annotation_path, target_frames=camera_frames)
     intrinsics = load_intrinsics_sequence(annotation_path, target_frames=camera_frames)
     if extrinsics is None:
@@ -114,6 +127,7 @@ def _torch_dtype_name(raw: str) -> str:
 
 
 def _base_model_root() -> Path:
+    """Locate the local Wan2.1-T2V-1.3B base weights required by WorldCam."""
     required_files = (
         "models_t5_umt5-xxl-enc-bf16.pth",
         "Wan2.1_VAE.pth",
@@ -227,6 +241,14 @@ def main() -> None:
         num_ar_steps=args.num_ar_steps,
         attention_sink_inference=args.attention_sink_inference,
     )
+    if args.output_frames is not None:
+        if args.output_frames <= 0:
+            raise ValueError(f"output_frames must be positive, got {args.output_frames}")
+        if len(video) < args.output_frames:
+            raise RuntimeError(
+                f"WorldCam generated {len(video)} frames, fewer than requested {args.output_frames}"
+            )
+        video = video[: args.output_frames]
     save_video(video, str(output_path), fps=args.output_fps, quality=args.output_quality)
 
 

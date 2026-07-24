@@ -28,7 +28,7 @@ def _populate_processor_snapshot(snapshot_dir: Path) -> None:
 
 
 def _patch_checkpoint_root(monkeypatch, tmp_path: Path) -> Path:
-    repo_root = tmp_path / "WorldArena"
+    repo_root = tmp_path / "WorldAtlas Arena"
     ckpt_root = repo_root / "ckpt"
     monkeypatch.setattr(checkpoints, "PROJECT_ROOT", repo_root)
     monkeypatch.setattr(checkpoints, "CANONICAL_CHECKPOINT_ROOT", ckpt_root)

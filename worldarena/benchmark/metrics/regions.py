@@ -1,3 +1,5 @@
+"""Seen/novel region metric implementations."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -20,7 +22,6 @@ from worldarena.common.video_io import read_video_frame
 
 
 SEEN_REGION_BACKENDS = {"flow_dino"}
-NOVEL_REGION_BACKENDS = {"flow_dino"}
 OBJECT_PERMANENCE_BACKENDS = {"mask_dino"}
 _FLOW_PARAMS = {
     "pyr_scale": 0.5,
@@ -37,6 +38,7 @@ _MIN_MASK_PIXELS = 64
 
 
 def _resolve_static_mask_source(sample: BenchmarkSample) -> Path | None:
+    """Locate dynamic-mask archives used to ignore moving regions in flow masks."""
     if sample.mask_path:
         candidate = Path(sample.mask_path)
         if candidate.exists():
@@ -49,6 +51,7 @@ def _resolve_static_mask_source(sample: BenchmarkSample) -> Path | None:
 
 
 def _load_ignore_masks(sample: BenchmarkSample, reference: LoadedMedia) -> np.ndarray | None:
+    """Load per-frame ignore masks aligned to sampled reference frames."""
     source = _resolve_static_mask_source(sample)
     if source is None or not reference.frames:
         return None
@@ -63,10 +66,12 @@ def _load_ignore_masks(sample: BenchmarkSample, reference: LoadedMedia) -> np.nd
 
 
 def _frame_coverage(mask: np.ndarray) -> float:
+    """Return the fraction of pixels covered by a boolean region mask."""
     return float(np.mean(mask.astype(np.float32)))
 
 
 def _masked_psnr(left: np.ndarray, right: np.ndarray, mask: np.ndarray) -> float | None:
+    """Compute mask-weighted PSNR mapped into [0, 1] for region scoring."""
     valid = bool(np.any(mask))
     if not valid:
         return None
@@ -81,6 +86,7 @@ def _masked_psnr(left: np.ndarray, right: np.ndarray, mask: np.ndarray) -> float
 
 
 def _masked_crop(frame: np.ndarray, mask: np.ndarray, *, margin: int = 4) -> np.ndarray | None:
+    """Crop a tight bounding box around a mask and fill exterior pixels with mean color."""
     coords = np.argwhere(mask)
     if coords.shape[0] < _MIN_MASK_PIXELS:
         return None
@@ -98,6 +104,7 @@ def _masked_crop(frame: np.ndarray, mask: np.ndarray, *, margin: int = 4) -> np.
 
 
 def _masked_dino_similarity(left: np.ndarray, right: np.ndarray, mask: np.ndarray) -> float | None:
+    """Compare DINO features on masked crops when enough valid pixels exist."""
     left_crop = _masked_crop(left, mask)
     right_crop = _masked_crop(right, mask)
     if left_crop is None or right_crop is None:
@@ -107,6 +114,7 @@ def _masked_dino_similarity(left: np.ndarray, right: np.ndarray, mask: np.ndarra
 
 
 def _flow(frame_a: np.ndarray, frame_b: np.ndarray) -> np.ndarray:
+    """Estimate dense Farneback optical flow between two RGB frames."""
     gray_a = cv2.cvtColor(frame_a, cv2.COLOR_RGB2GRAY)
     gray_b = cv2.cvtColor(frame_b, cv2.COLOR_RGB2GRAY)
     return cv2.calcOpticalFlowFarneback(gray_a, gray_b, None, **_FLOW_PARAMS)
@@ -119,6 +127,7 @@ def _seen_novel_masks(
     ignore_masks: np.ndarray | None = None,
     fb_threshold: float = 1.5,
 ) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    """Split each target frame into forward-warped seen and complementary novel regions."""
     height, width = source_frame.shape[:2]
     grid_x, grid_y = np.meshgrid(
         np.arange(width, dtype=np.float32),
@@ -157,6 +166,7 @@ def _composite_mask_score(
     reference_frame: np.ndarray,
     mask: np.ndarray,
 ) -> tuple[float | None, dict[str, float | None]]:
+    """Blend masked PSNR and DINO similarity into one region fidelity score."""
     prediction_aligned = _resize_like(prediction_frame, reference_frame)
     psnr_component = _masked_psnr(prediction_aligned, reference_frame, mask)
     dino_component = _masked_dino_similarity(prediction_aligned, reference_frame, mask)
@@ -170,6 +180,7 @@ def _composite_mask_score(
 
 
 def _weighted_average(values: list[float], weights: list[float]) -> float | None:
+    """Average frame scores with coverage weights, falling back to a plain mean."""
     if not values:
         return None
     weights_array = np.asarray(weights, dtype=np.float32)
@@ -179,9 +190,12 @@ def _weighted_average(values: list[float], weights: list[float]) -> float | None
 
 
 class _RegionMetric(Metric):
+    """Shared flow-based seen/novel mask extraction for region metrics."""
+
     backend_name: str
 
     def _resolve_backend(self, supported_backends: set[str], auto_backend: str) -> str:
+        """Validate backend selection for flow-and-DINO region scoring."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -194,14 +208,18 @@ class _RegionMetric(Metric):
         sample: BenchmarkSample,
         reference: LoadedMedia,
     ) -> tuple[list[np.ndarray], list[np.ndarray]]:
+        """Build seen and novel masks from the first reference frame via optical flow."""
         if reference.modality != "video" or len(reference.frames) < 2:
-            raise ValueError("region metrics require at least two reference video frames")
+            raise NotImplementedError("region metrics require at least two reference video frames")
         ignore_masks = _load_ignore_masks(sample, reference)
         return _seen_novel_masks(reference.frames[0], reference.frames, ignore_masks=ignore_masks)
 
 
 class SeenRegionPreservationMetric(_RegionMetric):
+    """Score how well previously seen reference regions are preserved in the prediction."""
+
     def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+        """Register seen-region preservation with flow-DINO backend validation."""
         super().__init__("seen_region_preservation", backend, normalization)
 
     def compute(
@@ -210,6 +228,7 @@ class SeenRegionPreservationMetric(_RegionMetric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Average masked fidelity over forward-warped seen regions in later frames."""
         backend = self._resolve_backend(SEEN_REGION_BACKENDS, "flow_dino")
         details = _protocol_details(prediction)
         try:
@@ -245,60 +264,14 @@ class SeenRegionPreservationMetric(_RegionMetric):
                 backend=backend,
                 details=details,
             )
-        except Exception as exc:
+        except NotImplementedError as exc:
             return MetricOutput(
                 raw=None,
                 normalized=None,
                 backend=backend,
                 details=details,
+                eligibility_status="not_applicable",
                 error=str(exc),
-            )
-
-
-class NovelRegionFidelityMetric(_RegionMetric):
-    def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
-        super().__init__("novel_region_fidelity", backend, normalization)
-
-    def compute(
-        self,
-        sample: BenchmarkSample,
-        prediction: LoadedMedia,
-        reference: LoadedMedia,
-    ) -> MetricOutput:
-        backend = self._resolve_backend(NOVEL_REGION_BACKENDS, "flow_dino")
-        details = _protocol_details(prediction)
-        try:
-            _, novel_masks = self._region_masks(sample, reference)
-            scores: list[float] = []
-            weights: list[float] = []
-            frame_details: list[dict[str, float | None]] = []
-            for index, (prediction_frame, reference_frame, mask) in enumerate(
-                zip(prediction.frames[1:], reference.frames[1:], novel_masks[1:]),
-                start=1,
-            ):
-                coverage = _frame_coverage(mask)
-                score, components = _composite_mask_score(prediction_frame, reference_frame, mask)
-                frame_details.append(
-                    {
-                        "frame_index": float(index),
-                        "coverage": coverage,
-                        **components,
-                        "score": score,
-                    }
-                )
-                if score is None or int(mask.sum()) < _MIN_MASK_PIXELS:
-                    continue
-                scores.append(score)
-                weights.append(max(coverage, 1e-6))
-            raw = _weighted_average(scores, weights)
-            if raw is None:
-                raise ValueError("no valid novel-region frame scores were available")
-            details["frame_scores"] = frame_details
-            return MetricOutput(
-                raw=raw,
-                normalized=_normalize_or_identity(raw, self.normalization),
-                backend=backend,
-                details=details,
             )
         except Exception as exc:
             return MetricOutput(
@@ -311,6 +284,7 @@ class NovelRegionFidelityMetric(_RegionMetric):
 
 
 def _resolve_dynamic_mask_source(sample: BenchmarkSample) -> Path:
+    """Find segmentation mask archives required for object-permanence scoring."""
     if sample.mask_path:
         candidate = Path(sample.mask_path)
         if candidate.exists():
@@ -323,7 +297,10 @@ def _resolve_dynamic_mask_source(sample: BenchmarkSample) -> Path:
 
 
 class ObjectPermanenceMetric(Metric):
+    """Track whether masked objects stay as stable as in the reference over time."""
+
     def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+        """Register object permanence with mask-DINO backend validation."""
         super().__init__("object_permanence", backend, normalization)
 
     def compute(
@@ -332,6 +309,7 @@ class ObjectPermanenceMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Compare prediction object appearance drift against reference using masked DINO features."""
         backend = resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -339,9 +317,16 @@ class ObjectPermanenceMetric(Metric):
             supported_backends=OBJECT_PERMANENCE_BACKENDS,
         )
         details = _protocol_details(prediction)
+        if reference.modality != "video" or not reference.frames:
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=details,
+                eligibility_status="not_applicable",
+                error="object permanence requires a video reference",
+            )
         try:
-            if reference.modality != "video" or not reference.frames:
-                raise ValueError("object permanence requires a video reference")
             mask_source = _resolve_dynamic_mask_source(sample)
             masks = load_dyn_mask_sequence(
                 mask_source,
@@ -445,7 +430,6 @@ class ObjectPermanenceMetric(Metric):
 
 
 __all__ = [
-    "NovelRegionFidelityMetric",
     "ObjectPermanenceMetric",
     "SeenRegionPreservationMetric",
 ]

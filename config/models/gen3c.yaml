@@ -7,20 +7,21 @@ model:
   control_signals: [text, image, camera_pose]
   roles: [candidate]
   # GEN3C's published environment targets Python 3.10 plus custom CUDA extensions.
-  # WorldArena expects the GEN3C inference code from the prepared checkout below.
-  repo_root: /bench-workspace/yesliu/hjd/model/tmp/GEN3C
+  # WorldAtlas Arena expects the GEN3C inference code from the prepared checkout below.
+  python_bin: ../conda/envs/gen3c/bin/python
+  repo_root: thirdparty/GEN3C
   # Store the main model under ckpt/nvidia--GEN3C-Cosmos-7B and keep companion tokenizer/T5/MoGe weights under ckpt/.
   checkpoint_dir: ckpt/nvidia--GEN3C-Cosmos-7B
-  python_bin: /share/project/yesliu/miniconda3/envs/cosmos-predict1/bin/python
   entrypoint: cosmos_predict1/diffusion/inference/gen3c_single_image.py
   output_ext: .mp4
   supported_suites:
     - image_static
-    - video_static
-    - video_dynamic
-  prompt_mode: prompt_target
+  # Camera motion is supplied by the canonical per-frame pose path; keep the
+  # text prompt scene-only so it cannot redefine the camera control.
+  prompt_mode: prompt_current
   reference_mode: first_frame
   generation:
+    require_persistent_batch: true
     num_gpus: 1
     num_video_frames: 121
     height: 704

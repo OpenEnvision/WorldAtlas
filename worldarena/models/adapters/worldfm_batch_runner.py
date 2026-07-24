@@ -1,3 +1,5 @@
+"""Batch subprocess runner for WorldFM inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +29,7 @@ from worldarena.models.adapters.worldfm_runner import (
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena persistent WorldFM batch runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena persistent WorldFM batch runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", required=True, type=str)
     parser.add_argument("--batch_spec_path", required=True, type=str)
@@ -160,7 +162,7 @@ def _camera_payload(
         raise FileNotFoundError(f"intrinsics.npy not found under annotation path: {annotation_path}")
     if len(intrinsics) > 1 and not np.allclose(intrinsics, intrinsics[0], atol=1e-4):
         print(
-            "[WorldArena][WorldFM] intrinsics vary across frames; using the first matrix for all poses.",
+            "[WorldAtlas Arena][WorldFM] intrinsics vary across frames; using the first matrix for all poses.",
             flush=True,
         )
     k_matrix = np.asarray(_intrinsics_vector_to_matrix(intrinsics[0]), dtype=np.float64)
@@ -422,17 +424,17 @@ def _write_prediction_video(
     try:
         panorama_prompt = " ".join(str(request.get("panorama_prompt") or request.get("prompt") or "").split())
         if panorama_prompt:
-            print(f"[WorldArena][WorldFM] Panorama prompt: {panorama_prompt}", flush=True)
+            print(f"[WorldAtlas Arena][WorldFM] Panorama prompt: {panorama_prompt}", flush=True)
         panorama_negative_prompt = " ".join(str(request.get("panorama_negative_prompt") or "").split())
         if panorama_negative_prompt:
-            print(f"[WorldArena][WorldFM] Panorama negative prompt: {panorama_negative_prompt}", flush=True)
+            print(f"[WorldAtlas Arena][WorldFM] Panorama negative prompt: {panorama_negative_prompt}", flush=True)
         panorama_img = runtime.step1_panorama(
             image_path,
             prompt=panorama_prompt,
             negative_prompt=panorama_negative_prompt,
         )
         pp_result = runtime.step2_moge(panorama_img, work_dir)
-        print("[WorldArena][WorldFM] Initializing renderer and condition DB", flush=True)
+        print("[WorldAtlas Arena][WorldFM] Initializing renderer and condition DB", flush=True)
         renderer, cond_db, rcfg, size = runtime.pipeline.step3_init(pp_result, cfg=runtime.cfg)
         k_matrix, c2w_list = _camera_payload(
             str(request["annotation_path"]),
@@ -444,7 +446,7 @@ def _write_prediction_video(
             _cache_condition_candidates(runtime, pp_result, work_dir)
         for frame_index, c2w in enumerate(c2w_list, start=1):
             print(
-                f"[WorldArena][WorldFM] {request['prediction_stem']} frame {frame_index}/{len(c2w_list)}",
+                f"[WorldAtlas Arena][WorldFM] {request['prediction_stem']} frame {frame_index}/{len(c2w_list)}",
                 flush=True,
             )
             render_u8, cond2_index, hits, samples = _render_one_with_condition_index(
@@ -458,7 +460,7 @@ def _write_prediction_video(
                 render_size=size,
             )
             print(
-                f"[WorldArena][WorldFM] Selected condition: idx={cond2_index} hits={hits}/{samples}",
+                f"[WorldAtlas Arena][WorldFM] Selected condition: idx={cond2_index} hits={hits}/{samples}",
                 flush=True,
             )
             if cache_condition_latents:
@@ -522,7 +524,7 @@ def main() -> None:
     )
     _enable_panorama_matrix_cache(pipeline)
     requests = _load_batch_spec(Path(args.batch_spec_path).expanduser().resolve())
-    print(f"[WorldArena][WorldFM] Loaded {len(requests)} requests", flush=True)
+    print(f"[WorldAtlas Arena][WorldFM] Loaded {len(requests)} requests", flush=True)
     runtime = _Runtime(pipeline=pipeline, cfg=cfg)
     results_path = Path(args.batch_spec_path).with_suffix(".results.jsonl")
     results_path.unlink(missing_ok=True)
@@ -533,7 +535,7 @@ def main() -> None:
         for index, request in enumerate(requests, start=1):
             output_path = Path(str(request["output_path"])).expanduser().resolve()
             print(
-                f"[WorldArena][WorldFM] Batch item {index}/{len(requests)}: {request['prediction_stem']}",
+                f"[WorldAtlas Arena][WorldFM] Batch item {index}/{len(requests)}: {request['prediction_stem']}",
                 flush=True,
             )
             record: dict[str, Any] = {
@@ -558,7 +560,7 @@ def main() -> None:
                 record["status"] = "failed"
                 record["error"] = str(exc)
                 print(
-                    f"[WorldArena][WorldFM] FAILED {request['prediction_stem']}: {exc}",
+                    f"[WorldAtlas Arena][WorldFM] FAILED {request['prediction_stem']}: {exc}",
                     flush=True,
                 )
                 traceback.print_exc()

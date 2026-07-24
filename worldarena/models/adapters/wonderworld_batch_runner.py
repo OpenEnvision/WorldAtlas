@@ -1,3 +1,5 @@
+"""Batch subprocess runner for WonderWorld inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -26,6 +28,7 @@ from worldarena.common.checkpoints import apply_checkpoint_env
 
 XYZ_SCALE = 1000
 BACKGROUND_RGB = (0.7, 0.7, 0.7)
+BACKGROUND_TOLERANCE = 12.0 / 255.0
 
 
 def _parse_bool(value: str | bool) -> bool:
@@ -40,7 +43,7 @@ def _parse_bool(value: str | bool) -> bool:
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena WonderWorld batch runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena WonderWorld batch runner.")
     parser.add_argument("--batch_spec", default=None, type=str)
     parser.add_argument("--batch_results", default=None, type=str)
     parser.add_argument("--repo_root", default=None, type=str)
@@ -70,6 +73,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--inpainting_resolution_gen", default=512, type=int)
     parser.add_argument("--inpainting_resolution_interp", default=512, type=int)
     parser.add_argument("--rotation_path", default=None, type=str)
+    parser.add_argument("--min_render_content_fraction", default=0.02, type=float)
+    parser.add_argument("--max_render_blank_frame_ratio", default=0.2, type=float)
     parser.add_argument("--use_gpt", default=False, type=_parse_bool)
     parser.add_argument("--debug", default=False, type=_parse_bool)
     parser.add_argument("--gen_layer", default=False, type=_parse_bool)
@@ -349,6 +354,57 @@ def _write_video(output_path: Path, frames: list[Image.Image], fps: float) -> No
         rgb = np.asarray(frame.convert("RGB"), dtype=np.uint8)
         writer.write(cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
     writer.release()
+
+
+def _validate_rendered_frames(
+    frames: list[Image.Image],
+    *,
+    min_content_fraction: float,
+    max_blank_frame_ratio: float,
+) -> dict[str, object]:
+    """Reject renders dominated by WonderWorld's constant empty background."""
+    if not frames:
+        raise RuntimeError("WonderWorld produced no rendered frames")
+    min_content_fraction = float(min_content_fraction)
+    max_blank_frame_ratio = float(max_blank_frame_ratio)
+    if not 0.0 <= min_content_fraction <= 1.0:
+        raise ValueError(
+            "min_render_content_fraction must be in [0, 1], "
+            f"got {min_content_fraction!r}"
+        )
+    if not 0.0 <= max_blank_frame_ratio <= 1.0:
+        raise ValueError(
+            "max_render_blank_frame_ratio must be in [0, 1], "
+            f"got {max_blank_frame_ratio!r}"
+        )
+
+    background = np.asarray(BACKGROUND_RGB, dtype=np.float32).reshape(1, 1, 3)
+    content_fractions: list[float] = []
+    for frame in frames:
+        rgb = np.asarray(frame.convert("RGB"), dtype=np.float32) / 255.0
+        differs_from_background = np.max(np.abs(rgb - background), axis=2) > BACKGROUND_TOLERANCE
+        content_fractions.append(float(np.mean(differs_from_background)))
+
+    blank_frame_count = sum(value < min_content_fraction for value in content_fractions)
+    blank_frame_ratio = blank_frame_count / len(content_fractions)
+    summary: dict[str, object] = {
+        "frame_count": len(content_fractions),
+        "blank_frame_count": blank_frame_count,
+        "blank_frame_ratio": round(blank_frame_ratio, 6),
+        "min_content_fraction": round(min(content_fractions), 6),
+        "median_content_fraction": round(float(np.median(content_fractions)), 6),
+        "max_content_fraction": round(max(content_fractions), 6),
+        "content_fraction_threshold": min_content_fraction,
+        "blank_frame_ratio_threshold": max_blank_frame_ratio,
+    }
+    if blank_frame_ratio > max_blank_frame_ratio:
+        raise RuntimeError(
+            "WonderWorld render validation failed: "
+            f"{blank_frame_count}/{len(content_fractions)} frames contain less than "
+            f"{min_content_fraction:.2%} non-background content "
+            f"(blank ratio {blank_frame_ratio:.2%}, allowed {max_blank_frame_ratio:.2%})"
+        )
+    return summary
 
 
 def _write_frames(frames_dir: Path, frames: list[Image.Image]) -> None:
@@ -723,6 +779,7 @@ def _cache_key(name: str, args: tuple[object, ...], kwargs: dict[str, object]) -
 
 
 def _install_singleload_caches() -> None:
+    """Install singleload caches."""
     cache: dict[str, object] = {}
     for module_name in list(sys.modules):
         if module_name in {"utils", "util", "scene"} or module_name.startswith(("utils.", "util.", "scene.")):
@@ -858,6 +915,12 @@ def _run_one(args: argparse.Namespace) -> dict[str, object]:
             os.environ.clear()
             os.environ.update(old_environ)
 
+        render_validation = _validate_rendered_frames(
+            frames,
+            min_content_fraction=float(args.min_render_content_fraction),
+            max_blank_frame_ratio=float(args.max_render_blank_frame_ratio),
+        )
+
         frames_dir = output_path.with_suffix("")
         frames_dir = frames_dir.with_name(f"{frames_dir.name}.frames")
         _write_frames(frames_dir, frames)
@@ -873,6 +936,7 @@ def _run_one(args: argparse.Namespace) -> dict[str, object]:
         "status": "generated",
         "prediction_path": str(output_path),
         "generation_wall_time_seconds": round(time.perf_counter() - started_at, 6),
+        "render_validation": render_validation,
     }
     if args.archive_path and Path(args.archive_path).expanduser().exists():
         result["archive_path"] = str(Path(args.archive_path).expanduser().resolve())

@@ -1,3 +1,5 @@
+"""InSpatio-World model adapter for WorldAtlas Arena."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -25,8 +27,14 @@ def _gpu_list_arg(value: Any) -> str | None:
 
 
 class InSpatioWorldAdapter(ModelAdapter):
+    """Generate spatially consistent videos via the InSpatio-World upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "reload_per_sample"
 
     def generate_batch(
         self,

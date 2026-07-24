@@ -1,3 +1,9 @@
+"""Abstract base for remote API-backed world model adapters.
+
+API adapters build a provider-specific request, submit it asynchronously,
+poll until completion, and download the generated artifact into the predictions tree.
+"""
+
 from __future__ import annotations
 
 from abc import abstractmethod
@@ -11,6 +17,8 @@ from worldarena.models.providers.base import ApiGenerationResult, ApiProvider
 
 
 class ApiModelAdapter(ModelAdapter):
+    """Submit generation jobs to an external HTTP or SDK API instead of a local repo."""
+
     def __init__(self, config) -> None:
         super().__init__(config)
         if config.backend_type not in {"sdk_api", "http_api"}:
@@ -20,6 +28,7 @@ class ApiModelAdapter(ModelAdapter):
 
     @abstractmethod
     def build_provider(self) -> ApiProvider:
+        """Build provider -> ApiProvider."""
         raise NotImplementedError
 
     @abstractmethod
@@ -34,6 +43,7 @@ class ApiModelAdapter(ModelAdapter):
         raise NotImplementedError
 
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
 
     def generate_batch(

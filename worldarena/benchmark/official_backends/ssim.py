@@ -1,12 +1,8 @@
 import numpy as np
 
-from worldarena_official_metrics.benchmark.metrics.base_metrics import BaseMetric
-from worldarena_official_metrics.common.optional_dependencies import handle_module_not_found_error
+from worldarena.benchmark.official_backends.base import BaseMetric
 
-try:
-    from torchmetrics.image import StructuralSimilarityIndexMeasure
-except ModuleNotFoundError as e:
-    handle_module_not_found_error(e, ["worldarena_official_metrics"])
+from torchmetrics.image import StructuralSimilarityIndexMeasure
 
 
 class StructuralSimilarityIndexMeasureMetric(BaseMetric):

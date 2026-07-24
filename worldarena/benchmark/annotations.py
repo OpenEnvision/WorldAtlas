@@ -1,3 +1,5 @@
+"""Load and transform camera, prompt, and annotation sidecars for benchmark samples."""
+
 from __future__ import annotations
 
 import json
@@ -304,6 +306,7 @@ def resolve_prompt_contract(annotation_path: str | None) -> dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def _load_spacy_nlp() -> Any | None:
+    """Load spacy nlp -> Any | None."""
     try:
         import spacy
     except ModuleNotFoundError:

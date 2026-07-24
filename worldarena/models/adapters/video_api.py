@@ -1,3 +1,9 @@
+"""HTTP video-generation API adapter (text-to-video and image-to-video).
+
+Maps benchmark samples and generation config onto provider-specific REST payloads
+via configurable field names and submit routes.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,7 +32,10 @@ DEFAULT_FIELD_MAP = {
 
 
 class VideoApiAdapter(ApiModelAdapter):
+    """Generate videos through a configurable HTTP polling provider."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
 
     def generate_batch(
@@ -36,6 +45,7 @@ class VideoApiAdapter(ApiModelAdapter):
         return super().generate_batch(requests)
 
     def build_provider(self) -> ApiProvider:
+        """Build provider -> ApiProvider."""
         submit_mode = str(self.config.api.get("submit_mode", "http_polling")).strip().lower()
         provider_name = str(self.config.api.get("provider", self.config.name))
         if submit_mode == "http_polling":
@@ -43,6 +53,7 @@ class VideoApiAdapter(ApiModelAdapter):
         raise ValueError(f"unsupported API submit_mode: {submit_mode}")
 
     def _task_type(self, sample: BenchmarkSample, conditioning_image: Path) -> str:
+        """Infer t2v vs i2v from config, control signals, and conditioning media."""
         explicit = str(
             self.config.generation.get("task_type", self.config.api.get("task_type", "auto"))
         ).strip().lower()
@@ -61,6 +72,7 @@ class VideoApiAdapter(ApiModelAdapter):
         return "t2v"
 
     def _field_map(self) -> dict[str, str]:
+        """Field map -> dict[str, str]."""
         field_map = dict(DEFAULT_FIELD_MAP)
         field_map.update(
             {

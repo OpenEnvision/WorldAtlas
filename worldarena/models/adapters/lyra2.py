@@ -1,3 +1,9 @@
+"""Lyra-2 model adapter for WorldAtlas Arena.
+
+Lyra-2 extends the Lyra pipeline with pose-annotation support. Batch runs use
+``lyra2_batch_runner``; single samples delegate to ``lyra2_runner``.
+"""
+
 from __future__ import annotations
 
 import json
@@ -40,8 +46,14 @@ def _run_lyra2_command(
 
 
 class Lyra2Adapter(ModelAdapter):
+    """Generate pose-aware world videos via the Lyra-2 upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
 
     def generate_batch(
         self,

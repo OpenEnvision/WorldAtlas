@@ -1,3 +1,5 @@
+"""Physics plausibility metric implementations."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -19,16 +21,19 @@ _PHYSICS_RESULT_CACHE: dict[tuple[str, str, int, int], dict[str, Any]] = {}
 
 
 def is_physics_metric(metric_name: str) -> bool:
+    """Return whether a metric name belongs to the physics simulator contract."""
     return metric_name in PHYSICS_METRIC_NAMES
 
 
 def _cache_key(sample: BenchmarkSample, prediction_path: str) -> tuple[str, str, int, int]:
+    """Key physics simulator results by sample id and prediction file identity."""
     path = Path(prediction_path)
     stat = path.stat()
     return sample.sample_id, str(path.resolve()), stat.st_mtime_ns, stat.st_size
 
 
 def _physics_result(sample: BenchmarkSample, prediction: LoadedMedia) -> dict[str, Any]:
+    """Run the physics simulator once per sample/video pair and cache all sub-metrics."""
     key = _cache_key(sample, prediction.path)
     cached = _PHYSICS_RESULT_CACHE.get(key)
     if cached is not None:
@@ -42,10 +47,14 @@ def _physics_result(sample: BenchmarkSample, prediction: LoadedMedia) -> dict[st
 
 
 class PhysicsMetric(Metric):
+    """Expose one physics-simulator sub-metric from a shared evaluation pass."""
+
     def __init__(self, metric_name: str, backend: str, normalization: dict[str, Any]) -> None:
+        """Register a named physics simulator metric for later extraction."""
         super().__init__(metric_name, backend, normalization)
 
     def _resolve_backend(self) -> str:
+        """Require the simulator-reference physics evaluation backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -59,6 +68,7 @@ class PhysicsMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Return one cached physics simulator metric when physics_case metadata exists."""
         del reference
 
         if not sample.physics_case:

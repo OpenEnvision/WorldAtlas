@@ -1,3 +1,5 @@
+"""Write benchmark run artifacts (JSON summaries, CSV exports)."""
+
 from __future__ import annotations
 
 import csv

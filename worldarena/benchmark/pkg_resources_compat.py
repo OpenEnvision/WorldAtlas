@@ -1,3 +1,5 @@
+"""Compatibility shim for deprecated ``pkg_resources`` imports in metric deps."""
+
 from __future__ import annotations
 
 import importlib
@@ -9,6 +11,7 @@ from pathlib import Path
 from worldarena.common.checkpoints import checkpoint_path, checkpoint_root
 
 def _packaging_namespace() -> object:
+    """Packaging namespace -> object."""
     import packaging
     from packaging import version as packaging_version
 
@@ -18,6 +21,7 @@ def _packaging_namespace() -> object:
 
 
 def ensure_pkg_resources_compat() -> None:
+    """Ensure pkg resources compat."""
     try:
         import pkg_resources  # noqa: F401
         return
@@ -40,6 +44,7 @@ def ensure_pkg_resources_compat() -> None:
 
 
 def _candidate_openai_clip_cache_dirs() -> list[Path]:
+    """Candidate openai clip cache dirs -> list[Path]."""
     return [
         checkpoint_path("torch", "hub", "clip"),
         checkpoint_root() / "clip",
@@ -47,6 +52,7 @@ def _candidate_openai_clip_cache_dirs() -> list[Path]:
 
 
 def _resolve_openai_clip_cache_dir() -> Path | None:
+    """Resolve openai clip cache dir -> Path | None."""
     for path in _candidate_openai_clip_cache_dirs():
         try:
             resolved = path.expanduser().resolve()
@@ -58,10 +64,12 @@ def _resolve_openai_clip_cache_dir() -> Path | None:
 
 
 def resolve_openai_clip_cache_dir() -> Path | None:
+    """Resolve openai clip cache dir -> Path | None."""
     return _resolve_openai_clip_cache_dir()
 
 
 def ensure_openai_clip_cache_compat() -> None:
+    """Ensure openai clip cache compat."""
     ensure_pkg_resources_compat()
 
     clip = importlib.import_module("clip")

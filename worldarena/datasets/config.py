@@ -1,3 +1,5 @@
+"""Dataset collection configuration loaded from ``config/datasets.yaml``."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

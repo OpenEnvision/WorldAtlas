@@ -1,3 +1,9 @@
+"""HunyuanWorld model adapter for WorldAtlas Arena.
+
+Builds scene/object label groups from sample annotations and launches
+``hunyuanworld_runner`` for panoramic world generation.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -66,8 +72,14 @@ def _label_groups_for_sample(
 
 
 class HunyuanWorldAdapter(ModelAdapter):
+    """Generate panoramic world videos via the HunyuanWorld upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "reload_per_sample"
 
     def generate_batch(
         self,

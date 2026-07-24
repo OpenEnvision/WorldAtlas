@@ -1,3 +1,5 @@
+"""Build manifests for physics judge evaluation runs."""
+
 from __future__ import annotations
 
 import json

@@ -1,3 +1,5 @@
+"""Fréchet Video Motion Distance (FVMD) backend."""
+
 from __future__ import annotations
 
 import importlib

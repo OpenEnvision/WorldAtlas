@@ -17,10 +17,9 @@ const mediaDepthFar = 470;
 const mediaDepthCull = 540;
 const mediaSolidNear = 25;
 const mediaSolidMid = 218;
-const mediaPeripheralPrefetch = 420;
 const mediaHoldDuration = 3400;
-const maxConcurrentTextureLoads = 38;
-const textureCacheLimit = 2480;
+const textureReleaseDistance = 188;
+const textureReleaseInterval = 1200;
 const visibilityCellColumns = 20;
 const visibilityCellRows = 6;
 const dynamicShellBack = 430;
@@ -67,6 +66,70 @@ const boxesOverlap = (left, right) =>
   left.top < right.bottom &&
   left.bottom > right.top;
 
+function resolvePerformanceProfile() {
+  const memory = Number(navigator.deviceMemory || 8);
+  const cores = Number(navigator.hardwareConcurrency || 4);
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const slowConnection = Boolean(
+    connection?.saveData || ["slow-2g", "2g"].includes(connection?.effectiveType)
+  );
+  const compactViewport = window.matchMedia("(max-width: 820px)").matches;
+  const constrained = slowConnection || memory <= 4 || cores <= 4 || compactViewport;
+  const capable = !constrained && memory >= 8 && cores >= 8;
+
+  if (constrained) {
+    return {
+      constrained: true,
+      pixelRatio: 1.1,
+      maxTextureLoads: 4,
+      minTextureLoads: 1,
+      textureCacheLimit: 96,
+      peripheralPrefetch: 132,
+      baseTextureWidth: 384,
+      fullTextureWidth: 1024,
+      anisotropy: 1,
+      queueLimit: 110,
+      textureIdleRelease: 9000,
+      fullUpgradeMotionThreshold: 0.06,
+      useMipmaps: false
+    };
+  }
+
+  if (capable) {
+    return {
+      constrained: false,
+      pixelRatio: 1.65,
+      maxTextureLoads: 10,
+      minTextureLoads: 3,
+      textureCacheLimit: 320,
+      peripheralPrefetch: 230,
+      baseTextureWidth: 640,
+      fullTextureWidth: 1600,
+      anisotropy: 4,
+      queueLimit: 280,
+      textureIdleRelease: 18000,
+      fullUpgradeMotionThreshold: 0.16,
+      useMipmaps: true
+    };
+  }
+
+  return {
+    constrained: false,
+    pixelRatio: 1.4,
+    maxTextureLoads: 7,
+    minTextureLoads: 2,
+    textureCacheLimit: 200,
+    peripheralPrefetch: 190,
+    baseTextureWidth: 512,
+    fullTextureWidth: 1280,
+    anisotropy: 2,
+    queueLimit: 190,
+    textureIdleRelease: 14000,
+    fullUpgradeMotionThreshold: 0.1,
+    useMipmaps: false
+  };
+}
+
 export class ArchiveWebGLView {
   constructor({ layer, items, positions, onHover, onOpen }) {
     this.layer = layer;
@@ -82,6 +145,7 @@ export class ArchiveWebGLView {
     this.textureQueue = [];
     this.textureQueued = new Map();
     this.failedSources = new Set();
+    this.performanceProfile = resolvePerformanceProfile();
     this.activeTextureLoads = 0;
     this.loadedVisible = 0;
     this.loadedTotal = 0;
@@ -96,13 +160,15 @@ export class ArchiveWebGLView {
     this.tempSphere = new THREE.Sphere();
     this.textureLoader = new THREE.TextureLoader();
     this.clockStartedAt = performance.now();
+    this.lastTextureSweepAt = 0;
+    this.pickableMeshes = [];
 
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: !this.performanceProfile.constrained,
       alpha: true,
       powerPreference: "high-performance"
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.performanceProfile.pixelRatio));
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.domElement.className = "archive-webgl-canvas";
@@ -117,7 +183,7 @@ export class ArchiveWebGLView {
     this.scene.add(this.labelGroup);
     this.mediaGeometry = new THREE.PlaneGeometry(1, 1, 1, 1);
     this.frameGeometry = new THREE.PlaneGeometry(1, 1, 1, 1);
-    this.placeholderTexture = createPlaceholderTexture("#eef4f7", "WorldArena");
+    this.placeholderTexture = createPlaceholderTexture("#eef4f7", "WorldAtlas Arena");
 
     this.buildLabels();
     this.resize();
@@ -210,8 +276,8 @@ export class ArchiveWebGLView {
     const frame = new THREE.Mesh(this.frameGeometry, frameMaterial);
     const media = new THREE.Mesh(this.mediaGeometry, material);
 
-    frame.frustumCulled = false;
-    media.frustumCulled = false;
+    frame.frustumCulled = true;
+    media.frustumCulled = true;
     frame.position.z = -0.018;
     media.position.z = 0;
     group.add(frame);
@@ -232,6 +298,7 @@ export class ArchiveWebGLView {
       targetDisplayScale: 1,
       loaded: false,
       fullLoaded: false,
+      textureSource: "",
       lastVisibleAt: 0,
       radius: 1,
       basePosition: new THREE.Vector3(),
@@ -264,6 +331,7 @@ export class ArchiveWebGLView {
     this.projected.clear();
     this.loadedVisible = 0;
     this.loadedTotal = 0;
+    this.pickableMeshes = [];
 
     const elapsed = (frameTime - this.clockStartedAt) * 0.001;
     const isSearch = mode === "search";
@@ -286,7 +354,12 @@ export class ArchiveWebGLView {
       const inFrustum = this.frustum.intersectsSphere(this.tempSphere);
       const softFrustum = !isSearch ? this.softFrustumFactor(group.position, distance) : 0;
       const renderCandidate = (inFrustum || softFrustum > 0) && !isSearch;
-      const nearPeripheral = !isSearch && distance > mediaDepthNear && distance < mediaPeripheralPrefetch;
+      const nearPeripheral =
+        !isSearch &&
+        this.motionIntensity < 0.34 &&
+        this.textureCache.size + this.activeTextureLoads < this.performanceProfile.textureCacheLimit * 0.72 &&
+        distance > mediaDepthNear &&
+        distance < this.performanceProfile.peripheralPrefetch;
 
       if (distance > mediaDepthNear && distance < mediaDepthCull && renderCandidate) {
         const nearFade = smoothstep(mediaDepthNear, mediaDepthNear + 4.8, distance);
@@ -297,6 +370,7 @@ export class ArchiveWebGLView {
         targetOpacity *= inFrustum ? 1 : softFrustum;
 
         const priority = this.texturePriority(group.position, distance);
+        record.lastVisibleAt = frameTime;
 
         if (!record.loaded) {
           this.queueTexture(record, false, priority);
@@ -324,6 +398,7 @@ export class ArchiveWebGLView {
       }
 
       if (targetOpacity > 0.012 && renderCandidate) {
+        record.lastVisibleAt = frameTime;
         const cellKey = this.visibilityCellKey(group.position);
         const cellCount = visibleCellCounts.get(cellKey) || 0;
         let overlapFade = 1;
@@ -445,13 +520,20 @@ export class ArchiveWebGLView {
       if ((record.opacity > 0.018 || record.targetOpacity > 0.012) && renderCandidate) {
         const priority = this.texturePriority(group.position, distance);
 
-        if (record.loaded && !record.fullLoaded && distance < 42 && priority > 0.58) {
+        if (
+          record.loaded &&
+          !record.fullLoaded &&
+          distance < 38 &&
+          priority > 0.62 &&
+          this.motionIntensity <= this.performanceProfile.fullUpgradeMotionThreshold
+        ) {
           this.queueTexture(record, true, priority + 0.28);
         }
       }
 
       if (record.loaded && record.opacity > 0.06 && distance < 156) {
         this.loadedVisible += 1;
+        this.pickableMeshes.push(mesh);
         this.tempVector.copy(group.position).project(this.camera);
         this.projected.set(record.item.id, {
           visible: true,
@@ -463,6 +545,7 @@ export class ArchiveWebGLView {
     }
 
     this.updateLabels(deltaTime);
+    this.releaseDormantTextures(frameTime);
     this.flushTextureQueue();
     this.renderer.render(this.scene, this.camera);
   }
@@ -517,7 +600,7 @@ export class ArchiveWebGLView {
   surroundingPriority(position, distance) {
     const toItem = this.tempVector.copy(position).sub(this.camera.position).normalize();
     const centerDot = this.cameraDirection.dot(toItem);
-    const distanceScore = clamp(1 - distance / mediaPeripheralPrefetch, 0, 1);
+    const distanceScore = clamp(1 - distance / this.performanceProfile.peripheralPrefetch, 0, 1);
     const bearingScore = 0.28 + (1 - Math.abs(centerDot)) * 0.18 + clamp(centerDot, 0, 1) * 0.18;
 
     return distanceScore * bearingScore;
@@ -657,7 +740,7 @@ export class ArchiveWebGLView {
     const cached = this.textureCache.get(source);
     if (cached) {
       cached.stamp = performance.now();
-      this.applyTexture(record, cached.texture, full);
+      this.applyTexture(record, cached.texture, full, source);
       return;
     }
 
@@ -681,7 +764,11 @@ export class ArchiveWebGLView {
   }
 
   flushTextureQueue() {
-    const loadBudget = Math.max(14, Math.round(maxConcurrentTextureLoads - this.motionIntensity * 12));
+    const profile = this.performanceProfile;
+    const loadBudget = Math.max(
+      profile.minTextureLoads,
+      Math.round(profile.maxTextureLoads * (1 - clamp(this.motionIntensity, 0, 1) * 0.68))
+    );
 
     if (!this.textureQueue.length || this.activeTextureLoads >= loadBudget) {
       return;
@@ -703,14 +790,22 @@ export class ArchiveWebGLView {
         (texture) => {
           this.activeTextureLoads -= 1;
           texture.colorSpace = THREE.SRGBColorSpace;
-          texture.anisotropy = Math.min(12, this.renderer.capabilities.getMaxAnisotropy());
-          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          this.resizeTextureImage(
+            texture,
+            entry.full ? this.performanceProfile.fullTextureWidth : this.performanceProfile.baseTextureWidth
+          );
+          texture.anisotropy = Math.min(
+            this.performanceProfile.anisotropy,
+            this.renderer.capabilities.getMaxAnisotropy()
+          );
+          const useMipmaps = entry.full && this.performanceProfile.useMipmaps;
+          texture.minFilter = useMipmaps ? THREE.LinearMipmapLinearFilter : THREE.LinearFilter;
           texture.magFilter = THREE.LinearFilter;
-          texture.generateMipmaps = true;
+          texture.generateMipmaps = useMipmaps;
           texture.needsUpdate = true;
           this.textureCache.set(entry.source, { texture, stamp: performance.now() });
           this.pruneTextureCache();
-          this.applyTexture(entry.record, texture, entry.full);
+          this.applyTexture(entry.record, texture, entry.full, entry.source);
         },
         undefined,
         () => {
@@ -720,6 +815,30 @@ export class ArchiveWebGLView {
         }
       );
     }
+  }
+
+  resizeTextureImage(texture, maxWidth) {
+    const image = texture.image;
+
+    if (!image?.width || !image?.height || image.width <= maxWidth) {
+      return;
+    }
+
+    const width = Math.max(1, Math.round(maxWidth));
+    const height = Math.max(1, Math.round(image.height * width / image.width));
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      return;
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(image, 0, 0, width, height);
+    texture.image = canvas;
   }
 
   queueFallbackTexture(entry) {
@@ -749,7 +868,7 @@ export class ArchiveWebGLView {
   }
 
   trimTextureQueue() {
-    const queueLimit = 900;
+    const queueLimit = this.performanceProfile.queueLimit;
 
     if (this.textureQueue.length <= queueLimit) {
       return;
@@ -760,8 +879,16 @@ export class ArchiveWebGLView {
     removed.forEach((entry) => this.textureQueued.delete(entry.key));
   }
 
-  applyTexture(record, texture, full) {
+  applyTexture(record, texture, full, source = "") {
     if (!record.group.parent) {
+      return;
+    }
+
+    const now = performance.now();
+    if (
+      record.cameraDistance > textureReleaseDistance &&
+      now - record.lastVisibleAt > this.performanceProfile.textureIdleRelease
+    ) {
       return;
     }
 
@@ -776,24 +903,59 @@ export class ArchiveWebGLView {
     record.radius = Math.max(nextLayout.width, nextLayout.height) * 0.72;
     record.loaded = true;
     record.fullLoaded = record.fullLoaded || full;
+    record.textureSource = source;
   }
 
-  pruneTextureCache() {
-    if (this.textureCache.size <= textureCacheLimit) {
+  releaseDormantTextures(frameTime) {
+    if (frameTime - this.lastTextureSweepAt < textureReleaseInterval) {
       return;
     }
 
+    this.lastTextureSweepAt = frameTime;
+    const idleRelease = this.performanceProfile.textureIdleRelease;
+
+    for (const record of this.meshes) {
+      if (
+        !record.loaded ||
+        record.group.visible ||
+        record.cameraDistance <= textureReleaseDistance ||
+        frameTime - record.lastVisibleAt <= idleRelease
+      ) {
+        continue;
+      }
+
+      record.media.material.map = this.placeholderTexture;
+      record.media.material.needsUpdate = true;
+      record.loaded = false;
+      record.fullLoaded = false;
+      record.textureSource = "";
+    }
+
+    this.pruneTextureCache();
+  }
+
+  pruneTextureCache() {
+    const cacheLimit = this.performanceProfile.textureCacheLimit;
+
+    if (this.textureCache.size <= cacheLimit) {
+      return;
+    }
+
+    const usedTextures = new Set(
+      this.meshes
+        .map((record) => record.media.material.map)
+        .filter((texture) => texture && texture !== this.placeholderTexture)
+    );
     const removable = Array.from(this.textureCache.entries())
-      .sort((left, right) => left[1].stamp - right[1].stamp)
-      .slice(0, Math.max(0, this.textureCache.size - textureCacheLimit));
+      .sort((left, right) => left[1].stamp - right[1].stamp);
 
     removable.forEach(([source, entry]) => {
-      const isUsed = this.meshes.some((record) => record.media.material.map === entry.texture);
-
-      if (!isUsed) {
-        entry.texture.dispose();
-        this.textureCache.delete(source);
+      if (this.textureCache.size <= cacheLimit || usedTextures.has(entry.texture)) {
+        return;
       }
+
+      entry.texture.dispose();
+      this.textureCache.delete(source);
     });
   }
 
@@ -808,7 +970,7 @@ export class ArchiveWebGLView {
     this.pointer.x = ((event.clientX - bounds.left) / width) * 2 - 1;
     this.pointer.y = -((event.clientY - bounds.top) / height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
-    const intersections = this.raycaster.intersectObjects(this.mediaMeshes, false);
+    const intersections = this.raycaster.intersectObjects(this.pickableMeshes, false);
     const hit = intersections.find((intersection) => {
       const record = intersection.object.userData.record;
       return record?.loaded && record.opacity > 0.22;

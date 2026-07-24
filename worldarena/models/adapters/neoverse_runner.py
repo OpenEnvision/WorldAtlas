@@ -1,3 +1,5 @@
+"""Subprocess runner for NeoVerse inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +18,7 @@ from worldarena.common.checkpoints import apply_checkpoint_env, resolve_checkpoi
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena NeoVerse subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena NeoVerse subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", default=None, type=str)
     parser.add_argument("--annotation_path", default=None, type=str)
@@ -146,7 +148,7 @@ def main() -> None:
 
     if trajectory_source == "annotation" and not static_scene:
         raise ValueError(
-            "NeoVerse annotation trajectories require conditioning_image input in WorldArena; "
+            "NeoVerse annotation trajectories require conditioning_image input in WorldAtlas Arena; "
             "use input_mode=conditioning_image or trajectory_source=static."
         )
 

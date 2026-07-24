@@ -1,3 +1,9 @@
+"""Shared helpers for model-specific batch runner subprocesses.
+
+Batch runners consume JSONL batch specs and emit per-sample status lines on stdout.
+These utilities cover argument parsing, spec loading, and safe output file copying.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -8,6 +14,7 @@ from typing import Any
 
 
 def add_common_batch_args(parser: argparse.ArgumentParser) -> None:
+    """Register CLI flags shared across all external batch runner modules."""
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", default=None, type=str)
     parser.add_argument("--batch_spec_path", required=True, type=str)
@@ -21,6 +28,7 @@ def load_json(path: Path) -> dict[str, Any]:
 
 
 def load_batch_spec(path: Path) -> list[dict[str, Any]]:
+    """Parse a JSONL batch spec; each line is one generation request."""
     rows: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as file:
         for line in file:
@@ -32,6 +40,7 @@ def load_batch_spec(path: Path) -> list[dict[str, Any]]:
 
 
 def copy_output(source: Path, destination: Path) -> None:
+    """Atomically copy a generated artifact into the benchmark predictions tree."""
     source = source.expanduser().resolve()
     destination = destination.expanduser().resolve()
     if not source.is_file() or source.stat().st_size <= 0:
@@ -44,6 +53,7 @@ def copy_output(source: Path, destination: Path) -> None:
 
 
 def latest_mp4(directory: Path) -> Path:
+    """Pick the most recently written mp4 under a model output directory."""
     candidates = sorted(
         [path for path in directory.rglob("*.mp4") if path.is_file()],
         key=lambda path: path.stat().st_mtime,
@@ -55,6 +65,7 @@ def latest_mp4(directory: Path) -> Path:
 
 
 def print_status(sample_id: str, status: str, **payload: Any) -> None:
+    """Emit a machine-readable progress line consumed by the parent adapter."""
     print(
         json.dumps(
             {"sample_id": sample_id, "status": status, **payload},

@@ -1,3 +1,8 @@
+"""Synthetic camera pose and intrinsics generation for image_static samples.
+
+Used when benchmark samples specify ``camera_path`` tokens but no ``poses.npy``.
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -7,20 +12,17 @@ from typing import Any
 
 import numpy as np
 
-from worldarena.benchmark.annotations import (
-    _matrix_to_pose_vector,
-    _pose_vector_to_matrix,
-    _resample_pose_vectors,
-)
 from worldarena.benchmark.schemas import BenchmarkSample
+from worldarena.benchmark.synthetic_camera import synthetic_camera_matrices
 from worldarena.common.annotation_index import split_annotation_reference
 from worldarena.common.checkpoints import project_root
 from worldarena.common.media import probe_image
-from worldarena.models.adapters.lingbot_world import _camera_delta, _camera_path_for_sample
+from worldarena.models.adapters.lingbot_world import _camera_path_for_sample
 from worldarena.models.config import ModelRuntimeConfig
 
 
 def local_pose_annotation_path(sample: BenchmarkSample) -> Path | None:
+    """Return the on-disk annotation dir when poses/intrinsics sidecars exist."""
     if not sample.annotation_path or split_annotation_reference(sample.annotation_path) is not None:
         return None
     candidate = Path(sample.annotation_path).expanduser().resolve()
@@ -29,50 +31,28 @@ def local_pose_annotation_path(sample: BenchmarkSample) -> Path | None:
     return None
 
 
-def _interpolate_pose_segment(start_pose: np.ndarray, end_pose: np.ndarray, *, frames: int) -> np.ndarray:
-    pose_vectors = np.stack(
-        [
-            _matrix_to_pose_vector(start_pose.astype(np.float32)),
-            _matrix_to_pose_vector(end_pose.astype(np.float32)),
-        ],
-        axis=0,
-    ).astype(np.float32)
-    interpolated = _resample_pose_vectors(
-        pose_vectors,
-        np.asarray([0.0, 1.0], dtype=np.float32),
-        frames,
-    )
-    return np.stack([_pose_vector_to_matrix(row) for row in interpolated], axis=0).astype(np.float32)
+def _synthetic_image_poses(
+    camera_path: list[str],
+    *,
+    frame_count: int,
+    translation_scale: float = 1.0,
+) -> np.ndarray:
+    """Build poses while preserving rotations and scaling translations.
 
+    Camera-path tokens are defined in LingBot's unit scale. Adapters whose
+    reconstructed scene uses a different coordinate scale can supply a
+    model-native ``translation_scale`` without changing rotation semantics.
+    """
+    translation_scale = float(translation_scale)
+    if not np.isfinite(translation_scale) or translation_scale < 0.0:
+        raise ValueError(f"translation_scale must be finite and non-negative, got {translation_scale!r}")
 
-def _synthetic_image_poses(camera_path: list[str], *, frame_count: int) -> np.ndarray:
-    target_frames = max(int(frame_count), 1)
-    if target_frames <= 1:
-        return np.repeat(np.eye(4, dtype=np.float32)[None], repeats=target_frames, axis=0)
-
-    normalized_path = [token for token in camera_path if token] or ["fixed"]
-    keyframes: list[np.ndarray] = [np.eye(4, dtype=np.float32)]
-    current_pose = np.eye(4, dtype=np.float32)
-    for token in normalized_path:
-        current_pose = (current_pose @ _camera_delta(token)).astype(np.float32)
-        keyframes.append(current_pose.copy())
-
-    segment_count = max(1, len(normalized_path))
-    remaining_intervals = target_frames - 1
-    base_intervals = remaining_intervals // segment_count
-    remainder = remaining_intervals % segment_count
-    segments: list[np.ndarray] = []
-    for index in range(segment_count):
-        segment_intervals = base_intervals + (1 if index < remainder else 0)
-        segment = _interpolate_pose_segment(
-            keyframes[index],
-            keyframes[index + 1],
-            frames=segment_intervals + 1,
-        )
-        if index:
-            segment = segment[1:]
-        segments.append(segment)
-    return np.concatenate(segments, axis=0).astype(np.float32)
+    poses = synthetic_camera_matrices(
+        camera_path,
+        target_frames=max(int(frame_count), 1),
+    ).matrices.copy()
+    poses[:, :3, 3] *= translation_scale
+    return poses.astype(np.float32)
 
 
 def _synthetic_intrinsics_sequence(
@@ -98,7 +78,9 @@ def resolve_pose_annotation_path(
     frame_count: int,
     namespace: str,
     focal_scale: float,
+    translation_scale: float = 1.0,
 ) -> tuple[Path, str]:
+    """Resolve GT annotations or build cached synthetic poses for one sample."""
     local_annotation = local_pose_annotation_path(sample)
     if local_annotation is not None:
         return local_annotation, "annotation"
@@ -116,6 +98,9 @@ def resolve_pose_annotation_path(
     image_width = int(image_probe["width"])
     image_height = int(image_probe["height"])
     camera_path = _camera_path_for_sample(sample) or ["fixed"]
+    translation_scale = float(translation_scale)
+    if not np.isfinite(translation_scale) or translation_scale < 0.0:
+        raise ValueError(f"translation_scale must be finite and non-negative, got {translation_scale!r}")
     cache_payload: dict[str, Any] = {
         "sample_id": sample.sample_id,
         "relative_path": sample.relative_path,
@@ -125,6 +110,7 @@ def resolve_pose_annotation_path(
         "image_width": image_width,
         "image_height": image_height,
         "focal_scale": float(focal_scale),
+        "translation_scale": translation_scale,
     }
     key = hashlib.sha1(
         json.dumps(cache_payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
@@ -140,7 +126,11 @@ def resolve_pose_annotation_path(
     annotation_root.mkdir(parents=True, exist_ok=True)
     np.save(
         poses_path,
-        _synthetic_image_poses(camera_path, frame_count=frame_count).astype(np.float32),
+        _synthetic_image_poses(
+            camera_path,
+            frame_count=frame_count,
+            translation_scale=translation_scale,
+        ).astype(np.float32),
     )
     np.save(
         intrinsics_path,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 from worldarena.benchmark.schemas import BenchmarkSample
@@ -11,6 +12,9 @@ from worldarena.models.adapters.luciddreamer import (
     LucidDreamerAdapter,
     _generation_for_sample,
     _generation_for_suite,
+)
+from worldarena.models.adapters.luciddreamer_batch_runner import (
+    _worldarena_camera_preset_data,
 )
 from worldarena.models.config import ModelRuntimeConfig
 from worldarena.models.registry import build_model_adapter
@@ -91,7 +95,7 @@ def test_generation_for_suite_applies_by_suite_overrides() -> None:
     assert resolved["campath_render"] == "headbanging"
 
 
-def test_generation_for_sample_maps_worldarena_camera_path_to_render_preset() -> None:
+def test_generation_for_sample_preserves_full_worldarena_camera_path() -> None:
     sample = _make_sample("image_static", camera_path=["pull_out", "pan_left"])
 
     resolved = _generation_for_sample(
@@ -106,10 +110,28 @@ def test_generation_for_sample_maps_worldarena_camera_path_to_render_preset() ->
         sample,
     )
 
-    assert resolved["campath_render"] == "back_and_forth"
+    assert resolved["campath_render"] == "worldarena_camera_path"
     assert resolved["_camera_path"] == ["pull_out", "pan_left"]
     assert resolved["_camera_path_primary"] == "pull_out"
-    assert resolved["_campath_render_source"] == "sample_camera_path"
+    assert resolved["_campath_render_source"] == "worldarena_camera_path"
+
+
+def test_worldarena_camera_preset_data_preserves_all_segments_and_axes() -> None:
+    from worldarena.benchmark.synthetic_camera import synthetic_camera_matrices
+
+    camera_path = ["pan_left", "pull_out", "move_left"]
+    payload = _worldarena_camera_preset_data(
+        camera_path,
+        frame_count=10,
+        translation_scale=0.5,
+    )
+    frames = payload["worldarena_camera_path"]["frames"]
+    recovered = np.asarray([frame["transform_matrix"] for frame in frames], dtype=np.float32)
+    recovered[:, :3, 1:3] *= -1
+    expected = synthetic_camera_matrices(camera_path, target_frames=10).matrices.copy()
+    expected[:, :3, 3] *= 0.5
+
+    np.testing.assert_allclose(recovered, expected, atol=1e-6)
 
 
 def test_build_model_adapter_returns_luciddreamer_adapter(tmp_path: Path) -> None:
@@ -185,8 +207,9 @@ def test_generate_batch_builds_persistent_runner_command(tmp_path: Path, monkeyp
         assert requests[0]["input_size"] == 512
         assert requests[0]["camera_path"] == ["pan_left"]
         assert requests[0]["camera_path_primary"] == "pan_left"
-        assert requests[0]["campath_render"] == "headbanging"
-        assert requests[0]["campath_render_source"] == "sample_camera_path"
+        assert requests[0]["campath_render"] == "worldarena_camera_path"
+        assert requests[0]["campath_render_source"] == "worldarena_camera_path"
+        assert requests[0]["camera_path_frames"] == 300
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_bytes(b"mp4")
         results_path.write_text(

@@ -1,6 +1,13 @@
+"""WonderWorld model adapter for WorldAtlas Arena.
+
+WonderWorld builds persistent 3D scenes from a conditioning image and camera
+trajectory, with optional pose synthesis for image_static samples.
+"""
+
 from __future__ import annotations
 
 import json
+import math
 import re
 import uuid
 from pathlib import Path
@@ -14,7 +21,6 @@ from worldarena.models.adapters.common import (
     build_env,
     extend_command_with_options,
     run_command,
-    run_sequential_generate_batch,
 )
 from worldarena.models.adapters.pose_synthesis import resolve_pose_annotation_path
 from worldarena.common.checkpoints import (
@@ -44,6 +50,18 @@ def _generation_for_suite(generation: dict[str, Any], suite: str) -> dict[str, A
         if suite in value:
             resolved[base_key] = value[suite]
     return resolved
+
+
+def _synthetic_pose_translation_scale(generation: dict[str, Any]) -> float:
+    """Return the synthetic camera translation scale in WonderWorld units."""
+    raw_value = generation.get("synthetic_translation_scale", generation.get("camera_speed", 0.001))
+    scale = float(raw_value)
+    if not math.isfinite(scale) or scale < 0.0:
+        raise ValueError(
+            "WonderWorld synthetic_translation_scale must be finite and non-negative, "
+            f"got {raw_value!r}"
+        )
+    return scale
 
 
 def _clean_text(value: object | None) -> str:
@@ -246,8 +264,14 @@ def _resolved_checkpointish_option(value: object | None) -> str | None:
 
 
 class WonderWorldAdapter(ModelAdapter):
+    """Generate persistent 3D world videos via the WonderWorld upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
 
     def generate_batch(
         self,
@@ -288,6 +312,7 @@ class WonderWorldAdapter(ModelAdapter):
                 repvit_checkpoint = _resolved_repvit_checkpoint(self.config, generation)
                 num_scenes = max(int(generation.get("num_scenes", 1)), 1)
                 trajectory_frames = max(int(generation.get("trajectory_frames", 49)), num_scenes + 1)
+                synthetic_translation_scale = _synthetic_pose_translation_scale(generation)
                 pose_annotation_path, pose_source = resolve_pose_annotation_path(
                     self.config,
                     sample,
@@ -295,6 +320,7 @@ class WonderWorldAdapter(ModelAdapter):
                     frame_count=trajectory_frames,
                     namespace="wonderworld",
                     focal_scale=float(generation.get("synthetic_focal_scale", 1.875)),
+                    translation_scale=synthetic_translation_scale,
                 )
                 prompt_sequence = _prompt_sequence_for_sample(
                     sample,
@@ -363,6 +389,8 @@ class WonderWorldAdapter(ModelAdapter):
                         "inpainting_resolution_gen": int,
                         "inpainting_resolution_interp": int,
                         "rotation_path": str,
+                        "min_render_content_fraction": float,
+                        "max_render_blank_frame_ratio": float,
                     },
                     bool_value_options=(
                         "use_gpt",
@@ -394,6 +422,7 @@ class WonderWorldAdapter(ModelAdapter):
                     "prompt_sequence": prompt_sequence,
                     "pose_annotation_path": str(pose_annotation_path),
                     "pose_source": pose_source,
+                    "synthetic_pose_translation_scale": synthetic_translation_scale,
                 }
                 if archive_path is not None:
                     metadata_by_sample[sample.sample_id]["archive_path"] = str(archive_path)
@@ -474,6 +503,7 @@ class WonderWorldAdapter(ModelAdapter):
         repvit_checkpoint = _resolved_repvit_checkpoint(self.config, generation)
         num_scenes = max(int(generation.get("num_scenes", 1)), 1)
         trajectory_frames = max(int(generation.get("trajectory_frames", 49)), num_scenes + 1)
+        synthetic_translation_scale = _synthetic_pose_translation_scale(generation)
         pose_annotation_path, pose_source = resolve_pose_annotation_path(
             self.config,
             sample,
@@ -481,6 +511,7 @@ class WonderWorldAdapter(ModelAdapter):
             frame_count=trajectory_frames,
             namespace="wonderworld",
             focal_scale=float(generation.get("synthetic_focal_scale", 1.875)),
+            translation_scale=synthetic_translation_scale,
         )
         prompt_sequence = _prompt_sequence_for_sample(
             sample,
@@ -547,6 +578,8 @@ class WonderWorldAdapter(ModelAdapter):
                 "inpainting_resolution_gen": int,
                 "inpainting_resolution_interp": int,
                 "rotation_path": str,
+                "min_render_content_fraction": float,
+                "max_render_blank_frame_ratio": float,
             },
             bool_value_options=(
                 "use_gpt",
@@ -578,6 +611,7 @@ class WonderWorldAdapter(ModelAdapter):
             "prompt_sequence": prompt_sequence,
             "pose_annotation_path": str(pose_annotation_path),
             "pose_source": pose_source,
+            "synthetic_pose_translation_scale": synthetic_translation_scale,
         }
         if archive_path is not None and archive_path.exists():
             payload["archive_path"] = str(archive_path)

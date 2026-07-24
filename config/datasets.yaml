@@ -9,7 +9,7 @@ collections:
     scanner: static_image
     modality: image
     group: benchmark
-    root: /share/project/bench/data/image_test_balanced_5000/static
+    root: data/image/static
     description: Static image benchmark set grouped by style, environment, and scene.
     exclude_dir_prefixes: [".", "_backup"]
 
@@ -17,7 +17,7 @@ collections:
     scanner: dynamic_image
     modality: image
     group: benchmark
-    root: /share/project/bench/data/image_test_balanced_5000/dynamic
+    root: data/image/dynamic
     description: Dynamic image benchmark set with motion-type masks.
     exclude_dir_prefixes: [".", "_backup"]
 
@@ -25,7 +25,7 @@ collections:
     scanner: static_video
     modality: video
     group: benchmark
-    root: /share/project/bench/data/videos_test_split_4971/static
+    root: data/video/static
     description: Static video benchmark grouped by style, environment, scene, and duration bucket.
     exclude_dir_prefixes: [".", "_backup"]
 
@@ -33,7 +33,7 @@ collections:
     scanner: dynamic_video
     modality: video
     group: benchmark
-    root: /share/project/bench/data/videos_test_split_4971/dynamic
+    root: data/video/dynamic
     description: Dynamic video benchmark with motion classes, annotations, and optional masks.
     exclude_dir_prefixes: [".", "_backup"]
 
@@ -41,7 +41,7 @@ collections:
     scanner: aaa_games
     modality: video
     group: benchmark
-    root: /share/project/bench/data/videos_test_split_4971/AAA_Games
+    root: data/video/AAA_Games
     description: AAA game footage subset with SpatialVID-style annotations.
     exclude_dir_prefixes: [".", "_backup"]
 
@@ -49,6 +49,6 @@ collections:
     scanner: physics_video
     modality: physics
     group: benchmark
-    root: /share/project/bench/data/physics
+    root: data/physics
     description: Physics benchmark videos grouped by physics family and dimension.
     exclude_dir_prefixes: [".", "_backup"]

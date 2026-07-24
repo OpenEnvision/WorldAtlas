@@ -1,3 +1,5 @@
+"""Prediction generation orchestrator for benchmark samples."""
+
 from __future__ import annotations
 
 import json
@@ -212,6 +214,14 @@ def generate_predictions(
     records_by_sample_id: dict[str, dict[str, Any]] = {}
     pending_requests: list[PreparedGenerationRequest] = []
     use_batch_generation = adapter.supports_batch_generation()
+    checkpoint_load_policy = adapter.batch_checkpoint_load_policy()
+    if bool(model_config.generation.get("require_persistent_batch", False)):
+        if not use_batch_generation or checkpoint_load_policy != "load_once":
+            raise RuntimeError(
+                f"{model_config.name} requires persistent batch generation, but "
+                f"{adapter.__class__.__name__} reports checkpoint policy "
+                f"{checkpoint_load_policy!r}"
+            )
 
     for sample in selected_samples:
         prediction_path = output_dir / f"{sample.prediction_stem}{model_config.output_ext}"

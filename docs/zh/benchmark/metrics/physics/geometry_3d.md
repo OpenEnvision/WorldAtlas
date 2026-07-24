@@ -1,6 +1,6 @@
 # Geometry 3D Metrics
 
-`geometry_3d` group 比较 predicted world 导出的 depth 与 simulator 导出的 depth。它关注生成视频背后的三维几何是否合理，而不只是 RGB 帧是否相似。
+**geometry_3d** group 比较 predicted world 导出的 depth 与 simulator 导出的 depth。它关注生成视频背后的三维几何是否合理，而不只是 RGB 帧是否相似。
 
 ## 输入
 

@@ -1,3 +1,5 @@
+"""Batch subprocess runner for Yume inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -15,7 +17,7 @@ from worldarena.models.adapters.yume_runner import (
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena YUME persistent batch runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena YUME persistent batch runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", required=True, type=str)
     parser.add_argument("--entrypoint", default="webapp_single_gpu.py", type=str)

@@ -1,3 +1,5 @@
+"""Derived physics metrics computed from simulator outputs."""
+
 from __future__ import annotations
 
 from pathlib import Path

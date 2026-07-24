@@ -1,6 +1,6 @@
 # 物体持久性
 
-`object_permanence` 衡量的是：被 mask 标出来的动态前景物体，是否沿着参考 rollout 所暗示的外观轨迹保持为“同一个东西”。
+**object_permanence** 衡量的是：被 mask 标出来的动态前景物体，是否沿着参考 rollout 所暗示的外观轨迹保持为“同一个东西”。
 
 ## 这个指标测什么
 

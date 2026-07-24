@@ -23,17 +23,17 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build a video_static manifest from VIPE annotations.")
     parser.add_argument(
         "--video-root",
-        default="/mnt/cpfs/yangboxue/visual_generation/juanxi/data/OpenEnvision/worldarena/videos",
+        default="data/video",
         type=Path,
     )
     parser.add_argument(
         "--vipe-root",
-        default="/mnt/cpfs/yangboxue/visual_generation/juanxi/data/OpenEnvision/worldarena/videos_test_split_4971_vipe_ann",
+        default="data/video_vipe_ann",
         type=Path,
     )
     parser.add_argument(
         "--extra-video-root",
-        default="/mnt/cpfs/yangboxue/visual_generation/juanxi/data/OpenEnvision/worldarena/stylized_by_category/videos_test_split_4971",
+        default="data/stylized_by_category/video",
         type=Path,
         help="Optional supplemental split root used for stylized static videos.",
     )

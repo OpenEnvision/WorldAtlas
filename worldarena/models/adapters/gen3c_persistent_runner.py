@@ -1,7 +1,10 @@
+"""Persistent GEN3C subprocess runner that keeps weights loaded across samples."""
+
 from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import traceback
 from typing import Any
@@ -22,7 +25,7 @@ DEFAULT_NEGATIVE_PROMPT = (
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Persistent WorldArena GEN3C batch runtime.")
+    parser = argparse.ArgumentParser(description="Persistent WorldAtlas Arena GEN3C batch runtime.")
     parser.add_argument("--checkpoint_dir", required=True, type=str)
     parser.add_argument("--batch_input_path", required=True, type=str)
     parser.add_argument("--num_video_frames", default=121, type=int)
@@ -63,6 +66,13 @@ def _item_value(item: dict[str, Any], args: argparse.Namespace, key: str) -> Any
     return getattr(args, key) if value is None else value
 
 
+def _staged_output_path(output_path: Path) -> Path:
+    """Keep partial encodes hidden until a complete video can replace the target."""
+    return output_path.with_name(
+        f".{output_path.stem}.{os.getpid()}.tmp{output_path.suffix}"
+    )
+
+
 def _run_one_item(
     *,
     item: dict[str, Any],
@@ -88,6 +98,8 @@ def _run_one_item(
     current_image_path = str(item.get("visual_input") or "")
     output_path = Path(str(item["output_path"])).expanduser().resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    staged_output_path = _staged_output_path(output_path)
+    staged_output_path.unlink(missing_ok=True)
 
     if not current_prompt and not args.disable_prompt_encoder:
         raise ValueError("GEN3C persistent runtime requires non-empty prompt")
@@ -128,16 +140,31 @@ def _run_one_item(
         foreground_masking=foreground_masking,
     )
 
-    generated_w2cs, generated_intrinsics = generate_camera_trajectory(
-        trajectory_type=str(_item_value(item, args, "trajectory")),
-        initial_w2c=moge_initial_w2c_b144[0, 0],
-        initial_intrinsics=moge_intrinsics_b133[0, 0],
-        num_frames=num_video_frames,
-        movement_distance=float(_item_value(item, args, "movement_distance")),
-        camera_rotation=str(_item_value(item, args, "camera_rotation")),
-        center_depth=1.0,
-        device=device.type,
-    )
+    camera_path = item.get("camera_path")
+    if isinstance(camera_path, list) and camera_path:
+        from worldarena.models.adapters.gen3c_runner import generate_gen3c_camera_path
+
+        generated_w2cs, generated_intrinsics = generate_gen3c_camera_path(
+            camera_path=[str(token) for token in camera_path],
+            generate_camera_trajectory=generate_camera_trajectory,
+            initial_w2c=moge_initial_w2c_b144[0, 0],
+            initial_intrinsics=moge_intrinsics_b133[0, 0],
+            num_frames=num_video_frames,
+            movement_distance=float(_item_value(item, args, "movement_distance")),
+            center_depth=1.0,
+            device=device.type,
+        )
+    else:
+        generated_w2cs, generated_intrinsics = generate_camera_trajectory(
+            trajectory_type=str(_item_value(item, args, "trajectory")),
+            initial_w2c=moge_initial_w2c_b144[0, 0],
+            initial_intrinsics=moge_intrinsics_b133[0, 0],
+            num_frames=num_video_frames,
+            movement_distance=float(_item_value(item, args, "movement_distance")),
+            camera_rotation=str(_item_value(item, args, "camera_rotation")),
+            center_depth=1.0,
+            device=device.type,
+        )
 
     rendered_warp_images, rendered_warp_masks = cache.render_cache(
         generated_w2cs[:, 0:sample_n_frames],
@@ -220,8 +247,11 @@ def _run_one_item(
         H=height,
         W=final_width,
         video_save_quality=5,
-        video_save_path=str(output_path),
+        video_save_path=str(staged_output_path),
     )
+    if not staged_output_path.is_file() or staged_output_path.stat().st_size <= 0:
+        raise RuntimeError(f"GEN3C staged output was not written: {staged_output_path}")
+    staged_output_path.replace(output_path)
 
 
 def main() -> None:
@@ -267,7 +297,7 @@ def main() -> None:
             misc.set_random_seed(args.seed)
             generator = torch.Generator(device=device).manual_seed(args.seed)
             log.info(
-                "WorldArena GEN3C persistent item "
+                "WorldAtlas Arena GEN3C persistent item "
                 f"{index + 1}/{len(items)} trajectory={item.get('trajectory', args.trajectory)} "
                 f"camera_rotation={item.get('camera_rotation', args.camera_rotation)}"
             )
@@ -282,6 +312,10 @@ def main() -> None:
                 sample_n_frames=sample_n_frames,
             )
         except Exception:
+            raw_output_path = item.get("output_path")
+            if raw_output_path:
+                output_path = Path(str(raw_output_path)).expanduser().resolve()
+                _staged_output_path(output_path).unlink(missing_ok=True)
             error_path = item.get("error_path")
             if error_path:
                 Path(str(error_path)).write_text(traceback.format_exc(), encoding="utf-8")

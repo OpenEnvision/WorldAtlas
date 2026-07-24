@@ -7,11 +7,8 @@ model:
   control_signals: [text, image]
   roles: [candidate]
   # YUME's published environment targets Python 3.10 with a dedicated CUDA stack.
-  # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
   repo_root: thirdparty/YUME
-  python_bin: /share/project/yesliu/miniconda3/envs/yume/bin/python
-  # Point this at the published Yume-5B checkpoint tree.
-  checkpoint_dir: /share/project/yesliu/hjd/model/tmp/YUME/Yume-5B-720P
+  checkpoint_dir: ckpt/Yume-5B-720P
   # The adapter imports the upstream webapp entrypoint directly instead of launching its HTTP server.
   entrypoint: webapp_single_gpu.py
   output_ext: .mp4
@@ -23,12 +20,12 @@ model:
   prompt_mode: prompt_target
   reference_mode: first_frame
   generation:
+    require_persistent_batch: true
     mode: I2V
     fps: 16
     sample_steps: 4
-    sample5b_repo_root: /share/project/yesliu/hjd/model/tmp/YUME
-    sample5b_caption_path: /share/project/yesliu/hjd/model/WorldArena/tmp/yume_sample5b_dataset_prompt_caption.txt
-    # Keep sample_5b.sh inference parameters, but let WorldArena prompt_target decide the requested content.
+    sample5b_repo_root: thirdparty/YUME
+    # Keep sample_5b.sh inference parameters, but let WorldAtlas Arena prompt_target decide the requested content.
     # The one-line caption file is intentionally blank; no GPT/InternVL caption refinement is used.
     sample5b_caption_lines: 1
     num_euler_timesteps: 4
@@ -36,6 +33,8 @@ model:
     height: 704
     width: 1280
     sample_num: 1
+    # Keep the published sample_5b runtime contract and the existing benchmark
+    # outputs exactly aligned: 32 frames at 16 fps.
     frame_zero: 32
     latent_frame_zero: 8
     shift: 5.0
@@ -46,7 +45,7 @@ model:
     gpu_index: 0
     refine_from_image: false
     # Optional prompt-refinement model root. Needed only when refine_from_image or load_caption_model is enabled.
-    caption_model_dir: /share/project/yesliu/hjd/model/tmp/YUME/InternVL3-2B-Instruct
+    caption_model_dir: ckpt/InternVL3-2B-Instruct
     load_caption_model: false
     memory_optimization: false
     vae_memory_optimization: false

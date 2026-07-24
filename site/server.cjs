@@ -4,20 +4,87 @@ const path = require("path");
 const { spawn } = require("child_process");
 const url = require("url");
 const zlib = require("zlib");
+const { createAuthModule } = require("./server-auth.cjs");
+const {
+  formatLeaderboardModelLabel,
+  leaderboardModelFullName
+} = require("./leaderboard-model-labels.cjs");
+const {
+  atomicLeaderboardSourceSignature,
+  atomicLeaderboardAvailableSuites,
+  buildAtomicLeaderboard
+} = require("./official-atomic-leaderboard.cjs");
 
 const root = __dirname;
 const worldArenaRoot = path.resolve(root, "..");
+const docRoot = path.join(root, "doc");
 const port = Number(process.env.PORT || 4173);
-const generatedRoot = process.env.WORLDARENA_GENERATED_ROOT || "/share/project/bench/WorldArena/docs/generated";
+const dataRoot = firstExistingDirectory([
+  process.env.WORLDARENA_DATA_ROOT,
+  path.join(worldArenaRoot, "data")
+]);
+
+function firstExistingDirectory(candidates) {
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
+
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+        return candidate;
+      }
+    } catch (error) {
+      // Ignore unreadable paths and continue probing fallbacks.
+    }
+  }
+
+  return candidates.find(Boolean) || "";
+}
+
+function firstExistingFile(candidates) {
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
+
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+        return candidate;
+      }
+    } catch (error) {
+      // Ignore unreadable paths and continue probing fallbacks.
+    }
+  }
+
+  return candidates.find(Boolean) || "";
+}
+
+const generatedRoot = firstExistingDirectory([
+  process.env.WORLDARENA_GENERATED_ROOT,
+  path.join(worldArenaRoot, "docs", "generated"),
+  "/share/project/bench/WorldArena/docs/generated"
+]);
 const thumbAssetVersion = "20260502-fps-v4";
 const mediaCatalogCacheVersion = "20260620-openenvision-v1";
-const arenaBattleCacheVersion = "20260620-real-results-v1";
-const openEnvisionRoot = "/mnt/cpfs/yangboxue/visual_generation/juanxi/data/OpenEnvision/worldarena";
+const arenaBattleCacheVersion = "20260702-expanded-prediction-samples-v1";
+const arenaBattleSamplesPerModel = 240;
+const arenaPredictionRecordSampleLines = 16;
+const arenaPredictionRecordFileLimit = 2;
+const arenaPredictionSpecFileLimit = 4;
+const arenaSampleIndexVersion = "20260702-all-cases-v1";
+const compareIndexVersion = "20260718-v1";
+const compareCacheRoot = process.env.WORLDARENA_COMPARE_CACHE || path.join(root, ".cache", "compare");
+const finalResultsManifestPath = firstExistingFile([
+  process.env.WORLDARENA_FINAL_RESULTS_MANIFEST,
+  path.join(worldArenaRoot, "artifacts", "reports", "FINAL_RESULTS_MANIFEST.json"),
+  path.join(worldArenaRoot, "artifacts", "benchmark", "reports", "FINAL_RESULTS_MANIFEST.json")
+]);
 const dataRoots = {
-  images: process.env.WORLDARENA_IMAGE_DATA || path.join(openEnvisionRoot, "image_test_balanced_5000"),
-  videos: process.env.WORLDARENA_VIDEO_DATA || path.join(openEnvisionRoot, "videos"),
-  videoSplit: process.env.WORLDARENA_VIDEO_SPLIT_DATA || "",
-  physics: process.env.WORLDARENA_PHYSICS_DATA || "/share/project/bench/data/physics",
+  images: process.env.WORLDARENA_IMAGE_DATA || path.join(dataRoot, "image"),
+  videos: process.env.WORLDARENA_VIDEO_DATA || path.join(dataRoot, "video"),
+  videoSplit: process.env.WORLDARENA_VIDEO_SPLIT_DATA || path.join(dataRoot, "video_vipe_ann"),
+  physics: process.env.WORLDARENA_PHYSICS_DATA || path.join(dataRoot, "physics"),
   generated: generatedRoot
 };
 const arenaModelConfigRoot = process.env.WORLDARENA_MODEL_CONFIG_ROOT || path.join(worldArenaRoot, "config", "models");
@@ -27,9 +94,12 @@ const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp"]);
 const videoExtensions = new Set([".mp4", ".webm", ".mov", ".m4v"]);
 let mediaCatalogCache = null;
 let arenaBattleCache = null;
+let arenaSampleIndexCache = null;
 const mediaCatalogDiskCachePath = process.env.WORLDARENA_MEDIA_CATALOG_CACHE || path.join(root, ".cache", `media-catalog-${mediaCatalogCacheVersion}.json`);
+const arenaSampleIndexPath = process.env.WORLDARENA_ARENA_SAMPLE_INDEX || path.join(root, ".cache", `arena-sample-index-${arenaSampleIndexVersion}.json`);
 const posterCacheRoot = process.env.WORLDARENA_POSTER_CACHE || path.join(root, ".cache", "posters");
 const imageThumbCacheRoot = process.env.WORLDARENA_IMAGE_THUMB_CACHE || path.join(root, ".cache", "image-thumbs");
+const archivePreviewRoot = process.env.WORLDARENA_PREVIEW_ROOT || path.join(root, ".cache", "tos-stage", "preview");
 const arenaVoteLogPath = process.env.WORLDARENA_ARENA_VOTES || path.join(root, ".cache", "arena-votes.json");
 const pendingPosters = new Map();
 const pendingImageThumbs = new Map();
@@ -969,6 +1039,29 @@ function archiveTagsForItems(items) {
     .map(([tag]) => tag);
 }
 
+function archiveItemWithOptimizedPreview(item) {
+  if (!item || !item.path || (item.source !== "images" && item.source !== "videos")) {
+    return item;
+  }
+
+  const relativePreview = path.join(item.source, `${item.path}.webp`);
+  const previewPath = path.resolve(archivePreviewRoot, relativePreview);
+  const resolvedRoot = path.resolve(archivePreviewRoot);
+
+  if (
+    !previewPath.startsWith(`${resolvedRoot}${path.sep}`) ||
+    !fs.existsSync(previewPath) ||
+    !fs.statSync(previewPath).isFile()
+  ) {
+    return item;
+  }
+
+  const previewUrl = `/preview/${toUrlPath(relativePreview)}`;
+  return item.source === "images"
+    ? { ...item, thumb: previewUrl }
+    : { ...item, image: previewUrl };
+}
+
 function archivePagePayload(query = {}) {
   const catalog = buildMediaCatalog();
   const mediaKind = String(query.media || "visual");
@@ -989,7 +1082,9 @@ function archivePagePayload(query = {}) {
     .filter((item) => archiveMediaMatches(item, mediaKind))
     .filter((item) => archiveSearchMatches(item, searchQuery))
     .filter((item) => !selectedTag || (item.tags || []).includes(selectedTag));
-  const pageItems = filteredItems.slice(offset, offset + limit);
+  const pageItems = filteredItems
+    .slice(offset, offset + limit)
+    .map(archiveItemWithOptimizedPreview);
 
   return {
     generatedAt: catalog.generatedAt,
@@ -1029,6 +1124,81 @@ function resolveFile(requestPath) {
   return path.join(root, "index.html");
 }
 
+function resolveDocFile(requestPath) {
+  if (!requestPath.startsWith("/doc/") && requestPath !== "/doc") {
+    return null;
+  }
+
+  const docPrefix = "/doc";
+  let relativePath = requestPath.slice(docPrefix.length) || "/";
+  relativePath = relativePath.replace(/^(\.\.[/\\])+/, "");
+
+  if (!relativePath.startsWith("/")) {
+    relativePath = `/${relativePath}`;
+  }
+
+  const normalizedRelative = path.normalize(relativePath).replace(/^(\.\.[/\\])+/, "");
+  const resolvedRoot = path.resolve(docRoot);
+  let filePath = path.join(resolvedRoot, normalizedRelative);
+
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+    filePath = path.join(filePath, "index.html");
+  }
+
+  const resolvedPath = path.resolve(filePath);
+  if (!resolvedPath.startsWith(`${resolvedRoot}${path.sep}`) && resolvedPath !== resolvedRoot) {
+    return null;
+  }
+
+  if (fs.existsSync(resolvedPath) && fs.statSync(resolvedPath).isFile()) {
+    return resolvedPath;
+  }
+
+  if (path.extname(normalizedRelative)) {
+    return null;
+  }
+
+  const fallbackIndex = path.join(resolvedRoot, "404.html");
+  return fs.existsSync(fallbackIndex) ? fallbackIndex : null;
+}
+
+function docsRedirectTarget(pathname) {
+  if (!pathname.startsWith("/docs")) {
+    return "";
+  }
+
+  if (pathname === "/docs") {
+    return "/doc/";
+  }
+
+  return `/doc${pathname.slice("/docs".length)}`;
+}
+
+function resolveGeneratedAsset(requestPath) {
+  const prefix = "/assets/worldarena/generated/";
+
+  if (!generatedRoot || !requestPath.startsWith(prefix)) {
+    return null;
+  }
+
+  const relative = requestPath.slice(prefix.length);
+  const decodedRelative = decodeURIComponent(relative);
+  const safeRelative = path.normalize(decodedRelative).replace(/^(\.\.[/\\])+/, "");
+  const filePath = path.join(generatedRoot, safeRelative);
+  const resolvedRoot = path.resolve(generatedRoot);
+  const resolvedPath = path.resolve(filePath);
+
+  if (!resolvedPath.startsWith(`${resolvedRoot}${path.sep}`) && resolvedPath !== resolvedRoot) {
+    return null;
+  }
+
+  if (!fs.existsSync(resolvedPath) || !fs.statSync(resolvedPath).isFile()) {
+    return null;
+  }
+
+  return resolvedPath;
+}
+
 function resolveMediaFile(pathname) {
   const [, , dataset, ...relativeParts] = pathname.split("/");
   const datasetRoot = dataRoots[dataset];
@@ -1055,6 +1225,33 @@ function resolveMediaFile(pathname) {
   }
 
   return resolvedPath;
+}
+
+function resolveArchivePreviewFile(pathname) {
+  const prefix = "/preview/";
+
+  if (!pathname.startsWith(prefix)) {
+    return "";
+  }
+
+  try {
+    const relativePath = path.normalize(decodeURIComponent(pathname.slice(prefix.length)));
+    const resolvedRoot = path.resolve(archivePreviewRoot);
+    const resolvedPath = path.resolve(resolvedRoot, relativePath);
+
+    if (
+      !resolvedPath.startsWith(`${resolvedRoot}${path.sep}`) ||
+      path.extname(resolvedPath).toLowerCase() !== ".webp" ||
+      !fs.existsSync(resolvedPath) ||
+      !fs.statSync(resolvedPath).isFile()
+    ) {
+      return "";
+    }
+
+    return resolvedPath;
+  } catch {
+    return "";
+  }
 }
 
 function resolvePosterSource(pathname) {
@@ -1130,6 +1327,36 @@ function posterCachePath(dataset, relativePath) {
 function imageThumbCachePath(dataset, relativePath) {
   const cacheKey = base64Url(`${thumbAssetVersion}/image/${dataset}/${relativePath}`);
   return path.join(imageThumbCacheRoot, `${cacheKey}.jpg`);
+}
+
+function cachedDerivativePath(pathname, kind) {
+  const prefix = kind === "poster" ? "/poster/" : "/thumb/";
+
+  if (!pathname.startsWith(prefix)) {
+    return "";
+  }
+
+  try {
+    const [dataset, ...relativeParts] = pathname.slice(prefix.length).split("/");
+    const relativePath = path.normalize(decodeURIComponent(relativeParts.join("/")));
+
+    if (
+      !Object.prototype.hasOwnProperty.call(dataRoots, dataset) ||
+      !relativePath ||
+      path.isAbsolute(relativePath) ||
+      relativePath === ".." ||
+      relativePath.startsWith(`..${path.sep}`)
+    ) {
+      return "";
+    }
+
+    const cachePath = kind === "poster"
+      ? posterCachePath(dataset, relativePath)
+      : imageThumbCachePath(dataset, relativePath);
+    return fs.existsSync(cachePath) && fs.statSync(cachePath).isFile() ? cachePath : "";
+  } catch {
+    return "";
+  }
 }
 
 function runPosterQueue() {
@@ -1379,6 +1606,10 @@ function titleFromModelId(value) {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function predictionRunModelId(runName) {
+  return `prediction_${normalizeArenaKey(runName) || "run"}`;
+}
+
 function readArenaModels() {
   return safeReadDir(arenaModelConfigRoot, { withFileTypes: true })
     .filter((entry) => entry.isFile() && /\.ya?ml$/i.test(entry.name))
@@ -1437,7 +1668,7 @@ function readJsonlHead(filePath, maxLines = 80) {
 
   try {
     descriptor = fs.openSync(filePath, "r");
-    const buffer = Buffer.alloc(512 * 1024);
+    const buffer = Buffer.alloc(64 * 1024);
     const bytesRead = fs.readSync(descriptor, buffer, 0, buffer.length, 0);
     const text = buffer.slice(0, bytesRead).toString("utf8");
     return text
@@ -1548,12 +1779,8 @@ function findArenaRunModel(runName, models) {
   return bestModel;
 }
 
-function appendArenaSample(samples, runDir, record, fallbackMediaPath = "") {
-  if (samples.length >= 6) {
-    return;
-  }
-
-  const mediaPath = sampleMediaPath(runDir, record) || fallbackMediaPath;
+function appendArenaSample(samples, runDir, record) {
+  const mediaPath = sampleMediaPath(runDir, record);
   const mediaUrl = mediaPath ? predictionFileUrl(mediaPath) : "";
 
   if (!mediaUrl) {
@@ -1578,6 +1805,7 @@ function scanArenaPredictionRun(runDir, models) {
   const suites = new Set();
   const statuses = {};
   const samples = [];
+  const sampleMediaUrls = new Set();
   const recordFiles = [];
   const specFiles = [];
   const recordRoots = [runDir, path.join(runDir, runName)];
@@ -1594,15 +1822,15 @@ function scanArenaPredictionRun(runDir, models) {
 
   const uniqueRecordFiles = Array.from(new Set(recordFiles));
   recordFiles.length = 0;
-  uniqueRecordFiles.forEach((filePath) => recordFiles.push(filePath));
+  uniqueRecordFiles.slice(0, arenaPredictionRecordFileLimit).forEach((filePath) => recordFiles.push(filePath));
 
   safeReadDir(path.join(runDir, "_batch_specs"), { withFileTypes: true })
     .filter((entry) => entry.isFile() && /\.jsonl$/i.test(entry.name))
-    .slice(0, 8)
+    .slice(0, arenaPredictionSpecFileLimit)
     .forEach((entry) => specFiles.push(path.join(runDir, "_batch_specs", entry.name)));
 
-  [...recordFiles, ...specFiles].slice(0, 10).forEach((filePath) => {
-    const records = readJsonlHead(filePath, 12);
+  recordFiles.forEach((filePath) => {
+    const records = readJsonlHead(filePath, arenaPredictionRecordSampleLines);
     let shardTotal = 0;
 
     records.forEach((record) => {
@@ -1626,12 +1854,30 @@ function scanArenaPredictionRun(runDir, models) {
       const sampleCountBefore = samples.length;
       appendArenaSample(samples, runDir, record);
       if (samples.length > sampleCountBefore) {
-        mediaCount += 1;
+        const sample = samples[samples.length - 1];
+        if (sampleMediaUrls.has(sample.mediaUrl)) {
+          samples.pop();
+        } else {
+          sampleMediaUrls.add(sample.mediaUrl);
+          mediaCount += 1;
+        }
       }
     });
 
     declaredRecords += shardTotal || records.length;
   });
+
+  specFiles.forEach((filePath) => {
+    declaredRecords += 1;
+  });
+
+  if (!suites.size) {
+    const inferredSuite = inferSuiteFromText(runName);
+
+    if (inferredSuite) {
+      suites.add(inferredSuite);
+    }
+  }
 
   return {
     id: normalizeArenaKey(runName) || runName,
@@ -1648,6 +1894,31 @@ function scanArenaPredictionRun(runDir, models) {
     observedRecords,
     statuses,
     samples
+  };
+}
+
+function createArenaPredictionRunModel(run, index) {
+  const suite = run.suites[0] || inferSuiteFromText(run.name);
+  const supportedSuites = suite
+    ? [suite]
+    : ["image_static", "image_dynamic", "video_static", "video_dynamic"];
+
+  return {
+    id: predictionRunModelId(run.name),
+    name: titleFromModelId(run.name),
+    family: "Prediction Artifacts",
+    backendType: "prediction_artifact",
+    taskFamilies: ["world_model"],
+    artifactTypes: ["video", "image"],
+    controlSignals: ["text", "image"],
+    roles: ["candidate"],
+    supportedSuites,
+    outputExt: "",
+    generation: {},
+    configFile: path.relative(worldArenaRoot, path.join(arenaPredictionRoot, run.name)),
+    color: arenaModelColors[index % arenaModelColors.length],
+    accent: arenaModelColors[(index + 3) % arenaModelColors.length],
+    aliases: [normalizeArenaKey(run.name)].filter(Boolean)
   };
 }
 
@@ -1671,11 +1942,44 @@ function arenaLogCoverage(value, scale = 1600) {
 }
 
 const arenaVoteDimensions = [
-  { id: "overall", label: "Overall" },
-  { id: "visual_quality", label: "Visual Quality" },
-  { id: "control_alignment", label: "Control Alignment" },
-  { id: "world_consistency", label: "World Consistency" }
+  { id: "subject_consistency", label: "Subject Consistency", group: "Motion & Stability" },
+  { id: "scene_consistency", label: "Scene Consistency", group: "Motion & Stability" },
+  { id: "motion_smoothness", label: "Motion Smoothness", group: "Motion & Stability" },
+  { id: "temporal_flickering", label: "Temporal Flickering", group: "Motion & Stability" },
+  { id: "inertial_consistency", label: "Inertial Consistency", group: "Motion & Stability" },
+  { id: "physical_mechanics", label: "Physical Mechanics", group: "Logic & Physics" },
+  { id: "object_permanence", label: "Object Permanence", group: "Logic & Physics" },
+  { id: "dynamic_degree", label: "Dynamic Degree", group: "Logic & Physics" },
+  { id: "semantic_adherence", label: "Semantic Adherence", group: "Instruction Adherence" },
+  { id: "spatial_relationship", label: "Spatial Relationship", group: "Instruction Adherence" },
+  { id: "semantic_drift", label: "Semantic Drift", group: "Instruction Adherence" },
+  { id: "composition_framing", label: "Composition & Framing", group: "Aesthetic Quality" },
+  { id: "lighting_volumetric", label: "Lighting & Volumetric", group: "Aesthetic Quality" },
+  { id: "color_harmony", label: "Color Harmony", group: "Aesthetic Quality" },
+  { id: "structural_gestalt", label: "Structural Gestalt", group: "Aesthetic Quality" }
 ];
+
+const arenaScorableDimensionIds = arenaVoteDimensions.map((dimension) => dimension.id);
+
+function arenaDimensionIdSet() {
+  return new Set(arenaScorableDimensionIds);
+}
+
+function arenaOverallRating(row) {
+  const values = arenaScorableDimensionIds
+    .map((dimensionId) => row.ratings[dimensionId])
+    .filter((value) => Number.isFinite(value));
+
+  if (!values.length) {
+    return 1500;
+  }
+
+  return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
+}
+
+function arenaTotalBattles(row) {
+  return arenaScorableDimensionIds.reduce((total, dimensionId) => total + (row.battles[dimensionId] || 0), 0);
+}
 
 function readArenaVotes() {
   const payload = readJson(arenaVoteLogPath, {});
@@ -1704,25 +2008,60 @@ function arenaVoteKFactor(battleCount) {
 }
 
 function createArenaRatingRecord(model) {
+  const ratings = Object.fromEntries(arenaScorableDimensionIds.map((dimensionId) => [dimensionId, 1500]));
+  const battles = Object.fromEntries(arenaScorableDimensionIds.map((dimensionId) => [dimensionId, 0]));
+  const wins = Object.fromEntries(arenaScorableDimensionIds.map((dimensionId) => [dimensionId, 0]));
+  const losses = Object.fromEntries(arenaScorableDimensionIds.map((dimensionId) => [dimensionId, 0]));
+  const likertTotals = Object.fromEntries(arenaScorableDimensionIds.map((dimensionId) => [dimensionId, 0]));
+  const likertCounts = Object.fromEntries(arenaScorableDimensionIds.map((dimensionId) => [dimensionId, 0]));
+
   return {
     modelId: model.id,
     name: model.name,
     family: model.family,
-    ratings: Object.fromEntries(arenaVoteDimensions.map((dimension) => [dimension.id, 1500])),
-    battles: Object.fromEntries(arenaVoteDimensions.map((dimension) => [dimension.id, 0])),
-    wins: Object.fromEntries(arenaVoteDimensions.map((dimension) => [dimension.id, 0])),
-    losses: Object.fromEntries(arenaVoteDimensions.map((dimension) => [dimension.id, 0]))
+    ratings,
+    battles,
+    wins,
+    losses,
+    likertTotals,
+    likertCounts
   };
 }
 
-function applyArenaEloVote(ratings, vote) {
-  if (!vote || vote.winner === "tie" || vote.ranked === false) {
+function applyArenaLikertTotals(ratings, vote) {
+  if (!vote || vote.notApplicable || !Number.isFinite(vote.leftScore) || !Number.isFinite(vote.rightScore)) {
     return;
   }
 
-  const dimension = arenaVoteDimensions.some((item) => item.id === vote.dimension)
-    ? vote.dimension
-    : "overall";
+  const dimension = arenaDimensionIdSet().has(vote.dimension) ? vote.dimension : null;
+
+  if (!dimension) {
+    return;
+  }
+
+  const left = ratings.get(vote.leftModelId);
+  const right = ratings.get(vote.rightModelId);
+
+  if (!left || !right) {
+    return;
+  }
+
+  left.likertTotals[dimension] += vote.leftScore;
+  left.likertCounts[dimension] += 1;
+  right.likertTotals[dimension] += vote.rightScore;
+  right.likertCounts[dimension] += 1;
+}
+
+function applyArenaEloVote(ratings, vote) {
+  if (!vote || vote.notApplicable || vote.ranked === false) {
+    return;
+  }
+
+  const dimension = arenaDimensionIdSet().has(vote.dimension) ? vote.dimension : null;
+
+  if (!dimension || vote.winner === "tie") {
+    return;
+  }
   const left = ratings.get(vote.leftModelId);
   const right = ratings.get(vote.rightModelId);
 
@@ -1758,21 +2097,47 @@ function arenaHumanLeaderboard(models, votes) {
   const ratings = new Map(models.map((model) => [model.id, createArenaRatingRecord(model)]));
   const cleanVotes = votes.filter((vote) => modelById.has(vote.leftModelId) && modelById.has(vote.rightModelId));
 
-  cleanVotes.forEach((vote) => applyArenaEloVote(ratings, vote));
+  cleanVotes.forEach((vote) => {
+    applyArenaEloVote(ratings, vote);
+    applyArenaLikertTotals(ratings, vote);
+  });
+
+  const leaderboardDimensions = [
+    { id: "overall", label: "Overall (mean ELO)", group: "Aggregate" },
+    ...arenaVoteDimensions
+  ];
+
+  const rows = Array.from(ratings.values())
+    .map((row) => ({
+      ...row,
+      overallRating: arenaOverallRating(row),
+      totalBattles: arenaTotalBattles(row),
+      likertAverages: Object.fromEntries(
+        arenaScorableDimensionIds.map((dimensionId) => {
+          const count = row.likertCounts[dimensionId] || 0;
+          return [
+            dimensionId,
+            count ? Number((row.likertTotals[dimensionId] / count).toFixed(2)) : null
+          ];
+        })
+      )
+    }))
+    .sort((left, right) => right.overallRating - left.overallRating)
+    .map((row, index) => ({
+      rank: index + 1,
+      ...row
+    }))
+    .slice(0, 40);
 
   return {
-    dimensions: arenaVoteDimensions,
+    dimensions: leaderboardDimensions,
     votes: cleanVotes.length,
-    rankedVotes: cleanVotes.filter((vote) => vote.ranked !== false && vote.winner !== "tie").length,
-    ties: cleanVotes.filter((vote) => vote.winner === "tie").length,
+    rankedVotes: cleanVotes.filter((vote) => vote.ranked !== false && vote.winner !== "tie" && !vote.notApplicable).length,
+    ties: cleanVotes.filter((vote) => vote.winner === "tie" && !vote.notApplicable).length,
+    skipped: cleanVotes.filter((vote) => vote.notApplicable).length,
     updatedAt: cleanVotes.length ? cleanVotes[cleanVotes.length - 1].createdAt : "",
-    rows: Array.from(ratings.values())
-      .sort((left, right) => right.ratings.overall - left.ratings.overall)
-      .map((row, index) => ({
-        rank: index + 1,
-        ...row
-      }))
-      .slice(0, 40)
+    generatedAt: new Date().toISOString(),
+    rows
   };
 }
 
@@ -1801,22 +2166,46 @@ function parseJsonRequest(request) {
   });
 }
 
+function sanitizeArenaLikertScore(value) {
+  const score = Number(value);
+
+  if (!Number.isFinite(score) || score < 1 || score > 5) {
+    return null;
+  }
+
+  return Math.round(score);
+}
+
 function sanitizeArenaVote(payload) {
+  const notApplicable = payload.notApplicable === true;
   const dimension = arenaVoteDimensions.some((item) => item.id === payload.dimension)
     ? payload.dimension
-    : "overall";
+    : null;
   const winner = ["left", "right", "tie"].includes(payload.winner) ? payload.winner : "";
+  const leftScore = sanitizeArenaLikertScore(payload.leftScore);
+  const rightScore = sanitizeArenaLikertScore(payload.rightScore);
 
   if (!winner || !payload.leftModelId || !payload.rightModelId || payload.leftModelId === payload.rightModelId) {
+    return null;
+  }
+
+  if (!notApplicable && (!dimension || leftScore === null || rightScore === null)) {
+    return null;
+  }
+
+  if (notApplicable && !dimension) {
     return null;
   }
 
   return {
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
     createdAt: new Date().toISOString(),
-    ranked: payload.ranked !== false,
+    ranked: notApplicable ? false : payload.ranked !== false && winner !== "tie",
+    notApplicable,
     dimension,
     winner,
+    leftScore: notApplicable ? null : leftScore,
+    rightScore: notApplicable ? null : rightScore,
     leftModelId: String(payload.leftModelId),
     rightModelId: String(payload.rightModelId),
     leftSampleId: String(payload.leftSampleId || ""),
@@ -1824,7 +2213,10 @@ function sanitizeArenaVote(payload) {
     sharedSampleId: String(payload.sharedSampleId || ""),
     suite: String(payload.suite || ""),
     battleMode: String(payload.battleMode || "random"),
-    reason: truncate(payload.reason || "", 240)
+    reason: truncate(payload.reason || "", 240),
+    userId: truncate(payload.userId || "", 120),
+    userName: truncate(payload.userName || "", 120),
+    userProvider: truncate(payload.userProvider || "", 40)
   };
 }
 
@@ -1880,11 +2272,7 @@ function decorateArenaModels(models, runs) {
         Object.entries(run.statuses).forEach(([status, count]) => {
           statuses[status] = (statuses[status] || 0) + count;
         });
-        run.samples.forEach((sample) => {
-          if (samples.length < 5) {
-            samples.push(sample);
-          }
-        });
+        run.samples.forEach((sample) => samples.push(sample));
       });
 
       const hasActions = model.controlSignals.some((signal) => /action|camera|pose/i.test(signal));
@@ -1894,6 +2282,7 @@ function decorateArenaModels(models, runs) {
       const resultCoverage = arenaLogCoverage(mediaCount + frameDirs + declaredRecords + recordFiles * 80 + specFiles * 20);
       const completion = arenaCompletionRatio(statuses, mediaCount + frameDirs);
       const dynamicCoverage = Array.from(suites).filter((suite) => /dynamic|video/.test(suite)).length / 4;
+      const sampleCount = samples.length;
 
       return {
         ...model,
@@ -1909,8 +2298,9 @@ function decorateArenaModels(models, runs) {
         observedRecords,
         statuses,
         suites: Array.from(suites).sort(),
-        samples,
-        coverageLabel: `${modelRuns.length} runs · ${declaredRecords || mediaCount} records · ${samples.length} previews`,
+        sampleCount,
+        samples: samples.slice(0, arenaBattleSamplesPerModel),
+        coverageLabel: `${modelRuns.length} runs · ${declaredRecords || mediaCount} records · ${sampleCount} samples`,
         control: clamp(0.28 + suiteCoverage * 0.18 + (hasActions ? 0.25 : 0.06) + (hasVideoInput ? 0.1 : 0) + resultCoverage * 0.18, 0.18, 0.98),
         visual: clamp(0.32 + (model.artifactTypes.includes("video") ? 0.18 : 0.08) + resultCoverage * 0.28 + suiteCoverage * 0.14 + completion * 0.08, 0.2, 0.98),
         physics: clamp(0.24 + (isWorldModel ? 0.28 : 0.06) + (hasActions ? 0.14 : 0.04) + dynamicCoverage * 0.2 + resultCoverage * 0.12, 0.16, 0.96),
@@ -1988,6 +2378,8 @@ function arenaScenariosFromRuns(runs, models) {
 }
 
 function arenaBattlePayload() {
+  const startedAt = Date.now();
+
   if (
     arenaBattleCache &&
     arenaBattleCache.cacheVersion === arenaBattleCacheVersion &&
@@ -1999,16 +2391,47 @@ function arenaBattlePayload() {
     };
   }
 
+  const modelStartedAt = Date.now();
   const registryModels = readArenaModels();
+  const scanStartedAt = Date.now();
   const runs = safeReadDir(arenaPredictionRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
-    .map((entry) => scanArenaPredictionRun(path.join(arenaPredictionRoot, entry.name), registryModels));
-  const models = decorateArenaModels(registryModels, runs);
+    .map((entry) => {
+      const runStartedAt = Date.now();
+      const run = scanArenaPredictionRun(path.join(arenaPredictionRoot, entry.name), registryModels);
+      const elapsed = Date.now() - runStartedAt;
+
+      if (elapsed > 500) {
+        console.log(`[arena] slow prediction run scan ${entry.name} ${elapsed}ms`);
+      }
+
+      return run;
+    });
+  const originallyMappedRuns = runs.filter((run) => run.modelId).length;
+  const dynamicModels = [];
+
+  runs.forEach((run) => {
+    if (run.modelId) {
+      return;
+    }
+
+    const model = createArenaPredictionRunModel(run, registryModels.length + dynamicModels.length);
+    run.modelId = model.id;
+    run.modelName = model.name;
+    dynamicModels.push(model);
+  });
+
+  const decorateStartedAt = Date.now();
+  const allModels = [...registryModels, ...dynamicModels];
+  const models = decorateArenaModels(allModels, runs);
+  const decoratedAt = Date.now();
   const summary = {
     integratedModels: registryModels.filter((model) => model.roles.length === 0 || model.roles.includes("candidate")).length,
+    dynamicModels: dynamicModels.length,
     arenaModels: models.length,
     predictionRuns: runs.length,
-    mappedRuns: runs.filter((run) => run.modelId).length,
+    mappedRuns: originallyMappedRuns,
+    coveredRuns: runs.filter((run) => run.modelId).length,
     mediaOutputs: runs.reduce((total, run) => total + run.mediaCount, 0),
     declaredRecords: runs.reduce((total, run) => total + (run.declaredRecords || 0), 0),
     observedRecords: runs.reduce((total, run) => total + (run.observedRecords || 0), 0),
@@ -2037,8 +2460,170 @@ function arenaBattlePayload() {
     createdAt: Date.now(),
     payload
   };
+  console.log(
+    `[arena] payload models=${registryModels.length} runs=${runs.length} publicModels=${models.length} ` +
+    `readModels=${scanStartedAt - modelStartedAt}ms scanRuns=${decorateStartedAt - scanStartedAt}ms ` +
+    `decorate=${decoratedAt - decorateStartedAt}ms total=${Date.now() - startedAt}ms`
+  );
 
   return payload;
+}
+
+function arenaRandomItem(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function arenaSampleIndexSummary(preparedIndex) {
+  if (!preparedIndex) {
+    return {
+      available: false,
+      path: path.relative(root, arenaSampleIndexPath)
+    };
+  }
+
+  return {
+    available: true,
+    path: path.relative(root, arenaSampleIndexPath),
+    generatedAt: preparedIndex.generatedAt || "",
+    version: preparedIndex.version || "",
+    totals: preparedIndex.totals || {},
+    playableSamples: preparedIndex.samples.length,
+    sameCaseOnly: true,
+    sameInputGroups: preparedIndex.sameInputGroups.length,
+    suiteGroups: preparedIndex.suiteGroups.length
+  };
+}
+
+function prepareArenaSampleIndex(rawIndex, mtimeMs) {
+  const samples = Array.isArray(rawIndex.samples)
+    ? rawIndex.samples.filter((sample) => sample.modelId && sample.mediaUrl)
+    : [];
+  const groupByInput = new Map();
+  const groupBySuite = new Map();
+
+  samples.forEach((sample) => {
+    const sampleId = sample.sampleId || path.basename(sample.mediaUrl || "", path.extname(sample.mediaUrl || ""));
+    const suite = sample.suite || "mixed";
+    const inputKey = `${suite}::${sampleId}`;
+
+    if (sampleId) {
+      if (!groupByInput.has(inputKey)) {
+        groupByInput.set(inputKey, new Map());
+      }
+      if (!groupByInput.get(inputKey).has(sample.modelId)) {
+        groupByInput.get(inputKey).set(sample.modelId, []);
+      }
+      groupByInput.get(inputKey).get(sample.modelId).push(sample);
+    }
+
+    if (!groupBySuite.has(suite)) {
+      groupBySuite.set(suite, new Map());
+    }
+    if (!groupBySuite.get(suite).has(sample.modelId)) {
+      groupBySuite.get(suite).set(sample.modelId, []);
+    }
+    groupBySuite.get(suite).get(sample.modelId).push(sample);
+  });
+
+  return {
+    ...rawIndex,
+    mtimeMs,
+    samples,
+    sameInputGroups: Array.from(groupByInput.values()).map((group) => Array.from(group.values())).filter((group) => group.length >= 2),
+    suiteGroups: Array.from(groupBySuite.values()).map((group) => Array.from(group.values())).filter((group) => group.length >= 2)
+  };
+}
+
+function readArenaSampleIndex() {
+  let stat = null;
+
+  try {
+    stat = fs.statSync(arenaSampleIndexPath);
+  } catch {
+    return null;
+  }
+
+  if (arenaSampleIndexCache && arenaSampleIndexCache.mtimeMs === stat.mtimeMs) {
+    return arenaSampleIndexCache;
+  }
+
+  try {
+    const rawIndex = readJson(arenaSampleIndexPath, null);
+
+    if (!rawIndex || rawIndex.version !== arenaSampleIndexVersion || !Array.isArray(rawIndex.samples)) {
+      return null;
+    }
+
+    arenaSampleIndexCache = prepareArenaSampleIndex(rawIndex, stat.mtimeMs);
+    return arenaSampleIndexCache;
+  } catch {
+    return null;
+  }
+}
+
+function arenaPairFromBuckets(modelBuckets) {
+  if (!Array.isArray(modelBuckets) || modelBuckets.length < 2) {
+    return null;
+  }
+
+  const firstIndex = Math.floor(Math.random() * modelBuckets.length);
+  let secondIndex = Math.floor(Math.random() * (modelBuckets.length - 1));
+
+  if (secondIndex >= firstIndex) {
+    secondIndex += 1;
+  }
+
+  const first = arenaRandomItem(modelBuckets[firstIndex]);
+  const second = arenaRandomItem(modelBuckets[secondIndex]);
+
+  if (!first || !second || first.modelId === second.modelId) {
+    return null;
+  }
+
+  const sharedSampleId = first.sampleId && first.sampleId === second.sampleId ? first.sampleId : "";
+  const firstSuite = first.suite || "";
+  const secondSuite = second.suite || "";
+
+  if (!sharedSampleId || firstSuite !== secondSuite) {
+    return null;
+  }
+
+  const flip = Math.random() > 0.5;
+  const left = flip ? second : first;
+  const right = flip ? first : second;
+
+  return {
+    ranked: true,
+    revealed: false,
+    voted: false,
+    leftModelId: left.modelId,
+    rightModelId: right.modelId,
+    leftSample: left,
+    rightSample: right,
+    sharedSampleId,
+    caseKey: `${firstSuite}::${sharedSampleId}`,
+    sameCase: true,
+    suite: firstSuite
+  };
+}
+
+function arenaRandomBattleFromIndex(preparedIndex) {
+  if (!preparedIndex) {
+    return null;
+  }
+
+  const groups = preparedIndex.sameInputGroups;
+
+  for (let attempt = 0; attempt < 16; attempt += 1) {
+    const group = groups.length ? arenaRandomItem(groups) : null;
+    const battle = arenaPairFromBuckets(group);
+
+    if (battle) {
+      return battle;
+    }
+  }
+
+  return null;
 }
 
 function resolvePredictionMediaFile(pathname) {
@@ -2136,7 +2721,8 @@ function cacheControlFor(filePath, requestUrl = "") {
 
   if (
     resolvedPath.startsWith(`${path.resolve(posterCacheRoot)}${path.sep}`) ||
-    resolvedPath.startsWith(`${path.resolve(imageThumbCacheRoot)}${path.sep}`)
+    resolvedPath.startsWith(`${path.resolve(imageThumbCacheRoot)}${path.sep}`) ||
+    resolvedPath.startsWith(`${path.resolve(archivePreviewRoot)}${path.sep}`)
   ) {
     return "public, max-age=31536000, immutable";
   }
@@ -2227,9 +2813,422 @@ function sendFile(request, response, filePath) {
   fs.createReadStream(filePath).pipe(response);
 }
 
-const server = http.createServer((request, response) => {
+let compareMetaCache = null;
+let compareSuiteCasesCache = new Map();
+let compareSuiteDataCache = new Map();
+
+function readCompareMeta() {
+  const metaPath = path.join(compareCacheRoot, "meta.json");
+
+  try {
+    const stat = fs.statSync(metaPath);
+
+    if (compareMetaCache && compareMetaCache.mtimeMs === stat.mtimeMs) {
+      return compareMetaCache.payload;
+    }
+
+    const payload = readJson(metaPath, null);
+
+    if (!payload || payload.version !== compareIndexVersion) {
+      return null;
+    }
+
+    compareMetaCache = { mtimeMs: stat.mtimeMs, payload };
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function readCompareSuiteCases(suite) {
+  const filePath = path.join(compareCacheRoot, `cases-${suite}.json`);
+
+  try {
+    const stat = fs.statSync(filePath);
+    const cached = compareSuiteCasesCache.get(suite);
+
+    if (cached && cached.mtimeMs === stat.mtimeMs) {
+      return cached.payload;
+    }
+
+    const payload = readJson(filePath, null);
+
+    if (!payload || payload.version !== compareIndexVersion) {
+      return null;
+    }
+
+    compareSuiteCasesCache.set(suite, { mtimeMs: stat.mtimeMs, payload });
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function readCompareSuiteData(suite) {
+  const filePath = path.join(compareCacheRoot, `data-${suite}.json`);
+
+  try {
+    const stat = fs.statSync(filePath);
+    const cached = compareSuiteDataCache.get(suite);
+
+    if (cached && cached.mtimeMs === stat.mtimeMs) {
+      return cached.payload;
+    }
+
+    const payload = readJson(filePath, null);
+
+    if (!payload) {
+      return null;
+    }
+
+    compareSuiteDataCache.set(suite, { mtimeMs: stat.mtimeMs, payload });
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function compareCaseMatchesFilters(caseEntry, query) {
+  if (query.style && caseEntry.style !== query.style) {
+    return false;
+  }
+
+  if (query.environment && caseEntry.environment !== query.environment) {
+    return false;
+  }
+
+  if (query.scene && caseEntry.scene !== query.scene) {
+    return false;
+  }
+
+  if (query.motionCategory && caseEntry.motionCategory !== query.motionCategory) {
+    return false;
+  }
+
+  if (query.q) {
+    const haystack = [
+      caseEntry.id,
+      caseEntry.prompt,
+      caseEntry.style,
+      caseEntry.environment,
+      caseEntry.scene,
+      caseEntry.motionCategory
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (!haystack.includes(query.q)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function compareMetricValue(modelEntry, metric) {
+  if (!metric) {
+    return null;
+  }
+
+  const value = modelEntry.scores && modelEntry.scores[metric];
+
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function compareCaseMetricStats(caseEntry, suiteData, metric) {
+  if (!metric || !suiteData) {
+    return null;
+  }
+
+  const detail = suiteData[caseEntry.id];
+
+  if (!detail || !Array.isArray(detail.models)) {
+    return null;
+  }
+
+  const values = detail.models
+    .map((modelEntry) => compareMetricValue(modelEntry, metric))
+    .filter((value) => value !== null);
+
+  if (!values.length) {
+    return null;
+  }
+
+  const sum = values.reduce((total, value) => total + value, 0);
+
+  return {
+    count: values.length,
+    avg: Math.round((sum / values.length) * 10000) / 10000,
+    min: Math.min(...values),
+    max: Math.max(...values)
+  };
+}
+
+function compareCasesPayload(query = {}) {
+  const meta = readCompareMeta();
+
+  if (!meta) {
+    return { ok: false, error: "Compare index not built. Run site/build-compare-index.cjs first." };
+  }
+
+  const suite = String(query.suite || "image_static");
+  const suiteCases = readCompareSuiteCases(suite);
+  const suiteData = readCompareSuiteData(suite);
+
+  if (!suiteCases) {
+    return { ok: false, error: `No compare data for suite ${suite}` };
+  }
+
+  const metric = String(query.metric || "").trim();
+  const sort = String(query.sort || "id");
+  const direction = String(query.dir || "asc") === "desc" ? "desc" : "asc";
+  const page = Math.max(Number.parseInt(query.page || "1", 10) || 1, 1);
+  const limit = clamp(Number.parseInt(query.limit || "40", 10) || 40, 1, 120);
+  const filters = {
+    style: String(query.style || "").trim(),
+    environment: String(query.environment || "").trim(),
+    scene: String(query.scene || "").trim(),
+    motionCategory: String(query.motionCategory || "").trim(),
+    q: String(query.q || "").trim().toLowerCase()
+  };
+
+  let cases = suiteCases.cases.filter((caseEntry) => compareCaseMatchesFilters(caseEntry, filters));
+
+  if (metric) {
+    cases = cases
+      .map((caseEntry) => ({
+        ...caseEntry,
+        metricStats: compareCaseMetricStats(caseEntry, suiteData, metric)
+      }))
+      .filter((caseEntry) => !query.requireMetric || caseEntry.metricStats);
+
+    if (sort === "metric") {
+      cases.sort((left, right) => {
+        const leftValue = left.metricStats ? left.metricStats.avg : -Infinity;
+        const rightValue = right.metricStats ? right.metricStats.avg : -Infinity;
+        return direction === "desc" ? rightValue - leftValue : leftValue - rightValue;
+      });
+    }
+  }
+
+  if (sort === "id" || !metric) {
+    cases.sort((left, right) => (direction === "desc" ? right.id.localeCompare(left.id) : left.id.localeCompare(right.id)));
+  }
+
+  const total = cases.length;
+  const offset = (page - 1) * limit;
+  const pageCases = cases.slice(offset, offset + limit);
+
+  return {
+    ok: true,
+    suite,
+    metric,
+    sort,
+    direction,
+    page,
+    limit,
+    total,
+    pages: Math.max(Math.ceil(total / limit), 1),
+    filters: suiteCases.filters,
+    cases: pageCases
+  };
+}
+
+function compareSamplePayload(query = {}) {
+  const meta = readCompareMeta();
+
+  if (!meta) {
+    return { ok: false, error: "Compare index not built. Run site/build-compare-index.cjs first." };
+  }
+
+  const suite = String(query.suite || "image_static");
+  const sampleId = String(query.sampleId || query.sample_id || "").trim();
+  const metric = String(query.metric || "").trim();
+  const direction = String(query.dir || "desc") === "asc" ? "asc" : "desc";
+  const runFilter = String(query.runId || query.model || "").trim().toLowerCase();
+
+  if (!sampleId) {
+    return { ok: false, error: "sampleId is required" };
+  }
+
+  const suiteData = readCompareSuiteData(suite);
+  const detail = suiteData && suiteData[sampleId];
+
+  if (!detail) {
+    return { ok: false, error: `Case not found: ${sampleId}` };
+  }
+
+  let models = Array.isArray(detail.models) ? [...detail.models] : [];
+
+  if (runFilter) {
+    models = models.filter(
+      (modelEntry) =>
+        modelEntry.runId.toLowerCase().includes(runFilter) ||
+        modelEntry.runName.toLowerCase().includes(runFilter) ||
+        modelEntry.displayName.toLowerCase().includes(runFilter)
+    );
+  }
+
+  if (metric) {
+    models.sort((left, right) => {
+      const leftValue = compareMetricValue(left, metric);
+      const rightValue = compareMetricValue(right, metric);
+      const leftScore = leftValue === null ? -Infinity : leftValue;
+      const rightScore = rightValue === null ? -Infinity : rightValue;
+      return direction === "asc" ? leftScore - rightScore : rightScore - leftScore;
+    });
+  } else {
+    models.sort((left, right) => left.displayName.localeCompare(right.displayName));
+  }
+
+  return {
+    ok: true,
+    suite,
+    sampleId,
+    metric,
+    direction,
+    case: {
+      id: detail.id || sampleId,
+      style: detail.style,
+      environment: detail.environment,
+      scene: detail.scene,
+      motionCategory: detail.motionCategory,
+      prompt: detail.prompt || ""
+    },
+    models,
+    modelCount: models.length
+  };
+}
+
+function compareMetaPayload() {
+  const meta = readCompareMeta();
+
+  if (!meta) {
+    return { ok: false, error: "Compare index not built. Run site/build-compare-index.cjs first." };
+  }
+
+  return { ok: true, meta };
+}
+
+const leaderboardFormalSuites = ["image_static", "image_dynamic", "video_static", "video_dynamic"];
+let atomicLeaderboardCache = null;
+
+function leaderboardGroupKey(modelEntry) {
+  return modelEntry.configModelId || modelEntry.runId;
+}
+
+function upsertLeaderboardGroup(groups, modelEntry) {
+  const key = leaderboardGroupKey(modelEntry);
+  let group = groups.get(key);
+
+  if (!group) {
+    group = {
+      groupKey: key,
+      modelId: modelEntry.configModelId || modelEntry.runId,
+      name: modelEntry.displayName || modelEntry.runName || modelEntry.runId,
+      runName: modelEntry.runName || "",
+      sampleCount: 0,
+      metricTotals: new Map()
+    };
+    groups.set(key, group);
+  }
+
+  if (modelEntry.displayName && modelEntry.displayName.length >= group.name.length) {
+    group.name = modelEntry.displayName;
+  }
+
+  if (modelEntry.runName) {
+    group.runName = modelEntry.runName;
+  }
+
+  group.sampleCount += 1;
+
+  Object.entries(modelEntry.scores || {}).forEach(([metric, value]) => {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return;
+    }
+
+    const current = group.metricTotals.get(metric) || { sum: 0, count: 0 };
+    current.sum += value;
+    current.count += 1;
+    group.metricTotals.set(metric, current);
+  });
+}
+
+function aggregateLeaderboardForSuite(suite) {
+  try {
+    const sourceSignature = atomicLeaderboardSourceSignature(
+      worldArenaRoot,
+      finalResultsManifestPath
+    );
+
+    if (!atomicLeaderboardCache || atomicLeaderboardCache.sourceSignature !== sourceSignature) {
+      const finalManifest = JSON.parse(fs.readFileSync(finalResultsManifestPath, "utf8"));
+      const modelMetadata = readCompareMeta()?.models || [];
+      atomicLeaderboardCache = {
+        sourceSignature,
+        snapshot: buildAtomicLeaderboard(finalManifest, {
+          projectRoot: worldArenaRoot,
+          finalManifestPath: finalResultsManifestPath,
+          modelMetadata
+        })
+      };
+    }
+    return atomicLeaderboardCache.snapshot?.suites?.[suite] || null;
+  } catch {
+    return null;
+  }
+}
+
+function leaderboardAvailableSuites() {
+  return atomicLeaderboardCache?.snapshot
+    ? atomicLeaderboardAvailableSuites(atomicLeaderboardCache.snapshot)
+    : leaderboardFormalSuites.map((suite) => ({ id: suite, caseCount: 0, available: false }));
+}
+
+function leaderboardPayload(query = {}) {
+  const suite = String(query.suite || "image_static");
+
+  if (!leaderboardFormalSuites.includes(suite)) {
+    return { ok: false, error: `Unknown suite ${suite}` };
+  }
+
+  const aggregate = aggregateLeaderboardForSuite(suite);
+
+  if (!aggregate || !atomicLeaderboardCache?.snapshot) {
+    return { ok: false, error: "Final benchmark results are unavailable." };
+  }
+
+  return {
+    ok: true,
+    suite,
+    rows: aggregate.rows || [],
+    metrics: aggregate.metrics || [],
+    modelCount: aggregate.modelCount || 0,
+    atomicCellCount: aggregate.atomicCellCount || 0,
+    defaultMetric: aggregate.defaultMetric || "overall",
+    overallPolicy: "blank",
+    generatedAt: atomicLeaderboardCache.snapshot.generatedAt,
+    availableSuites: leaderboardAvailableSuites()
+  };
+}
+
+const authModule = createAuthModule({
+  root,
+  port,
+  sendJson,
+  sendBadRequest,
+  parseJsonRequest
+});
+
+const server = http.createServer(async (request, response) => {
   const parsedUrl = url.parse(request.url, true);
   const pathname = parsedUrl.pathname || "/";
+
+  if (await authModule.handleAuthFeedbackApi(request, response, pathname, parsedUrl)) {
+    return;
+  }
 
   if (pathname === "/api/archive-media") {
     sendJson(request, response, archivePagePayload(parsedUrl.query));
@@ -2241,6 +3240,54 @@ const server = http.createServer((request, response) => {
     return;
   }
 
+  if (pathname === "/api/arena-sample-index") {
+    sendJson(request, response, {
+      ok: true,
+      sampleIndex: arenaSampleIndexSummary(readArenaSampleIndex())
+    });
+    return;
+  }
+
+  if (pathname === "/api/arena-random-battle") {
+    const sampleIndex = readArenaSampleIndex();
+    const battle = arenaRandomBattleFromIndex(sampleIndex);
+
+    sendJson(request, response, {
+      ok: Boolean(battle),
+      source: battle ? "arena-sample-index" : "arena-battle-payload",
+      sampleIndex: arenaSampleIndexSummary(sampleIndex),
+      battle
+    });
+    return;
+  }
+
+  if (pathname === "/api/arena-leaderboard") {
+    sendJson(request, response, {
+      humanLeaderboard: arenaHumanLeaderboard(arenaBattlePayload().models || [], readArenaVotes())
+    });
+    return;
+  }
+
+  if (pathname === "/api/leaderboard") {
+    sendJson(request, response, leaderboardPayload(parsedUrl.query));
+    return;
+  }
+
+  if (pathname === "/api/compare/meta") {
+    sendJson(request, response, compareMetaPayload());
+    return;
+  }
+
+  if (pathname === "/api/compare/cases") {
+    sendJson(request, response, compareCasesPayload(parsedUrl.query));
+    return;
+  }
+
+  if (pathname === "/api/compare/sample") {
+    sendJson(request, response, compareSamplePayload(parsedUrl.query));
+    return;
+  }
+
   if (pathname === "/api/arena-vote") {
     if (request.method !== "POST") {
       sendNotFound(response);
@@ -2249,7 +3296,19 @@ const server = http.createServer((request, response) => {
 
     parseJsonRequest(request)
       .then((payload) => {
-        const vote = sanitizeArenaVote(payload);
+        const session = authModule.getSessionFromRequest(request);
+
+        if (authModule.requireAuthForVotes && !session) {
+          sendBadRequest(response, "Sign in required to submit arena votes");
+          return;
+        }
+
+        const vote = sanitizeArenaVote({
+          ...payload,
+          userId: session?.id || "",
+          userName: session?.name || "",
+          userProvider: session?.provider || ""
+        });
 
         if (!vote) {
           sendBadRequest(response, "Invalid arena vote payload");
@@ -2285,6 +3344,13 @@ const server = http.createServer((request, response) => {
   }
 
   if (pathname.startsWith("/thumb/")) {
+    const cachedThumb = cachedDerivativePath(pathname, "thumb");
+
+    if (cachedThumb) {
+      sendFile(request, response, cachedThumb);
+      return;
+    }
+
     const source = resolveImageThumbSource(pathname);
 
     if (!source) {
@@ -2296,6 +3362,18 @@ const server = http.createServer((request, response) => {
     ensureImageThumb(source.filePath, outputPath)
       .then((thumbPath) => sendFile(request, response, thumbPath))
       .catch(() => sendMediaPlaceholder(request, response));
+    return;
+  }
+
+  if (pathname.startsWith("/preview/")) {
+    const previewPath = resolveArchivePreviewFile(pathname);
+
+    if (!previewPath) {
+      sendNotFound(response);
+      return;
+    }
+
+    sendFile(request, response, previewPath);
     return;
   }
 
@@ -2312,6 +3390,13 @@ const server = http.createServer((request, response) => {
   }
 
   if (pathname.startsWith("/poster/")) {
+    const cachedPoster = cachedDerivativePath(pathname, "poster");
+
+    if (cachedPoster) {
+      sendFile(request, response, cachedPoster);
+      return;
+    }
+
     const source = resolvePosterSource(pathname);
 
     if (!source) {
@@ -2323,6 +3408,29 @@ const server = http.createServer((request, response) => {
     ensurePoster(source.filePath, outputPath)
       .then((posterPath) => sendFile(request, response, posterPath))
       .catch(() => sendMediaPlaceholder(request, response));
+    return;
+  }
+
+  const generatedAsset = resolveGeneratedAsset(pathname);
+
+  if (generatedAsset) {
+    sendFile(request, response, generatedAsset);
+    return;
+  }
+
+  const docsRedirect = docsRedirectTarget(pathname);
+  if (docsRedirect) {
+    response.writeHead(301, {
+      Location: docsRedirect,
+      "Cache-Control": "no-store"
+    });
+    response.end();
+    return;
+  }
+
+  const docFile = resolveDocFile(pathname);
+  if (docFile) {
+    sendFile(request, response, docFile);
     return;
   }
 

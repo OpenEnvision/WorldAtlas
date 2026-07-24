@@ -1,0 +1,12 @@
+{
+  "source_csv": "artifacts/benchmark/reports/metric_sample_examples_20260706/metric_sample_examples.csv",
+  "assets_dir": "docs/assets/metric_examples",
+  "rows": 150,
+  "unique_sources": 138,
+  "written": 138,
+  "skipped": 0,
+  "errors": [],
+  "source_total_bytes": 1043905887,
+  "asset_total_bytes": 143420375,
+  "elapsed_sec": 28.035
+}

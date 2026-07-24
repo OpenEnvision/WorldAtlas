@@ -1,3 +1,5 @@
+"""Metric implementations for depth-based collision detection."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -13,17 +15,21 @@ DEPTH_COLLISION_BACKENDS = {"video_depth_anything"}
 
 
 class DepthCollisionMetric(Metric):
+    """Detect implausible depth overlaps that suggest interpenetrating geometry."""
+
     def __init__(
         self,
         backend: str,
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Store runtime options such as frame_source and depth-model settings."""
         super().__init__("depth_collision", backend, normalization)
         self.runtime = dict(runtime or {})
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the Video Depth Anything collision-detection backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -32,6 +38,7 @@ class DepthCollisionMetric(Metric):
         )
 
     def _frames(self, prediction: LoadedMedia) -> tuple[list[Any], dict[str, Any]]:
+        """Load sampled protocol frames or the full decoded video for depth analysis."""
         frame_source = str(self.runtime.get("frame_source") or "sampled")
         if frame_source == "full_video":
             frames = read_video_frames(prediction.path)
@@ -54,6 +61,7 @@ class DepthCollisionMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Estimate depth-collision rate over the selected prediction frames."""
         del sample
         del reference
 

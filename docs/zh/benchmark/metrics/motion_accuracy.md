@@ -1,162 +1,256 @@
 # Motion Accuracy
 
-`motion_accuracy` 用来衡量生成视频中的运动是否主要发生在标注的动态对象区域内。
-它依赖第一帧动态对象 mask，并用 SAM2 [[Ravi et al., 2024](#reference-sam2)] 将这些 mask 传播到整段视频；随后用 SEA-RAFT [[Wang et al., 2024](#reference-searaft)] 估计相邻帧光流，比较 mask 内外的最大运动幅值。
-直观地说，如果应该运动的前景对象确实比背景区域动得更强，那么该指标会更高。
+Motion Accuracy 衡量受监督动态区域内**前景运动显著性**。SAM2 将初始分割 mask 传播至整段预测；SEA-RAFT 估计相邻帧光流。该指标检验 mask 内物体区域是否比背景呈现更强运动——**不**将实际运动与目标轨迹、方向或速度曲线做严格对比。
 
-## 这个指标测什么
+对相邻帧对 \((I_t, I_{t+1})\)，设 \(\mathbf{u}_t\) 为光流场、\(M_t\) 为传播（膨胀后）物体 mask。定义幅值 \(m_t = \|\mathbf{u}_t\|_2\) 及
 
-- 被跟踪前景区域是否比背景动得更强。
-- 受第一帧动态对象 mask 条件约束的运动显著性。
-- 生成视频的运动是否集中在 intended dynamic regions。
-- 它不是对目标轨迹、目标方向或目标速度曲线的严格比较，也不验证运动语义是否完全正确。
+\[
+\Delta_t = \max_{p \in M_t} m_t(p) - \max_{p \notin M_t} m_t(p)
+\tag{1}
+\]
 
-## 原理说明
+原始得分为所有帧对的平均显著性：
 
-很多视频生成任务并不只要求“画面里有运动”，还要求运动发生在正确的对象或区域上。
-例如，如果 prompt 或数据设定要求前景车辆移动，而背景建筑保持稳定，那么理想情况下，动态对象 mask 内的光流幅值应该高于背景区域。
+\[
+S_{\mathrm{mot}}^{\mathrm{raw}} = \frac{1}{N-1}\sum_{t=1}^{N-1} \Delta_t
+\tag{2}
+\]
 
-`motion_accuracy` 就是围绕这个想法设计的。
-它先使用数据集中提供的第一帧动态对象 mask 作为监督信号，再用 SAM2 将这些对象 mask 传播到后续帧。
-随后，对每一对相邻生成帧运行 SEA-RAFT 得到稠密光流，并把光流向量转换为幅值图。
-最后，指标比较 mask 内最大运动和 mask 外最大运动：如果 mask 内最大光流更大，说明主要运动更可能发生在预期对象区域；如果背景区域最大光流更大，说明可能存在背景漂移、错误运动或目标没有按预期移动。
+WorldArena 以 \(\mu = -0.1965\)、\(\sigma = 2.3687\) 做 z-score 校准，裁剪至 \([-1.6147, 1.5180]\)，并映射至 \([0.25, 0.75]\)。归一化得分越高，表示相对背景的前景 mask 运动越显著。当 `sample.mask_path` 下存在逐帧分割 mask 时，该指标为 **official**。
 
-这个指标只使用 prediction video、第一帧动态对象 mask 和光流估计，不使用参考视频。
-因此它更像是一个 mask-conditioned motion saliency 指标，而不是完整的 motion faithfulness 指标。
+<!-- metric-examples:start -->
+## 代表性同 Case 对比
+每个展示块先给出该 case 的 input image 和完全一致的展示 prompt，然后比较模型生成结果。paired 展示必须满足 input image 相同、prompt 文本相同，并且一个模型高分、一个模型低分。若当前正式快照中该 metric 没有这种跨模型同 case pair，则单独展示高分/低分极值样例，不把它们伪装成同 case 对比。
+机器可读 paired 导出： `docs/assets/metric_examples/paired_manifest.csv`.
+### `motion_accuracy`
+<div class="metric-case-stack">
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/22ce019a26a7__image_dynamic_photorealistic_articulated_0031.jpg" alt="输入图像: image_dynamic_photorealistic_articulated_0031" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_dynamic_photorealistic_articulated_0031</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. The ibex steps over the sunlit rocky terrain, bending its knees and lowering its curved horns as it navigates patches of grass. The earthy background remains stable.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: yume-sample5b-image-dynamic-5s image_dynamic_photorealistic_articulated_0031">
+      <source src="../../../assets/metric_examples/93d9df1827ff__yume-sample5b-image-dynamic-5s__image_dynamic_photorealistic_articulated_0031.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: ltx23-image-dynamic-8gpu-full_20260702_233041 image_dynamic_photorealistic_articulated_0031">
+      <source src="../../../assets/metric_examples/8731ae302368__ltx23-image-dynamic-8gpu-full_20260702_233041__image_dynamic_photorealistic_articulated_0031.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/a21cd517f8bc__image_dynamic_photorealistic_articulated_0065.jpg" alt="输入图像: image_dynamic_photorealistic_articulated_0065" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 2 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_dynamic_photorealistic_articulated_0065</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. The elephant steps through savanna grass, swinging its trunk and flapping its ears while sunlight highlights its tusks. Acacia trees and the clear sky remain stable.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: longcat-video-image-dynamic image_dynamic_photorealistic_articulated_0065">
+      <source src="../../../assets/metric_examples/a793606886de__longcat-video-image-dynamic__image_dynamic_photorealistic_articulated_0065.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: echo-infinity-image-dynamic image_dynamic_photorealistic_articulated_0065">
+      <source src="../../../assets/metric_examples/b55b5fe13514__echo-infinity-image-dynamic__image_dynamic_photorealistic_articulated_0065.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/59c71978624c__image_dynamic_photorealistic_deformable_0152.jpg" alt="输入图像: image_dynamic_photorealistic_deformable_0152" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 3 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_dynamic_photorealistic_deformable_0152</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. The suspended white fabric undulates in slow waves, folding and unfurling along its silky edges. Its overall position stays centered against the blue-gray gradient background.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: echo-infinity-image-dynamic image_dynamic_photorealistic_deformable_0152">
+      <source src="../../../assets/metric_examples/13447b8c023e__echo-infinity-image-dynamic__image_dynamic_photorealistic_deformable_0152.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: sana-wm-image-dynamic image_dynamic_photorealistic_deformable_0152">
+      <source src="../../../assets/metric_examples/a4db33c6a26d__sana-wm-image-dynamic__image_dynamic_photorealistic_deformable_0152.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/19ee2a11ee26__image_dynamic_photorealistic_rigid_0104.jpg" alt="输入图像: image_dynamic_photorealistic_rigid_0104" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 4 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_dynamic_photorealistic_rigid_0104</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. The helicopter flies low over the calm sea, moving across the open water with its body level. Cargo ships, distant hills, and the clear sky remain steady in the background.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: echo-infinity-image-dynamic image_dynamic_photorealistic_rigid_0104">
+      <source src="../../../assets/metric_examples/2030d2058a70__echo-infinity-image-dynamic__image_dynamic_photorealistic_rigid_0104.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: yume-sample5b-image-dynamic-5s image_dynamic_photorealistic_rigid_0104">
+      <source src="../../../assets/metric_examples/ba4163c69f03__yume-sample5b-image-dynamic-5s__image_dynamic_photorealistic_rigid_0104.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/66442cb7a3b1__image_dynamic_stylized_articulated_0114.png" alt="输入图像: image_dynamic_stylized_articulated_0114" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 5 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_dynamic_stylized_articulated_0114</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: stylized</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. The adult horse and foal run side by side along the dirt path, legs alternating, manes and tails streaming while fences, farm buildings, hills, and trees remain still.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: yume-sample5b-image-dynamic-5s image_dynamic_stylized_articulated_0114">
+      <source src="../../../assets/metric_examples/74b0886de041__yume-sample5b-image-dynamic-5s__image_dynamic_stylized_articulated_0114.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: lingbot_world image_dynamic_stylized_articulated_0114">
+      <source src="../../../assets/metric_examples/3d3f5820d0fa__lingbot_world__image_dynamic_stylized_articulated_0114.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/2e07620250c1__image_dynamic_stylized_deformable_0105.png" alt="输入图像: image_dynamic_stylized_deformable_0105" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 6 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
+      <h4><code>image_dynamic_stylized_deformable_0105</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: stylized</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. Wide sheets of fabric spiral around the barren tree, folding, twisting, and tightening into a vortex above the pond. The tree trunk, grass, scattered leaves, and pond edge stay stable.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: echo-infinity-image-dynamic image_dynamic_stylized_deformable_0105">
+      <source src="../../../assets/metric_examples/67477bd7cc6c__echo-infinity-image-dynamic__image_dynamic_stylized_deformable_0105.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: yume-sample5b-image-dynamic-5s image_dynamic_stylized_deformable_0105">
+      <source src="../../../assets/metric_examples/00244e911711__yume-sample5b-image-dynamic-5s__image_dynamic_stylized_deformable_0105.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->
 
-## 具体算法
+## 参考文献 {#reference}
 
-1. WorldArena 要求样本提供 `mask_dir`，并把目录里的每一张 mask 图像都作为初始 object mask 读入。
-2. 被包装的第三方指标会构建一个 `SAM2` [[Ravi et al., 2024](#reference-sam2)] 视频预测器，并且只把这些 mask 当作第一帧监督。
-3. `SAM2` 会把这些 mask 在整段视频里传播。当前实现还会把每个传播后的 mask 再向外膨胀 `10` 个像素。
-4. 对每一对相邻帧 `(I_t, I_{t+1})`，指标都会运行 `SEA-RAFT` [[Wang et al., 2024](#reference-searaft)] 估计光流。
-5. 它把光流转成幅值图 `m_t = sqrt(u^2 + v^2)`。
-6. 用该时刻传播得到的 mask，把幅值图分成前景和背景两部分，并计算：
-    - `object_max = max(m_t inside mask)`
-    - `background_max = max(m_t outside mask)`
-7. 单对帧分数定义为 `pair_score = object_max - background_max`。
-8. 原始指标值是所有相邻帧对分数的平均值。
-9. WorldArena 对该分数使用当前 z-score 校准：
-    - `avg = -0.1965`
-    - `std = 2.3687`
-    - `z_min = -1.6147`
-    - `z_max = 1.5180`
-    - 输出范围 `[0.25, 0.75]`
+!!! quote "SAM 2 — Segment Anything in Images and Videos"
 
-## 误差公式
+    Ravi et al., 2024.
+    [https://arxiv.org/abs/2408.00714](https://arxiv.org/abs/2408.00714)
 
-给定相邻两帧 \((I_t, I_{t+1})\)，SEA-RAFT 估计出的光流为：
+!!! quote "SEA-RAFT — Simple, Efficient, Accurate RAFT for Optical Flow"
 
-!!! info "光流场"
-
-    \[
-    \mathbf{F}_t(x,y)
-    =
-    (u_t(x,y), v_t(x,y))
-    \]
-
-将二维光流转成幅值图：
-
-!!! info "光流幅值"
-
-    \[
-    F_t(x,y)
-    =
-    \sqrt{
-        u_t(x,y)^2
-        +
-        v_t(x,y)^2
-    }
-    \]
-
-令 \(M_t\in\{0,1\}^{H\times W}\) 表示由 SAM2 传播得到的第 \(t\) 帧动态对象 mask，\(\bar{M}_t=1-M_t\) 表示背景区域。
-单对帧的 motion accuracy score 定义为：
-
-!!! info "单对帧分数"
-
-    \[
-    s^{(t)}_{\mathrm{motion\text{-}acc}}
-    =
-    \max(F_t\odot M_t)
-    -
-    \max(F_t\odot \bar{M}_t)
-    \]
-
-其中，\(\odot\) 表示逐像素乘法，\(\max(\cdot)\) 表示在矩阵所有元素中取最大值。
-最终原始分数是所有相邻帧对的平均值：
-
-!!! info "最终原始分数"
-
-    \[
-    s_{\mathrm{motion\text{-}acc}}
-    =
-    \frac{1}{T-1}
-    \sum_{t=0}^{T-2}
-    s^{(t)}_{\mathrm{motion\text{-}acc}}
-    \]
-
-分数越高，表示动态对象区域内的最大运动越明显地超过背景区域的最大运动。
-如果背景发生强烈漂移、相机抖动或 mask 外区域出现异常运动，该分数会降低。
-
-## 输入与输出
-
-| 项目 | 当前实现 |
-| --- | --- |
-| 预测输入 | 完整解码后的预测视频 |
-| 参考输入 | 无 |
-| 标注输入 | 第一帧 mask 目录 |
-| 原始输出 | 单个前景减背景的平均运动分数标量 |
-| 归一化输出 | 经过 z-score 映射后的单个 `[0, 1]` 标量 |
-| 细节字段 | `frame_count`、`mask_count`、`mask_dir`、`generate_type`、runtime device 细节、`native_score` |
-| 失败形式 | 如果 mask 不存在，或者重型 runtime 失败，则返回 `raw = null`、`normalized = null` 和错误字符串 |
-
-## 当前集成是否足够严格
-
-| 项目 | 结论 |
-| --- | --- |
-| 当前聚合状态 | 只要存在 mask 且成功产出数值分数，就是 `official` |
-| 论文可用性结论 | `主表可用，但需要说明 mask-conditioned 定义` |
-
-- 当前分数并不是严格的 motion-faithfulness 指标。它主要衡量 mask 内运动是否比背景更显著，不能验证目标运动方向、速度曲线或动作语义是否完全正确。
-- 由于公式使用最大光流幅值，分数会受到离群光流、局部伪影或背景大幅运动影响。
-- 当前 WorldArena 路径依赖数据集提供的第一帧 mask；如果没有可靠 mask，该指标不应被解释为有效 motion-control 结果。
-- 这个指标依赖第一帧 mask 传播，因此一旦 `SAM2` 传播失败，分数就会被直接污染。
-- 建议用法：作为 action-control / motion-control 维度的主要 mask-conditioned 指标之一，并和 `motion_magnitude`、`motion_smoothness`、`object_permanence` 一起解读。
-
-## 参考文献 {#reference-searaft}
-
-!!! quote "SEA-RAFT: Simple, Efficient, Accurate RAFT for Optical Flow"
-
-    Yihan Wang, Lahav Lipson, and Jia Deng.  
-    European Conference on Computer Vision (ECCV), 2024.
-
-??? note "BibTeX"
-
-    ```bibtex
-    @inproceedings{wang2024sea,
-        title = {Sea-raft: Simple, efficient, accurate raft for optical flow},
-        author = {Wang, Yihan and Lipson, Lahav and Deng, Jia},
-        booktitle = {European Conference on Computer Vision},
-        pages = {36--54},
-        year = {2024},
-        organization = {Springer},
-    }
-    ```
-
-### SAM2 {#reference-sam2}
-
-!!! quote "SAM 2: Segment Anything in Images and Videos"
-
-    Nikhila Ravi, Valentin Gabeur, Yuan-Ting Hu, Ronghang Hu, Chaitanya Ryali, Tengyu Ma, Haitham Khedr, Roman Rädle, Chloe Rolland, Laura Gustafson, Eric Mintun, Junting Pan, Kalyan Vasudev Alwala, Nicolas Carion, Chao-Yuan Wu, Ross Girshick, Piotr Dollár, and Christoph Feichtenhofer.  
-    arXiv:2408.00714, 2024.
-
-??? note "BibTeX"
-
-    ```bibtex
-    @article{ravi2024sam2,
-        title = {SAM 2: Segment Anything in Images and Videos},
-        author = {Ravi, Nikhila and Gabeur, Valentin and Hu, Yuan-Ting and Hu, Ronghang and Ryali, Chaitanya and Ma, Tengyu and Khedr, Haitham and R{\"a}dle, Roman and Rolland, Chloe and Gustafson, Laura and Mintun, Eric and Pan, Junting and Alwala, Kalyan Vasudev and Carion, Nicolas and Wu, Chao-Yuan and Girshick, Ross and Doll{\'a}r, Piotr and Feichtenhofer, Christoph},
-        journal = {arXiv preprint arXiv:2408.00714},
-        year = {2024},
-    }
-    ```
+    Wang et al., 2024.
+    [https://arxiv.org/abs/2405.14793](https://arxiv.org/abs/2405.14793)

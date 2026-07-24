@@ -1,3 +1,5 @@
+"""Subprocess runner for HunyuanWorld inference inside the upstream model repo."""
+
 from __future__ import annotations
 
 import argparse
@@ -14,7 +16,7 @@ from worldarena.common.checkpoints import apply_checkpoint_env, checkpoint_path,
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena HunyuanWorld subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena HunyuanWorld subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", default=None, type=str)
     parser.add_argument("--conditioning_image", default=None, type=str)

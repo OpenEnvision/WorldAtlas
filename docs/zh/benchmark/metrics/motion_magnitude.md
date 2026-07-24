@@ -1,133 +1,243 @@
 # Motion Magnitude
 
-`motion_magnitude` 用来衡量预测结果里“有多少运动”，而不关心这些运动是否正确。
-它主要用于识别过于保守的生成模型：有些模型为了保持画面稳定和高质量，会只生成非常轻微的运动，甚至在 prompt 明确要求运动时仍输出近似静态的视频。
-`motion_magnitude` 通过相邻帧之间的光流幅值来检测这种 motion under-generation。
+Motion Magnitude 量化生成视频包含的**内部运动量**，与运动是否正确无关。它检测保守生成——视觉稳定但近乎静止的输出——不评估方向、语义或物体行为。
 
-## 这个指标测什么
+对相邻帧 \((I_t, I_{t+1})\)，SEA-RAFT 给出光流幅值 \(F_t(x,y) = \sqrt{u_t^2 + v_t^2}\)。帧对统计量为像素中位数；原始得分对全部帧对取均值：
 
-- 预测结果整体的运动幅度。
-- 相邻帧对上的光流强度。
-- 生成视频是否接近静态，或者是否确实产生了可观测运动。
-- 它不是 motion correctness，也不是 smoothness；运动很大不代表运动方向、对象或语义正确。
+\[
+S_{\mathrm{mag}}^{\mathrm{raw}} = \frac{1}{T-1}\sum_{t=0}^{T-2} \mathrm{median}_{x,y}\, F_t(x,y)
+\tag{1}
+\]
 
-## 原理说明
+WorldArena 以 \(\mu = 3.2425\)、\(\sigma = 3.4505\) 做 z-score 校准，裁剪至 \([-0.8638, 2.7498]\)，映射至 \([0.25, 0.75]\)。归一化得分越高表示可见运动越强。计算成功时为 **official**。
 
-视频生成模型常见的一种失败模式是“保守生成”：画面看起来清晰、稳定、没有明显闪烁，但物体几乎不动，或者只有非常微弱的局部变化。
-这类结果在静态图像质量指标上可能表现不错，在 motion smoothness 上也可能得分较高，因为静止视频天然容易被插值。
-但如果任务本身要求动态变化，这种近静态输出就不符合预期。
-
-`motion_magnitude` 因此直接测量生成视频内部的运动量。
-它对每一对相邻帧估计稠密光流，并将每个像素的二维光流向量转换成幅值。
-单对帧的运动强度取整张光流幅值图的中位数，而不是最大值或均值，这样可以减少少量离群光流、边界噪声或局部伪影的影响。
-最后对整段视频所有相邻帧对求平均，得到视频级运动幅度。
-
-## 具体算法
-
-1. WorldArena 会把整段预测视频解码成 PNG 帧。
-2. 对每一对相邻帧，被包装的第三方指标会运行 `SEA-RAFT` [[Wang et al., 2024](#reference)] 估计光流。
-3. 它把光流转成幅值图 `m = sqrt(u^2 + v^2)`。
-4. 单对帧统计量定义为这张幅值图在所有像素上的中位数。
-5. 原始指标值是所有相邻帧对统计量的平均值。
-6. WorldArena 使用当前 z-score 校准：
-    - `avg = 3.2425`
-    - `std = 3.4505`
-    - `z_min = -0.8638`
-    - `z_max = 2.7498`
-    - 输出范围 `[0.25, 0.75]`
-
-## 误差公式
-
-给定相邻两帧 \((I_t, I_{t+1})\)，SEA-RAFT 估计出的光流为：
-
-!!! info "光流场"
-
-    \[
-    \mathbf{F}_t(x,y)
-    =
-    (u_t(x,y), v_t(x,y))
-    \]
-
-对应的光流幅值图为：
-
-!!! info "光流幅值"
-
-    \[
-    F_t(x,y)
-    =
-    \sqrt{
-        u_t(x,y)^2
-        +
-        v_t(x,y)^2
-    }
-    \]
-
-单对帧的 motion magnitude 定义为所有像素光流幅值的中位数：
-
-!!! info "单对帧运动幅度"
-
-    \[
-    s^{(t)}_{\mathrm{motion\text{-}mag}}
-    =
-    \operatorname{median}_{(x,y)}
-    F_t(x,y)
-    \]
-
-最终原始指标值是所有相邻帧对的平均值：
-
-!!! info "最终原始分数"
-
-    \[
-    s_{\mathrm{motion\text{-}mag}}
-    =
-    \frac{1}{T-1}
-    \sum_{t=0}^{T-2}
-    s^{(t)}_{\mathrm{motion\text{-}mag}}
-    \]
-
-分数越高，表示生成视频中整体运动越明显。
-如果模型输出近静态视频，光流幅值中位数会接近零，最终分数也会较低。
-
-## 输入与输出
-
-| 项目 | 当前实现 |
-| --- | --- |
-| 预测输入 | 完整解码后的预测视频 |
-| 参考输入 | 在 official backend 下不使用参考输入 |
-| 标注输入 | 无 |
-| 原始输出 | 单个平均运动幅度标量 |
-| 归一化输出 | 经过 z-score 映射后的单个 `[0, 1]` 标量 |
-| 细节字段 | `frame_count`、`native_score`、`frame_indices`、`sampled_frame_indices` |
-| 失败形式 | 如果光流 backend 不可用，则返回 `raw = null`、`normalized = null` 和错误字符串 |
-
-## 当前集成是否足够严格
-
-| 项目 | 结论 |
-| --- | --- |
-| 当前聚合状态 | 只要产出数值分数，就是 `official` |
-| 论文可用性结论 | `主表可用，但需要说明它只衡量运动量` |
-
-- 这个指标很适合区分“基本不动”的结果和“确实动起来了”的结果。
-- 但它并不回答“动得对不对”。一个运动幅度很大但完全错误的视频也可以得高分。
-- 它也不衡量运动是否平滑；运动量大但闪烁严重的视频仍可能得高分。
-- 建议用法：作为 dynamics / motion amount 的主要指标之一，并和 `motion_accuracy`、`motion_smoothness` 一起解读。
+<!-- metric-examples:start -->
+## 代表性同 Case 对比
+每个展示块先给出该 case 的 input image 和完全一致的展示 prompt，然后比较模型生成结果。paired 展示必须满足 input image 相同、prompt 文本相同，并且一个模型高分、一个模型低分。若当前正式快照中该 metric 没有这种跨模型同 case pair，则单独展示高分/低分极值样例，不把它们伪装成同 case 对比。
+机器可读 paired 导出： `docs/assets/metric_examples/paired_manifest.csv`.
+### `motion_magnitude`
+<div class="metric-case-stack">
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/10d5b411a824__image_dynamic_photorealistic_deformable_0090.jpg" alt="输入图像: image_dynamic_photorealistic_deformable_0090" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 1 · 同一输入图像 + 同一 prompt · 分差 0.7605</div>
+      <h4><code>image_dynamic_photorealistic_deformable_0090</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. The blue denim fabric subtly wrinkles and stretches, shifting the weave pattern as a fold travels across the surface. The close-up lighting and textile background stay consistent.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: yume-sample5b-image-dynamic-5s image_dynamic_photorealistic_deformable_0090">
+      <source src="../../../assets/metric_examples/497f3ecfb716__yume-sample5b-image-dynamic-5s__image_dynamic_photorealistic_deformable_0090.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: hunyuan-video-i2v-image-static-dynamic image_dynamic_photorealistic_deformable_0090">
+      <source src="../../../assets/metric_examples/253f174d78d3__hunyuan-video-i2v-image-static-dynamic__image_dynamic_photorealistic_deformable_0090.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.2395</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/167a8b97141d__image_dynamic_photorealistic_deformable_0089.jpg" alt="输入图像: image_dynamic_photorealistic_deformable_0089" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 2 · 同一输入图像 + 同一 prompt · 分差 0.7605</div>
+      <h4><code>image_dynamic_photorealistic_deformable_0089</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. Green wheat stalks with unripe ears sway forward and spring back, their leaves fluttering in the breeze. The soft background of the field remains visually stable.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: astra image_dynamic_photorealistic_deformable_0089">
+      <source src="../../../assets/metric_examples/7775b860f58b__astra__image_dynamic_photorealistic_deformable_0089.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: matrix_game2_5s image_dynamic_photorealistic_deformable_0089">
+      <source src="../../../assets/metric_examples/d0f5d3df7a68__matrix_game2_5s__image_dynamic_photorealistic_deformable_0089.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.2395</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/c64d7df96bb7__image_dynamic_photorealistic_deformable_0064.jpg" alt="输入图像: image_dynamic_photorealistic_deformable_0064" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 3 · 同一输入图像 + 同一 prompt · 分差 0.7605</div>
+      <h4><code>image_dynamic_photorealistic_deformable_0064</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. Golden barley stalks sway gently in sunlight, their fine strands bending and shimmering as a light breeze passes through. The field remains dense and continuous around them.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: longcat-video-image-dynamic image_dynamic_photorealistic_deformable_0064">
+      <source src="../../../assets/metric_examples/d7eba57786ee__longcat-video-image-dynamic__image_dynamic_photorealistic_deformable_0064.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: matrix_game2_5s image_dynamic_photorealistic_deformable_0064">
+      <source src="../../../assets/metric_examples/986a22fd3c5d__matrix_game2_5s__image_dynamic_photorealistic_deformable_0064.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.2395</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/73a085d1c822__image_dynamic_photorealistic_deformable_0163.jpg" alt="输入图像: image_dynamic_photorealistic_deformable_0163" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 4 · 同一输入图像 + 同一 prompt · 分差 0.7604</div>
+      <h4><code>image_dynamic_photorealistic_deformable_0163</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. Translucent fabric layers ripple in a gentle swirling motion, their curved folds sliding over one another. The close-up composition stays focused on the delicate overlapping textures.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: astra image_dynamic_photorealistic_deformable_0163">
+      <source src="../../../assets/metric_examples/42143df67a10__astra__image_dynamic_photorealistic_deformable_0163.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: ac3d-image-dynamic image_dynamic_photorealistic_deformable_0163">
+      <source src="../../../assets/metric_examples/aba224b60229__ac3d-image-dynamic__image_dynamic_photorealistic_deformable_0163.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.2396</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/3929c1e0d708__image_dynamic_photorealistic_articulated_0068.jpg" alt="输入图像: image_dynamic_photorealistic_articulated_0068" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 5 · 同一输入图像 + 同一 prompt · 分差 0.7604</div>
+      <h4><code>image_dynamic_photorealistic_articulated_0068</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. The dog runs quickly across the grassy field, moving forward with alternating legs, open mouth, and perked ears while the fence and trees stay in place.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: longcat-video-image-dynamic image_dynamic_photorealistic_articulated_0068">
+      <source src="../../../assets/metric_examples/1747010395f4__longcat-video-image-dynamic__image_dynamic_photorealistic_articulated_0068.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: matrix_game2_5s image_dynamic_photorealistic_articulated_0068">
+      <source src="../../../assets/metric_examples/aff317072a9d__matrix_game2_5s__image_dynamic_photorealistic_articulated_0068.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.2396</div>
+  </div>
+</figure>
+  </div>
+</article>
+<article class="metric-case-exhibit">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/inputs/fe16fdec2c52__image_dynamic_photorealistic_articulated_0001.jpg" alt="输入图像: image_dynamic_photorealistic_articulated_0001" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Case 6 · 同一输入图像 + 同一 prompt · 分差 0.7604</div>
+      <h4><code>image_dynamic_photorealistic_articulated_0001</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-prompt">
+        <span>目标 prompt</span>
+        <p>Camera fixed. A bird of prey glides forward low over a grassy field, wings spread wide with subtle body and wing adjustments. The wooden fence post, wild grasses, and vines remain still.</p>
+        <small>prompt 来源: prompt_target</small>
+      </div>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+<figure class="metric-output-card metric-output-card--good">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: astra image_dynamic_photorealistic_articulated_0001">
+      <source src="../../../assets/metric_examples/73ee88755197__astra__image_dynamic_photorealistic_articulated_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
+  </div>
+</figure>
+<figure class="metric-output-card metric-output-card--bad">
+  <div class="metric-output-media-wrap">
+    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: sana-wm-image-dynamic image_dynamic_photorealistic_articulated_0001">
+      <source src="../../../assets/metric_examples/3c22680fb047__sana-wm-image-dynamic__image_dynamic_photorealistic_articulated_0001.mp4" type="video/mp4">
+    </video>
+    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.2396</div>
+  </div>
+</figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->
 
 ## 参考文献 {#reference}
 
 !!! quote "SEA-RAFT: Simple, Efficient, Accurate RAFT for Optical Flow"
 
-    Yihan Wang, Lahav Lipson, and Jia Deng.  
-    European Conference on Computer Vision (ECCV), 2024.
-
-??? note "BibTeX"
-
-    ```bibtex
-    @inproceedings{wang2024sea,
-        title = {Sea-raft: Simple, efficient, accurate raft for optical flow},
-        author = {Wang, Yihan and Lipson, Lahav and Deng, Jia},
-        booktitle = {European Conference on Computer Vision},
-        pages = {36--54},
-        year = {2024},
-        organization = {Springer},
-    }
-    ```
+    Wang et al., ECCV 2024.

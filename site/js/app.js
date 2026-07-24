@@ -1,5 +1,4 @@
 import {
-  awesomeWorldModelsPage,
   archiveItems,
   archiveTags,
   docsNavigation,
@@ -10,22 +9,65 @@ import {
   homeHeroVisuals,
   homeDocGroups,
   homeLeaderboard,
+  homePaper,
+  homeNewsItems,
+  homeCitation,
+  homeFooterContent,
   homePillars,
   homePosts,
   homeSignals,
+  leaderboardSuites,
+  leaderboardMetricDimensions,
+  leaderboardHiddenMetrics,
   menuSections,
+  openEnvisionUrl,
   siteTitle
-} from "./data.js?v=20260504-refine-v39";
-import { ArchiveWebGLView } from "./archive-webgl.js?v=20260504-refine-v32";
+} from "./data.js?v=20260722-openenvision-hub-v1";
+import { resolveLeaderboardAffiliations } from "./leaderboard-affiliations.js?v=20260721-ant-lingbo-logo-v1";
+import {
+  formatLeaderboardModelLabel,
+  leaderboardModelFullName
+} from "./leaderboard-model-labels.js?v=20260722-model-variants-v1";
+import { ArchiveWebGLView } from "./archive-webgl.js?v=20260722-archive-perf-v1";
+import {
+  arenaDimensionApplies,
+  arenaDimensionDefinition,
+  arenaDimensionFocus,
+  arenaDimensionGroupLabel,
+  arenaDimensionGroups,
+  arenaDimensionLabel,
+  arenaLikertAnchorLabels,
+  arenaVoteDimensionById,
+  arenaVoteDimensionDefs
+} from "./arena-dimensions.js?v=20260702-worldjen-v1";
+import {
+  authFeedbackModalsMarkup,
+  authHeaderActionsMarkup,
+  authTextForKey,
+  bindAuthFeedbackUi,
+  getAuthUser,
+  isAuthRequiredForVotes,
+  isSignedIn,
+  openAuthModal,
+  refreshAuthSession,
+  requireSignedInForArena,
+  setAuthUiLanguage
+} from "./auth-ui.js?v=20260720-auth-v3";
 
 const app = document.querySelector("#app");
+const worldArenaRuntimeConfig = globalThis.WORLDARENA_CONFIG || {};
+const archiveCatalogBase = String(worldArenaRuntimeConfig.archiveCatalogBase || "").replace(/\/+$/, "");
+const archiveMediaOrigin = String(worldArenaRuntimeConfig.mediaOrigin || "").replace(/\/+$/, "");
+const configuredArchivePageSize = Number(worldArenaRuntimeConfig.archiveCatalogPageSize);
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 const archiveIntroSeen = false;
-const archiveInitialVisibleLimit = 1240;
-const archiveLoadStep = 1040;
-const archiveApiPageSize = 1240;
-const archiveAutoLoadDepth = 52000;
+const archiveInitialVisibleLimit = 480;
+const archiveLoadStep = 480;
+const archiveApiPageSize = Number.isFinite(configuredArchivePageSize) && configuredArchivePageSize >= 120
+  ? Math.min(Math.round(configuredArchivePageSize), 1800)
+  : 480;
+const archiveAutoLoadDepth = 14000;
 const archiveMaxProjectedEntries = 3600;
 const archiveMaxVisibleCards = 148;
 const archiveMaxDomCards = 620;
@@ -34,7 +76,12 @@ const archiveMediaUpgradePerFrame = 2;
 const archiveMediaHydrateDepth = 34000;
 const archiveMediaUpgradeDepth = 14500;
 const archiveMediaUpgradeScale = 0.5;
-const archiveInitialRevealMinCards = 112;
+const archiveInitialRevealMinCards = 40;
+const archiveInitialRevealVisibleMedia = 28;
+const archiveInitialRevealSoftVisibleMedia = 14;
+const archiveInitialRevealSoftHold = 1800;
+const archiveInitialRevealEmergencyVisibleMedia = 6;
+const archiveInitialRevealEmergencyHold = 5000;
 const archiveMaxConcurrentMediaLoads = 7;
 const archiveMaxConcurrentMediaUpgrades = 2;
 const archiveFieldSlots = [
@@ -87,7 +134,7 @@ const archiveDefaultFov = 51;
 const archiveEntryFov = 66;
 const archiveEntryDuration = 2450;
 const archiveEntryCurtainDuration = 1120;
-const archiveInitialCurtainHold = 650;
+const archiveInitialCurtainHold = 900;
 const archiveEntryInputRelease = 0.72;
 const archiveRenderBackWindow = 16000;
 const archiveRenderFrontWindow = 110000;
@@ -101,6 +148,9 @@ const transparentPixel = "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
 const archiveMusicTitle = "Merry Christmas Mr. Lawrence";
 const archiveMusicStorageKey = "worldarenaArchiveMusic";
 const archiveMusicVolume = 0.34;
+const homeArchiveEntryMinDelay = 900;
+const homeArchiveEntryMaxDelay = 2500;
+const homeArchiveEntryPreloadCount = 24;
 const archiveMusicSources = [
   { src: "/assets/audio/merry-christmas-mr-lawrence.mp3?v=20260504-audio-v1", type: "audio/mpeg" },
   { src: "/assets/audio/merry-christmas-mr-lawrence.m4a?v=20260504-audio-v1", type: "audio/mp4" },
@@ -112,16 +162,20 @@ const archiveExploreExcludedSources = new Set(["physics"]);
 const supportedLanguages = new Set(["en", "zh"]);
 const storedLanguage = window.localStorage.getItem("worldarenaLanguage");
 const mathJaxScriptUrl = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js";
+const mathJaxPackageExtensions = ["ams", "noerrors", "noundefined"];
+const mathJaxLoaderExtensions = ["[tex]/noerrors", "[tex]/noundefined"];
+const mermaidScriptUrl = "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js";
 const homeCopy = {
   en: {
     search: "Search",
     searchMenu: "Search menu",
+    searchDocs: "Search docs",
     menu: "Menu",
     docs: "Docs",
     homeSearchAria: "Homepage search",
     heroKicker: "Benchmark for controllable world generation",
     heroLede:
-      "A Unified Benchmark for evaluating world models. It encompasses a curated dataset of 5,000 balanced test examples across 26 fine-grained categories (indoor/outdoor, static/dynamic, photorealistic/stylized), evaluating 126 model runs to produce over 34,941 prediction videos measuring geometric consistency, physics, and action control.",
+      "<p>WorldAtlas Arena is a large-scale evaluation benchmark designed to measure the progression from foundation generative models toward <strong>generative world models</strong>. It consists of 10,000 carefully curated test cases, including 6,000 image-conditioned cases and 4,000 video-conditioned cases, covering video, 3D, and 4D generation scenarios.</p><p>These inputs provide different forms of visual evidence from which models are required to extrapolate, transform, control, or simulate worlds. The benchmark spans static and dynamic scenes, indoor and outdoor environments, photorealistic and stylized content, and both camera-controllable and object-controllable settings. By combining diverse conditioning modalities with heterogeneous generation targets, WorldAtlas Arena evaluates not only whether a model can produce visually compelling outputs, but also whether it can preserve, extend, and manipulate the underlying structure of a world across space, time, and interaction.</p><p>Built on the <strong><a href=\"https://github.com/OpenEnvision/WorldFoundry/tree/main\" target=\"_blank\" rel=\"noopener\">WorldFoundry</a></strong> inference and evaluation framework, WorldAtlas Arena operationalizes the capability taxonomy and world-modeling criteria proposed in this report. Rather than evaluating generation quality in isolation, it assesses whether generated worlds remain coherent under transformation, extrapolation, and control. Specifically, the benchmark evaluates models along four complementary dimensions: <strong>physical plausibility</strong>, <strong>spatiotemporal consistency</strong>, <strong>controllability</strong>, and <strong>generative quality</strong>. These dimensions are instantiated through task-specific metrics that examine whether outputs remain geometrically coherent, temporally stable, physically reasonable, responsive to camera or object controls, and visually faithful to the input condition.</p><p>In this way, WorldAtlas Arena provides a unified and reproducible protocol for comparing generative systems across modalities, scene regimes, control settings, and levels of world-modeling capability.</p>",
     primaryLinksAria: "Primary links",
     exploreArchive: "Explore Archive",
     leaderboard: "Leaderboard",
@@ -139,6 +193,9 @@ const homeCopy = {
     docsKicker: "Documentation paths",
     docsTitle: "Jump into the contracts that make a run comparable.",
     feedAria: "WorldAtlas Arena documentation highlights",
+    feedKicker: "Quick paths",
+    feedTitle: "Benchmark docs, arena, and community resources.",
+    openSourceCategory: "Open Source",
     quickLinks: "Quick links",
     noMatches: "No matches",
     resultSingular: "result",
@@ -147,14 +204,14 @@ const homeCopy = {
     benchmarkOverviewBody: "Suites, protocol, workflow, and metric vectors.",
     metricsOverview: "Metrics overview",
     metricsOverviewBody: "Capability dimensions and suite-level metric coverage.",
-    leaderboardBody: "Open the embedded Hugging Face Space section.",
+    leaderboardBody: "Browse aggregated benchmark scores across formal image and video suites.",
     archiveBody: "Browse images, videos, physics, and world samples.",
     docsCategory: "Docs",
     leaderboardCategory: "Leaderboard",
     archiveCategory: "Archive",
     arenaBattle: "Arena Battle",
     arenaBattleAction: "Enter Arena Battle",
-    arenaBattleBody: "Arena Battle reads integrated WorldArena models and local prediction artifacts, then collects blind human votes for multi-dimensional ELO rankings.",
+    arenaBattleBody: "Arena Battle compares blind WorldAtlas Arena model outputs with WorldJen-inspired 15-dimension Likert scoring (1–5) and Bradley-Terry-style ELO rankings.",
     arenaBattleCategory: "Arena Battle",
     arenaBattleFrameTitle: "WorldAtlas Arena Battle",
     arenaBattleReady: "Arena Battle is fully loaded.",
@@ -169,16 +226,55 @@ const homeCopy = {
     submissionGuide: "Submission guide",
     leaderboardStatusAria: "Leaderboard status",
     leaderboardTracksAria: "Leaderboard tracks",
-    leaderboardEmbedAria: "Embedded Hugging Face leaderboard"
+    leaderboardEmbedAria: "Embedded Hugging Face leaderboard",
+    leaderboardSortBy: "Sort by",
+    leaderboardOverall: "Overall",
+    leaderboardModel: "Model",
+    leaderboardSamples: "Samples",
+    leaderboardUpdated: "Updated",
+    leaderboardModels: "models",
+    leaderboardMetricCount: "metrics",
+    leaderboardOtherMetrics: "Other Metrics",
+    leaderboardEmpty: "No benchmark runs are published for this suite yet.",
+    leaderboardLoading: "Loading leaderboard…",
+    leaderboardLoadError: "Leaderboard data is unavailable.",
+    leaderboardProtocolKicker: "Submission protocol",
+    leaderboardProtocolTitle: "Read the benchmark contract before comparing runs.",
+    leaderboardProtocolBody: "Formal suites, metric vectors, and report artifacts are documented in the benchmark guide.",
+    leaderboardReadProtocol: "Read protocol",
+    leaderboardTableAria: "Benchmark leaderboard table",
+    leaderboardSuiteTabsAria: "Benchmark suites",
+    paperAuthorLabel: "Author",
+    paperAffiliationsLabel: "Affiliations",
+    paperPublishedLabel: "Published",
+    paperReportLabel: "Report",
+    paperRepositoryLabel: "Repository",
+    paperLeaderboardLabel: "Leaderboard",
+    paperEmailLabel: "Email",
+    paperCommunityLabel: "Community",
+    paperShareLabel: "Share",
+    paperShareCopy: "Copy link",
+    paperShareCopied: "Copied",
+    paperShareTwitter: "Share on X",
+    newsKicker: "News",
+    citationsKicker: "Citations",
+    citationsHeadline: "Cite our work",
+    citationCopy: "Copy",
+    citationCopied: "Copied",
+    backToTop: "Back to top",
+    footerCopyright: "© 2026 WorldAtlas Arena",
+    leaderboardAscentTitle: "Summit ascent",
+    leaderboardAscentCaption: "{shown} of {total} models climbing toward the unconquered peak."
   },
   zh: {
     search: "搜索",
     searchMenu: "搜索菜单",
+    searchDocs: "搜索文档",
     menu: "菜单",
     docs: "文档",
     homeSearchAria: "主页搜索",
     heroKicker: "面向可控世界生成的基准评测",
-    heroLede: "WorldAtlas Arena 是一个用于评估长时序世界模型的统一基准。它包含了一个经过精心整理的数据集，涵盖 26 个细粒度类别（室内/室外、静态/动态、写实/风格化）的 5,000 个均衡测试用例，评估了 126 次模型运行，生成了超过 34,941 个预测视频，以全面衡量几何一致性、物理规律和动作控制。",
+    heroLede: "<p>WorldAtlas Arena 是一个大规模评测基准，旨在衡量从基础生成模型向<strong>生成式世界模型</strong>的演进。它包含 10,000 个精心筛选的测试案例，其中 6,000 个图像条件案例和 4,000 个视频条件案例，覆盖视频、3D 和 4D 生成场景。</p><p>这些输入提供不同形式的视觉证据，要求模型在此基础上外推、变换、控制或模拟世界。基准涵盖静态与动态场景、室内与室外环境、写实与风格化内容，以及相机可控与物体可控设置。通过将多样化的条件模态与异构生成目标相结合，WorldAtlas Arena 不仅评估模型能否产生视觉上引人注目的输出，更评估其能否在空间、时间和交互层面保持、延伸和操纵世界的底层结构。</p><p>基于<strong><a href=\"https://github.com/OpenEnvision/WorldFoundry/tree/main\" target=\"_blank\" rel=\"noopener\">WorldFoundry</a></strong>推理与评估框架，WorldAtlas Arena 将本报告提出的能力分类体系和世界建模准则付诸实践。它并非孤立地评估生成质量，而是评估生成世界在变换、外推和控制下是否保持一致。具体而言，基准沿四个互补维度评估模型：<strong>物理合理性</strong>、<strong>时空一致性</strong>、<strong>可控性</strong>和<strong>生成质量</strong>。这些维度通过任务级指标实例化，检验输出是否在几何上一致、时间上稳定、物理上合理、对相机或物体控制响应正确，以及与输入条件视觉上忠实。</p><p>通过这种方式，WorldAtlas Arena 提供了一个统一且可复现的协议，用于跨模态、场景类型、控制设置和世界建模能力层级比较生成系统。</p>",
     primaryLinksAria: "主要入口",
     exploreArchive: "自由探索",
     leaderboard: "排行榜",
@@ -196,6 +292,9 @@ const homeCopy = {
     docsKicker: "文档路径",
     docsTitle: "进入让每次运行可比较的核心契约。",
     feedAria: "WorldAtlas Arena 文档精选",
+    feedKicker: "快速入口",
+    feedTitle: "基准文档、竞技场与社区资源。",
+    openSourceCategory: "开源资源",
     quickLinks: "快速入口",
     noMatches: "没有匹配结果",
     resultSingular: "个结果",
@@ -204,14 +303,14 @@ const homeCopy = {
     benchmarkOverviewBody: "Suite、协议、工作流和指标向量。",
     metricsOverview: "指标总览",
     metricsOverviewBody: "能力维度与 suite 级指标覆盖。",
-    leaderboardBody: "打开嵌入的 Hugging Face Space。",
+    leaderboardBody: "浏览正式 image / video suite 的聚合基准分数。",
     archiveBody: "浏览图像、视频和世界样例。",
     docsCategory: "文档",
     leaderboardCategory: "排行榜",
     archiveCategory: "探索",
     arenaBattle: "Arena 竞技场",
     arenaBattleAction: "进入竞技场",
-    arenaBattleBody: "Arena Battle 读取 WorldArena 已集成模型和本地 prediction 产物，通过双盲人类投票更新多维 ELO 排名。",
+    arenaBattleBody: "Arena Battle 对 WorldAtlas Arena 双盲模型输出进行 WorldJen 风格 15 维 Likert 打分（1–5），并更新多维 ELO 排名。",
     arenaBattleCategory: "Arena 竞技场",
     arenaBattleFrameTitle: "WorldAtlas Arena 竞技场",
     arenaBattleReady: "Arena 竞技场已加载完成。",
@@ -226,7 +325,45 @@ const homeCopy = {
     submissionGuide: "提交说明",
     leaderboardStatusAria: "排行榜状态",
     leaderboardTracksAria: "排行榜轨道",
-    leaderboardEmbedAria: "嵌入的 Hugging Face 排行榜"
+    leaderboardEmbedAria: "嵌入的 Hugging Face 排行榜",
+    leaderboardSortBy: "排序",
+    leaderboardOverall: "Overall",
+    leaderboardModel: "模型",
+    leaderboardSamples: "样本数",
+    leaderboardUpdated: "更新于",
+    leaderboardModels: "个模型",
+    leaderboardMetricCount: "项指标",
+    leaderboardOtherMetrics: "其他指标",
+    leaderboardEmpty: "该 suite 尚无已发布的 benchmark 运行结果。",
+    leaderboardLoading: "正在加载排行榜…",
+    leaderboardLoadError: "排行榜数据暂不可用。",
+    leaderboardProtocolKicker: "提交协议",
+    leaderboardProtocolTitle: "比较运行结果前，请先阅读基准契约。",
+    leaderboardProtocolBody: "正式 suite、指标向量与报告产物说明见基准文档。",
+    leaderboardReadProtocol: "阅读协议",
+    leaderboardTableAria: "基准排行榜表格",
+    leaderboardSuiteTabsAria: "基准 suite",
+    paperAuthorLabel: "作者",
+    paperAffiliationsLabel: "单位",
+    paperPublishedLabel: "发布",
+    paperReportLabel: "报告",
+    paperRepositoryLabel: "代码仓库",
+    paperLeaderboardLabel: "排行榜",
+    paperEmailLabel: "邮箱",
+    paperCommunityLabel: "社区",
+    paperShareLabel: "分享",
+    paperShareCopy: "复制链接",
+    paperShareCopied: "已复制",
+    paperShareTwitter: "分享到 X",
+    newsKicker: "动态",
+    citationsKicker: "引用",
+    citationsHeadline: "引用本站工作",
+    citationCopy: "复制",
+    citationCopied: "已复制",
+    backToTop: "回到顶部",
+    footerCopyright: "© 2026 WorldAtlas Arena",
+    leaderboardAscentTitle: "登顶可视化",
+    leaderboardAscentCaption: "共 {total} 个模型沿山脊向未被征服的峰顶进发（显示 {shown}）。"
   }
 };
 const homeHeroLabelZh = new Map([
@@ -249,12 +386,12 @@ const homePillarZh = new Map([
 ]);
 const homeLeaderboardZh = {
   eyebrow: "WorldAtlas Arena 排行榜",
-  title: "WorldAtlas Arena 排行榜",
-  body: "无需离开本站即可浏览 OpenEnvisionLab WorldAtlas Arena Space。该 Space 由 /share/project/bench/WorldAtlas Arena 生成，并用指标向量保留基准契约，而不是借用无关的公开排名。",
-  badges: ["OpenEnvisionLab Space", "4 个正式 suite", "指标向量报告"],
+  title: "排行榜",
+  body: "浏览正式 image / video suite 的聚合基准分数。排名来自 WorldAtlas Arena 协议下的指标向量报告，而不是单一 headline 分数。",
+  badges: ["4 个正式 suite", "指标向量报告", "聚合分数"],
   tracks: [
     ["4 个 suite", "正式基准轨道", "image_static、image_dynamic、video_static 和 video_dynamic 保持为独立 headline suite。"],
-    ["134 个指标", "已配置指标槽位", "Space 反映 config/benchmark.yaml 中 38/38/26/32 的指标覆盖。"],
+    ["160 个指标", "已配置指标槽位", "排行榜列反映 config/benchmark.yaml 中的 suite 级指标覆盖。"],
     ["报告", "可提交的结果契约", "运行会发布 leaderboard.csv，以及 per-metric、per-dimension、manifest 和 domain-breakdown 产物。"]
   ]
 };
@@ -286,7 +423,7 @@ const archiveState = {
   introSeen: archiveIntroSeen,
   navigationOpen: false,
   aboutOpen: false,
-  musicEnabled: window.localStorage.getItem(archiveMusicStorageKey) !== "off",
+  musicEnabled: window.localStorage.getItem(archiveMusicStorageKey) === "on",
   musicBlocked: false,
   musicUnavailable: false,
   datasetPanelOpen: false,
@@ -302,6 +439,38 @@ const languageState = {
   current: supportedLanguages.has(storedLanguage) ? storedLanguage : "en"
 };
 
+const leaderboardState = {
+  suite: "image_static",
+  sortMetric: "overall",
+  loading: false,
+  error: "",
+  payload: null,
+  activeRank: 0
+};
+
+const LEADERBOARD_ASCENT_MOBILE_LIMIT = 6;
+const LEADERBOARD_ASCENT_DENSE_THRESHOLD = 10;
+// Ridge paths sampled from leaderboard-mnt.png (1024×590); progress 0 = summit, 1 = base.
+const LEADERBOARD_ASCENT_LEFT_RIDGE = [
+  [48.8, 13],
+  [47.0, 22],
+  [42.9, 30],
+  [41.5, 42],
+  [41.0, 54],
+  [40.0, 66],
+  [38.5, 84]
+];
+const LEADERBOARD_ASCENT_RIGHT_RIDGE = [
+  [50.3, 13],
+  [51.5, 22],
+  [52.1, 30],
+  [56.7, 42],
+  [59.0, 54],
+  [60.0, 66],
+  [61.5, 84]
+];
+const LEADERBOARD_ASCENT_FLAG = { x: 50, y: 13 };
+
 let archiveRuntime = null;
 let previousFrameTime = 0;
 const archivePressedKeys = new Set();
@@ -311,18 +480,49 @@ const clearArchivePressedKeys = () => {
   archiveState.moveStrafeVelocity = 0;
 };
 let homeEntryTimer = 0;
+let homeEntryToken = 0;
 let homeIceRuntime = null;
+let homeScrollRevealObserver = null;
 let archiveCatalog = null;
 let archiveCatalogPromise = null;
 let archiveCatalogRequestKey = "";
 let archiveCatalogRequestToken = 0;
+let archiveStaticFullCatalogPromise = null;
 let archiveSearchTimer = 0;
 let activeArchiveItems = archiveItems;
 let activeArchiveTags = archiveTags;
 let activeArchiveFilteredTotal = archiveItems.length;
 let activeArchiveDisplayCount = archiveItems.length;
 let archiveCatalogError = "";
+let liveVideoDocsCatalog = null;
+let liveVideoDocsPromise = null;
 let mathJaxPromise = null;
+
+installArchiveRuntimePreconnects();
+
+function installArchiveRuntimePreconnects() {
+  const origins = new Set();
+
+  [archiveCatalogBase, archiveMediaOrigin].filter(Boolean).forEach((value) => {
+    try {
+      origins.add(new URL(value, window.location.href).origin);
+    } catch {
+      // Ignore an incomplete deployment placeholder and keep the local origin working.
+    }
+  });
+
+  origins.forEach((origin) => {
+    if (origin === window.location.origin || document.head.querySelector(`link[href="${origin}"]`)) {
+      return;
+    }
+
+    const preconnect = document.createElement("link");
+    preconnect.rel = "preconnect";
+    preconnect.href = origin;
+    preconnect.crossOrigin = "anonymous";
+    document.head.append(preconnect);
+  });
+}
 
 function activeLanguage() {
   return languageState.current;
@@ -337,7 +537,7 @@ function activeDocsNavigation() {
 }
 
 function activeContentPages() {
-  return [...activeDocsPages(), awesomeWorldModelsPage];
+  return activeDocsPages();
 }
 
 function localizedHomeText(key) {
@@ -398,7 +598,7 @@ function localizedHomePosts() {
       return {
         ...post,
         title: localizedHomeText("arenaBattle"),
-        date: localizedHomeText("benchmark"),
+        date: localizedHomeText("arenaBattleCategory"),
         body: localizedHomeText("arenaBattleBody")
       };
     }
@@ -422,6 +622,22 @@ function setDocumentLanguage() {
   document.documentElement.lang = activeLanguage() === "zh" ? "zh-CN" : "en";
 }
 
+function setHomeMicroverseStylesheetEnabled(enabled) {
+  document.querySelectorAll('link[rel="stylesheet"][href*="home-microverse.css"]').forEach((link) => {
+    link.disabled = !enabled;
+  });
+}
+
+function clearDocStarlightDocumentShell() {
+  delete document.documentElement.dataset.theme;
+  delete document.documentElement.dataset.hasSidebar;
+}
+
+function applyDocStarlightDocumentShell() {
+  document.documentElement.dataset.theme = "dark";
+  document.documentElement.dataset.hasSidebar = "";
+}
+
 function setLanguage(language) {
   if (!supportedLanguages.has(language) || language === activeLanguage()) {
     return;
@@ -429,6 +645,7 @@ function setLanguage(language) {
 
   languageState.current = language;
   window.localStorage.setItem("worldarenaLanguage", language);
+  setAuthUiLanguage(language);
   setDocumentLanguage();
   render();
 }
@@ -494,7 +711,45 @@ function getCatalogTags() {
 
 const deslugifyTag = (slug) => getCatalogTags().find((tag) => slugify(tag) === slug) || slug.replace(/-/g, " ");
 
+function normalizeClientRoutePath(href) {
+  const path = String(href || "").split(/[?#]/)[0];
+
+  if (path === "/docs" || path === "/doc") {
+    return "/doc/";
+  }
+
+  return path.endsWith("/") ? path : `${path}/`;
+}
+
+function isClientRoute(href) {
+  if (!href || href === "#") {
+    return false;
+  }
+
+  if (/^https?:\/\//.test(href)) {
+    return false;
+  }
+
+  const path = normalizeClientRoutePath(href);
+
+  return (
+    path === "/"
+    || path.startsWith("/leaderboard")
+    || path.startsWith("/arena")
+    || path.startsWith("/uncertain")
+  );
+}
+
+function clientRouteAttribute(href) {
+  return isClientRoute(href) ? "data-route" : "";
+}
+
 function routeTo(path) {
+  if (!isClientRoute(path)) {
+    window.location.assign(path);
+    return;
+  }
+
   if (path === window.location.pathname + window.location.hash) {
     return;
   }
@@ -532,19 +787,29 @@ document.addEventListener("click", (event) => {
 
 function render() {
   setDocumentLanguage();
+  clearDocStarlightDocumentShell();
   clearHomeEntryTimer();
   stopHomeIce();
+  stopHomeScrollReveal();
   stopArchiveLoop();
   stopArenaBattleRuntime();
 
   const path = normalizeRoute(window.location.pathname);
 
-  if (path.startsWith("/arena")) {
+  if (path.startsWith("/awesome-world-models")) {
+    window.location.replace("https://github.com/OpenEnvision/Awesome-World-Modeling");
+    return;
+  }
+
+  if (path.startsWith("/leaderboard")) {
+    renderLeaderboard();
+  } else if (path.startsWith("/arena")) {
     renderArenaBattle();
   } else if (path.startsWith("/uncertain")) {
     renderArchive();
-  } else if (path.startsWith("/docs") || path.startsWith("/awesome-world-models")) {
-    renderDocPage();
+  } else if (path.startsWith("/docs")) {
+    const target = path.replace(/^\/docs(?=\/|$)/, "/doc");
+    window.location.replace(`${target}${window.location.search}${window.location.hash}`);
   } else {
     renderHome();
   }
@@ -553,6 +818,137 @@ function render() {
 function archiveApiRequestKey() {
   const tag = archiveState.mode === "connections" ? archiveState.selectedTag : "";
   return [archiveState.mediaKind, archiveState.searchQuery.trim().toLowerCase(), tag].join("::");
+}
+
+function archiveRuntimeAssetUrl(value) {
+  if (!archiveMediaOrigin || !value || !String(value).startsWith("/")) {
+    return value;
+  }
+
+  const mediaPrefixes = [
+    "/media/",
+    "/preview/",
+    "/poster/",
+    "/thumb/",
+    "/assets/worldarena-thumbs/",
+    "/assets/worldarena/generated/"
+  ];
+
+  return mediaPrefixes.some((prefix) => String(value).startsWith(prefix))
+    ? `${archiveMediaOrigin}${value}`
+    : value;
+}
+
+function normalizeArchiveCatalogPage(page) {
+  if (!page || !Array.isArray(page.items)) {
+    return page;
+  }
+
+  return {
+    ...page,
+    items: page.items.map((item) => ({
+      ...item,
+      image: archiveRuntimeAssetUrl(item.image),
+      thumb: archiveRuntimeAssetUrl(item.thumb),
+      video: archiveRuntimeAssetUrl(item.video),
+      href: archiveRuntimeAssetUrl(item.href)
+    }))
+  };
+}
+
+function archiveStaticMediaMatches(item, mediaKind) {
+  if (!mediaKind || mediaKind === "visual" || mediaKind === "all") {
+    return item.source === "images" || item.source === "videos";
+  }
+
+  return (mediaKind === "images" || mediaKind === "videos") && item.source === mediaKind;
+}
+
+function archiveStaticSearchMatches(item, query) {
+  if (!query) {
+    return true;
+  }
+
+  const haystack = [
+    item.title,
+    item.type,
+    item.year,
+    item.summary,
+    item.source,
+    item.path,
+    ...(item.tags || [])
+  ].join(" ").toLowerCase();
+
+  return query.split(/\s+/).filter(Boolean).every((part) => haystack.includes(part));
+}
+
+function archiveStaticTagsForItems(items) {
+  const tagCounts = new Map();
+
+  items.forEach((item) => {
+    (item.tags || []).forEach((tag) => {
+      tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+    });
+  });
+
+  return Array.from(tagCounts.entries())
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, 120)
+    .map(([tag]) => tag);
+}
+
+function archiveStaticPageUrl(offset = 0) {
+  const pageIndex = Math.max(0, Math.floor(offset / archiveApiPageSize));
+  const pageName = `page-${String(pageIndex).padStart(4, "0")}.json`;
+  return `${archiveCatalogBase}/${archiveState.mediaKind}/${pageName}`;
+}
+
+function loadArchiveStaticFullCatalog() {
+  if (!archiveStaticFullCatalogPromise) {
+    archiveStaticFullCatalogPromise = fetch(`${archiveCatalogBase}/visual/all.json`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Static media catalog request failed with ${response.status}`);
+        }
+
+        return response.json();
+      })
+      .then(normalizeArchiveCatalogPage)
+      .catch((error) => {
+        archiveStaticFullCatalogPromise = null;
+        throw error;
+      });
+  }
+
+  return archiveStaticFullCatalogPromise;
+}
+
+function loadArchiveStaticFilteredPage({ append = false } = {}) {
+  const query = archiveState.searchQuery.trim().toLowerCase();
+  const selectedTag = archiveState.mode === "connections" ? archiveState.selectedTag : "";
+  const offset = append && archiveCatalog ? archiveCatalog.nextOffset || archiveCatalog.items?.length || 0 : 0;
+
+  return loadArchiveStaticFullCatalog().then((fullCatalog) => {
+    const filteredItems = (fullCatalog.items || [])
+      .filter((item) => archiveStaticMediaMatches(item, archiveState.mediaKind))
+      .filter((item) => archiveStaticSearchMatches(item, query))
+      .filter((item) => !selectedTag || (item.tags || []).includes(selectedTag));
+    const items = filteredItems.slice(offset, offset + archiveApiPageSize);
+
+    return {
+      ...fullCatalog,
+      filteredTotal: filteredItems.length,
+      offset,
+      limit: archiveApiPageSize,
+      nextOffset: offset + items.length,
+      hasMore: offset + items.length < filteredItems.length,
+      mediaKind: archiveState.mediaKind,
+      query,
+      selectedTag,
+      tags: archiveStaticTagsForItems(filteredItems),
+      items
+    };
+  });
 }
 
 function resetArchiveCatalog() {
@@ -564,6 +960,10 @@ function resetArchiveCatalog() {
 }
 
 function archiveCatalogUrl(offset = 0) {
+  if (archiveCatalogBase) {
+    return archiveStaticPageUrl(offset);
+  }
+
   const params = new URLSearchParams({
     media: archiveState.mediaKind,
     offset: String(offset),
@@ -583,21 +983,23 @@ function archiveCatalogUrl(offset = 0) {
 }
 
 function mergeArchiveCatalogPage(currentCatalog, page) {
+  const normalizedPage = normalizeArchiveCatalogPage(page);
+
   if (!currentCatalog || page.offset === 0) {
     return {
-      ...page,
-      items: archiveExploreItems(page.items || []),
-      tags: archiveExploreTags(page.tags || [])
+      ...normalizedPage,
+      items: archiveExploreItems(normalizedPage.items || []),
+      tags: archiveExploreTags(normalizedPage.tags || [])
     };
   }
 
   const seenIds = new Set((currentCatalog.items || []).map((item) => item.id));
-  const newItems = archiveExploreItems(page.items || []).filter((item) => !seenIds.has(item.id));
+  const newItems = archiveExploreItems(normalizedPage.items || []).filter((item) => !seenIds.has(item.id));
 
   return {
-    ...page,
+    ...normalizedPage,
     items: [...(currentCatalog.items || []), ...newItems],
-    tags: archiveExploreTags(page.tags || []),
+    tags: archiveExploreTags(normalizedPage.tags || []),
     offset: currentCatalog.offset || 0
   };
 }
@@ -617,14 +1019,21 @@ function loadArchiveCatalog({ append = false } = {}) {
   const requestToken = ++archiveCatalogRequestToken;
   archiveCatalogRequestKey = requestKey;
 
-  archiveCatalogPromise = fetch(archiveCatalogUrl(offset))
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`Media catalog request failed with ${response.status}`);
-      }
+  const usesStaticFilter = archiveCatalogBase && (
+    archiveState.searchQuery.trim() ||
+    (archiveState.mode === "connections" && archiveState.selectedTag)
+  );
+  const catalogRequest = usesStaticFilter
+    ? loadArchiveStaticFilteredPage({ append })
+    : fetch(archiveCatalogUrl(offset)).then((response) => {
+        if (!response.ok) {
+          throw new Error(`Media catalog request failed with ${response.status}`);
+        }
 
-      return response.json();
-    })
+        return response.json();
+      });
+
+  archiveCatalogPromise = catalogRequest
     .then((catalog) => {
       if (requestToken !== archiveCatalogRequestToken || requestKey !== archiveApiRequestKey()) {
         return archiveCatalog || defaultArchiveCatalog;
@@ -647,22 +1056,145 @@ function loadArchiveCatalog({ append = false } = {}) {
   return archiveCatalogPromise;
 }
 
-function shellHeader({ archive = false, docs = false } = {}) {
-  const centerMarkup = archive
-    ? `<span class="archive-header-spacer" aria-hidden="true"></span>`
-    : docs
-      ? `<a class="global-search-toggle" href="/docs/" data-route>${localizedHomeText("docs")}</a>`
+function shellSearchMarkup() {
+  return `
+    <section class="home-search" data-home-search aria-label="${escapeAttr(localizedHomeText("homeSearchAria"))}">
+      <input id="home-search-input" type="search" placeholder="${escapeAttr(localizedHomeText("search"))}" />
+      <div class="home-search-results" data-home-search-results></div>
+    </section>
+  `;
+}
+
+function brandLinkMarkup() {
+  const [brandPrimary = siteTitle, ...brandRest] = siteTitle.split(" ");
+  const brandSecondary = brandRest.join(" ");
+  const secondaryMarkup = brandSecondary
+    ? `<span class="brand-wordmark-secondary">${escapeHtml(brandSecondary)}</span>`
+    : "";
+
+  return `<a class="brand-link" href="/" data-route aria-label="${escapeAttr(siteTitle)}"><span class="brand-wordmark" aria-hidden="true"><span class="brand-wordmark-primary">${escapeHtml(brandPrimary)}</span>${secondaryMarkup}</span></a>`;
+}
+
+function docStarlightHeaderMarkup() {
+  return `
+    <header class="doc-starlight-header">
+      <div class="doc-starlight-header__inner">
+        <a class="doc-starlight-brand" href="/doc/">
+          <img src="/assets/worldatlas-logo-cropped2.svg" alt="" />
+          <span>WorldAtlas Arena Docs</span>
+        </a>
+        <label class="doc-starlight-search">
+          <span class="doc-starlight-search__icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m21 21-4.34-4.34" />
+              <circle cx="11" cy="11" r="8" />
+            </svg>
+          </span>
+          <span class="sr-only">${escapeHtml(localizedHomeText("search"))}</span>
+          <input type="search" data-doc-nav-search placeholder="${escapeAttr(localizedHomeText("searchDocs"))}" />
+          <span class="doc-starlight-search__kbd" aria-hidden="true"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+        </label>
+        <div class="doc-starlight-header__actions">
+          <a href="/" data-route>${escapeHtml(activeLanguage() === "zh" ? "首页" : "Home")}</a>
+          ${languageToggleMarkup()}
+          <button type="button" class="doc-starlight-sidebar-toggle" data-doc-sidebar-toggle aria-label="${escapeAttr(localizedHomeText("menu"))}">${escapeHtml(localizedHomeText("menu"))}</button>
+        </div>
+      </div>
+    </header>
+  `;
+}
+
+function bindDocStarlightShell() {
+  const searchInput = document.querySelector("[data-doc-nav-search]");
+  const sidebarToggle = document.querySelector("[data-doc-sidebar-toggle]");
+
+  const closeDocSidebar = () => {
+    document.body.classList.remove("doc-sidebar-open");
+  };
+
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      const query = searchInput.value.trim().toLowerCase();
+
+      document.querySelectorAll(".doc-starlight-sidebar .doc-nav-section li").forEach((item) => {
+        const text = item.textContent.toLowerCase();
+        item.classList.toggle("is-hidden", Boolean(query) && !text.includes(query));
+      });
+
+      document.querySelectorAll(".doc-starlight-sidebar .doc-nav-section").forEach((section) => {
+        const visibleItems = section.querySelectorAll("li:not(.is-hidden)");
+        section.hidden = Boolean(query) && visibleItems.length === 0;
+      });
+    });
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+      const input = document.querySelector("[data-doc-nav-search]");
+      if (!(input instanceof HTMLInputElement)) {
+        return;
+      }
+
+      event.preventDefault();
+      input.focus();
+      input.select();
+    }
+  });
+
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", () => {
+      document.body.classList.toggle("doc-sidebar-open");
+    });
+  }
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (!document.body.classList.contains("doc-sidebar-open")) {
+        return;
+      }
+
+      const target = event.target;
+
+      if (target instanceof Element && (target.closest(".doc-starlight-sidebar") || target.closest("[data-doc-sidebar-toggle]"))) {
+        return;
+      }
+
+      closeDocSidebar();
+    },
+    true
+  );
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeDocSidebar();
+    }
+  });
+}
+
+function shellHeaderDocsLinkMarkup(href) {
+  return `<a class="header-utility-button" href="${escapeAttr(href)}" data-header-docs>${escapeHtml(localizedHomeText("docs"))}</a>`;
+}
+
+function shellHeader({ archive = false, docs = false, arena = false } = {}) {
+  const docsHref = docs ? "/doc/" : arena ? "/doc/benchmark/" : "";
+  const docsMarkup = docsHref ? shellHeaderDocsLinkMarkup(docsHref) : "";
+  const centerMarkup = archive || docs || arena
+    ? `<span class="header-center-spacer" aria-hidden="true"></span>`
     : `<button class="global-search-toggle" data-home-search-toggle type="button">${localizedHomeText("search")}</button>`;
 
   return `
     <header class="site-header ${archive ? "archive-header" : ""}">
-      <a class="brand-link" href="/" data-route>${siteTitle}</a>
+      ${brandLinkMarkup()}
       ${centerMarkup}
       <div class="header-actions">
+        ${docsMarkup}
+        ${authHeaderActionsMarkup()}
         ${languageToggleMarkup()}
         <button class="menu-toggle" data-menu-toggle type="button">${localizedHomeText("menu")}</button>
       </div>
     </header>
+    ${authFeedbackModalsMarkup()}
   `;
 }
 
@@ -675,7 +1207,7 @@ function menuMarkup() {
           <ul>
             ${section.links
               .map((link) => {
-                const routeAttribute = link.href.startsWith("/") ? "data-route" : "";
+                const routeAttribute = clientRouteAttribute(link.href);
                 const targetAttribute = /^https?:\/\//.test(link.href) ? `target="_blank" rel="noopener"` : "";
 
                 return `<li data-menu-item><a href="${escapeAttr(link.href)}" ${routeAttribute} ${targetAttribute}>${escapeHtml(link.label)}</a></li>`;
@@ -698,7 +1230,7 @@ function menuMarkup() {
       <ul class="menu-credits">
         ${footerLinks
           .map((link) => {
-            const routeAttribute = link.href.startsWith("/") ? "data-route" : "";
+            const routeAttribute = clientRouteAttribute(link.href);
             return `<li data-menu-item><a href="${escapeAttr(link.href)}" ${routeAttribute}>${escapeHtml(link.label)}</a></li>`;
           })
           .join("")}
@@ -731,6 +1263,21 @@ function bindShellEvents() {
   document.removeEventListener("keydown", shellKeyHandler);
   document.addEventListener("keydown", shellKeyHandler);
   bindMenuSearch();
+  setAuthUiLanguage(activeLanguage());
+  bindAuthFeedbackUi();
+  refreshAuthSession();
+
+  if (!document.worldarenaAuthListenerBound) {
+    document.worldarenaAuthListenerBound = true;
+    document.addEventListener("worldarena-auth-changed", () => {
+      const runtime = arenaBattleRuntime;
+
+      if (runtime?.dom) {
+        refreshArenaScorecard(runtime);
+        renderArenaBattleState(runtime);
+      }
+    });
+  }
 }
 
 function shellKeyHandler(event) {
@@ -801,6 +1348,7 @@ function bindMenuSearch() {
 
 function renderHome() {
   document.body.className = "home-page";
+  setHomeMicroverseStylesheetEnabled(true);
   document.title = siteTitle;
   const heroVisualsAria = localizedHomeText("heroVisualAria");
   const primaryLinksAria = localizedHomeText("primaryLinksAria");
@@ -808,75 +1356,152 @@ function renderHome() {
   app.innerHTML = `
     ${shellHeader()}
     ${menuMarkup()}
+    ${shellSearchMarkup()}
     <main class="home-main">
-      <section class="home-search" data-home-search aria-label="${escapeAttr(localizedHomeText("homeSearchAria"))}">
-        <input id="home-search-input" type="search" placeholder="${escapeAttr(localizedHomeText("search"))}" />
-        <div class="home-search-results" data-home-search-results></div>
-      </section>
-      <section class="home-hero" aria-labelledby="home-title">
-        <video class="home-hero-bg-video" src="/assets/benchmark_hero_cover.mp4?v=20260621-v7" poster="/worldarena_showcase_continuous.mp4_frame_0.jpg?v=20260621-v1" autoplay loop muted playsinline></video>
-        <a class="home-decor-object" href="/uncertain/" data-archive-entry aria-label="${escapeAttr(localizedHomeText("openExplorationAria"))}">
+      <div class="home-hero-stage" aria-label="${escapeAttr(heroVisualsAria)}">
+        <section class="home-hero" aria-label="${escapeAttr(heroVisualsAria)}">
+          <video class="home-hero-bg-video" src="/assets/benchmark_hero_cover.mp4?v=20260621-v7" poster="/worldarena_showcase_continuous.mp4_frame_0.jpg?v=20260621-v1" autoplay loop muted playsinline></video>
+          <div class="home-hero-scrim" aria-hidden="true"></div>
+        </section>
+      </div>
+      <section id="home-paper" class="home-intro-section home-intro-section--paper" aria-labelledby="home-title">
+        <div class="home-intro-heading home-scroll-reveal">
+          <h1 id="home-title" class="home-intro-title" style="--reveal-delay: 0ms">
+            <img src="/assets/worldatlas-logo-cropped2.svg" alt="" class="home-intro-logo" />
+            <span class="sr-only">${escapeHtml(localizedHomePaperField("title"))}</span>
+          </h1>
+          ${homePaperMetaMarkup()}
+          <div class="home-intro-actions home-below-hero-actions home-scroll-reveal" style="--reveal-delay: 120ms" aria-label="${escapeAttr(primaryLinksAria)}">
+            <a class="home-primary-action" href="/arena/" data-route>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m6.5 4.5 13 13M17.5 4.5l-13 13M4 7l3-3 1 4-4-1Zm16 0-3-3-1 4 4-1ZM4 17l3 3 1-4-4 1Zm16 0-3 3-1-4 4 1Z" /></svg>
+              <span>${escapeHtml(localizedHomeText("arenaBattle"))}</span>
+            </a>
+            <a href="/leaderboard/" data-route>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 4h8v4a4 4 0 0 1-8 0V4Zm4 8v4m-3 4h6M8 6H4v1a4 4 0 0 0 4 4m8-5h4v1a4 4 0 0 1-4 4" /></svg>
+              <span>${escapeHtml(localizedHomeText("leaderboard"))}</span>
+            </a>
+            <a href="/doc/benchmark/">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6 4h11a2 2 0 0 1 2 2v13H8a2 2 0 0 1-2-2V4Zm2 0v11h9V6H8Zm3 14h8a2 2 0 0 1 2 2v1H6v-1a2 2 0 0 1 2-2Z" /></svg>
+              <span>${escapeHtml(localizedHomeText("docs"))}</span>
+            </a>
+            <a href="/uncertain/" data-route>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16v13H4V7Zm3-3h10l2 3H5l2-3Zm2 8h6" /></svg>
+              <span>${escapeHtml(localizedHomeText("exploreArchive"))}</span>
+            </a>
+          </div>
+        </div>
+        <div class="home-intro-copy">
+          <div class="home-intro-lede">${localizedHomeText("heroLede")}</div>
+        </div>
+        <a class="home-decor-object home-intro-swan" href="/uncertain/" data-archive-entry aria-label="${escapeAttr(localizedHomeText("openExplorationAria"))}">
           <span class="home-swan-motion" aria-hidden="true">
             <img class="home-swan-image" src="/assets/black-swan-cutout.webp" alt="" />
           </span>
           <span class="sr-only">${escapeHtml(localizedHomeText("explorationSr"))}</span>
         </a>
       </section>
-      <section class="home-intro-section">
-        <div class="home-intro-copy">
-          <p class="home-kicker home-intro-kicker">${escapeHtml(localizedHomeText("heroKicker"))}</p>
-          <h1 id="home-title" class="home-intro-title">
-            <img src="/assets/worldatlas-logo-cropped2.png" alt="WorldAtlas Arena" class="home-intro-logo" />
-            <span class="sr-only">WorldAtlas Arena</span>
-          </h1>
-          <p class="home-intro-lede">${escapeHtml(localizedHomeText("heroLede"))}</p>
-          <div class="home-intro-actions" aria-label="${escapeAttr(primaryLinksAria)}">
-            <a class="home-primary-action" href="/arena/" data-route>${escapeHtml(localizedHomeText("arenaBattle"))}</a>
-            <a href="#home-leaderboard">${escapeHtml(localizedHomeText("leaderboard"))}</a>
-            <a href="/docs/benchmark/" data-route>${escapeHtml(localizedHomeText("benchmark"))}</a>
-            <a href="/docs/benchmark/metrics/" data-route>${escapeHtml(localizedHomeText("metrics"))}</a>
-            <a href="/uncertain/" data-route>${escapeHtml(localizedHomeText("exploreArchive"))}</a>
+      <div class="home-entry-loading" aria-hidden="true">${escapeHtml(localizedHomeText("loading"))}</div>
+      ${homeNewsMarkup()}
+      <section class="home-feed home-scroll-reveal" aria-labelledby="home-feed-title">
+        <div class="home-feed__inner">
+          <header class="home-feed__head">
+            <p class="home-feed__kicker">${escapeHtml(localizedHomeText("feedKicker"))}</p>
+            <h2 id="home-feed-title" class="home-feed__title">${escapeHtml(localizedHomeText("feedTitle"))}</h2>
+          </header>
+          <div class="home-feed__grid" role="list" aria-label="${escapeAttr(localizedHomeText("feedAria"))}">
+            ${localizedHomePosts().map(homePostMarkup).join("")}
           </div>
         </div>
       </section>
-      <div class="home-entry-loading" aria-hidden="true">${escapeHtml(localizedHomeText("loading"))}</div>
-      <section class="home-pillar-section" aria-labelledby="home-pillar-title">
-        <section class="home-signal-strip" aria-label="${escapeAttr(localizedHomeText("summaryAria"))}">
-          ${homeSignals.map(homeSignalMarkup).join("")}
-        </section>
-        <div class="home-section-heading">
-          <h2 id="home-pillar-title">${escapeHtml(localizedHomeText("evaluationTitle"))}</h2>
-        </div>
-        <div class="home-pillar-grid">
-          ${homePillars.map(homePillarMarkup).join("")}
-        </div>
-      </section>
-
-      <section class="home-section-heading home-docs-heading" aria-labelledby="home-docs-title">
-        <p class="home-kicker">${escapeHtml(localizedHomeText("docsKicker"))}</p>
-        <h2 id="home-docs-title">${escapeHtml(localizedHomeText("docsTitle"))}</h2>
-      </section>
-      <section class="home-feed" aria-label="${escapeAttr(localizedHomeText("feedAria"))}">
-        ${localizedHomePosts().map(homePostMarkup).join("")}
-      </section>
-      ${homeLeaderboardMarkup()}
+      ${homeCitationsMarkup()}
     </main>
+    ${homeFooterMarkup()}
+    ${homeBackToTopMarkup()}
   `;
 
   bindShellEvents();
   bindHomeIce();
   bindHomeEntry();
   bindHomeSearch();
+  bindHomeScrollReveal();
+  bindHomePageChrome();
+  window.requestAnimationFrame(scrollToHashTarget);
+}
+
+function renderLeaderboard() {
+  document.body.className = "home-page leaderboard-page leaderboard-page--ascent";
+  setHomeMicroverseStylesheetEnabled(true);
+  document.title = `${localizedHomeText("leaderboard")} · ${siteTitle}`;
+
+  app.innerHTML = `
+    ${shellHeader()}
+    ${menuMarkup()}
+    ${shellSearchMarkup()}
+    <main class="home-main leaderboard-main">
+      ${leaderboardPageMarkup()}
+    </main>
+  `;
+
+  bindShellEvents();
+  bindHomeSearch();
+  bindLeaderboardPage();
   window.requestAnimationFrame(scrollToHashTarget);
 }
 
 
 
 function clearHomeEntryTimer() {
+  homeEntryToken += 1;
+
   if (homeEntryTimer) {
     window.clearTimeout(homeEntryTimer);
     homeEntryTimer = 0;
   }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function preloadImage(source) {
+  return new Promise((resolve) => {
+    if (!source) {
+      resolve();
+      return;
+    }
+
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = resolve;
+    image.onerror = resolve;
+    image.src = source;
+  });
+}
+
+async function warmArchiveEntryMedia() {
+  const catalog = await loadArchiveCatalog();
+  const urls = archiveExploreItems(catalog.items || [])
+    .slice(0, homeArchiveEntryPreloadCount)
+    .map(archiveCardImageSource)
+    .filter(Boolean);
+
+  await Promise.allSettled(urls.map(preloadImage));
+}
+
+function finishHomeArchiveEntry(token, href) {
+  if (token !== homeEntryToken) {
+    return;
+  }
+
+  if (homeEntryTimer) {
+    window.clearTimeout(homeEntryTimer);
+    homeEntryTimer = 0;
+  }
+
+  homeEntryToken += 1;
+  routeTo(href);
 }
 
 function bindHomeEntry() {
@@ -902,10 +1527,19 @@ function bindHomeEntry() {
 
     prepareHomeEntryTransition(entry);
     document.body.classList.add("home-entering-archive");
+    const href = entry.getAttribute("href");
+    const token = ++homeEntryToken;
+
     homeEntryTimer = window.setTimeout(() => {
-      homeEntryTimer = 0;
-      routeTo(entry.getAttribute("href"));
-    }, 760);
+      finishHomeArchiveEntry(token, href);
+    }, homeArchiveEntryMaxDelay);
+
+    Promise.all([
+      delay(homeArchiveEntryMinDelay),
+      Promise.race([warmArchiveEntryMedia(), delay(homeArchiveEntryMaxDelay)])
+    ]).then(() => {
+      finishHomeArchiveEntry(token, href);
+    });
   });
 }
 
@@ -923,6 +1557,7 @@ function bindHomeIce() {
     moveTimer: 0,
     currentX: 0,
     currentY: 0,
+    waypointIndex: -1,
     moving: false,
     handleScroll: null,
     handleResize: null,
@@ -934,7 +1569,10 @@ function bindHomeIce() {
 
   const size = () => {
     const rect = entry.getBoundingClientRect();
-    const fallbackWidth = Math.min(720, window.innerWidth * 0.64);
+    const isIntroSwan = entry.classList.contains("home-intro-swan");
+    const fallbackWidth = isIntroSwan
+      ? clamp(window.innerWidth * 0.13, 130, 180)
+      : Math.min(720, window.innerWidth * 0.64);
 
     return {
       width: rect.width || fallbackWidth,
@@ -942,111 +1580,130 @@ function bindHomeIce() {
     };
   };
 
+  const introSection = document.querySelector("#home-paper");
+
   const setPosition = (centerX, centerY) => {
     const dimensions = size();
     runtime.currentX = centerX;
     runtime.currentY = centerY;
-    entry.style.left = `${Math.round(centerX - dimensions.width / 2)}px`;
-    entry.style.top = `${Math.round(centerY - dimensions.height / 2)}px`;
+
+    if (!introSection) {
+      entry.style.left = `${Math.round(centerX - dimensions.width / 2)}px`;
+      entry.style.top = `${Math.round(centerY - dimensions.height / 2)}px`;
+      entry.style.right = "auto";
+      return;
+    }
+
+    const introRect = introSection.getBoundingClientRect();
+    entry.style.left = `${Math.round(centerX - introRect.left - dimensions.width / 2)}px`;
+    entry.style.top = `${Math.round(centerY - introRect.top - dimensions.height / 2)}px`;
     entry.style.right = "auto";
+  };
+
+  const clampWithinIntro = (point, dimensions, marginRatio = null) => {
+    if (!introSection) {
+      return point;
+    }
+
+    const introRect = introSection.getBoundingClientRect();
+    const isCompact = window.innerWidth < 760;
+    const marginX = introRect.width * (marginRatio?.x ?? (isCompact ? 0.16 : 0.2));
+    const marginY = introRect.height * (marginRatio?.y ?? (isCompact ? 0.18 : 0.22));
+    const halfW = dimensions.width / 2;
+    const halfH = dimensions.height / 2;
+
+    return {
+      x: clamp(point.x, introRect.left + halfW + marginX, introRect.right - halfW - marginX),
+      y: clamp(point.y, introRect.top + halfH + marginY, introRect.bottom - halfH - marginY)
+    };
+  };
+
+  const buildIntroWaypoints = (dimensions) => {
+    const lede = document.querySelector(".home-intro-lede");
+    const copy = document.querySelector(".home-intro-copy");
+
+    if (!introSection || !lede) {
+      return [];
+    }
+
+    const introRect = introSection.getBoundingClientRect();
+    const ledeRect = lede.getBoundingClientRect();
+    const copyRect = copy?.getBoundingClientRect() || ledeRect;
+    const isCompact = window.innerWidth < 760;
+    const marginXRatio = isCompact ? 0.16 : 0.2;
+    const marginYRatio = isCompact ? 0.18 : 0.22;
+    const halfW = dimensions.width / 2;
+    const halfH = dimensions.height / 2;
+    const minX = introRect.left + introRect.width * marginXRatio + halfW;
+    const maxX = introRect.right - introRect.width * marginXRatio - halfW;
+    const minY = introRect.top + introRect.height * marginYRatio + halfH;
+    const maxY = introRect.bottom - introRect.height * marginYRatio - halfH;
+    const textRight = Math.max(ledeRect.right, copyRect.right);
+    const textGap = isCompact ? 14 : 28;
+    const laneMinX = clamp(textRight + halfW + textGap, minX, maxX);
+    const laneSpan = Math.max(0, maxX - laneMinX);
+    const laneCenterX = laneMinX + laneSpan * (isCompact ? 0.42 : 0.52);
+    const sway = Math.min(isCompact ? 10 : 16, laneSpan * 0.28);
+    const contentTop = clamp(Math.max(ledeRect.top, copyRect.top), minY, maxY);
+    const contentBottom = clamp(Math.max(ledeRect.bottom, copyRect.bottom), minY, maxY);
+    const laneStartY = contentTop;
+    const laneEndY = Math.max(contentBottom - halfH * 0.35, laneStartY + halfH * 2.4);
+    const useIntroBand = laneEndY - laneStartY < halfH * 3;
+    const startY = useIntroBand ? minY + (maxY - minY) * 0.14 : laneStartY;
+    const endY = useIntroBand ? minY + (maxY - minY) * 0.82 : Math.min(laneEndY, maxY);
+    const spanY = Math.max(endY - startY, halfH * 2.4);
+
+    const anchors = isCompact
+      ? [
+          { x: laneCenterX, y: startY + spanY * 0.14 },
+          { x: laneCenterX - sway * 0.45, y: startY + spanY * 0.38 },
+          { x: laneCenterX, y: startY + spanY * 0.62 },
+          { x: laneCenterX - sway * 0.28, y: startY + spanY * 0.86 }
+        ]
+      : [
+          { x: laneCenterX, y: startY + spanY * 0.1 },
+          { x: laneCenterX - sway * 0.82, y: startY + spanY * 0.26 },
+          { x: laneCenterX - sway * 0.22, y: startY + spanY * 0.44 },
+          { x: laneCenterX - sway * 0.68, y: startY + spanY * 0.6 },
+          { x: laneCenterX, y: startY + spanY * 0.76 },
+          { x: laneCenterX - sway * 0.36, y: startY + spanY * 0.9 }
+        ];
+
+    return anchors.map((point) => clampWithinIntro(point, dimensions));
+  };
+
+  const chooseIntroWaypointTarget = (dimensions) => {
+    const waypoints = buildIntroWaypoints(dimensions);
+
+    if (!waypoints.length) {
+      return null;
+    }
+
+    runtime.waypointIndex = (runtime.waypointIndex + 1) % waypoints.length;
+    return waypoints[runtime.waypointIndex];
   };
 
   const chooseTarget = () => {
     const dimensions = size();
-    const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
-    const hero = document.querySelector(".home-hero");
+    const introTarget = chooseIntroWaypointTarget(dimensions);
 
-    if (hero) {
-      const heroRect = hero.getBoundingClientRect();
-
-      if (heroRect.bottom > 120 && heroRect.top < window.innerHeight * 0.72) {
-        const isMobileHero = window.innerWidth < 760;
-        const jitterX = prefersReducedMotion ? 0 : (Math.random() - 0.5) * (isMobileHero ? 28 : 78);
-        const jitterY = prefersReducedMotion ? 0 : (Math.random() - 0.5) * (isMobileHero ? 22 : 54);
-
-        return {
-          x: clamp(
-            window.innerWidth * (isMobileHero ? 0.72 : 0.68) + jitterX,
-            dimensions.width / 2 + 18,
-            window.innerWidth - dimensions.width / 2 - 18
-          ),
-          y: clamp(
-            scrollTop + window.innerHeight * (isMobileHero ? 0.78 : 0.44) + jitterY,
-            scrollTop + dimensions.height / 2 + 80,
-            scrollTop + window.innerHeight - dimensions.height / 2 - 24
-          )
-        };
-      }
+    if (introTarget) {
+      return introTarget;
     }
 
-    const viewport = {
-      x1: 0,
-      y1: scrollTop,
-      x2: window.innerWidth,
-      y2: scrollTop + window.innerHeight
-    };
-    const regions = [];
+    const fallback = introSection?.getBoundingClientRect();
 
-    document
-      .querySelectorAll(".home-hero-copy, .home-hero-visual, .home-signal, .home-leaderboard-section, .home-pillar, .home-section-heading, .home-doc-group, .home-doc-link, .home-post")
-      .forEach((post) => {
-        const rect = post.getBoundingClientRect();
-        const contentBox = {
-          x1: rect.left,
-          y1: rect.top + scrollTop,
-          x2: rect.right,
-          y2: rect.bottom + scrollTop
-        };
-
-        if (!boxesIntersect(contentBox, viewport)) {
-          return;
-        }
-
-        const y1 = Math.max(contentBox.y1, viewport.y1);
-        const y2 = Math.min(contentBox.y2, viewport.y2);
-
-        regions.push({ x1: viewport.x1, y1, x2: contentBox.x1, y2 });
-        regions.push({ x1: contentBox.x2, y1, x2: viewport.x2, y2 });
-      });
-
-    const usableRegions = regions
-      .map((region) => ({
-        ...region,
-        area: Math.max(0, region.x2 - region.x1) * Math.max(0, region.y2 - region.y1)
-      }))
-      .filter((region) => region.area > 0)
-      .sort((leftRegion, rightRegion) => rightRegion.area - leftRegion.area);
-
-    if (!usableRegions.length) {
-      return {
-        x: clamp(Math.random() * window.innerWidth, dimensions.width / 2 + 18, window.innerWidth - dimensions.width / 2 - 18),
-        y: clamp(
-          scrollTop + Math.random() * window.innerHeight,
-          scrollTop + dimensions.height / 2 + 80,
-          scrollTop + window.innerHeight - dimensions.height / 2 - 24
-        )
-      };
-    }
-
-    const region = usableRegions[0];
-    const availableX = Math.max(0, region.x2 - region.x1 - dimensions.width);
-    const availableY = Math.max(0, region.y2 - region.y1 - dimensions.height);
-    const jitterX = (Math.random() - 0.5) * Math.min(availableX, 180);
-    const jitterY = (Math.random() - 0.5) * Math.min(availableY, 160);
-
-    return {
-      x: clamp((region.x1 + region.x2) / 2 + jitterX, dimensions.width / 2 + 18, window.innerWidth - dimensions.width / 2 - 18),
-      y: clamp(
-        (region.y1 + region.y2) / 2 + jitterY,
-        scrollTop + dimensions.height / 2 + 80,
-        scrollTop + window.innerHeight - dimensions.height / 2 - 24
-      )
-    };
+    return clampWithinIntro(
+      {
+        x: (fallback?.right || window.innerWidth) - dimensions.width * 0.55,
+        y: (fallback?.top || 0) + (fallback?.height || window.innerHeight) * 0.58
+      },
+      dimensions
+    );
   };
 
   const shouldMoveIntoView = () => {
-    const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
-    const viewportCenterY = scrollTop + window.innerHeight / 2;
+    const viewportCenterY = window.innerHeight / 2;
     return Math.abs(runtime.currentY - viewportCenterY) > window.innerHeight / 2 + 120;
   };
 
@@ -1108,7 +1765,7 @@ function bindHomeIce() {
       if (!runtime.moving) {
         animateToTarget(chooseTarget());
       }
-    }, 3200 + Math.random() * 2600);
+    }, 4200 + Math.random() * 2200);
   };
 
   runtime.handleScroll = () => {
@@ -1132,7 +1789,9 @@ function bindHomeIce() {
 
   runtime.handleFocus = runtime.handlePointerEnter;
 
-  const target = chooseTarget();
+  const initialWaypoints = buildIntroWaypoints(size());
+  runtime.waypointIndex = 0;
+  const target = initialWaypoints[0] || chooseTarget();
   setPosition(target.x, target.y);
   entry.style.opacity = "";
   scheduleAmbientMove();
@@ -1168,6 +1827,55 @@ function stopHomeIce() {
   homeIceRuntime = null;
 }
 
+function stopHomeScrollReveal() {
+  if (homeScrollRevealObserver) {
+    homeScrollRevealObserver.disconnect();
+    homeScrollRevealObserver = null;
+  }
+}
+
+function bindHomeScrollReveal() {
+  stopHomeScrollReveal();
+
+  document.querySelectorAll(".home-intro-lede p").forEach((paragraph, index) => {
+    paragraph.classList.add("home-scroll-reveal");
+    paragraph.style.setProperty("--reveal-delay", `${100 + index * 90}ms`);
+  });
+
+  document.querySelectorAll(".home-leaderboard-track").forEach((track, index) => {
+    track.classList.add("home-scroll-reveal");
+    track.style.setProperty("--reveal-delay", `${120 + index * 70}ms`);
+  });
+
+  const targets = document.querySelectorAll(".home-scroll-reveal");
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (!targets.length || prefersReducedMotion) {
+    targets.forEach((target) => target.classList.add("is-revealed"));
+    return;
+  }
+
+  homeScrollRevealObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) {
+          return;
+        }
+
+        entry.target.classList.add("is-revealed");
+        homeScrollRevealObserver?.unobserve(entry.target);
+      });
+    },
+    {
+      root: null,
+      rootMargin: "0px 0px -10% 0px",
+      threshold: 0.08
+    }
+  );
+
+  targets.forEach((target) => homeScrollRevealObserver.observe(target));
+}
+
 function boxesIntersect(box, viewport) {
   return !(viewport.x1 > box.x2 || viewport.x2 < box.x1 || viewport.y1 > box.y2 || viewport.y2 < box.y1);
 }
@@ -1198,21 +1906,383 @@ function quarticInOut(progress) {
   return 1 - Math.pow(-2 * progress + 2, 4) / 2;
 }
 
-function homePostMarkup(post, index) {
-  const media = post.image
-    ? `<img src="${escapeAttr(post.image)}" alt="${escapeAttr(post.title)}" loading="${index === 0 ? "eager" : "lazy"}" />`
-    : placeholderVisual(post.title, post.accent, "large");
-  const href = post.href || "#";
-  const routeAttribute = href.startsWith("/") ? "data-route" : "";
+function localizedHomePaperField(field) {
+  return activeLanguage() === "zh" ? homePaper[`${field}Zh`] || homePaper[field] : homePaper[`${field}En`] || homePaper[field];
+}
+
+function localizedHomeNewsField(item, field) {
+  return activeLanguage() === "zh" ? item[`${field}Zh`] || item[field] : item[`${field}En`] || item[field];
+}
+
+function localizedHomeFooterField(field) {
+  return activeLanguage() === "zh" ? homeFooterContent[`${field}Zh`] || homeFooterContent[field] : homeFooterContent[`${field}En`] || homeFooterContent[field];
+}
+
+function homePaperLinkMarkup(link) {
+  const label = activeLanguage() === "zh" ? link.labelZh || link.labelEn : link.labelEn || link.labelZh;
+
+  if (link.placeholder) {
+    return `<span class="home-paper__link home-paper__link--placeholder" aria-disabled="true">${escapeHtml(label)}</span>`;
+  }
+
+  const routeAttribute = clientRouteAttribute(link.href);
+  const externalAttribute = /^https?:\/\//.test(link.href) ? `target="_blank" rel="noopener noreferrer"` : "";
+  const mailtoAttribute = /^mailto:/.test(link.href) ? "" : externalAttribute;
+
+  return `<a class="home-paper__link" href="${escapeAttr(link.href)}" ${routeAttribute} ${mailtoAttribute}>${escapeHtml(label)}</a>`;
+}
+
+function homePaperLinksMarkup(links) {
+  return (links || [])
+    .map((link, index) => `${index ? '<span class="home-paper__sep" aria-hidden="true"> · </span>' : ""}${homePaperLinkMarkup(link)}`)
+    .join("");
+}
+
+function homePaperAffiliationsMarkup() {
+  const suffix = localizedHomePaperField("affiliationsSuffix");
+
+  return `<a class="home-paper__link" href="${escapeAttr(openEnvisionUrl)}" target="_blank" rel="noopener noreferrer">OpenEnvision</a>${escapeHtml(suffix)}`;
+}
+
+function homePaperMetaMarkup() {
+  const repositoryLink = {
+    labelEn: homePaper.repositoryLabelEn || "GitHub",
+    labelZh: homePaper.repositoryLabelZh || "GitHub",
+    href: homePaper.repositoryHref
+  };
+  const leaderboardLink = {
+    labelEn: "Leaderboard",
+    labelZh: "排行榜",
+    href: homePaper.leaderboardHref || "/leaderboard/"
+  };
+  const emailLink = {
+    labelEn: homePaper.email,
+    labelZh: homePaper.email,
+    href: `mailto:${homePaper.email}`
+  };
+  const shareText = encodeURIComponent(localizedHomePaperField("shareText"));
 
   return `
-    <article class="home-post home-post-${index % 5}" data-title="${escapeAttr(`${post.title} ${post.body}`.toLowerCase())}">
-      <figure class="home-media">${media}</figure>
-      <div class="home-copy">
-        <h2>${escapeHtml(post.title)}</h2>
-        <p>${escapeHtml(post.body)}</p>
-        <a href="${escapeAttr(href)}" ${routeAttribute} aria-label="${escapeAttr(`${localizedHomeText("docs")}: ${post.title}`)}">${escapeHtml(post.date)}</a>
+        <dl class="home-paper__meta home-scroll-reveal" style="--reveal-delay: 60ms">
+          <div class="home-paper__row home-paper__row--authors">
+            <dt>${escapeHtml(localizedHomeText("paperAuthorLabel"))}</dt>
+            <dd>
+              <p class="home-paper__authors-names">${escapeHtml(localizedHomePaperField("authors"))}</p>
+              <p class="home-paper__authors-note">${escapeHtml(localizedHomePaperField("authorNote"))}</p>
+            </dd>
+          </div>
+          <div class="home-paper__row home-paper__row--affiliations">
+            <dt>${escapeHtml(localizedHomeText("paperAffiliationsLabel"))}</dt>
+            <dd>${homePaperAffiliationsMarkup()}</dd>
+          </div>
+          <div class="home-paper__row">
+            <dt>${escapeHtml(localizedHomeText("paperPublishedLabel"))}</dt>
+            <dd>${escapeHtml(localizedHomePaperField("published"))}</dd>
+          </div>
+          <div class="home-paper__row">
+            <dt>${escapeHtml(localizedHomeText("paperReportLabel"))}</dt>
+            <dd class="home-paper__links">${homePaperLinksMarkup(homePaper.reportLinks)}</dd>
+          </div>
+          <div class="home-paper__row">
+            <dt>${escapeHtml(localizedHomeText("paperRepositoryLabel"))}</dt>
+            <dd class="home-paper__links">${homePaperLinkMarkup(repositoryLink)}</dd>
+          </div>
+          <div class="home-paper__row">
+            <dt>${escapeHtml(localizedHomeText("paperLeaderboardLabel"))}</dt>
+            <dd class="home-paper__links">${homePaperLinkMarkup(leaderboardLink)}</dd>
+          </div>
+          <div class="home-paper__row home-paper__row--connect">
+            <dt>${escapeHtml(localizedHomeText("paperEmailLabel"))}</dt>
+            <dd class="home-paper__links">${homePaperLinkMarkup(emailLink)}</dd>
+          </div>
+          <div class="home-paper__row">
+            <dt>${escapeHtml(localizedHomeText("paperCommunityLabel"))}</dt>
+            <dd class="home-paper__links">${homePaperLinksMarkup(homePaper.communityLinks)}</dd>
+          </div>
+          <div class="home-paper__row">
+            <dt>${escapeHtml(localizedHomeText("paperShareLabel"))}</dt>
+            <dd class="home-paper__share">
+              <button
+                type="button"
+                class="home-paper__share-btn"
+                data-home-share-copy
+                data-share-label="${escapeAttr(localizedHomeText("paperShareCopy"))}"
+                data-share-copied="${escapeAttr(localizedHomeText("paperShareCopied"))}"
+              >${escapeHtml(localizedHomeText("paperShareCopy"))}</button>
+              <a
+                class="home-paper__share-btn"
+                href="https://twitter.com/intent/tweet?text=${shareText}&amp;url=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "/")}"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-home-share-twitter
+              >${escapeHtml(localizedHomeText("paperShareTwitter"))}</a>
+            </dd>
+          </div>
+        </dl>
+  `;
+}
+
+function homeNewsLinkMarkup(link) {
+  const label = activeLanguage() === "zh" ? link.labelZh || link.labelEn : link.labelEn || link.labelZh;
+
+  if (link.placeholder) {
+    return `<span class="home-news__link home-news__link--placeholder" aria-disabled="true">${escapeHtml(label)}</span>`;
+  }
+
+  const routeAttribute = clientRouteAttribute(link.href);
+  const externalAttribute = /^https?:\/\//.test(link.href) ? `target="_blank" rel="noopener"` : "";
+
+  return `<a class="home-news__link" href="${escapeAttr(link.href)}" ${routeAttribute} ${externalAttribute}>${escapeHtml(label)}</a>`;
+}
+
+function homeNewsItemMarkup(item) {
+  const links = (item.links || [])
+    .map((link, index) => `${index ? '<span class="home-news__sep" aria-hidden="true"></span>' : ""}${homeNewsLinkMarkup(link)}`)
+    .join("");
+
+  return `
+    <li class="home-news__item">
+      <time class="home-news__date" datetime="${escapeAttr(item.date)}">${escapeHtml(item.date)}</time>
+      <div class="home-news__body">
+        <span class="home-news__text">${escapeHtml(localizedHomeNewsField(item, "text"))}</span>
+        ${links ? `<span class="home-news__links">${links}</span>` : ""}
       </div>
+    </li>
+  `;
+}
+
+function homeNewsMarkup() {
+  return `
+    <section id="home-news" class="home-news home-scroll-reveal" aria-labelledby="home-news-title">
+      <div class="home-news__inner">
+        <div class="home-news__head">
+          <p id="home-news-title" class="home-news__kicker">${escapeHtml(localizedHomeText("newsKicker"))}</p>
+        </div>
+        <div class="home-news__card">
+          <ul class="home-news__list">
+            ${homeNewsItems.map(homeNewsItemMarkup).join("")}
+          </ul>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function homeCitationsMarkup() {
+  const citationName = activeLanguage() === "zh" ? homeCitation.nameZh : homeCitation.nameEn;
+
+  return `
+    <section id="home-citations" class="home-citations home-scroll-reveal" aria-labelledby="home-citations-title">
+      <div class="home-citations__inner">
+        <div class="home-citations__head">
+          <p class="home-citations__kicker">${escapeHtml(localizedHomeText("citationsKicker"))}</p>
+          <h2 id="home-citations-title" class="home-citations__headline">${escapeHtml(localizedHomeText("citationsHeadline"))}</h2>
+        </div>
+        <div class="home-citations__list">
+          <article class="home-citations__card">
+            <div class="home-citations__card-head">
+              <h3 class="home-citations__name">${escapeHtml(citationName)}</h3>
+              <button type="button" class="home-citations__copy" data-citation-copy data-citation-label="${escapeAttr(localizedHomeText("citationCopy"))}" data-citation-copied="${escapeAttr(localizedHomeText("citationCopied"))}">${escapeHtml(localizedHomeText("citationCopy"))}</button>
+            </div>
+            <pre class="home-citations__bibtex"><code>${escapeHtml(homeCitation.bibtex)}</code></pre>
+          </article>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function homeFooterLinkMarkup(link) {
+  const label = activeLanguage() === "zh" ? link.labelZh || link.labelEn : link.labelEn || link.labelZh;
+  const routeAttribute = clientRouteAttribute(link.href);
+  const externalAttribute = /^https?:\/\//.test(link.href) ? `target="_blank" rel="noopener"` : "";
+
+  return `<li><a href="${escapeAttr(link.href)}" ${routeAttribute} ${externalAttribute}>${escapeHtml(label)}</a></li>`;
+}
+
+function homeFooterColumnMarkup(column) {
+  const title = activeLanguage() === "zh" ? column.titleZh : column.titleEn;
+
+  return `
+    <div class="home-footer__col">
+      <p class="home-footer__col-title">${escapeHtml(title)}</p>
+      <ul>${column.links.map(homeFooterLinkMarkup).join("")}</ul>
+    </div>
+  `;
+}
+
+function homeFooterMarkup() {
+  return `
+    <footer class="home-footer">
+      <div class="home-footer__inner home-scroll-reveal">
+        <div class="home-footer__brand">
+          <p class="home-footer__name">${escapeHtml(homeFooterContent.name)}</p>
+          <p class="home-footer__tagline">${escapeHtml(localizedHomeFooterField("tagline"))} · <a class="home-footer__hub-link" href="${escapeAttr(openEnvisionUrl)}" target="_blank" rel="noopener noreferrer">OpenEnvision</a></p>
+        </div>
+        <div class="home-footer__cols">
+          ${homeFooterContent.columns.map(homeFooterColumnMarkup).join("")}
+        </div>
+      </div>
+      <div class="home-footer__bottom">
+        <p>${escapeHtml(localizedHomeText("footerCopyright"))}</p>
+      </div>
+    </footer>
+  `;
+}
+
+function homeBackToTopMarkup() {
+  return `
+    <button type="button" class="home-back-to-top" data-home-back-to-top aria-label="${escapeAttr(localizedHomeText("backToTop"))}">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+    </button>
+  `;
+}
+
+function bindHomeCitationCopy() {
+  const button = document.querySelector("[data-citation-copy]");
+  const bibtex = document.querySelector(".home-citations__bibtex code");
+
+  if (!button || !bibtex) {
+    return;
+  }
+
+  const defaultLabel = button.getAttribute("data-citation-label") || button.textContent;
+  const copiedLabel = button.getAttribute("data-citation-copied") || "Copied";
+
+  button.addEventListener("click", async () => {
+    const text = bibtex.textContent || "";
+
+    try {
+      await navigator.clipboard.writeText(text);
+      button.classList.add("is-copied");
+      button.textContent = copiedLabel;
+      window.setTimeout(() => {
+        button.classList.remove("is-copied");
+        button.textContent = defaultLabel;
+      }, 1600);
+    } catch {
+      button.textContent = defaultLabel;
+    }
+  });
+}
+
+function bindHomeBackToTop() {
+  const button = document.querySelector("[data-home-back-to-top]");
+
+  if (!button) {
+    return;
+  }
+
+  const updateVisibility = () => {
+    button.classList.toggle("is-visible", window.scrollY > 480);
+  };
+
+  button.addEventListener("click", () => {
+    window.scrollTo({ top: 0, behavior: prefersReducedMotion ? "auto" : "smooth" });
+  });
+
+  updateVisibility();
+  window.addEventListener("scroll", updateVisibility, { passive: true });
+}
+
+function bindHomePaperShare() {
+  const copyButton = document.querySelector("[data-home-share-copy]");
+  const twitterLink = document.querySelector("[data-home-share-twitter]");
+
+  if (twitterLink) {
+    const shareText = encodeURIComponent(localizedHomePaperField("shareText"));
+    const shareUrl = encodeURIComponent(window.location.href);
+    twitterLink.href = `https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`;
+  }
+
+  if (!copyButton) {
+    return;
+  }
+
+  const defaultLabel = copyButton.getAttribute("data-share-label") || copyButton.textContent;
+  const copiedLabel = copyButton.getAttribute("data-share-copied") || "Copied";
+
+  copyButton.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      copyButton.classList.add("is-copied");
+      copyButton.textContent = copiedLabel;
+      window.setTimeout(() => {
+        copyButton.classList.remove("is-copied");
+        copyButton.textContent = defaultLabel;
+      }, 1600);
+    } catch {
+      copyButton.textContent = defaultLabel;
+    }
+  });
+}
+
+function bindHomePageChrome() {
+  bindHomeCitationCopy();
+  bindHomePaperShare();
+  bindHomeBackToTop();
+}
+
+function homePostKind(post) {
+  const href = post.href || "";
+
+  if (normalizeRoute(href) === "/arena/") {
+    return "arena";
+  }
+
+  if (/^https?:\/\//.test(href)) {
+    return "external";
+  }
+
+  return "docs";
+}
+
+function homePostCategoryLabel(post) {
+  const kind = homePostKind(post);
+
+  if (kind === "arena") {
+    return localizedHomeText("arenaBattleCategory");
+  }
+
+  if (kind === "external") {
+    return localizedHomeText("openSourceCategory");
+  }
+
+  if (normalizeRoute(post.href) === "/doc/benchmark/metrics/") {
+    return localizedHomeText("metrics");
+  }
+
+  return post.date || localizedHomeText("docsCategory");
+}
+
+function homePostMarkup(post, index) {
+  const kind = homePostKind(post);
+  const category = homePostCategoryLabel(post);
+  const media = post.image
+    ? `<img src="${escapeAttr(post.image)}" alt="" loading="${index === 0 ? "eager" : "lazy"}" />`
+    : placeholderVisual(post.title, post.accent, "large");
+  const href = post.href || "#";
+  const routeAttribute = clientRouteAttribute(href);
+  const targetAttribute = /^https?:\/\//.test(href) ? `target="_blank" rel="noopener"` : "";
+  const summary = post.body ? `<p class="home-post-summary">${escapeHtml(post.body)}</p>` : "";
+  const trailingIcon =
+    kind === "external"
+      ? `<svg class="home-post-external" aria-hidden="true" viewBox="0 0 24 24"><path d="M7 7h10v10M7 17 17 7" /></svg>`
+      : `<svg class="home-post-arrow" aria-hidden="true" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5" /></svg>`;
+
+  return `
+    <article class="home-post home-post--${kind} home-post-${index % 5} home-scroll-reveal" role="listitem" style="--reveal-delay: ${Math.min(index * 90, 360)}ms" data-title="${escapeAttr(`${post.title} ${post.body} ${category}`.toLowerCase())}">
+      <a class="home-post-link" href="${escapeAttr(href)}" ${routeAttribute} ${targetAttribute} aria-label="${escapeAttr(post.title)}">
+        <figure class="home-post-media home-media">${media}</figure>
+        <div class="home-post-body home-copy">
+          <div class="home-post-head">
+            <span class="home-post-badge home-post-meta">${escapeHtml(category)}</span>
+            ${trailingIcon}
+          </div>
+          <h3 class="home-post-title">${escapeHtml(post.title)}</h3>
+          ${summary}
+        </div>
+      </a>
     </article>
   `;
 }
@@ -1223,7 +2293,7 @@ function getHomeSearchItems() {
       category: localizedHomeText("docsLayerCategory"),
       title: activeLanguage() === "zh" ? group.titleZh : group.titleEn,
       body: activeLanguage() === "zh" ? group.summaryZh : group.summaryEn,
-      href: group.links[0]?.href || "/docs/",
+      href: group.links[0]?.href || "/doc/",
       keywords: `${group.level} ${group.links.map((link) => `${link.titleZh} ${link.titleEn} ${link.bodyZh} ${link.bodyEn} ${link.source}`).join(" ")}`
     },
     ...group.links.map((link) => ({
@@ -1241,17 +2311,6 @@ function getHomeSearchItems() {
     href: page.route,
     keywords: `${page.tags?.join(" ") || ""} ${stripInlineMarkdown(page.content || "")}`
   }));
-  const pillarItems = homePillars.map((item) => {
-    const localizedItem = localizedHomePillar(item);
-
-    return {
-      category: localizedHomeText("pillarCategory"),
-      title: localizedItem.title,
-      body: localizedItem.body,
-      href: localizedItem.href,
-      keywords: "metrics benchmark evaluation capability"
-    };
-  });
   const signalItems = homeSignals.map((item) => {
     const localizedItem = localizedHomeSignal(item);
 
@@ -1269,8 +2328,8 @@ function getHomeSearchItems() {
       category: localizedHomeText("leaderboardCategory"),
       title: leaderboard.title,
       body: leaderboard.body,
-      href: "/#home-leaderboard",
-      keywords: `${leaderboard.badges.join(" ")} hugging face hf submit ranking reports`
+      href: "/leaderboard/",
+      keywords: `${leaderboard.badges.join(" ")} submit ranking reports suites metrics`
     },
     ...leaderboard.tracks.map((track) => ({
       category: localizedHomeText("leaderboardCategory"),
@@ -1305,7 +2364,7 @@ function getHomeSearchItems() {
   ];
   const deduped = new Map();
 
-  [...primaryItems, ...leaderboardItems, ...pillarItems, ...signalItems, ...docLayerItems, ...docPageItems].forEach((item) => {
+  [...primaryItems, ...leaderboardItems, ...signalItems, ...docLayerItems, ...docPageItems].forEach((item) => {
     const key = `${item.href}::${item.title}`;
 
     if (!deduped.has(key)) {
@@ -1331,19 +2390,19 @@ function findHomeSearchResults(value) {
         category: localizedHomeText("docsCategory"),
         title: localizedHomeText("benchmarkOverview"),
         body: localizedHomeText("benchmarkOverviewBody"),
-        href: "/docs/benchmark/"
+        href: "/doc/benchmark/"
       },
       {
         category: localizedHomeText("docsCategory"),
         title: localizedHomeText("metricsOverview"),
         body: localizedHomeText("metricsOverviewBody"),
-        href: "/docs/benchmark/metrics/"
+        href: "/doc/benchmark/metrics/"
       },
       {
         category: localizedHomeText("leaderboardCategory"),
         title: localizedHomeText("leaderboard"),
         body: localizedHomeText("leaderboardBody"),
-        href: "/#home-leaderboard"
+        href: "/leaderboard/"
       },
       {
         category: localizedHomeText("archiveCategory"),
@@ -1434,7 +2493,7 @@ function homeSearchResultsMarkup(value) {
 }
 
 function homeSearchResultMarkup(item) {
-  const routeAttribute = item.href.startsWith("/") ? "data-route" : "";
+  const routeAttribute = clientRouteAttribute(item.href);
   const externalAttribute = /^https?:\/\//.test(item.href) ? `target="_blank" rel="noopener"` : "";
 
   return `
@@ -1516,66 +2575,930 @@ function filterHomePosts(value) {
   });
 }
 
-function homeLeaderboardMarkup() {
-  const leaderboard = localizedHomeLeaderboard();
-  const badges = leaderboard.badges
-    .map((badge) => `<span>${escapeHtml(badge)}</span>`)
-    .join("");
-  const tracks = leaderboard.tracks.map(homeLeaderboardTrackMarkup).join("");
+function localizedLeaderboardSuiteLabel(suite) {
+  const language = activeLanguage();
+  const match = leaderboardSuites.find((entry) => entry.id === suite.id || entry.id === suite);
+
+  if (!match) {
+    return typeof suite === "string" ? suite : suite.id;
+  }
+
+  return language === "zh" ? match.labelZh : match.labelEn;
+}
+
+function leaderboardDisplayModelName(row) {
+  return row?.name || formatLeaderboardModelLabel(row);
+}
+
+function arenaDisplayModelName(model, modelId = "") {
+  if (!model && !modelId) {
+    return "Unknown model";
+  }
+
+  return formatLeaderboardModelLabel({
+    modelId: model?.id || modelId,
+    name: model?.name || modelId,
+    fullName: model?.name || modelId,
+    runName: model?.id || modelId
+  });
+}
+
+function leaderboardFullModelName(row) {
+  return row?.fullName || leaderboardModelFullName(row);
+}
+
+function filterLeaderboardMetrics(metrics = []) {
+  return metrics.filter((metric) => !leaderboardHiddenMetrics.has(metric));
+}
+
+function formatLeaderboardScore(value) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "—";
+  }
+
+  return (Math.round(value * 1000) / 1000).toFixed(3);
+}
+
+function formatLeaderboardMetricLabel(metric) {
+  if (metric === "overall") {
+    return localizedHomeText("leaderboardOverall");
+  }
+
+  const readable = String(metric)
+    .toLowerCase()
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+  if (readable.length <= 26) {
+    return readable;
+  }
+
+  return `${readable.slice(0, 24).trim()}…`;
+}
+
+const LEADERBOARD_METRIC_DOC_OVERRIDES = {
+  brightness_distribution_consistency: "brightness_consistency",
+  color_temperature_constraint: "color_temperature_consistency",
+  geometric_consistency: "reconstruction_consistency",
+  photometric_consistency: "reconstruction_consistency",
+  long_sequence_motion_smoothness: "long_sequence",
+  long_sequence_dynamic_degree: "long_sequence"
+};
+
+const LEADERBOARD_METRIC_DOC_ANCHORS = {
+  epipolar_error: { docStem: "gvgc_geometry", anchor: "epipolar-error" },
+  epipolar_inlier_rate: { docStem: "gvgc_geometry", anchor: "epipolar-inlier-rate" },
+  feature_match_coverage: { docStem: "gvgc_geometry", anchor: "feature-match-coverage" },
+  effective_generation_fps: { docStem: "realtime_throughput_latency", anchor: "effective-generation-fps" },
+  realtime_factor: { docStem: "realtime_throughput_latency", anchor: "realtime-factor" },
+  action_response_latency: { docStem: "realtime_throughput_latency", anchor: "action-response-latency" },
+  latency_budget_pass_rate: { docStem: "realtime_throughput_latency", anchor: "latency-budget-pass-rate" }
+};
+
+function leaderboardMetricDocPrefix() {
+  return activeLanguage() === "zh" ? "/doc/zh/benchmark/metrics/" : "/doc/benchmark/metrics/";
+}
+
+function docsContentRouteToSiteHref(route) {
+  const href = normalizeRoute(String(route || "").replace(/^\/docs\//, "/doc/"));
+
+  if (activeLanguage() === "zh" && href.startsWith("/doc/") && !href.startsWith("/doc/zh/")) {
+    return href.replace(/^\/doc\//, "/doc/zh/");
+  }
+
+  return href;
+}
+
+function leaderboardMetricDocPageHref(docStem, anchor = "") {
+  const page = activeContentPages().find((candidate) => candidate.sourcePath === `benchmark/metrics/${docStem}.md`);
+  const base = page?.route
+    ? docsContentRouteToSiteHref(page.route)
+    : normalizeRoute(`${leaderboardMetricDocPrefix()}${docStem.replace(/_/g, "-")}/`);
+
+  return anchor ? `${base.replace(/\/$/, "")}#${anchor}` : base;
+}
+
+function leaderboardMetricDocHref(metric) {
+  const anchorEntry = LEADERBOARD_METRIC_DOC_ANCHORS[metric];
+
+  if (anchorEntry) {
+    return leaderboardMetricDocPageHref(anchorEntry.docStem, anchorEntry.anchor);
+  }
+
+  const docStem = LEADERBOARD_METRIC_DOC_OVERRIDES[metric] || metric;
+  return leaderboardMetricDocPageHref(docStem);
+}
+
+function leaderboardMetricDocLinkMarkup(metric, label) {
+  const href = leaderboardMetricDocHref(metric);
+  const docLabel =
+    activeLanguage() === "zh" ? `查看 ${metric} 指标文档` : `View ${metric} metric documentation`;
+
+  return `<a class="leaderboard-table__th-metric-link" href="${escapeAttr(href)}" title="${escapeAttr(docLabel)}">${escapeHtml(label)}</a>`;
+}
+
+function formatLeaderboardUpdatedLabel(value) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleString(activeLanguage() === "zh" ? "zh-CN" : "en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
+}
+
+function formatLeaderboardAscentStamp(value) {
+  const date = value ? new Date(value) : new Date();
+
+  if (Number.isNaN(date.getTime())) {
+    return "— (UTC+8)";
+  }
+
+  const month = date.toLocaleString("en-US", { month: "long", timeZone: "Asia/Shanghai" });
+  const day = date.toLocaleString("en-US", { day: "numeric", timeZone: "Asia/Shanghai" });
+  const year = date.toLocaleString("en-US", { year: "numeric", timeZone: "Asia/Shanghai" });
+
+  return `${month}.${day}, ${year} (UTC+8)`;
+}
+
+function formatLeaderboardAscentStampIso(value) {
+  const date = value ? new Date(value) : new Date();
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString();
+}
+
+function localizedLeaderboardAscentCaption(shown, total) {
+  return localizedHomeText("leaderboardAscentCaption")
+    .replace("{shown}", String(shown))
+    .replace("{total}", String(total));
+}
+
+function leaderboardAscentRankProgress(rank, total) {
+  if (total <= 1) {
+    return 0;
+  }
+
+  return (rank - 1) / (total - 1);
+}
+
+function leaderboardAscentInterpolateRidge(points, progress) {
+  const t = Math.min(1, Math.max(0, progress));
+
+  if (points.length <= 1) {
+    const point = points[0] || [50, 88];
+    return { x: point[0], y: point[1] };
+  }
+
+  const segments = [];
+  let totalLength = 0;
+
+  for (let index = 1; index < points.length; index += 1) {
+    const dx = points[index][0] - points[index - 1][0];
+    const dy = points[index][1] - points[index - 1][1];
+    const length = Math.hypot(dx, dy);
+    segments.push({ from: points[index - 1], to: points[index], length });
+    totalLength += length;
+  }
+
+  if (totalLength === 0) {
+    return { x: points[0][0], y: points[0][1] };
+  }
+
+  let remaining = t * totalLength;
+
+  for (const segment of segments) {
+    if (remaining <= segment.length || segment === segments[segments.length - 1]) {
+      const ratio = segment.length === 0 ? 0 : remaining / segment.length;
+
+      return {
+        x: segment.from[0] + ratio * (segment.to[0] - segment.from[0]),
+        y: segment.from[1] + ratio * (segment.to[1] - segment.from[1])
+      };
+    }
+
+    remaining -= segment.length;
+  }
+
+  const last = points[points.length - 1];
+  return { x: last[0], y: last[1] };
+}
+
+function leaderboardAscentClamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function leaderboardAscentRidgePosition(rank, ridge, total, sideIndex = 0, sideTotal = 1) {
+  const progress = leaderboardAscentRankProgress(rank, total);
+  const path = ridge === "left" ? LEADERBOARD_ASCENT_LEFT_RIDGE : LEADERBOARD_ASCENT_RIGHT_RIDGE;
+  const position = leaderboardAscentInterpolateRidge(path, progress);
+
+  // Spread wider toward the base: ridges fan out and same-side climbers stagger laterally.
+  const spread = progress * progress;
+
+  if (ridge === "left") {
+    position.x -= spread * 8;
+  } else {
+    position.x += spread * 8;
+  }
+
+  if (sideTotal > 1) {
+    const sideCenter = (sideTotal - 1) / 2;
+    const sideOffset = (sideIndex - sideCenter) * spread * 2.4;
+
+    if (ridge === "left") {
+      position.x -= sideOffset;
+    } else {
+      position.x += sideOffset;
+    }
+  }
+
+  if (ridge === "left") {
+    position.x = leaderboardAscentClamp(position.x, 8, 49.5);
+  } else {
+    position.x = leaderboardAscentClamp(position.x, 50.5, 92);
+  }
+
+  return position;
+}
+
+function leaderboardAscentRankMedalClass(rank) {
+  if (rank === 1) {
+    return "is-gold";
+  }
+
+  if (rank === 2) {
+    return "is-silver";
+  }
+
+  if (rank === 3) {
+    return "is-bronze";
+  }
+
+  return "";
+}
+
+function buildLeaderboardAscentLayout(rows) {
+  const activeMetric = leaderboardState.sortMetric || "overall";
+  const entries = leaderboardSortedRows(rows, leaderboardState.sortMetric).map((row, index) => ({
+      id: row.modelId || `${row.name}-${index}`,
+      name: leaderboardDisplayModelName(row),
+      fullName: leaderboardFullModelName(row),
+      rank: index + 1,
+      score: activeMetric === "overall" ? row.overall : row.scores?.[activeMetric]
+    }));
+
+  const leftEntries = [];
+  const rightEntries = [];
+
+  entries.forEach((entry, index) => {
+    if (index % 2 === 1) {
+      rightEntries.push(entry);
+    } else {
+      leftEntries.push(entry);
+    }
+  });
+
+  const total = entries.length;
+
+  const mapSide = (sideEntries, ridge) =>
+    [...sideEntries]
+      .sort((left, right) => left.rank - right.rank)
+      .map((entry, sideIndex) => {
+        const position = leaderboardAscentRidgePosition(
+          entry.rank,
+          ridge,
+          total,
+          sideIndex,
+          sideEntries.length
+        );
+
+        return {
+          entry,
+          ridge,
+          x: position.x,
+          y: position.y,
+          calloutY: position.y
+        };
+      });
+
+  const climbers = [
+    ...mapSide(leftEntries, "left"),
+    ...mapSide(rightEntries, "right")
+  ].sort((left, right) => left.entry.rank - right.entry.rank);
+
+  return {
+    climbers,
+    leftCallouts: climbers.filter((climber) => climber.ridge === "left"),
+    rightCallouts: climbers.filter((climber) => climber.ridge === "right")
+  };
+}
+
+function leaderboardAscentLinkPoints(climber, side) {
+  return {
+    x1: side === "left" ? 14 : 86,
+    y1: climber.calloutY,
+    x2: climber.x,
+    y2: climber.y
+  };
+}
+
+function leaderboardAscentCalloutMarkup(climber, side) {
+  const rank = climber.entry.rank;
+  const activeClass = leaderboardState.activeRank === rank ? " is-active" : "";
+  const medalClass = leaderboardAscentRankMedalClass(rank);
 
   return `
-    <section id="home-leaderboard" class="home-leaderboard-section" aria-labelledby="home-leaderboard-title">
-      <div class="home-leaderboard-intro">
-        <div>
-          <p class="home-kicker">${escapeHtml(leaderboard.eyebrow)}</p>
-          <h2 id="home-leaderboard-title">${escapeHtml(leaderboard.title)}</h2>
-          <p>${escapeHtml(leaderboard.body)}</p>
+    <li
+      class="leaderboard-ascent__callout is-${side}${activeClass}"
+      style="top: ${climber.calloutY}%"
+      data-leaderboard-ascent-rank="${rank}"
+    >
+      <span class="leaderboard-ascent__callout-rank ${medalClass}">${escapeHtml(String(rank))}</span>
+      <span class="leaderboard-ascent__callout-name" title="${escapeAttr(climber.entry.fullName || climber.entry.name)}">${escapeHtml(climber.entry.name)}</span>
+    </li>
+  `;
+}
+
+function leaderboardAscentClimberMarkup(climber) {
+  const rank = climber.entry.rank;
+  const activeClass = leaderboardState.activeRank === rank ? " is-active" : "";
+  const leaderClass = rank === 1 ? " is-leader" : "";
+
+  return `
+    <button
+      type="button"
+      class="leaderboard-ascent__climber${activeClass}${leaderClass}"
+      style="left: ${climber.x}%; top: ${climber.y}%; --i: ${rank - 1}"
+      data-leaderboard-ascent-rank="${rank}"
+      aria-label="${escapeAttr(`${rank}. ${climber.entry.name}`)}"
+    >
+      <span class="leaderboard-ascent__climber-rank">${escapeHtml(String(rank))}</span>
+    </button>
+  `;
+}
+
+function leaderboardAscentMobileRowMarkup(climber) {
+  const rank = climber.entry.rank;
+  const activeClass = leaderboardState.activeRank === rank ? " is-active" : "";
+  const medalClass = leaderboardAscentRankMedalClass(rank);
+
+  return `
+    <li class="leaderboard-ascent__mobile-row${activeClass}" data-leaderboard-ascent-rank="${rank}">
+      <span class="leaderboard-ascent__mobile-rank ${medalClass}">${escapeHtml(String(rank))}</span>
+      <span class="leaderboard-ascent__mobile-name">${escapeHtml(climber.entry.name)}</span>
+      <span class="leaderboard-ascent__mobile-score">${escapeHtml(formatLeaderboardScore(climber.entry.score))}</span>
+    </li>
+  `;
+}
+
+function leaderboardAscentMarkup(rows, payload) {
+  const layout = buildLeaderboardAscentLayout(rows);
+  const shown = layout.climbers.length;
+  const denseClass = shown > LEADERBOARD_ASCENT_DENSE_THRESHOLD ? " leaderboard-ascent--dense" : "";
+  const stamp = formatLeaderboardAscentStamp(payload?.generatedAt);
+  const stampIso = formatLeaderboardAscentStampIso(payload?.generatedAt);
+  const routeLinks = [
+    ...layout.leftCallouts.map((climber) => ({ climber, side: "left" })),
+    ...layout.rightCallouts.map((climber) => ({ climber, side: "right" }))
+  ]
+    .map(({ climber, side }) => {
+      const points = leaderboardAscentLinkPoints(climber, side);
+      const activeClass = leaderboardState.activeRank === climber.entry.rank ? " is-active" : "";
+
+      return `<path class="leaderboard-ascent__link${activeClass}" data-leaderboard-ascent-rank="${climber.entry.rank}" d="M ${points.x1} ${points.y1} L ${points.x2} ${points.y2}" />`;
+    })
+    .join("");
+
+  return `
+    <section class="leaderboard-ascent${denseClass}" aria-label="${escapeAttr(localizedHomeText("leaderboardAscentTitle"))}">
+      <header class="leaderboard-ascent__head">
+        <div class="leaderboard-ascent__head-text">
+          <h2 class="leaderboard-ascent__title">${escapeHtml(localizedHomeText("leaderboardAscentTitle"))}</h2>
+          <p class="leaderboard-ascent__caption">${escapeHtml(localizedLeaderboardAscentCaption(shown, rows.length))}</p>
         </div>
-        <div class="home-leaderboard-badges" aria-label="${escapeAttr(localizedHomeText("leaderboardStatusAria"))}">
-          ${badges}
-        </div>
+      </header>
+      <div class="leaderboard-ascent__scene">
+        <time class="leaderboard-ascent__stamp" datetime="${escapeAttr(stampIso)}">${escapeHtml(stamp)}</time>
+        <div
+          class="leaderboard-ascent__mountain"
+          aria-hidden="true"
+          style="background-image: url('/assets/leaderboard-mnt.png')"
+        ></div>
+        <svg class="leaderboard-ascent__routes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          ${routeLinks}
+        </svg>
+        ${layout.climbers.map(leaderboardAscentClimberMarkup).join("")}
+        <svg
+          class="leaderboard-ascent__flag"
+          style="left: ${LEADERBOARD_ASCENT_FLAG.x}%; top: ${LEADERBOARD_ASCENT_FLAG.y}%; --flag-x: 50%; --flag-y: 97%"
+          viewBox="0 0 48 68"
+          overflow="visible"
+          aria-hidden="true"
+        >
+          <line class="leaderboard-ascent__flag-pole" x1="24" y1="2" x2="24" y2="66" />
+          <path class="leaderboard-ascent__flag-cloth" d="M24 6 L44 10 L36 18 L44 26 L24 22 Z" />
+        </svg>
+        <ul class="leaderboard-ascent__callouts leaderboard-ascent__callouts--left" aria-label="Left ridge rankings">
+          ${layout.leftCallouts.map((climber) => leaderboardAscentCalloutMarkup(climber, "left")).join("")}
+        </ul>
+        <ul class="leaderboard-ascent__callouts leaderboard-ascent__callouts--right" aria-label="Right ridge rankings">
+          ${layout.rightCallouts.map((climber) => leaderboardAscentCalloutMarkup(climber, "right")).join("")}
+        </ul>
       </div>
-      <div class="home-leaderboard-shell">
-        <aside class="home-leaderboard-panel" aria-label="${escapeAttr(localizedHomeText("leaderboardTracksAria"))}">
-          ${tracks}
-        </aside>
-        <section class="home-leaderboard-embed" aria-label="${escapeAttr(localizedHomeText("leaderboardEmbedAria"))}">
-          <div class="home-leaderboard-toolbar">
-            <span>WorldAtlas Arena / WorldAtlas Arena</span>
-            <div>
-              <a href="${escapeAttr(leaderboard.openUrl)}" target="_blank" rel="noopener">${escapeHtml(localizedHomeText("openOnHf"))}</a>
-              <a href="${escapeAttr(leaderboard.submissionUrl)}" target="_blank" rel="noopener">${escapeHtml(localizedHomeText("submissionGuide"))}</a>
-            </div>
-          </div>
-          <iframe
-            title="WorldAtlas Arena Hugging Face leaderboard"
-            src="${escapeAttr(leaderboard.embedUrl)}"
+      <ul class="leaderboard-ascent__mobile" aria-label="Top climbers">
+        ${layout.climbers.slice(0, LEADERBOARD_ASCENT_MOBILE_LIMIT).map(leaderboardAscentMobileRowMarkup).join("")}
+      </ul>
+    </section>
+  `;
+}
+
+function leaderboardResultsContentMarkup() {
+  if (leaderboardState.loading) {
+    return `<p class="leaderboard-page__status">${escapeHtml(localizedHomeText("leaderboardLoading"))}</p>`;
+  }
+
+  if (leaderboardState.error) {
+    return `<p class="leaderboard-page__status is-error">${escapeHtml(leaderboardState.error)}</p>`;
+  }
+
+  const payload = leaderboardState.payload;
+  const rows = leaderboardSortedRows(payload?.rows || [], leaderboardState.sortMetric);
+
+  if (!rows.length) {
+    return `<p class="leaderboard-page__status">${escapeHtml(localizedHomeText("leaderboardEmpty"))}</p>`;
+  }
+
+  const activeMetric = leaderboardState.sortMetric || "overall";
+  const hasRankableScore = rows.some((row) => {
+    const value = activeMetric === "overall" ? row.overall : row.scores?.[activeMetric];
+    return typeof value === "number" && Number.isFinite(value);
+  });
+
+  return `${hasRankableScore ? leaderboardAscentMarkup(rows, payload) : ""}${leaderboardTableMarkup()}`;
+}
+
+function leaderboardSortedRows(rows, sortMetric) {
+  const metric = sortMetric || "overall";
+
+  return [...rows].sort((left, right) => {
+    const leftValue = metric === "overall" ? left.overall : left.scores?.[metric];
+    const rightValue = metric === "overall" ? right.overall : right.scores?.[metric];
+
+    if (leftValue === rightValue) {
+      return left.name.localeCompare(right.name);
+    }
+
+    if (leftValue === null || leftValue === undefined || !Number.isFinite(leftValue)) {
+      return 1;
+    }
+
+    if (rightValue === null || rightValue === undefined || !Number.isFinite(rightValue)) {
+      return -1;
+    }
+
+    return rightValue - leftValue;
+  });
+}
+
+function leaderboardMetricChipsMarkup(metrics, activeMetric) {
+  const chips = [
+    `<button type="button" class="leaderboard-table__metric-chip${activeMetric === "overall" ? " is-active" : ""}" data-leaderboard-sort="overall" title="${escapeAttr(localizedHomeText("leaderboardOverall"))}">${escapeHtml(localizedHomeText("leaderboardOverall"))}</button>`,
+    ...metrics.map((metric) => {
+      const label = formatLeaderboardMetricLabel(metric);
+
+      return `<button type="button" class="leaderboard-table__metric-chip${activeMetric === metric ? " is-active" : ""}" data-leaderboard-sort="${escapeAttr(metric)}" title="${escapeAttr(metric)}">${escapeHtml(label)}</button>`;
+    })
+  ];
+
+  return chips.join("");
+}
+
+function leaderboardSuiteTabsMarkup(availableSuites = []) {
+  const availability = new Map((availableSuites || []).map((suite) => [suite.id, suite]));
+
+  return leaderboardSuites
+    .map((suite) => {
+      const meta = availability.get(suite.id);
+      const disabled = meta ? !meta.available : false;
+      const activeClass = suite.id === leaderboardState.suite ? " is-active" : "";
+      const disabledAttribute = disabled ? "disabled" : "";
+
+      return `<button type="button" class="leaderboard-benchmark-tab${activeClass}" data-leaderboard-suite="${escapeAttr(suite.id)}" ${disabledAttribute}>${escapeHtml(localizedLeaderboardSuiteLabel(suite))}</button>`;
+    })
+    .join("");
+}
+
+function localizedLeaderboardDimensionLabel(dimension) {
+  if (activeLanguage() === "zh") {
+    return dimension.labelZh || dimension.labelEn;
+  }
+
+  return dimension.labelEn;
+}
+
+function groupLeaderboardMetrics(allMetrics, dimensions = leaderboardMetricDimensions) {
+  const available = new Set(allMetrics);
+  const assigned = new Set();
+  const groups = dimensions
+    .map((dimension) => {
+      const metrics = dimension.metrics.filter((metric) => {
+        if (!available.has(metric) || assigned.has(metric)) {
+          return false;
+        }
+
+        assigned.add(metric);
+        return true;
+      });
+
+      return { ...dimension, metrics };
+    })
+    .filter((group) => group.metrics.length > 0);
+
+  const remaining = allMetrics.filter((metric) => !assigned.has(metric));
+
+  if (remaining.length) {
+    groups.push({
+      id: "other",
+      labelEn: localizedHomeText("leaderboardOtherMetrics"),
+      labelZh: localizedHomeText("leaderboardOtherMetrics"),
+      href: "/doc/benchmark/metrics/",
+      metrics: remaining
+    });
+  }
+
+  return groups;
+}
+
+function leaderboardMetricGroupId(metric, allMetrics = filterLeaderboardMetrics(leaderboardState.payload?.metrics || [])) {
+  if (metric === "overall") {
+    return "overall";
+  }
+
+  const group = groupLeaderboardMetrics(allMetrics).find((entry) => entry.metrics.includes(metric));
+  return group?.id || "other";
+}
+
+function leaderboardModelCellMarkup(row) {
+  const affiliations = resolveLeaderboardAffiliations(row, activeLanguage());
+  const iconMarkup = affiliations
+    .map(
+      (org) => `
+        <span class="leaderboard-table__team-icon-slot" title="${escapeAttr(org.name)}">
+          <img
+            class="leaderboard-table__team-icon${org.inset ? " is-inset" : ""}"
+            src="${escapeAttr(org.logo)}"
+            alt=""
             loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            allow="clipboard-write; fullscreen"
-          ></iframe>
-        </section>
+            decoding="async"
+          />
+        </span>
+      `
+    )
+    .join("");
+
+  return `
+    <span class="leaderboard-table__model-cell">
+      ${iconMarkup ? `<span class="leaderboard-table__team-icons" aria-hidden="true">${iconMarkup}</span>` : ""}
+      <span class="leaderboard-table__model-name" title="${escapeAttr(leaderboardDisplayModelName(row))}">${escapeHtml(leaderboardDisplayModelName(row))}</span>
+    </span>
+  `;
+}
+
+function leaderboardTableRowsMarkup(rows, metrics, activeMetric, { includeSamples = false, includeOverall = false } = {}) {
+  return rows
+    .map((row, index) => {
+      const metricCells = metrics
+        .map((metric) => {
+          const value = row.scores?.[metric];
+          const activeClass = activeMetric === metric ? " is-active-metric" : "";
+
+          return `<td class="leaderboard-table__metric${activeClass}" title="${escapeAttr(metric)}">${escapeHtml(formatLeaderboardScore(value))}</td>`;
+        })
+        .join("");
+
+      return `
+        <tr>
+          <th scope="row" class="leaderboard-table__rank">${escapeHtml(String(index + 1))}</th>
+          <td class="leaderboard-table__model">${leaderboardModelCellMarkup(row)}</td>
+          ${includeSamples ? `<td class="leaderboard-table__samples">${escapeHtml(String(row.sampleCount))}</td>` : ""}
+          ${includeOverall
+            ? `<td class="leaderboard-table__overall${activeMetric === "overall" ? " is-active-metric" : ""}">${Number.isFinite(row.overall) ? escapeHtml(formatLeaderboardScore(row.overall)) : ""}</td>`
+            : ""}
+          ${metricCells}
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function leaderboardOverallTableMarkup(rows, activeMetric) {
+  const isActive = activeMetric === "overall";
+
+  return `
+    <section
+      class="leaderboard-table-section leaderboard-table-section--overall${isActive ? " is-active" : ""}"
+      id="leaderboard-section-overall"
+      aria-labelledby="leaderboard-section-overall-title"
+      ${isActive ? "" : 'hidden aria-hidden="true"'}
+      role="tabpanel"
+    >
+      <header class="leaderboard-table-section__head">
+        <div>
+          <h3 id="leaderboard-section-overall-title">${escapeHtml(localizedHomeText("leaderboardOverall"))}</h3>
+          <p>${escapeHtml(String(rows.length))} ${escapeHtml(localizedHomeText("leaderboardModels"))}</p>
+        </div>
+      </header>
+      <div class="leaderboard-table-scroll">
+        <table class="leaderboard-table leaderboard-table--overall" aria-label="${escapeAttr(localizedHomeText("leaderboardOverall"))}">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">${escapeHtml(localizedHomeText("leaderboardModel"))}</th>
+              <th scope="col"${isActive ? ' aria-sort="descending"' : ""}>${escapeHtml(localizedHomeText("leaderboardOverall"))}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${leaderboardTableRowsMarkup(rows, [], activeMetric, { includeOverall: true })}
+          </tbody>
+        </table>
       </div>
     </section>
   `;
 }
 
-function homeLeaderboardTrackMarkup(item) {
-  const routeAttribute = item.href.startsWith("/") ? "data-route" : "";
-  const externalAttribute = /^https?:\/\//.test(item.href) ? `target="_blank" rel="noopener"` : "";
-  const searchable = `${item.value} ${item.label} ${item.body}`.toLowerCase();
+function leaderboardDimensionTableMarkup(group, rows, activeMetric) {
+  const isActive = group.metrics.includes(activeMetric);
+  const metricHeaders = group.metrics
+    .map((metric) => {
+      const label = formatLeaderboardMetricLabel(metric);
+
+      return `<th scope="col" class="leaderboard-table__th-metric${activeMetric === metric ? " is-sorted" : ""}" title="${escapeAttr(metric)}"${activeMetric === metric ? ' aria-sort="descending"' : ""}>${leaderboardMetricDocLinkMarkup(metric, label)}</th>`;
+    })
+    .join("");
+
+  const docLink = group.href
+    ? `<a class="leaderboard-table-section__link" href="${escapeAttr(group.href)}">${escapeHtml(activeLanguage() === "zh" ? "查看维度文档" : "View dimension docs")}</a>`
+    : "";
 
   return `
-    <a class="home-leaderboard-track" href="${escapeAttr(item.href)}" ${routeAttribute} ${externalAttribute} data-title="${escapeAttr(searchable)}">
-      <strong>${escapeHtml(item.value)}</strong>
-      <span>${escapeHtml(item.label)}</span>
-      <p>${escapeHtml(item.body)}</p>
-    </a>
+    <section
+      class="leaderboard-table-section${isActive ? " is-active" : ""}"
+      id="leaderboard-section-${escapeAttr(group.id)}"
+      aria-labelledby="leaderboard-section-${escapeAttr(group.id)}-title"
+      ${isActive ? "" : 'hidden aria-hidden="true"'}
+      role="tabpanel"
+    >
+      <header class="leaderboard-table-section__head">
+        <div>
+          <h3 id="leaderboard-section-${escapeAttr(group.id)}-title">${escapeHtml(localizedLeaderboardDimensionLabel(group))}</h3>
+          <p>${escapeHtml(String(group.metrics.length))} ${escapeHtml(localizedHomeText("leaderboardMetricCount"))}</p>
+        </div>
+        ${docLink}
+      </header>
+      <div class="leaderboard-table-scroll">
+        <table class="leaderboard-table leaderboard-table--section" aria-label="${escapeAttr(localizedLeaderboardDimensionLabel(group))}">
+          <thead>
+            <tr>
+              <th scope="col">#</th>
+              <th scope="col">${escapeHtml(localizedHomeText("leaderboardModel"))}</th>
+              ${metricHeaders}
+            </tr>
+          </thead>
+          <tbody>
+            ${leaderboardTableRowsMarkup(rows, group.metrics, activeMetric)}
+          </tbody>
+        </table>
+      </div>
+    </section>
   `;
 }
 
+function leaderboardTableMarkup() {
+  const payload = leaderboardState.payload;
+  const metrics = filterLeaderboardMetrics(payload?.metrics || []);
+  const rows = leaderboardSortedRows(payload?.rows || [], leaderboardState.sortMetric);
+  const activeMetric = leaderboardHiddenMetrics.has(leaderboardState.sortMetric)
+    ? "overall"
+    : leaderboardState.sortMetric || "overall";
+  const metricGroups = groupLeaderboardMetrics(metrics);
+
+  return `
+    <div class="leaderboard-table-wrap">
+      <div class="leaderboard-table__sort-bar">
+        <div class="leaderboard-table__sort-bar-head">
+          <span class="leaderboard-table__sort-label">${escapeHtml(localizedHomeText("leaderboardSortBy"))}</span>
+          <p class="leaderboard-table__meta">
+            ${escapeHtml(localizedHomeText("leaderboardUpdated"))}: ${escapeHtml(formatLeaderboardUpdatedLabel(payload?.generatedAt))}
+            · ${escapeHtml(String(payload?.modelCount || rows.length))} ${escapeHtml(localizedHomeText("leaderboardModels"))}
+          </p>
+        </div>
+        <div class="leaderboard-table__metric-scroll" tabindex="0" aria-label="${escapeAttr(localizedHomeText("leaderboardSortBy"))}">
+          <div class="leaderboard-table__metric-chips">
+            ${leaderboardMetricChipsMarkup(metrics, activeMetric)}
+          </div>
+        </div>
+      </div>
+      <div class="leaderboard-table-panel">
+        <div class="leaderboard-table-sections" role="presentation">
+          ${leaderboardOverallTableMarkup(rows, activeMetric)}
+          ${metricGroups.map((group) => leaderboardDimensionTableMarkup(group, rows, activeMetric)).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function leaderboardResultsMarkup() {
+  return `
+    <div id="leaderboard-results" class="leaderboard-page__results" data-leaderboard-results>
+      ${leaderboardResultsContentMarkup()}
+    </div>
+  `;
+}
+
+function leaderboardPageMarkup() {
+  const leaderboard = localizedHomeLeaderboard();
+  const availableSuites = leaderboardState.payload?.availableSuites || [];
+
+  return `
+    <section class="leaderboard-page__shell" aria-labelledby="leaderboard-page-title">
+      <div class="leaderboard-page__heading">
+        <h1 id="leaderboard-page-title">${escapeHtml(leaderboard.title)}</h1>
+      </div>
+
+      <div class="leaderboard-protocol-entry">
+        <div class="leaderboard-protocol-entry__text">
+          <div class="leaderboard-protocol-entry__meta">
+            <span class="leaderboard-protocol-entry__kicker">${escapeHtml(localizedHomeText("leaderboardProtocolKicker"))}</span>
+          </div>
+          <h2 class="leaderboard-protocol-entry__title">${escapeHtml(localizedHomeText("leaderboardProtocolTitle"))}</h2>
+          <p class="leaderboard-protocol-entry__desc">${escapeHtml(localizedHomeText("leaderboardProtocolBody"))}</p>
+        </div>
+        <a class="leaderboard-protocol-entry__link" href="${escapeAttr(leaderboard.protocolUrl)}">
+          <span class="leaderboard-protocol-entry__link-text">${escapeHtml(localizedHomeText("leaderboardReadProtocol"))}</span>
+          <span class="leaderboard-protocol-entry__arrow" aria-hidden="true">→</span>
+        </a>
+      </div>
+
+      <div class="leaderboard-page__toolbar">
+        <div class="leaderboard-benchmark-tabs" aria-label="${escapeAttr(localizedHomeText("leaderboardSuiteTabsAria"))}" data-leaderboard-tabs>
+          ${leaderboardSuiteTabsMarkup(availableSuites)}
+        </div>
+      </div>
+
+      ${leaderboardResultsMarkup()}
+    </section>
+  `;
+}
+
+function updateLeaderboardResults() {
+  const results = document.querySelector("[data-leaderboard-results]");
+
+  if (!results) {
+    return;
+  }
+
+  results.innerHTML = leaderboardResultsContentMarkup();
+  bindLeaderboardTableEvents();
+  bindLeaderboardAscentEvents();
+}
+
+function updateLeaderboardTabs() {
+  const tabs = document.querySelector("[data-leaderboard-tabs]");
+
+  if (!tabs) {
+    return;
+  }
+
+  tabs.innerHTML = leaderboardSuiteTabsMarkup(leaderboardState.payload?.availableSuites || []);
+  bindLeaderboardTabEvents();
+}
+
+async function loadLeaderboardData(suite = leaderboardState.suite) {
+  leaderboardState.suite = suite;
+  leaderboardState.loading = true;
+  leaderboardState.error = "";
+  leaderboardState.activeRank = 0;
+  updateLeaderboardResults();
+
+  try {
+    const response = await fetch(`/api/leaderboard?suite=${encodeURIComponent(suite)}`);
+    const payload = await response.json();
+
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.error || localizedHomeText("leaderboardLoadError"));
+    }
+
+    leaderboardState.payload = payload;
+
+    if (
+      !leaderboardState.sortMetric
+      || leaderboardHiddenMetrics.has(leaderboardState.sortMetric)
+      || (!payload.metrics.includes(leaderboardState.sortMetric) && leaderboardState.sortMetric !== "overall")
+    ) {
+      leaderboardState.sortMetric = "overall";
+    }
+  } catch (error) {
+    leaderboardState.payload = null;
+    leaderboardState.error = error instanceof Error ? error.message : localizedHomeText("leaderboardLoadError");
+  } finally {
+    leaderboardState.loading = false;
+    updateLeaderboardTabs();
+    updateLeaderboardResults();
+  }
+}
+
+function bindLeaderboardTabEvents() {
+  document.querySelectorAll("[data-leaderboard-suite]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const suite = button.getAttribute("data-leaderboard-suite");
+
+      if (!suite || button.disabled || suite === leaderboardState.suite) {
+        return;
+      }
+
+      loadLeaderboardData(suite);
+    });
+  });
+}
+
+function bindLeaderboardTableEvents() {
+  document.querySelectorAll("[data-leaderboard-sort]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const metric = button.getAttribute("data-leaderboard-sort");
+
+      if (!metric || metric === leaderboardState.sortMetric) {
+        return;
+      }
+
+      leaderboardState.sortMetric = metric;
+      leaderboardState.activeRank = 0;
+      updateLeaderboardResults();
+    });
+  });
+}
+
+function setLeaderboardAscentActiveRank(rank) {
+  leaderboardState.activeRank = rank;
+
+  document.querySelectorAll("[data-leaderboard-ascent-rank]").forEach((node) => {
+    const nodeRank = Number(node.getAttribute("data-leaderboard-ascent-rank"));
+    node.classList.toggle("is-active", rank > 0 && nodeRank === rank);
+  });
+
+  document.querySelectorAll(".leaderboard-ascent__link").forEach((link) => {
+    const linkRank = Number(link.getAttribute("data-leaderboard-ascent-rank"));
+    link.classList.toggle("is-active", rank > 0 && linkRank === rank);
+  });
+}
+
+function bindLeaderboardAscentEvents() {
+  document.querySelectorAll("[data-leaderboard-ascent-rank]").forEach((node) => {
+    node.addEventListener("mouseenter", () => {
+      setLeaderboardAscentActiveRank(Number(node.getAttribute("data-leaderboard-ascent-rank")));
+    });
+    node.addEventListener("mouseleave", () => {
+      setLeaderboardAscentActiveRank(0);
+    });
+    node.addEventListener("focus", () => {
+      setLeaderboardAscentActiveRank(Number(node.getAttribute("data-leaderboard-ascent-rank")));
+    });
+    node.addEventListener("blur", () => {
+      setLeaderboardAscentActiveRank(0);
+    });
+    node.addEventListener("click", () => {
+      const rank = Number(node.getAttribute("data-leaderboard-ascent-rank"));
+      setLeaderboardAscentActiveRank(rank);
+      document.querySelector(".leaderboard-table--overall tbody tr:nth-child(" + rank + ")")?.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "nearest"
+      });
+    });
+  });
+}
+
+function bindLeaderboardPage() {
+  bindLeaderboardTabEvents();
+  bindLeaderboardTableEvents();
+  loadLeaderboardData(leaderboardState.suite);
+}
+
 function homeHeroVisualMarkup(item, index) {
-  const routeAttribute = item.href.startsWith("/") ? "data-route" : "";
+  const routeAttribute = clientRouteAttribute(item.href);
   const label = localizedHomeHeroLabel(item);
 
   return `
@@ -1591,7 +3514,7 @@ function homeSignalMarkup(item) {
   const searchable = `${localizedItem.value} ${localizedItem.label} ${item.value} ${item.label}`.toLowerCase();
 
   return `
-    <a class="home-signal" href="${escapeAttr(item.href)}" data-route data-title="${escapeAttr(searchable)}">
+    <a class="home-signal" href="${escapeAttr(item.href)}" ${clientRouteAttribute(item.href)} data-title="${escapeAttr(searchable)}">
       <strong>${escapeHtml(localizedItem.value)}</strong>
       <span>${escapeHtml(localizedItem.label)}</span>
     </a>
@@ -1603,47 +3526,560 @@ function homePillarMarkup(item) {
   const searchable = `${localizedItem.title} ${localizedItem.body} ${item.title} ${item.body}`.toLowerCase();
 
   return `
-    <a class="home-pillar" href="${escapeAttr(item.href)}" data-route data-title="${escapeAttr(searchable)}">
+    <a class="home-pillar" href="${escapeAttr(item.href)}" ${clientRouteAttribute(item.href)} data-title="${escapeAttr(searchable)}">
       <span>${escapeHtml(localizedItem.title)}</span>
       <p>${escapeHtml(localizedItem.body)}</p>
     </a>
   `;
 }
 
+/** @deprecated Docs are served by Astro Starlight at /doc/. Legacy /docs/* routes redirect there. */
 function renderDocPage() {
-  const page = resolveContentPage();
-  const bodyMarkdown = stripFirstMarkdownH1(page.content);
-  const pageHeadings = extractDocHeadings(bodyMarkdown);
-  document.body.className = "doc-page";
-  document.title = `${page.title} — ${siteTitle}`;
+  const resolvedPage = resolveContentPage();
+  const needsLiveVideoFallback = shouldUseLiveVideoDocsFallback(resolvedPage);
+  const page = needsLiveVideoFallback
+    ? liveVideoDocsPageForLanguage(resolvedPage)
+    : resolvedPage;
+
+  if (needsLiveVideoFallback && !liveVideoDocsCatalog) {
+    ensureLiveVideoDocsCatalog().then(() => {
+      if (normalizeRoute(window.location.pathname) === "/doc/videos/") {
+        renderDocPage();
+      }
+    });
+  }
+
+  const { heroMarkdown, bodyMarkdown } = splitDocHeroAndBody(page.content);
+  setHomeMicroverseStylesheetEnabled(false);
+  applyDocStarlightDocumentShell();
+  document.body.className = "doc-page doc-page--starlight";
+  document.title =
+    page.title && page.title !== siteTitle ? `${page.title} — ${siteTitle}` : `${localizedHomeText("docs")} — ${siteTitle}`;
 
   app.innerHTML = `
-    ${shellHeader({ docs: true })}
-    ${menuMarkup()}
-    <main class="doc-main">
-      <aside class="doc-sidebar" aria-label="Documentation navigation">
-        ${docNavigationMarkup(page.route)}
-      </aside>
-      <article class="doc-content">
-        <header class="doc-hero">
-          <p class="doc-kicker">${escapeHtml(page.section)} · ${escapeHtml(page.sourcePath)}</p>
-          <h1>${escapeHtml(page.title)}</h1>
-          ${page.summary ? `<p class="doc-summary">${escapeHtml(sentenceCase(page.summary))}</p>` : ""}
-          <div class="doc-meta-row">
-            ${page.tags?.slice(0, 5).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("") || ""}
-          </div>
-        </header>
-        ${docPageMapMarkup(pageHeadings)}
-        <div class="doc-body">
-          ${renderMarkdown(bodyMarkdown)}
-        </div>
-      </article>
-    </main>
+    <a class="doc-skip-link" href="#_top">${escapeHtml(activeLanguage() === "zh" ? "跳到正文" : "Skip to content")}</a>
+    <div class="doc-starlight-shell">
+      ${docStarlightHeaderMarkup()}
+      ${authFeedbackModalsMarkup()}
+      <div class="doc-starlight-layout">
+        <aside class="doc-starlight-sidebar" aria-label="${escapeAttr(activeLanguage() === "zh" ? "文档导航" : "Documentation navigation")}">
+          ${docNavigationMarkup(page.route)}
+        </aside>
+        <main class="doc-starlight-main">
+          <article id="_top" class="doc-content sl-markdown-content">
+            <header class="doc-hero">
+              <h1>${escapeHtml(page.title)}</h1>
+              ${heroMarkdown ? `<div class="doc-summary">${renderMarkdown(heroMarkdown)}</div>` : ""}
+            </header>
+            <div class="doc-body">
+              ${renderMarkdown(bodyMarkdown)}
+            </div>
+          </article>
+        </main>
+      </div>
+    </div>
   `;
 
   bindShellEvents();
+  bindDocStarlightShell();
+  const docRoot = document.querySelector(".doc-content");
+  enhanceDatasetAnalyticsPage(docRoot, normalizeRoute(window.location.pathname));
+  enhanceDocAlgorithms(docRoot);
+  enhanceDocCodeBlocks(docRoot);
   window.requestAnimationFrame(scrollToHashTarget);
-  queueMathTypeset(document.querySelector(".doc-content"));
+  queueMathTypeset(docRoot);
+  queueMermaidRender(docRoot);
+}
+
+function enhanceDatasetAnalyticsPage(root, path) {
+  if (!root || !isDatasetAnalyticsRoute(path)) {
+    return;
+  }
+
+  document.body.classList.add("doc-page--dataset-analytics");
+
+  root.querySelectorAll(".analytics-exhibit-caption").forEach((caption, index) => {
+    if (caption.dataset.numbered === "true") {
+      return;
+    }
+    const label = caption.textContent.trim();
+    caption.innerHTML = `<strong>Figure ${index + 1}.</strong> ${escapeHtml(label)}`;
+    caption.dataset.numbered = "true";
+  });
+
+  root.querySelectorAll(".sample-exhibit-path").forEach((element) => {
+    const fullPath = element.textContent.trim();
+    if (fullPath.length <= 52) {
+      return;
+    }
+    element.textContent = `…${fullPath.slice(-49)}`;
+    element.title = fullPath;
+  });
+}
+
+function isDatasetAnalyticsRoute(path) {
+  return path === "/doc/videos/" || path === "/doc/images/";
+}
+
+function enhanceDocAlgorithms(root) {
+  if (!root) {
+    return;
+  }
+
+  root.querySelectorAll(".doc-algorithm").forEach((algorithm) => {
+    if (algorithm.dataset.algorithmEnhanced === "true") {
+      return;
+    }
+
+    algorithm.dataset.algorithmEnhanced = "true";
+    algorithm.classList.add("doc-algorithm--enhanced");
+
+    algorithm.querySelectorAll(".doc-algorithm-steps > li").forEach((step, index) => {
+      const stepNumber = String(index + 1).padStart(2, "0");
+      const heading = step.querySelector(":scope > strong");
+
+      if (heading && /^Step\s+\d+$/i.test(heading.textContent.trim())) {
+        heading.remove();
+        trimLeadingAlgorithmSeparator(step);
+      }
+
+      const number = document.createElement("span");
+      number.className = "doc-algorithm-step-number";
+      number.setAttribute("aria-hidden", "true");
+      number.textContent = stepNumber;
+
+      const body = document.createElement("div");
+      body.className = "doc-algorithm-step-body";
+
+      Array.from(step.childNodes).forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE && !node.textContent.trim() && !body.childNodes.length) {
+          return;
+        }
+
+        body.append(node);
+      });
+
+      step.dataset.step = stepNumber;
+      step.replaceChildren(number, body);
+    });
+
+    algorithm.querySelectorAll(".doc-algorithm-io table").forEach((table) => {
+      table.classList.add("doc-algorithm-contract-table");
+    });
+  });
+}
+
+function trimLeadingAlgorithmSeparator(element) {
+  let node = element.firstChild;
+
+  while (node?.nodeType === Node.TEXT_NODE && !node.textContent.trim()) {
+    node.remove();
+    node = element.firstChild;
+  }
+
+  if (node?.nodeType !== Node.TEXT_NODE) {
+    return;
+  }
+
+  node.textContent = node.textContent.replace(/^\s*(?:[-\u2013\u2014]\s*)?/, "");
+}
+
+const docCodeBlockShellLanguages = new Set(["bash", "sh", "shell", "zsh", "console"]);
+const docCodeBlockConfigLanguages = new Set(["yaml", "yml", "json", "toml", "ini", "cfg", "conf"]);
+const docCodeBlockStructLanguages = new Set(["text", "plaintext", "txt"]);
+
+function docCodeBlockKind(language) {
+  const normalized = String(language || "").trim().toLowerCase();
+  if (docCodeBlockShellLanguages.has(normalized)) {
+    return "shell";
+  }
+  if (docCodeBlockConfigLanguages.has(normalized)) {
+    return "config";
+  }
+  if (docCodeBlockStructLanguages.has(normalized)) {
+    return "struct";
+  }
+  return normalized ? "code" : "plain";
+}
+
+function docCodeBlockLanguageLabel(language) {
+  const normalized = String(language || "").trim().toLowerCase();
+  if (!normalized) {
+    return activeLanguage() === "zh" ? "代码" : "Code";
+  }
+  if (normalized === "sh") {
+    return "shell";
+  }
+  return normalized;
+}
+
+function docCodeCopyButtonLabel(language) {
+  const kind = docCodeBlockKind(language);
+  if (activeLanguage() === "zh") {
+    if (kind === "shell") {
+      return "复制命令";
+    }
+    if (kind === "config") {
+      return "复制配置";
+    }
+    if (kind === "struct") {
+      return "复制结构";
+    }
+    return "复制代码";
+  }
+  if (kind === "shell") {
+    return "Copy command";
+  }
+  if (kind === "config") {
+    return "Copy config";
+  }
+  if (kind === "struct") {
+    return "Copy structure";
+  }
+  return "Copy code";
+}
+
+function docCodeCopiedLabel() {
+  return activeLanguage() === "zh" ? "已复制" : "Copied";
+}
+
+function docCodeCopyIconMarkup() {
+  return `
+    <svg class="doc-code-copy-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <rect x="8" y="8" width="11" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"></rect>
+      <path d="M7 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1" fill="none" stroke="currentColor" stroke-width="1.6"></path>
+    </svg>
+    <svg class="doc-code-copy-icon doc-code-copy-icon--success" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M6.5 12.5 10 16l7.5-8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+    </svg>
+  `;
+}
+
+const docCodeShellKeywords = /\b(git|clone|cd|export|source|pip|python|wget|curl|mkdir|unzip|conda|torchrun|huggingface-cli|gdown|make|cmake|npm|yarn|docker|sudo|apt|brew)\b/g;
+const docCodeConfigKeys = /^(\s*(?:[\w.-]+|\[[\w.-]+\]))(?=\s*[:=])/gm;
+
+function highlightDocCodeLine(line, kind) {
+  if (kind === "shell") {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return `<span class="doc-code-line doc-code-line--blank">&nbsp;</span>`;
+    }
+    if (trimmed.startsWith("#")) {
+      return `<span class="doc-code-line doc-code-line--comment">${escapeHtml(line)}</span>`;
+    }
+
+    let html = escapeHtml(line);
+    html = html.replace(docCodeShellKeywords, '<span class="doc-code-token doc-code-token--keyword">$1</span>');
+    html = html.replace(/(https?:\/\/[^\s<]+)/g, '<span class="doc-code-token doc-code-token--url">$1</span>');
+    return `<span class="doc-code-line">${html}</span>`;
+  }
+
+  if (kind === "config") {
+    if (trimmedLineStartsWithHash(line)) {
+      return `<span class="doc-code-line doc-code-line--comment">${escapeHtml(line)}</span>`;
+    }
+
+    let html = escapeHtml(line);
+    html = html.replace(docCodeConfigKeys, '<span class="doc-code-token doc-code-token--key">$1</span>');
+    return `<span class="doc-code-line">${html}</span>`;
+  }
+
+  if (kind === "struct") {
+    return `<span class="doc-code-line doc-code-line--plain">${escapeHtml(line)}</span>`;
+  }
+
+  return `<span class="doc-code-line">${escapeHtml(line)}</span>`;
+}
+
+function trimmedLineStartsWithHash(line) {
+  return String(line || "").trim().startsWith("#");
+}
+
+function decorateDocCodeContent(codeElement, kind) {
+  if (!codeElement) {
+    return;
+  }
+
+  const source = codeElement.textContent ?? "";
+  if (!source.trim()) {
+    return;
+  }
+
+  codeElement.innerHTML = source
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => highlightDocCodeLine(line, kind))
+    .join("");
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+
+  if (!copied) {
+    throw new Error("Copy failed");
+  }
+}
+
+function showDocCodeCopySuccess(button) {
+  const copiedLabel = docCodeCopiedLabel();
+  button.classList.add("is-copied");
+  button.setAttribute("aria-label", copiedLabel);
+  button.setAttribute("title", copiedLabel);
+
+  if (button.dataset.copyResetTimer) {
+    window.clearTimeout(Number(button.dataset.copyResetTimer));
+  }
+
+  const resetTimer = window.setTimeout(() => {
+    button.classList.remove("is-copied");
+    button.setAttribute("aria-label", button.dataset.defaultCopyLabel || docCodeCopyButtonLabel(""));
+    button.setAttribute("title", button.dataset.defaultCopyLabel || docCodeCopyButtonLabel(""));
+    delete button.dataset.copyResetTimer;
+  }, 1800);
+
+  button.dataset.copyResetTimer = String(resetTimer);
+}
+
+function enhanceDocCodeBlocks(root) {
+  if (!root) {
+    return;
+  }
+
+  root.querySelectorAll("pre:not(.mermaid)").forEach((pre) => {
+    if (pre.dataset.codeEnhanced === "true" || pre.closest(".doc-code-block")) {
+      return;
+    }
+
+    const code = pre.querySelector("code");
+    const language = code?.className.match(/language-([\w-]+)/)?.[1] || "";
+    const kind = docCodeBlockKind(language);
+    const copyLabel = docCodeCopyButtonLabel(language);
+    const languageLabel = docCodeBlockLanguageLabel(language);
+
+    const wrapper = document.createElement("figure");
+    wrapper.className = `doc-code-block doc-code-block--${kind}`;
+    wrapper.dataset.codeKind = kind;
+    wrapper.dataset.codeLanguage = language || "plain";
+
+    const toolbar = document.createElement("div");
+    toolbar.className = "doc-code-toolbar";
+
+    const languageBadge = document.createElement("span");
+    languageBadge.className = "doc-code-language";
+    languageBadge.textContent = languageLabel;
+
+    const copyButton = document.createElement("button");
+    copyButton.type = "button";
+    copyButton.className = "doc-code-copy";
+    copyButton.dataset.defaultCopyLabel = copyLabel;
+    copyButton.setAttribute("aria-label", copyLabel);
+    copyButton.setAttribute("title", copyLabel);
+    copyButton.innerHTML = `${docCodeCopyIconMarkup()}<span class="doc-code-copy-label">${escapeHtml(activeLanguage() === "zh" ? "复制" : "Copy")}</span>`;
+
+    toolbar.append(languageBadge, copyButton);
+    pre.dataset.codeEnhanced = "true";
+    pre.classList.add("doc-code-pre");
+    if (code) {
+      code.classList.add("doc-code-body");
+    }
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.append(toolbar, pre);
+    decorateDocCodeContent(code || pre, kind);
+
+    copyButton.addEventListener("click", async () => {
+      const text = code?.textContent ?? pre.textContent ?? "";
+      try {
+        await copyTextToClipboard(text.trimEnd());
+        showDocCodeCopySuccess(copyButton);
+      } catch (_) {
+        copyButton.classList.add("is-copy-error");
+        window.setTimeout(() => copyButton.classList.remove("is-copy-error"), 1200);
+      }
+    });
+  });
+}
+
+function shouldUseLiveVideoDocsFallback(page) {
+  if (normalizeRoute(page?.route || "") !== "/doc/videos/") {
+    return false;
+  }
+
+  const content = page?.content || "";
+  if (content.includes("overview-page") || content.includes("overview-hero-grid")) {
+    return false;
+  }
+
+  return /No video records found/i.test(content) ||
+    /\/assets\/worldarena\/generated\/samples\/previews\/[^"'\s]+\.mp4/.test(content);
+}
+
+function liveVideoDocsPageForLanguage(page) {
+  const language = activeLanguage();
+
+  if (!liveVideoDocsCatalog) {
+    return {
+      ...page,
+      title: language === "zh" ? "视频统计" : "Video Analytics",
+      content: language === "zh"
+        ? "# 视频统计\n\n正在从站点实时媒体索引加载视频集合..."
+        : "# Video Analytics\n\nLoading the live video catalog from the site media index..."
+    };
+  }
+
+  return {
+    ...page,
+    title: language === "zh" ? "视频统计" : "Video Analytics",
+    content: buildLiveVideoDocsMarkdown(liveVideoDocsCatalog, language)
+  };
+}
+
+function ensureLiveVideoDocsCatalog() {
+  if (liveVideoDocsCatalog) {
+    return Promise.resolve(liveVideoDocsCatalog);
+  }
+
+  if (liveVideoDocsPromise) {
+    return liveVideoDocsPromise;
+  }
+
+  liveVideoDocsPromise = fetch("/api/archive-media?media=videos&limit=120", { cache: "no-store" })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Video catalog request failed with ${response.status}`);
+      }
+
+      return response.json();
+    })
+    .then((catalog) => {
+      liveVideoDocsCatalog = catalog;
+      return catalog;
+    })
+    .catch((error) => {
+      liveVideoDocsCatalog = {
+        error: error?.message || "Unable to load video catalog.",
+        summary: [],
+        tags: [],
+        items: [],
+        filteredTotal: 0
+      };
+      return liveVideoDocsCatalog;
+    })
+    .finally(() => {
+      liveVideoDocsPromise = null;
+    });
+
+  return liveVideoDocsPromise;
+}
+
+function buildLiveVideoDocsMarkdown(catalog, language) {
+  const videoTotal = Number(catalog.filteredTotal || catalog.summary?.find((item) => item.key === "videos")?.count || 0);
+  const visualTotal = Number(catalog.summary?.find((item) => item.key === "visual")?.count || catalog.total || 0);
+  const loadedSamples = catalog.items?.length || 0;
+  const topTags = (catalog.tags || []).slice(0, 10);
+  const samples = (catalog.items || []).filter((item) => item.mediaKind === "video" || item.source === "videos").slice(0, 12);
+
+  if (catalog.error) {
+    return language === "zh"
+      ? `# 视频统计\n\n无法加载实时视频索引：${catalog.error}`
+      : `# Video Analytics\n\nUnable to load the live video index: ${catalog.error}`;
+  }
+
+  if (language === "zh") {
+    return [
+      "# 视频统计",
+      "",
+      "!!! info \"实时索引\"",
+      "    这页的静态 docs bundle 当前没有视频记录，因此页面回退到站点服务端的实时媒体索引。",
+      "",
+      liveVideoMetricGrid([
+        ["视频条目", formatCount(videoTotal), "Live video records"],
+        ["图像 + 视频", formatCount(visualTotal), "Current media catalog total"],
+        ["已载入样例", formatCount(loadedSamples), "Preview rows on this page"],
+        ["标签数", formatCount(catalog.tags?.length || 0), "Available archive tags"]
+      ]),
+      "",
+      "## 热门标签",
+      "",
+      topTags.length ? topTags.map((tag) => `- ${tag}`).join("\n") : "_暂无标签。_",
+      "",
+      "## 视频样例",
+      "",
+      samples.length ? liveVideoSampleGrid(samples) : "_暂无可展示视频样例。_",
+      "",
+      "## 入口",
+      "",
+      "- [打开视频 Archive](/uncertain/)"
+    ].join("\n");
+  }
+
+  return [
+    "# Video Analytics",
+    "",
+    "!!! info \"Live index\"",
+    "    The static docs bundle currently has no video records, so this page falls back to the site's live media index.",
+    "",
+    liveVideoMetricGrid([
+      ["Video records", formatCount(videoTotal), "Live video records"],
+      ["Images + videos", formatCount(visualTotal), "Current media catalog total"],
+      ["Loaded samples", formatCount(loadedSamples), "Preview rows on this page"],
+      ["Tags", formatCount(catalog.tags?.length || 0), "Available archive tags"]
+    ]),
+    "",
+    "## Top Tags",
+    "",
+    topTags.length ? topTags.map((tag) => `- ${tag}`).join("\n") : "_No tags available._",
+    "",
+    "## Video Samples",
+    "",
+    samples.length ? liveVideoSampleGrid(samples) : "_No video samples available._",
+    "",
+    "## Entry Point",
+    "",
+    "- [Open the video archive](/uncertain/)"
+  ].join("\n");
+}
+
+function liveVideoMetricGrid(items) {
+  return `<div class="metric-grid">
+${items.map(([label, value, note]) => `<div class="metric-card">
+  <div class="metric-label">${escapeHtml(label)}</div>
+  <div class="metric-value">${escapeHtml(value)}</div>
+  <div class="metric-note">${escapeHtml(note)}</div>
+</div>`).join("\n")}
+</div>`;
+}
+
+function liveVideoSampleGrid(samples) {
+  return `<div class="sample-grid sample-grid--video">
+${samples.map((sample) => {
+  const title = sample.title || sample.type || "Video sample";
+  const poster = sample.image || sample.thumb || "";
+  const source = sample.video || sample.href || "";
+  const path = sample.path || sample.summary || "";
+
+  return `<figure class="sample-card">
+  <video class="sample-media" controls muted preload="metadata"${poster ? ` poster="${escapeAttr(poster)}"` : ""}><source src="${escapeAttr(source)}" type="video/mp4"></video>
+  <figcaption>
+    <strong>${escapeHtml(title)}</strong>
+    <span>${escapeHtml(path)}</span>
+  </figcaption>
+</figure>`;
+}).join("\n")}
+</div>`;
 }
 
 function resolveContentPage() {
@@ -1655,16 +4091,12 @@ function resolveContentPage() {
     return page;
   }
 
-  return docsForLanguage.find((candidate) => candidate.route === "/docs/") || docsForLanguage[0] || docsPages[0];
+  return docsForLanguage.find((candidate) => candidate.route === "/doc/") || docsForLanguage[0] || docsPages[0];
 }
 
 function normalizeRoute(path) {
-  if (path === "/docs") {
-    return "/docs/";
-  }
-
-  if (path === "/awesome-world-models") {
-    return "/awesome-world-models/";
+  if (path === "/docs" || path === "/doc") {
+    return "/doc/";
   }
 
   return path.endsWith("/") ? path : `${path}/`;
@@ -1672,7 +4104,7 @@ function normalizeRoute(path) {
 
 function stripFirstMarkdownH1(markdown) {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
-  const firstHeadingIndex = lines.findIndex((line) => /^#\s+/.test(line.trim()));
+  const firstHeadingIndex = lines.findIndex((line) => /^#\s+/.test(line.trim()) && !/^##\s+/.test(line.trim()));
 
   if (firstHeadingIndex >= 0) {
     lines.splice(firstHeadingIndex, 1);
@@ -1681,43 +4113,96 @@ function stripFirstMarkdownH1(markdown) {
   return lines.join("\n").replace(/^\s+/, "");
 }
 
-function extractDocHeadings(markdown) {
-  return markdown
-    .replace(/\r\n/g, "\n")
-    .split("\n")
-    .map((line) => {
-      const match = line.trim().match(/^(#{2,3})\s+(.+)$/);
-      if (!match) {
-        return null;
-      }
-
-      const headingText = match[2].replace(/\s+\{#[^}]+\}\s*$/, "");
-      const explicitId = match[2].match(/\{#([^}]+)\}\s*$/)?.[1];
-      return {
-        id: explicitId || slugify(stripInlineMarkdown(headingText)),
-        level: match[1].length,
-        title: stripInlineMarkdown(headingText)
-      };
-    })
-    .filter(Boolean)
-    .slice(0, 8);
-}
-
-function docPageMapMarkup(headings) {
-  if (!headings.length) {
-    return "";
+function splitDocHeroAndBody(markdown) {
+  const rawHero = extractRawDocHeroMarkdown(markdown);
+  if (/^##\s+/m.test(rawHero)) {
+    return {
+      heroMarkdown: rawHero,
+      bodyMarkdown: ensureMetricExamplesInBody(markdown, stripDocHeroFromBody(markdown))
+    };
   }
 
-  return `
-    <nav class="doc-page-map" aria-label="Page sections">
-      <span>Sections</span>
-      <div>
-        ${headings
-          .map((heading) => `<a class="doc-page-map-level-${heading.level}" href="#${escapeAttr(heading.id)}">${escapeHtml(heading.title)}</a>`)
-          .join("")}
-      </div>
-    </nav>
-  `;
+  return {
+    heroMarkdown: "",
+    bodyMarkdown: stripFirstMarkdownH1(markdown)
+  };
+}
+
+function stripMetricExamplesBlock(markdown) {
+  return markdown.replace(
+    /<!--\s*metric-examples:start\s*-->[\s\S]*?<!--\s*metric-examples:end\s*-->/gi,
+    ""
+  );
+}
+
+function extractMetricExamplesBlock(markdown) {
+  return (
+    markdown.match(/<!--\s*metric-examples:start\s*-->[\s\S]*?<!--\s*metric-examples:end\s*-->/i)?.[0] || ""
+  );
+}
+
+function ensureMetricExamplesInBody(markdown, bodyMarkdown) {
+  const metricExamplesBlock = extractMetricExamplesBlock(markdown);
+  if (!metricExamplesBlock || bodyMarkdown.includes("metric-examples:start")) {
+    return bodyMarkdown;
+  }
+  return `${metricExamplesBlock}\n\n${bodyMarkdown}`.trim();
+}
+
+function isDocReferenceHeading(line) {
+  const trimmed = line.trim();
+  return /^##\s+references\b/i.test(trimmed) || /\{#reference\}/i.test(trimmed);
+}
+
+function findDocHeroBounds(markdown) {
+  const lines = stripMetricExamplesBlock(markdown).replace(/\r\n/g, "\n").split("\n");
+  let index = 0;
+
+  while (index < lines.length) {
+    const trimmed = lines[index].trim();
+    if (/^#\s+/.test(trimmed) && !/^##\s+/.test(trimmed)) {
+      index += 1;
+      break;
+    }
+    index += 1;
+  }
+
+  while (index < lines.length && !lines[index].trim()) {
+    index += 1;
+  }
+
+  const heroStart = index;
+  let seenH2 = false;
+
+  while (index < lines.length) {
+    const trimmed = lines[index].trim();
+    if (isDocReferenceHeading(trimmed)) {
+      break;
+    }
+    if (/^##\s+/.test(trimmed)) {
+      if (seenH2) {
+        break;
+      }
+      seenH2 = true;
+    }
+    index += 1;
+  }
+
+  return { lines, heroStart, heroEnd: index };
+}
+
+function extractRawDocHeroMarkdown(markdown) {
+  const { lines, heroStart, heroEnd } = findDocHeroBounds(markdown);
+  return lines.slice(heroStart, heroEnd).join("\n").trim();
+}
+
+function stripDocHeroFromBody(markdown) {
+  const { lines, heroEnd } = findDocHeroBounds(markdown);
+  let index = heroEnd;
+  while (index < lines.length && !lines[index].trim()) {
+    index += 1;
+  }
+  return lines.slice(index).join("\n").trim();
 }
 
 function sentenceCase(value) {
@@ -1731,7 +4216,6 @@ function docNavigationMarkup(activeRoute) {
     {
       title: activeLanguage() === "zh" ? "资源" : "Resources",
       links: [
-        { title: "Awesome World Models", route: "/awesome-world-models/" },
         { title: activeLanguage() === "zh" ? "自由探索" : "Free Exploration", route: "/uncertain/" }
       ]
     }
@@ -1743,17 +4227,38 @@ function docNavigationMarkup(activeRoute) {
         <section class="doc-nav-section">
           <h2>${group.title}</h2>
           <ul>
-            ${group.links
-              .map((link) => {
-                const isActive = normalizeRoute(link.route) === normalizeRoute(activeRoute);
-                return `<li><a class="${isActive ? "is-active" : ""}" href="${link.route}" data-route>${link.title}</a></li>`;
-              })
-              .join("")}
+            ${group.links.map((link) => renderDocNavLink(link, activeRoute)).join("")}
           </ul>
         </section>
       `
     )
     .join("");
+}
+
+function renderDocNavLink(link, activeRoute) {
+  const isActive = link.route && normalizeRoute(link.route) === normalizeRoute(activeRoute);
+  if (link.children?.length) {
+    const childActive = link.children.some((child) => docNavLinkIsActive(child, activeRoute));
+    return `
+      <li class="doc-nav-group">
+        <details class="doc-nav-details" ${childActive ? "open" : ""}>
+          <summary>${escapeHtml(link.title)}</summary>
+          <ul>
+            ${link.children.map((child) => renderDocNavLink(child, activeRoute)).join("")}
+          </ul>
+        </details>
+      </li>
+    `;
+  }
+
+  return `<li><a class="${isActive ? "is-active" : ""}" href="${link.route}" ${clientRouteAttribute(link.route)}>${escapeHtml(link.title)}</a></li>`;
+}
+
+function docNavLinkIsActive(link, activeRoute) {
+  if (link.route && normalizeRoute(link.route) === normalizeRoute(activeRoute)) {
+    return true;
+  }
+  return (link.children || []).some((child) => docNavLinkIsActive(child, activeRoute));
 }
 
 function renderMarkdown(markdown) {
@@ -1781,6 +4286,11 @@ function renderMarkdown(markdown) {
       continue;
     }
 
+    if (/^<!--[\s\S]*-->$/.test(trimmed)) {
+      index += 1;
+      continue;
+    }
+
     if (trimmed.startsWith("```")) {
       flushParagraph();
       const language = trimmed.slice(3).trim();
@@ -1791,7 +4301,49 @@ function renderMarkdown(markdown) {
         index += 1;
       }
       index += 1;
-      html.push(`<pre><code class="${language ? `language-${escapeAttr(language)}` : ""}">${escapeHtml(code.join("\n"))}</code></pre>`);
+      if (language === "mermaid") {
+        html.push(`<pre class="mermaid">${escapeHtml(code.join("\n"))}</pre>`);
+      } else {
+        html.push(`<pre><code class="${language ? `language-${escapeAttr(language)}` : ""}">${escapeHtml(code.join("\n"))}</code></pre>`);
+      }
+      continue;
+    }
+
+    if (/^<([a-zA-Z][\w-]*)(\s|>|\/)/.test(trimmed)) {
+      flushParagraph();
+      const block = collectHtmlBlock(lines, index);
+      html.push(renderHtmlBlock(block.html));
+      index = block.nextIndex;
+      continue;
+    }
+
+    if (trimmed === "\\[") {
+      flushParagraph();
+      const block = [];
+      index += 1;
+      while (index < lines.length && lines[index].trim() !== "\\]") {
+        block.push(lines[index]);
+        index += 1;
+      }
+      if (index < lines.length) {
+        index += 1;
+      }
+      html.push(`<div class="math-display">${renderMathBlock(block.join("\n"), "\\[", "\\]")}</div>`);
+      continue;
+    }
+
+    if (trimmed === "$$") {
+      flushParagraph();
+      const block = [];
+      index += 1;
+      while (index < lines.length && lines[index].trim() !== "$$") {
+        block.push(lines[index]);
+        index += 1;
+      }
+      if (index < lines.length) {
+        index += 1;
+      }
+      html.push(`<div class="math-display">${renderMathBlock(block.join("\n"), "$$", "$$")}</div>`);
       continue;
     }
 
@@ -1901,9 +4453,90 @@ function renderMarkdown(markdown) {
 }
 
 function renderHtmlBlock(html) {
-  return html
-    .replace(/\smarkdown="[^"]*"/g, "")
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" />`);
+  let output = html.replace(/\smarkdown="[^"]*"/g, "");
+
+  // Markdown embedded inside HTML containers (e.g. dimension overview cards).
+  output = output.replace(
+    /(<div\b[^>]*\bclass="[^"]*\bdimension-body\b[^"]*"[^>]*>)([\s\S]*?)(<\/div>)/g,
+    (_, open, inner, close) => `${open}${renderMarkdown(inner.trim())}${close}`
+  );
+
+  if (output.includes("doc-algorithm")) {
+    output = output.replace(
+      /(<li(?:\s[^>]*)?>)([\s\S]*?)(<\/li>)/g,
+      (_, open, content, close) => `${open}${renderAlgorithmStepInline(content)}${close}`
+    );
+    output = output.replace(
+      /(<(?:p|td|th)(?:\s[^>]*)?>)([\s\S]*?)(<\/(?:p|td|th)>)/g,
+      (_, open, content, close) => {
+        if (!content.includes("`")) {
+          return `${open}${content}${close}`;
+        }
+        return `${open}${renderAlgorithmStepInline(content)}${close}`;
+      }
+    );
+  }
+
+  return output.replace(
+    /!\[([^\]]*)\]\(([^)]+)\)/g,
+    (_, alt, src) => `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" />`
+  );
+}
+
+function renderAlgorithmStepInline(value) {
+  if (!value || (!value.includes("`") && !value.includes("**") && !value.includes("*") && !value.includes("["))) {
+    return value;
+  }
+
+  const placeholders = [];
+  let protectedValue = value.replace(/<[^>]+>/g, (tag) => {
+    const token = `\uE002TAG${placeholders.length}\uE003`;
+    placeholders.push(tag);
+    return token;
+  });
+
+  protectedValue = protectedValue.replace(/`([^`]+)`/g, "<code>$1</code>");
+  protectedValue = protectedValue.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  protectedValue = protectedValue.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  protectedValue = protectedValue.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    (_, label, href) => renderLink(label, href)
+  );
+
+  placeholders.forEach((tag, index) => {
+    protectedValue = protectedValue.replace(`\uE002TAG${index}\uE003`, tag);
+  });
+
+  return protectedValue;
+}
+
+function collectHtmlBlock(lines, startIndex) {
+  const opening = lines[startIndex].trim();
+  const tagMatch = opening.match(/^<([a-zA-Z][\w-]*)/);
+  const tag = tagMatch?.[1];
+
+  if (!tag || /^<\/?(h[1-6]|p|hr)\b/.test(opening)) {
+    return { html: opening, nextIndex: startIndex + 1 };
+  }
+
+  if (opening.endsWith("/>") || (opening.includes(`</${tag}>`) && opening.endsWith(">"))) {
+    return { html: opening, nextIndex: startIndex + 1 };
+  }
+
+  const block = [lines[startIndex]];
+  let depth = (opening.match(new RegExp(`<${tag}(\\s|>)`, "g")) || []).length;
+  depth -= (opening.match(new RegExp(`</${tag}>`, "g")) || []).length;
+  let index = startIndex + 1;
+
+  while (index < lines.length && depth > 0) {
+    const current = lines[index];
+    block.push(current);
+    depth += (current.match(new RegExp(`<${tag}(\\s|>)`, "g")) || []).length;
+    depth -= (current.match(new RegExp(`</${tag}>`, "g")) || []).length;
+    index += 1;
+  }
+
+  return { html: block.join("\n"), nextIndex: index };
 }
 
 function renderTable(lines) {
@@ -1932,8 +4565,54 @@ function splitTableRow(line) {
     .map((cell) => cell.trim());
 }
 
+const mathSegmentTokenPrefix = "\uE000MATH";
+const mathSegmentTokenSuffix = "\uE001";
+
+function stashMathSegments(value) {
+  const segments = [];
+  let output = value;
+
+  const stash = (match) => {
+    const token = `${mathSegmentTokenPrefix}${segments.length}${mathSegmentTokenSuffix}`;
+    segments.push(match);
+    return token;
+  };
+
+  output = output.replace(/\\\[([\s\S]*?)\\\]/g, stash);
+  output = output.replace(/\$\$([\s\S]*?)\$\$/g, stash);
+  output = output.replace(/\\\(([\s\S]*?)\\\)/g, stash);
+  output = output.replace(/(?<!\$)\$(?!\$)((?:\\.|[^$\\])+?)(?<!\$)\$(?!\$)/g, stash);
+
+  return { output, segments };
+}
+
+function restoreMathSegments(value, segments) {
+  let output = value;
+
+  segments.forEach((segment, index) => {
+    const token = `${mathSegmentTokenPrefix}${index}${mathSegmentTokenSuffix}`;
+    output = output.split(token).join(escapeMathForHtml(normalizeMathLineBreaks(segment)));
+  });
+
+  return output;
+}
+
+function renderMathBlock(body, openDelimiter, closeDelimiter) {
+  return escapeMathForHtml(`${openDelimiter}\n${normalizeMathLineBreaks(body)}\n${closeDelimiter}`);
+}
+
+function normalizeMathLineBreaks(value) {
+  // MathJax treats "\\[8pt]" as a display-math opener; use kern spacing instead.
+  return value.replace(/\\\\\[(\d+(?:\.\d+)?(?:pt|em|ex|mu|px|%))\]/g, "\\\\\\kern $1 ");
+}
+
+function escapeMathForHtml(value) {
+  return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+}
+
 function renderInline(value) {
-  let output = escapeHtml(value);
+  const { output: protectedValue, segments } = stashMathSegments(value);
+  let output = escapeHtml(protectedValue);
 
   output = output.replace(/`([^`]+)`/g, "<code>$1</code>");
   output = output.replace(/\[!\[([^\]]*)\]\(([^)]+)\)\]\(([^)]+)\)/g, (_, alt, image, href) => renderLink(`<img src="${escapeAttr(image)}" alt="${escapeAttr(alt)}" />`, href));
@@ -1941,13 +4620,14 @@ function renderInline(value) {
   output = output.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => renderLink(label, href));
   output = output.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   output = output.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  output = restoreMathSegments(output, segments);
 
   return output;
 }
 
 function renderLink(label, href) {
   const cleanHref = escapeAttr(href);
-  const routeAttribute = href.startsWith("/") ? "data-route" : "";
+  const routeAttribute = clientRouteAttribute(href);
   const externalAttribute = /^https?:\/\//.test(href) ? `target="_blank" rel="noopener"` : "";
   return `<a href="${cleanHref}" ${routeAttribute} ${externalAttribute}>${label}</a>`;
 }
@@ -1967,6 +4647,119 @@ function headingAnchorCandidates(value) {
   return Array.from(new Set([slugify(text), loose, numbered, collapsed])).filter(Boolean);
 }
 
+function mergeUnique(left = [], right = []) {
+  return Array.from(new Set([...left, ...right].filter(Boolean)));
+}
+
+function configureMathJax() {
+  const current = window.MathJax || {};
+  const currentLoader = current.loader || {};
+  const currentTex = current.tex || {};
+  const currentPackages = currentTex.packages || {};
+
+  window.MathJax = {
+    ...current,
+    loader: {
+      ...currentLoader,
+      load: mergeUnique(currentLoader.load, mathJaxLoaderExtensions)
+    },
+    tex: {
+      ...currentTex,
+      inlineMath: currentTex.inlineMath || [
+        ["\\(", "\\)"],
+        ["$", "$"]
+      ],
+      displayMath: currentTex.displayMath || [
+        ["\\[", "\\]"],
+        ["$$", "$$"]
+      ],
+      processEscapes: true,
+      processEnvironments: true,
+      packages: {
+        ...currentPackages,
+        "[+]": mergeUnique(currentPackages["[+]"], mathJaxPackageExtensions)
+      }
+    },
+    options: {
+      ...(current.options || {}),
+      skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code"]
+    },
+    startup: {
+      typeset: false,
+      ...(current.startup || {})
+    }
+  };
+}
+
+function waitForMathJaxReady(script) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let readyTimer = 0;
+    let timeoutTimer = 0;
+
+    const cleanup = () => {
+      if (readyTimer) {
+        window.clearInterval(readyTimer);
+      }
+      if (timeoutTimer) {
+        window.clearTimeout(timeoutTimer);
+      }
+      script?.removeEventListener("load", checkReady);
+      script?.removeEventListener("error", failLoad);
+    };
+
+    const finish = (mathJax) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolve(mathJax);
+    };
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+
+    function checkReady() {
+      if (window.MathJax?.typesetPromise) {
+        finish(window.MathJax);
+        return;
+      }
+
+      const startupPromise = window.MathJax?.startup?.promise;
+      if (!startupPromise) {
+        return;
+      }
+
+      startupPromise
+        .then(() => {
+          if (!window.MathJax?.typesetPromise) {
+            throw new Error("MathJax failed to initialize.");
+          }
+
+          finish(window.MathJax);
+        })
+        .catch(fail);
+    }
+
+    function failLoad() {
+      fail(new Error("MathJax failed to load."));
+    }
+
+    script?.addEventListener("load", checkReady, { once: true });
+    script?.addEventListener("error", failLoad, { once: true });
+    readyTimer = window.setInterval(checkReady, 40);
+    timeoutTimer = window.setTimeout(() => fail(new Error("MathJax initialization timed out.")), 15000);
+    checkReady();
+  });
+}
+
 function ensureMathJax() {
   if (window.MathJax?.typesetPromise) {
     return Promise.resolve(window.MathJax);
@@ -1976,37 +4769,22 @@ function ensureMathJax() {
     return mathJaxPromise;
   }
 
-  window.MathJax = {
-    tex: {
-      inlineMath: [
-        ["\\(", "\\)"],
-        ["$", "$"]
-      ],
-      displayMath: [
-        ["\\[", "\\]"],
-        ["$$", "$$"]
-      ],
-      processEscapes: true,
-      processEnvironments: true
-    },
-    options: {
-      skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code"]
-    },
-    startup: {
-      typeset: false
-    }
-  };
+  configureMathJax();
 
   mathJaxPromise = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = mathJaxScriptUrl;
-    script.async = true;
-    script.onload = () => {
-      const startupPromise = window.MathJax?.startup?.promise || Promise.resolve();
-      startupPromise.then(() => resolve(window.MathJax), reject);
-    };
-    script.onerror = () => reject(new Error("MathJax failed to load."));
-    document.head.append(script);
+    const existingScript = document.querySelector(`script[src="${mathJaxScriptUrl}"]`);
+    const script = existingScript || document.createElement("script");
+
+    if (!existingScript) {
+      script.src = mathJaxScriptUrl;
+      script.async = true;
+      document.head.append(script);
+    }
+
+    waitForMathJaxReady(script).then(resolve, reject);
+  }).catch((error) => {
+    mathJaxPromise = null;
+    throw error;
   });
 
   return mathJaxPromise;
@@ -2018,8 +4796,61 @@ function queueMathTypeset(root) {
   }
 
   window.requestAnimationFrame(() => {
-    ensureMathJax()
-      .then((mathJax) => mathJax.typesetPromise?.([root]))
+    window.requestAnimationFrame(() => {
+      ensureMathJax()
+        .then((mathJax) => {
+          if (!root.isConnected) {
+            return null;
+          }
+
+          if (typeof mathJax.typesetClear === "function") {
+            mathJax.typesetClear([root]);
+          }
+
+          return mathJax.typesetPromise?.([root]);
+        })
+        .catch((error) => console.warn(error.message || error));
+    });
+  });
+}
+
+let mermaidPromise;
+
+function ensureMermaid() {
+  if (window.mermaid?.run) {
+    return Promise.resolve(window.mermaid);
+  }
+
+  if (!mermaidPromise) {
+    mermaidPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = mermaidScriptUrl;
+      script.async = true;
+      script.onload = () => {
+        window.mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "loose" });
+        resolve(window.mermaid);
+      };
+      script.onerror = () => reject(new Error("Failed to load Mermaid"));
+      document.head.appendChild(script);
+    });
+  }
+
+  return mermaidPromise;
+}
+
+function queueMermaidRender(root) {
+  if (!root) {
+    return;
+  }
+
+  const nodes = root.querySelectorAll("pre.mermaid");
+  if (!nodes.length) {
+    return;
+  }
+
+  window.requestAnimationFrame(() => {
+    ensureMermaid()
+      .then((mermaid) => mermaid.run({ nodes }))
       .catch((error) => console.warn(error.message || error));
   });
 }
@@ -2267,7 +5098,7 @@ function archiveActiveFilterLabel() {
 
 function archiveAudioMarkup() {
   return `
-    <audio data-archive-audio preload="auto" loop aria-hidden="true">
+    <audio data-archive-audio preload="none" loop aria-hidden="true">
       ${archiveMusicSources
         .map((source) => `<source src="${escapeAttr(source.src)}" type="${escapeAttr(source.type)}" />`)
         .join("")}
@@ -2334,6 +5165,7 @@ function maybeLoadMoreArchiveItems(force = false) {
 
 function renderArchive() {
   document.body.className = "archive-page";
+  setHomeMicroverseStylesheetEnabled(false);
   document.title = `${siteTitle} Exploration`;
 
   const parsed = parseArchivePath();
@@ -3398,7 +6230,7 @@ function updateArchiveKeyboardMovement(deltaTime) {
   }
 
   const forwardAxis = (archivePressedKeys.has("w") ? 1 : 0) - (archivePressedKeys.has("s") ? 1 : 0);
-  const strafeAxis = (archivePressedKeys.has("d") ? 1 : 0) - (archivePressedKeys.has("a") ? 1 : 0);
+  const strafeAxis = (archivePressedKeys.has("a") ? 1 : 0) - (archivePressedKeys.has("d") ? 1 : 0);
   const yawAxis = (archivePressedKeys.has("arrowright") ? 1 : 0) - (archivePressedKeys.has("arrowleft") ? 1 : 0);
   const pitchAxis = (archivePressedKeys.has("arrowdown") ? 1 : 0) - (archivePressedKeys.has("arrowup") ? 1 : 0);
   const speedMultiplier = archivePressedKeys.has("shift") ? 1.75 : 1;
@@ -4146,9 +6978,7 @@ function updateDetailPanel() {
   }
 
   const media = archiveMediaMarkup(item, "detail");
-  const routeAttribute = item.href?.startsWith("/docs/") || item.href?.startsWith("/awesome-world-models/")
-    ? "data-route"
-    : "";
+  const routeAttribute = "";
   const openLabel = item.mediaKind ? "Open source" : "Open page";
 
   detailPanel.innerHTML = `
@@ -4476,13 +7306,15 @@ function maybeRevealArchiveScene() {
 
   if (webglStats && archiveState.mode !== "search") {
     const elapsed = performance.now() - (archiveRuntime.startedAt || 0);
-    const readyEnough =
-      webglStats.loadedVisible >= archiveInitialRevealMinCards ||
-      webglStats.loadedTotal >= archiveInitialRevealMinCards;
+    const readyEnough = webglStats.loadedVisible >= archiveInitialRevealVisibleMedia;
+    const softReady =
+      elapsed > archiveInitialRevealSoftHold &&
+      webglStats.loadedVisible >= archiveInitialRevealSoftVisibleMedia;
+    const emergencyReady =
+      elapsed > archiveInitialRevealEmergencyHold &&
+      webglStats.loadedVisible >= archiveInitialRevealEmergencyVisibleMedia;
 
-    const emergencyReady = elapsed > 12000 && webglStats.loadedTotal >= Math.max(10, Math.ceil(archiveInitialRevealMinCards / 3));
-
-    if (!readyEnough && !emergencyReady) {
+    if (!readyEnough && !softReady && !emergencyReady) {
       return;
     }
 
@@ -4507,7 +7339,7 @@ function maybeRevealArchiveScene() {
   );
   const revealTarget = Math.max(1, Math.min(archiveInitialRevealMinCards, visibleCards.length));
   const elapsed = performance.now() - (archiveRuntime.startedAt || 0);
-  const stableFieldReady = visibleCards.length >= 48 && elapsed > 900;
+  const stableFieldReady = readyCards.length >= Math.min(32, revealTarget) && elapsed > archiveInitialRevealSoftHold;
 
   if (readyCards.length < revealTarget && !stableFieldReady) {
     return;
@@ -4749,11 +7581,9 @@ const arenaBattleMetricDefs = [
   { id: "stability", labelEn: "Stability", labelZh: "稳定性" }
 ];
 
-const arenaVoteDimensionDefs = [
-  { id: "overall", labelEn: "Overall", labelZh: "综合偏好" },
-  { id: "visual_quality", labelEn: "Visual Quality", labelZh: "视觉质量" },
-  { id: "control_alignment", labelEn: "Control Alignment", labelZh: "控制对齐" },
-  { id: "world_consistency", labelEn: "World Consistency", labelZh: "世界一致性" }
+const arenaLeaderboardDimensionDefs = [
+  { id: "overall", labelEn: "Overall", labelZh: "综合" },
+  ...arenaVoteDimensionDefs
 ];
 
 const arenaBattleUIText = {
@@ -4769,37 +7599,68 @@ const arenaBattleUIText = {
     tie: "Tie",
     noData: "Waiting for battle to start.",
     arenaDoc: "Explore battle workflow",
-    loadingData: "Loading WorldArena registry and predictions...",
-    dataFailed: "Using fallback arena data. Real prediction scan did not load.",
-    dataReady: "Registry-backed arena",
-    integratedModels: "Integrated models",
-    predictionRuns: "Prediction runs",
-    declaredRecords: "Declared records",
-    verifiedPreviews: "Verified previews",
-    sourceBasis: "Scoring basis",
+    loadingData: "Loading WorldAtlas Arena registry and predictions...",
     configSignals: "Signals",
     suites: "Suites",
     artifacts: "Artifacts",
     noPreview: "No generated preview found",
     registryFile: "Config",
     runCoverage: "Run coverage",
-    rankedVoting: "Ranked human voting",
-    rankedVotingBody: "Random blind battles update human ELO. Choose a dimension, vote, then identities are revealed.",
-    voteDimension: "Vote dimension",
+    rankedVoting: "Human Likert scorecard",
+    rankedVotingBody: "WorldJen-inspired checklist: rate both blind videos on every applicable dimension (1–5), then submit once. Identities reveal after scoring.",
+    voteDimension: "Scoring dimension",
+    scorecardProgress: "Scorecard progress",
+    scorecardHint: "1 = major failure · 3 = passable · 5 = flawless",
+    scorecardIncomplete: "Complete every applicable dimension before submitting.",
+    scorecardSubmitting: "Saving scorecard...",
+    scorecardSaved: "Scorecard saved. Identities revealed.",
+    dimensionsScored: "dimensions scored",
+    markNa: "N/A",
+    likertScale: "Likert scale",
+    scoreModel: "Score",
+    notApplicable: "N/A (skip dimension)",
+    submitScores: "Submit scores",
+    scoreRequired: "Rate both videos before submitting.",
+    dimensionSkipped: "Dimension marked N/A — no ELO update.",
     randomBattle: "New blind battle",
     preferLeft: "Prefer Model 1",
     preferRight: "Prefer Model 2",
     hardToChoose: "Hard to choose",
-    blindHidden: "Identity hidden until vote",
-    revealedAfterVote: "Vote recorded. Identities revealed.",
+    blindHidden: "Identity hidden until scoring",
+    revealedAfterVote: "Scores recorded. Identities revealed.",
     voteSaved: "Vote saved",
     voteFailed: "Vote failed",
     humanLeaderboard: "Human ELO leaderboard",
     rankedVotes: "Ranked votes",
-    noVotes: "No human votes yet.",
+    noVotes: "No ranked battles yet.",
+    leaderboardEmptyHint: "Complete a blind scorecard above to populate ELO rankings. Placeholder 1500 scores are hidden until real votes exist.",
+    leaderboardNoDimensionData: "No ranked battles recorded for this dimension yet.",
+    leaderboardElo: "ELO",
+    leaderboardBattles: "Battles",
+    leaderboardLikertAvg: "Avg Likert",
+    leaderboardInBattle: "In this battle",
+    leaderboardTotalVotes: "Total votes",
+    leaderboardLastUpdated: "Updated",
+    leaderboardLive: "Live",
+    leaderboardRefresh: "Refresh",
     humanVotes: "Human votes",
     activeDimension: "Active dimension",
-    battleSample: "Battle sample"
+    scoringDimension: "Scoring dimension",
+    leaderboardDimension: "Leaderboard",
+    pickScoringDimension: "Select a dimension above",
+    battleStatus: "Status",
+    battleSample: "Battle sample",
+    revealTitle: "Model identities revealed",
+    revealBody: "The blind labels map to these WorldAtlas Arena models:",
+    revealBlindLabel: "Blind label",
+    revealModel: "Model",
+    revealFamily: "Family",
+    revealSampleId: "Sample",
+    revealMeanLikert: "Your avg Likert",
+    revealSavedAs: "Model 1 = {left} · Model 2 = {right}",
+    previousBattleTitle: "Previous blind battle",
+    previousBattleBody: "The blind labels from the round you just replaced mapped to these models:",
+    previousBattleEmpty: "No previous blind battle recorded yet."
   },
   zh: {
     openDocs: "查看文档",
@@ -4813,45 +7674,80 @@ const arenaBattleUIText = {
     tie: "平局",
     noData: "等待对决开始。",
     arenaDoc: "查看流程文档",
-    loadingData: "正在读取 WorldArena 模型注册表和预测结果...",
-    dataFailed: "真实预测扫描未加载，当前使用备用竞技场数据。",
-    dataReady: "基于真实注册表的竞技场",
-    integratedModels: "集成模型",
-    predictionRuns: "预测运行",
-    declaredRecords: "声明记录",
-    verifiedPreviews: "可验证预览",
-    sourceBasis: "评分依据",
+    loadingData: "正在读取 WorldAtlas Arena 模型注册表和预测结果...",
     configSignals: "控制信号",
     suites: "套件",
     artifacts: "产物",
     noPreview: "未找到生成预览",
     registryFile: "配置",
     runCoverage: "运行覆盖",
-    rankedVoting: "人类偏好投票",
-    rankedVotingBody: "随机盲选对局会更新人类 ELO；先选择评价维度，投票后才揭示模型身份。",
-    voteDimension: "投票维度",
+    rankedVoting: "人类 Likert 打分表",
+    rankedVotingBody: "参考 WorldJen：在清单里为每个适用维度给两个盲测视频打 1–5 分，一次性提交；提交后揭示模型身份。",
+    voteDimension: "评价维度",
+    scorecardProgress: "打分进度",
+    scorecardHint: "1 = 严重失败 · 3 = 勉强可用 · 5 = 近乎完美",
+    scorecardIncomplete: "请先完成所有适用维度的打分。",
+    scorecardSubmitting: "正在保存打分...",
+    scorecardSaved: "打分表已保存，模型身份已揭示。",
+    dimensionsScored: "维已打分",
+    markNa: "不适用",
+    likertScale: "Likert 量表",
+    scoreModel: "打分",
+    notApplicable: "N/A（跳过该维度）",
+    submitScores: "提交分数",
+    scoreRequired: "请先为两个视频都打分。",
+    dimensionSkipped: "该维度已标记 N/A，不更新 ELO。",
     randomBattle: "下一组盲测对局",
     preferLeft: "更偏好模型 1",
     preferRight: "更偏好模型 2",
     hardToChoose: "难以选择",
-    blindHidden: "投票前隐藏模型身份",
-    revealedAfterVote: "投票已记录，模型身份已揭示。",
+    blindHidden: "打分前隐藏模型身份",
+    revealedAfterVote: "分数已记录，模型身份已揭示。",
     voteSaved: "投票已保存",
     voteFailed: "投票失败",
     humanLeaderboard: "人类 ELO 榜",
     rankedVotes: "有效投票",
-    noVotes: "还没有人类投票。",
+    noVotes: "尚无有效对局排名。",
+    leaderboardEmptyHint: "完成上方盲测打分表后，排行榜会按维度更新 ELO。没有真实投票前不会显示 1500 占位排名。",
+    leaderboardNoDimensionData: "该维度还没有有效对局记录。",
+    leaderboardElo: "ELO",
+    leaderboardBattles: "对局",
+    leaderboardLikertAvg: "Likert 均分",
+    leaderboardInBattle: "本局参战",
+    leaderboardTotalVotes: "总投票",
+    leaderboardLastUpdated: "更新于",
+    leaderboardLive: "实时",
+    leaderboardRefresh: "刷新",
     humanVotes: "人类投票",
     activeDimension: "当前维度",
-    battleSample: "对局样例"
+    scoringDimension: "打分维度",
+    leaderboardDimension: "排行榜",
+    pickScoringDimension: "请在上方选择打分维度",
+    battleStatus: "状态",
+    battleSample: "对局样例",
+    revealTitle: "模型身份已揭示",
+    revealBody: "盲测标签与 WorldAtlas Arena 模型对应关系如下：",
+    revealBlindLabel: "盲测标签",
+    revealModel: "模型",
+    revealFamily: "家族",
+    revealSampleId: "样例",
+    revealMeanLikert: "你的 Likert 均分",
+    revealSavedAs: "模型 1 = {left} · 模型 2 = {right}",
+    previousBattleTitle: "上一组盲测对局",
+    previousBattleBody: "刚刚被替换掉的上一组盲测标签对应这些模型：",
+    previousBattleEmpty: "还没有记录上一组盲测对局。"
   }
 };
 
-const arenaBattleStorageKey = "worldarena_arena_battle_cfg_v3";
+const arenaBattleStorageKey = "worldarena_arena_battle_cfg_v5";
+const arenaPreviousBattleStorageKey = "worldarena_arena_previous_battle_v1";
+const arenaLeaderboardPollMs = 5000;
 let arenaBattleRuntime = null;
 let arenaBattleData = null;
 let arenaBattleDataStatus = "idle";
 let arenaBattleDataPromise = null;
+let arenaLeaderboardPollHandle = 0;
+let arenaLeaderboardFocusBound = false;
 
 function formatArenaNumber(value) {
   const number = Number(value) || 0;
@@ -4958,19 +7854,761 @@ function arenaBattleDifficultyLabel(item) {
 }
 
 function arenaVoteDimensionLabel(itemOrId) {
+  if (itemOrId === "overall") {
+    const overall = arenaLeaderboardDimensionDefs.find((dimension) => dimension.id === "overall");
+    return activeLanguage() === "zh" ? overall.labelZh : overall.labelEn;
+  }
+
   const item = typeof itemOrId === "string"
-    ? arenaVoteDimensionDefs.find((dimension) => dimension.id === itemOrId)
+    ? arenaVoteDimensionById.get(itemOrId)
     : itemOrId;
 
   if (!item) {
     return itemOrId || "";
   }
 
-  return activeLanguage() === "zh" ? item.labelZh : item.labelEn;
+  return arenaDimensionLabel(item, activeLanguage());
+}
+
+function arenaScoringProgressLabel(runtime) {
+  const { complete, required } = arenaScorecardStats(runtime);
+  const suffix = arenaBattleText("dimensionsScored");
+
+  if (activeLanguage() === "zh") {
+    return `${complete}/${required} ${suffix}`;
+  }
+
+  return `${complete}/${required} ${suffix}`;
+}
+
+function createArenaDimensionScores(prompt = "") {
+  const scores = {};
+
+  arenaVoteDimensionDefs.forEach((dimension) => {
+    const applies = arenaDimensionApplies(dimension.id, prompt);
+    scores[dimension.id] = {
+      left: null,
+      right: null,
+      skipped: !applies
+    };
+  });
+
+  return scores;
+}
+
+function resetArenaDimensionScores(runtime) {
+  runtime.dimensionScores = createArenaDimensionScores(arenaBattlePromptForRuntime(runtime));
+}
+
+function arenaDimensionScoreEntry(runtime, dimensionId) {
+  if (!runtime.dimensionScores) {
+    resetArenaDimensionScores(runtime);
+  }
+
+  if (!runtime.dimensionScores[dimensionId]) {
+    runtime.dimensionScores[dimensionId] = { left: null, right: null, skipped: false };
+  }
+
+  return runtime.dimensionScores[dimensionId];
+}
+
+function arenaScorecardStats(runtime) {
+  const prompt = arenaBattlePromptForRuntime(runtime);
+  let required = 0;
+  let complete = 0;
+
+  arenaVoteDimensionDefs.forEach((dimension) => {
+    const entry = arenaDimensionScoreEntry(runtime, dimension.id);
+
+    if (!arenaDimensionApplies(dimension.id, prompt) || entry.skipped) {
+      return;
+    }
+
+    required += 1;
+
+    if (Number.isFinite(entry.left) && Number.isFinite(entry.right)) {
+      complete += 1;
+    }
+  });
+
+  return { required, complete };
+}
+
+function arenaScorecardIsComplete(runtime) {
+  const { required, complete } = arenaScorecardStats(runtime);
+  return required > 0 && complete === required;
+}
+
+function buildArenaCompactLikertButtons(dimensionId, side, selectedScore, disabled = false) {
+  const language = activeLanguage();
+  const anchors = arenaLikertAnchorLabels(language);
+  const disabledAttr = disabled ? " disabled" : "";
+
+  return anchors
+    .map((anchor) => {
+      const activeClass = selectedScore === anchor.value ? " is-active" : "";
+      const pressed = selectedScore === anchor.value ? ' aria-pressed="true"' : ' aria-pressed="false"';
+
+      return `
+        <button
+          type="button"
+          class="arena-likert-button arena-likert-button-compact${activeClass}"
+          data-arena-likert-dimension="${escapeAttr(dimensionId)}"
+          data-arena-likert-side="${escapeAttr(side)}"
+          data-arena-likert-value="${anchor.value}"
+          title="${escapeAttr(anchor.label)}"
+          ${pressed}${disabledAttr}
+        >
+          ${anchor.value}
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function buildArenaScorecardRowMarkup(runtime, dimension) {
+  const language = activeLanguage();
+  const prompt = arenaBattlePromptForRuntime(runtime);
+  const applies = arenaDimensionApplies(dimension.id, prompt);
+  const entry = arenaDimensionScoreEntry(runtime, dimension.id);
+  const disabled = Boolean(runtime.voteBattle?.voted) || (isAuthRequiredForVotes() && !isSignedIn());
+  const isComplete = applies && Number.isFinite(entry.left) && Number.isFinite(entry.right);
+
+  return `
+    <article
+      class="arena-scorecard-row${isComplete ? " is-complete" : ""}${!applies ? " is-na" : ""}"
+      data-arena-scorecard-row="${escapeAttr(dimension.id)}"
+    >
+      <div class="arena-scorecard-copy">
+        <div class="arena-scorecard-row-head">
+          <h4>${escapeHtml(arenaDimensionLabel(dimension, language))}</h4>
+          ${!applies ? `<span class="arena-scorecard-na">${escapeHtml(arenaBattleText("markNa"))}</span>` : ""}
+        </div>
+        <p>${escapeHtml(arenaDimensionDefinition(dimension, language))}</p>
+        <p class="arena-dimension-focus">${escapeHtml(arenaDimensionFocus(dimension, language))}</p>
+      </div>
+      ${applies
+        ? `
+      <div class="arena-scorecard-scores">
+        <div class="arena-scorecard-side">
+          <span>${escapeHtml(arenaVoteSideLabel("left"))}</span>
+          <div class="arena-likert-buttons arena-likert-buttons-compact">
+            ${buildArenaCompactLikertButtons(dimension.id, "left", entry.left, disabled)}
+          </div>
+        </div>
+        <div class="arena-scorecard-side">
+          <span>${escapeHtml(arenaVoteSideLabel("right"))}</span>
+          <div class="arena-likert-buttons arena-likert-buttons-compact">
+            ${buildArenaCompactLikertButtons(dimension.id, "right", entry.right, disabled)}
+          </div>
+        </div>
+      </div>`
+        : `<p class="arena-scorecard-skip-note">${escapeHtml(arenaBattleText("notApplicable"))}</p>`}
+    </article>
+  `;
+}
+
+function buildArenaScorecardMarkup(runtime) {
+  const language = activeLanguage();
+  const { complete, required } = arenaScorecardStats(runtime);
+  const disabled = Boolean(runtime.voteBattle?.voted) || (isAuthRequiredForVotes() && !isSignedIn());
+  const canSubmit = arenaScorecardIsComplete(runtime);
+
+  return arenaDimensionGroups
+    .map((group) => `
+      <section class="arena-scorecard-group">
+        <header>
+          <h3>${escapeHtml(arenaDimensionGroupLabel(group, language))}</h3>
+          <span>${escapeHtml(String(group.dimensions.length))} ${escapeHtml(language === "zh" ? "项" : "items")}</span>
+        </header>
+        <div class="arena-scorecard-rows">
+          ${group.dimensions.map((dimension) => buildArenaScorecardRowMarkup(runtime, dimension)).join("")}
+        </div>
+      </section>
+    `)
+    .join("");
+}
+
+function arenaScorecardPanelMarkup(runtime) {
+  const { complete, required } = arenaScorecardStats(runtime);
+  const canSubmit = arenaScorecardIsComplete(runtime);
+  const disabled = Boolean(runtime.voteBattle?.voted) || (isAuthRequiredForVotes() && !isSignedIn());
+  const needsAuth = isAuthRequiredForVotes() && !isSignedIn();
+
+  return `
+    <section class="arena-vote-panel arena-scorecard-panel" aria-label="${escapeAttr(arenaBattleText("rankedVoting"))}">
+      ${needsAuth
+        ? `<div class="arena-auth-notice">
+            <p>${escapeHtml(authTextForKey("authRequired"))}</p>
+            <button type="button" data-auth-open>${escapeHtml(authTextForKey("signIn"))}</button>
+          </div>`
+        : ""}
+      <div class="arena-scorecard" data-arena-scorecard>
+        ${buildArenaScorecardMarkup(runtime)}
+      </div>
+      <div class="arena-scorecard-footer">
+        <div class="arena-vote-toolbar">
+          <div class="arena-vote-intro">
+            <h2>${escapeHtml(arenaBattleText("rankedVoting"))}</h2>
+            <p class="arena-likert-legend">${escapeHtml(arenaBattleText("scorecardHint"))}</p>
+          </div>
+          <div class="arena-vote-toolbar-actions">
+            <button type="button" data-arena-random-battle>${escapeHtml(arenaBattleText("randomBattle"))}</button>
+          </div>
+        </div>
+        <div class="arena-scorecard-progress" data-arena-scorecard-progress>
+          <div class="arena-scorecard-progress-head">
+            <span data-arena-progress-label>${escapeHtml(arenaBattleText("scorecardProgress"))}</span>
+            <strong data-arena-progress-count>${escapeHtml(String(complete))}/${escapeHtml(String(required))}</strong>
+          </div>
+          <div class="arena-scorecard-progress-track" aria-hidden="true">
+            <span class="arena-scorecard-progress-fill" data-arena-scorecard-progress-fill style="width: ${required > 0 ? Math.round((complete / required) * 100) : 0}%"></span>
+          </div>
+          <em data-arena-progress-status>${escapeHtml(arenaScoringProgressLabel(runtime))}</em>
+        </div>
+        <div class="arena-vote-actions">
+          <button type="button" data-arena-submit-scores ${canSubmit && !disabled ? "" : "disabled"}>${escapeHtml(arenaBattleText("submitScores"))}</button>
+        </div>
+      </div>
+      <p class="arena-vote-status" data-arena-vote-status>${escapeHtml(runtime.voteStatus || arenaBattleText("blindHidden"))}</p>
+    </section>
+  `;
+}
+
+function refreshArenaScorecard(runtime) {
+  if (runtime?.dom?.scorecard) {
+    runtime.dom.scorecard.innerHTML = buildArenaScorecardMarkup(runtime);
+  }
+
+  updateArenaScorecardPanel(runtime);
+}
+
+function updateArenaScorecardRow(runtime, dimensionId) {
+  const row = runtime.dom?.root?.querySelector(`[data-arena-scorecard-row="${dimensionId}"]`);
+
+  if (!row) {
+    return;
+  }
+
+  const entry = arenaDimensionScoreEntry(runtime, dimensionId);
+  const prompt = arenaBattlePromptForRuntime(runtime);
+  const applies = arenaDimensionApplies(dimensionId, prompt);
+  const isComplete = applies && Number.isFinite(entry.left) && Number.isFinite(entry.right);
+
+  row.classList.toggle("is-complete", isComplete);
+
+  row.querySelectorAll("[data-arena-likert-dimension]").forEach((button) => {
+    const side = button.dataset.arenaLikertSide;
+    const value = Number(button.dataset.arenaLikertValue);
+    const score = side === "left" ? entry.left : entry.right;
+    const active = score === value;
+
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+function updateArenaScorecardPanel(runtime) {
+  if (!runtime?.dom) {
+    return;
+  }
+
+  const { complete, required } = arenaScorecardStats(runtime);
+  const disabled = Boolean(runtime.voteBattle?.voted) || (isAuthRequiredForVotes() && !isSignedIn());
+  const canSubmit = arenaScorecardIsComplete(runtime);
+
+  if (runtime.dom.scorecardProgress) {
+    const labelNode = runtime.dom.scorecardProgress.querySelector("[data-arena-progress-label]");
+    const countNode = runtime.dom.scorecardProgress.querySelector("[data-arena-progress-count]");
+    const statusNode = runtime.dom.scorecardProgress.querySelector("[data-arena-progress-status]");
+    const fillNode = runtime.dom.scorecardProgress.querySelector("[data-arena-scorecard-progress-fill]");
+
+    if (labelNode) {
+      labelNode.textContent = arenaBattleText("scorecardProgress");
+    }
+
+    if (countNode) {
+      countNode.textContent = `${complete}/${required}`;
+    }
+
+    if (statusNode) {
+      statusNode.textContent = arenaScoringProgressLabel(runtime);
+    }
+
+    if (fillNode) {
+      fillNode.style.width = required > 0 ? `${Math.round((complete / required) * 100)}%` : "0%";
+    }
+  }
+
+  if (runtime.dom.submitScoresButton) {
+    runtime.dom.submitScoresButton.disabled = !canSubmit || disabled || !runtime.voteBattle;
+  }
+
+  const authNotice = runtime.dom.root?.querySelector(".arena-auth-notice");
+
+  if (authNotice) {
+    authNotice.hidden = !isAuthRequiredForVotes() || isSignedIn();
+  }
+}
+
+function setArenaDimensionScore(runtime, dimensionId, side, value) {
+  if (!runtime.voteBattle || runtime.voteBattle.voted) {
+    return;
+  }
+
+  const score = Number(value);
+
+  if (!Number.isFinite(score) || score < 1 || score > 5) {
+    return;
+  }
+
+  const entry = arenaDimensionScoreEntry(runtime, dimensionId);
+
+  if (side === "left") {
+    entry.left = score;
+  } else if (side === "right") {
+    entry.right = score;
+  }
+
+  updateArenaScorecardRow(runtime, dimensionId);
+  updateArenaScorecardPanel(runtime);
+}
+
+async function postArenaDimensionVote(runtime, battle, dimensionId, leftScore, rightScore, notApplicable) {
+  const winner = notApplicable
+    ? "tie"
+    : leftScore > rightScore
+      ? "left"
+      : rightScore > leftScore
+        ? "right"
+        : "tie";
+
+  const response = await fetch("/api/arena-vote", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ranked: !notApplicable && winner !== "tie",
+      notApplicable,
+      dimension: dimensionId,
+      winner,
+      leftScore: notApplicable ? null : leftScore,
+      rightScore: notApplicable ? null : rightScore,
+      leftModelId: battle.leftModelId,
+      rightModelId: battle.rightModelId,
+      leftSampleId: battle.leftSample?.sampleId || "",
+      rightSampleId: battle.rightSample?.sampleId || "",
+      sharedSampleId: battle.sharedSampleId,
+      suite: battle.suite,
+      battleMode: "random"
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Vote failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function submitArenaScorecard(runtime) {
+  const battle = runtime.voteBattle;
+
+  if (!battle || battle.voted) {
+    return;
+  }
+
+  if (!requireSignedInForArena()) {
+    return;
+  }
+
+  if (!arenaScorecardIsComplete(runtime)) {
+    runtime.voteStatus = arenaBattleText("scorecardIncomplete");
+    renderArenaBattleState(runtime);
+    return;
+  }
+
+  battle.voted = true;
+  runtime.voteStatus = arenaBattleText("scorecardSubmitting");
+  refreshArenaScorecard(runtime);
+  renderArenaBattleState(runtime);
+
+  const prompt = arenaBattlePromptForRuntime(runtime);
+
+  try {
+    let lastPayload = null;
+
+    for (const dimension of arenaVoteDimensionDefs) {
+      const entry = arenaDimensionScoreEntry(runtime, dimension.id);
+      const applies = arenaDimensionApplies(dimension.id, prompt);
+
+      if (!applies || entry.skipped) {
+      lastPayload = await postArenaDimensionVote(runtime, battle, dimension.id, null, null, true);
+      if (arenaBattleData && lastPayload?.humanLeaderboard) {
+        arenaBattleData.humanLeaderboard = lastPayload.humanLeaderboard;
+        updateArenaHumanLeaderboard(runtime);
+        updateArenaLeaderboardTotals(runtime);
+      }
+      continue;
+    }
+
+      lastPayload = await postArenaDimensionVote(runtime, battle, dimension.id, entry.left, entry.right, false);
+      if (arenaBattleData && lastPayload?.humanLeaderboard) {
+        arenaBattleData.humanLeaderboard = lastPayload.humanLeaderboard;
+        updateArenaHumanLeaderboard(runtime);
+        updateArenaLeaderboardTotals(runtime);
+      }
+    }
+
+    battle.revealed = true;
+
+    if (arenaBattleData && lastPayload?.humanLeaderboard) {
+      arenaBattleData.humanLeaderboard = lastPayload.humanLeaderboard;
+    }
+
+    await syncArenaLeaderboardFromServer(runtime);
+
+    runtime.voteStatus = arenaBattleRevealStatusMessage(runtime);
+    refreshArenaScorecard(runtime);
+    renderArenaBattleState(runtime);
+    updateArenaHumanLeaderboard(runtime);
+  } catch (error) {
+    console.warn(error);
+    battle.voted = false;
+    battle.revealed = false;
+    runtime.voteStatus = arenaBattleText("voteFailed");
+    refreshArenaScorecard(runtime);
+    renderArenaBattleState(runtime);
+  }
+}
+
+function arenaLeaderboardDimensionValue(runtime) {
+  return arenaVoteDimensionLabel(runtime.voteDimension);
+}
+
+function arenaLeaderboardRatingForRow(row, dimension) {
+  if (dimension === "overall") {
+    if (Number.isFinite(row.overallRating)) {
+      return row.overallRating;
+    }
+
+    const ratings = row.ratings || {};
+    const values = arenaVoteDimensionDefs
+      .map((item) => ratings[item.id])
+      .filter((value) => Number.isFinite(value));
+
+    if (values.length) {
+      return Math.round(values.reduce((total, value) => total + value, 0) / values.length);
+    }
+
+    return null;
+  }
+
+  const value = row.ratings?.[dimension];
+  return Number.isFinite(value) ? value : null;
+}
+
+function arenaLeaderboardBattlesForRow(row, dimension) {
+  if (dimension === "overall") {
+    if (Number.isFinite(row.totalBattles)) {
+      return row.totalBattles;
+    }
+
+    return arenaVoteDimensionDefs.reduce((total, item) => total + (row.battles?.[item.id] || 0), 0);
+  }
+
+  return row.battles?.[dimension] || 0;
+}
+
+function arenaLeaderboardLikertForRow(row, dimension) {
+  if (dimension === "overall") {
+    return null;
+  }
+
+  const value = row.likertAverages?.[dimension];
+  return Number.isFinite(value) ? value : null;
+}
+
+function arenaLeaderboardPreparedRows(dimension) {
+  const leaderboard = arenaBattleData?.humanLeaderboard;
+  const sourceRows = Array.isArray(leaderboard?.rows) ? leaderboard.rows : [];
+  const rankedVotes = leaderboard?.rankedVotes || 0;
+
+  if (!rankedVotes) {
+    return {
+      rankedVotes,
+      hasVotes: false,
+      rows: []
+    };
+  }
+
+  const rows = sourceRows
+    .map((row) => ({
+      row,
+      rating: arenaLeaderboardRatingForRow(row, dimension),
+      battles: arenaLeaderboardBattlesForRow(row, dimension),
+      likert: arenaLeaderboardLikertForRow(row, dimension)
+    }))
+    .filter((item) => item.battles > 0 && Number.isFinite(item.rating))
+    .sort((left, right) => right.rating - left.rating || right.battles - left.battles || left.row.name.localeCompare(right.row.name))
+    .map((item, index) => ({
+      ...item,
+      rank: index + 1
+    }));
+
+  return {
+    rankedVotes,
+    hasVotes: true,
+    rows: rows.slice(0, 12)
+  };
+}
+
+async function refreshArenaHumanLeaderboardFromServer() {
+  try {
+    const response = await fetch("/api/arena-leaderboard", { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error(`Leaderboard request failed: ${response.status}`);
+    }
+
+    const payload = await response.json();
+
+    if (arenaBattleData && payload?.humanLeaderboard) {
+      arenaBattleData.humanLeaderboard = payload.humanLeaderboard;
+    }
+
+    return payload?.humanLeaderboard || null;
+  } catch (error) {
+    console.warn(error);
+    return null;
+  }
+}
+
+function arenaLeaderboardUpdatedLabel(iso) {
+  if (!iso) {
+    return activeLanguage() === "zh" ? "尚无投票" : "No votes yet";
+  }
+
+  const date = new Date(iso);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleString(activeLanguage() === "zh" ? "zh-CN" : "en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
+function updateArenaLeaderboardTotals(runtime) {
+  if (!runtime?.dom) {
+    return;
+  }
+
+  const leaderboard = arenaBattleData?.humanLeaderboard || {};
+
+  if (runtime.dom.totalVotes) {
+    runtime.dom.totalVotes.textContent = formatArenaNumber(leaderboard.votes || 0);
+  }
+
+  if (runtime.dom.rankedVotes) {
+    runtime.dom.rankedVotes.textContent = formatArenaNumber(leaderboard.rankedVotes || 0);
+  }
+}
+
+function updateArenaBattleContext(runtime) {
+  const mount = runtime?.dom?.battleContext;
+
+  if (!mount) {
+    return;
+  }
+
+  const battle = runtime?.voteBattle;
+  const sample = battle?.leftSample || battle?.rightSample;
+
+  if (!sample) {
+    mount.hidden = true;
+    mount.innerHTML = "";
+    return;
+  }
+
+  const prompt = arenaBattlePromptForRuntime(runtime);
+  const sameCaseLabel = activeLanguage() === "zh" ? "同一输入 · 盲测对局" : "Same input · blind battle";
+
+  mount.hidden = false;
+  mount.innerHTML = `
+    <section class="arena-battle-context" aria-label="${escapeAttr(arenaBattleText("battleSample"))}">
+      <div class="arena-battle-context-head">
+        <div class="arena-battle-context-copy">
+          <p class="arena-battle-context-kicker">${escapeHtml(sameCaseLabel)}</p>
+          <h2>${escapeHtml(arenaBattleText("battleSample"))}</h2>
+        </div>
+        <div class="arena-battle-context-tags">
+          ${sample.suite ? `<span>${escapeHtml(sample.suite)}</span>` : ""}
+          ${sample.sampleId ? `<span>${escapeHtml(sample.sampleId)}</span>` : ""}
+        </div>
+      </div>
+      ${prompt ? `<p class="arena-battle-context-prompt">${escapeHtml(prompt)}</p>` : ""}
+    </section>
+  `;
+}
+
+async function syncArenaLeaderboardFromServer(runtime) {
+  const leaderboard = await refreshArenaHumanLeaderboardFromServer();
+
+  if (runtime?.dom) {
+    updateArenaHumanLeaderboard(runtime);
+    updateArenaLeaderboardTotals(runtime);
+  }
+
+  return leaderboard;
+}
+
+function stopArenaLeaderboardPolling() {
+  if (arenaLeaderboardPollHandle) {
+    window.clearInterval(arenaLeaderboardPollHandle);
+    arenaLeaderboardPollHandle = 0;
+  }
+}
+
+function bindArenaLeaderboardLiveRefresh() {
+  if (arenaLeaderboardFocusBound) {
+    return;
+  }
+
+  arenaLeaderboardFocusBound = true;
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && window.location.pathname.startsWith("/arena") && arenaBattleRuntime?.dom) {
+      syncArenaLeaderboardFromServer(arenaBattleRuntime);
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    if (window.location.pathname.startsWith("/arena") && arenaBattleRuntime?.dom) {
+      syncArenaLeaderboardFromServer(arenaBattleRuntime);
+    }
+  });
+}
+
+function startArenaLeaderboardPolling(runtime) {
+  stopArenaLeaderboardPolling();
+  bindArenaLeaderboardLiveRefresh();
+
+  arenaLeaderboardPollHandle = window.setInterval(() => {
+    if (!window.location.pathname.startsWith("/arena") || !runtime?.dom) {
+      stopArenaLeaderboardPolling();
+      return;
+    }
+
+    syncArenaLeaderboardFromServer(runtime);
+  }, arenaLeaderboardPollMs);
+}
+
+function arenaHumanLeaderboardInnerMarkup() {
+  const leaderboard = arenaBattleData?.humanLeaderboard;
+  const dimension = arenaBattleRuntime?.voteDimension || "overall";
+  const prepared = arenaLeaderboardPreparedRows(dimension);
+  const battle = arenaBattleRuntime?.voteBattle;
+  const highlightIds = battle?.revealed
+    ? new Set([battle.leftModelId, battle.rightModelId].filter(Boolean))
+    : new Set();
+  const showLikert = dimension !== "overall";
+  const totalVotes = leaderboard?.votes || 0;
+  const updatedLabel = arenaLeaderboardUpdatedLabel(leaderboard?.generatedAt || leaderboard?.updatedAt || "");
+
+  return `
+    <header>
+      <div>
+        <h3>${escapeHtml(arenaBattleText("humanLeaderboard"))}</h3>
+        <p>
+          ${escapeHtml(arenaVoteDimensionLabel(dimension))}
+          · ${escapeHtml(arenaBattleText("rankedVotes"))}: ${escapeHtml(formatArenaNumber(prepared.rankedVotes))}
+          · ${escapeHtml(arenaBattleText("leaderboardTotalVotes"))}: ${escapeHtml(formatArenaNumber(totalVotes))}
+        </p>
+        <p class="arena-leaderboard-meta">
+          <span class="arena-leaderboard-live">${escapeHtml(arenaBattleText("leaderboardLive"))}</span>
+          ${escapeHtml(arenaBattleText("leaderboardLastUpdated"))}: ${escapeHtml(updatedLabel)}
+          <button type="button" data-arena-leaderboard-refresh>${escapeHtml(arenaBattleText("leaderboardRefresh"))}</button>
+        </p>
+      </div>
+      <label class="arena-leaderboard-dimension-field">
+        <span>${escapeHtml(arenaBattleText("leaderboardDimension"))}</span>
+        <select data-arena-leaderboard-dimension>${buildArenaVoteDimensionOptions(dimension)}</select>
+      </label>
+    </header>
+    ${prepared.hasVotes
+      ? prepared.rows.length
+        ? `
+      <div class="arena-human-leaderboard-table${showLikert ? "" : " is-overall"}" role="table" aria-label="${escapeAttr(arenaVoteDimensionLabel(dimension))}">
+        <div class="arena-human-leaderboard-head" role="row">
+          <span role="columnheader">#</span>
+          <span role="columnheader">${escapeHtml(activeLanguage() === "zh" ? "模型" : "Model")}</span>
+          <span role="columnheader">${escapeHtml(arenaBattleText("leaderboardElo"))}</span>
+          <span role="columnheader">${escapeHtml(arenaBattleText("leaderboardBattles"))}</span>
+          ${showLikert ? `<span role="columnheader">${escapeHtml(arenaBattleText("leaderboardLikertAvg"))}</span>` : ""}
+        </div>
+        <ol>
+          ${prepared.rows
+            .map(({ row, rank, rating, battles, likert }) => `
+            <li class="${highlightIds.has(row.modelId) ? "is-battle-model" : ""}" role="row">
+              <span role="cell">${escapeHtml(String(rank))}</span>
+              <strong role="cell" title="${escapeAttr(row.name)}">
+                ${escapeHtml(arenaDisplayModelName({ id: row.modelId, name: row.name }, row.modelId))}
+                ${highlightIds.has(row.modelId) ? `<small>${escapeHtml(arenaBattleText("leaderboardInBattle"))}</small>` : ""}
+              </strong>
+              <em role="cell">${escapeHtml(String(rating))}</em>
+              <small role="cell">${escapeHtml(String(battles))}</small>
+              ${showLikert ? `<span class="arena-human-likert" role="cell">${likert === null ? "—" : escapeHtml(String(likert))}</span>` : ""}
+            </li>
+          `)
+            .join("")}
+        </ol>
+      </div>`
+        : `<p class="arena-human-empty">${escapeHtml(arenaBattleText("leaderboardNoDimensionData"))}</p>`
+      : `
+      <p class="arena-human-empty">${escapeHtml(arenaBattleText("noVotes"))}</p>
+      <p class="arena-human-hint">${escapeHtml(arenaBattleText("leaderboardEmptyHint"))}</p>`}
+  `;
+}
+
+function arenaHumanLeaderboardMarkup() {
+  return `
+    <section class="arena-human-leaderboard" aria-label="${escapeAttr(arenaBattleText("humanLeaderboard"))}">
+      ${arenaHumanLeaderboardInnerMarkup()}
+    </section>
+  `;
+}
+
+function updateArenaHumanLeaderboard(runtime) {
+  if (runtime?.dom?.humanLeaderboard) {
+    runtime.dom.humanLeaderboard.innerHTML = arenaHumanLeaderboardInnerMarkup();
+  }
+
+  if (runtime?.dom?.leader) {
+    runtime.dom.leader.textContent = arenaLeaderboardDimensionValue(runtime);
+  }
+}
+
+function arenaBattlePromptForRuntime(runtime) {
+  const battle = runtime?.voteBattle;
+
+  if (!battle) {
+    return "";
+  }
+
+  return battle.leftSample?.prompt || battle.rightSample?.prompt || "";
 }
 
 function arenaBattleModelById(id) {
   return arenaBattleModels.find((item) => item.id === id) || arenaBattleModels[0] || arenaBattleFallbackModels[0];
+}
+
+function arenaBattleModelMaybeById(id) {
+  return arenaBattleModels.find((item) => item.id === id) || null;
 }
 
 function arenaBattleScenarioById(id) {
@@ -5018,6 +8656,72 @@ function writeArenaBattleConfig(runtime) {
   }
 }
 
+function compactArenaBattleSample(sample) {
+  if (!sample) {
+    return null;
+  }
+
+  return {
+    sampleId: sample.sampleId || "",
+    suite: sample.suite || "",
+    mediaKind: sample.mediaKind || "",
+    mediaUrl: sample.mediaUrl || "",
+    prompt: sample.prompt || ""
+  };
+}
+
+function compactArenaVoteBattle(battle) {
+  if (!battle?.leftModelId || !battle?.rightModelId) {
+    return null;
+  }
+
+  return {
+    savedAt: new Date().toISOString(),
+    leftModelId: battle.leftModelId,
+    rightModelId: battle.rightModelId,
+    leftSample: compactArenaBattleSample(battle.leftSample),
+    rightSample: compactArenaBattleSample(battle.rightSample),
+    sharedSampleId: battle.sharedSampleId || "",
+    caseKey: battle.caseKey || "",
+    suite: battle.suite || battle.leftSample?.suite || battle.rightSample?.suite || ""
+  };
+}
+
+function readArenaPreviousBattleFromStorage() {
+  try {
+    const stored = window.localStorage.getItem(arenaPreviousBattleStorageKey);
+    return stored ? JSON.parse(stored) : null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function writeArenaPreviousBattle(battle) {
+  const previousBattle = compactArenaVoteBattle(battle);
+
+  if (!previousBattle) {
+    return null;
+  }
+
+  try {
+    window.localStorage.setItem(arenaPreviousBattleStorageKey, JSON.stringify(previousBattle));
+  } catch (_error) {
+    // no storage available, keep the in-memory copy only
+  }
+
+  return previousBattle;
+}
+
+function rememberArenaPreviousBattle(runtime) {
+  const previousBattle = writeArenaPreviousBattle(runtime?.voteBattle);
+
+  if (previousBattle && runtime) {
+    runtime.previousVoteBattle = previousBattle;
+  }
+
+  return previousBattle;
+}
+
 function getArenaBattleRuntime() {
   if (arenaBattleRuntime) {
     return arenaBattleRuntime;
@@ -5040,8 +8744,12 @@ function getArenaBattleRuntime() {
     cumulativeLeft: 0,
     cumulativeRight: 0,
     rounds: [],
-    voteDimension: saved.voteDimension || "overall",
+    voteDimension: saved.voteDimension === "overall" || arenaVoteDimensionById.has(saved.voteDimension)
+      ? saved.voteDimension
+      : "overall",
+    dimensionScores: createArenaDimensionScores(),
     voteBattle: null,
+    previousVoteBattle: readArenaPreviousBattleFromStorage(),
     voteStatus: "",
     frameHandle: 0,
     autoNextHandle: 0,
@@ -5065,6 +8773,8 @@ function stopArenaBattleRuntime() {
     runtime.frameHandle = 0;
   }
 
+  stopArenaLeaderboardPolling();
+
   runtime.phase = "ready";
   runtime.currentRound = 1;
   runtime.fighters = null;
@@ -5080,7 +8790,7 @@ function buildArenaModelOptions() {
             ? ` · ${formatArenaNumber(model.declaredRecords)} records`
             : "";
 
-        return `<option value="${escapeAttr(model.id)}">${escapeHtml(model.name)} (${escapeHtml(model.family || model.backendType || "model")}${escapeHtml(coverage)})</option>`;
+        return `<option value="${escapeAttr(model.id)}">${escapeHtml(arenaDisplayModelName(model))} (${escapeHtml(model.family || model.backendType || "model")}${escapeHtml(coverage)})</option>`;
       }
     )
     .join("");
@@ -5105,142 +8815,40 @@ function buildArenaDifficultyOptions() {
 }
 
 function buildArenaVoteDimensionOptions(selectedId) {
-  return arenaVoteDimensionDefs
-    .map((dimension) => {
-      const selected = dimension.id === selectedId ? " selected" : "";
-      return `<option value="${escapeAttr(dimension.id)}"${selected}>${escapeHtml(arenaVoteDimensionLabel(dimension))}</option>`;
+  const language = activeLanguage();
+  const overall = arenaLeaderboardDimensionDefs.find((dimension) => dimension.id === "overall");
+  const overallSelected = selectedId === "overall" ? " selected" : "";
+  const overallOption = `<option value="overall"${overallSelected}>${escapeHtml(language === "zh" ? overall.labelZh : overall.labelEn)}</option>`;
+
+  return overallOption + arenaDimensionGroups
+    .map((group) => {
+      const options = group.dimensions
+        .map((dimension) => {
+          const selected = dimension.id === selectedId ? " selected" : "";
+          return `<option value="${escapeAttr(dimension.id)}"${selected}>${escapeHtml(arenaDimensionLabel(dimension, language))}</option>`;
+        })
+        .join("");
+
+      return `<optgroup label="${escapeAttr(arenaDimensionGroupLabel(group, language))}">${options}</optgroup>`;
     })
     .join("");
 }
 
-function arenaVotePanelMarkup(runtime) {
-  return `
-    <section class="arena-vote-panel" aria-label="${escapeAttr(arenaBattleText("rankedVoting"))}">
-      <div>
-        <h2>${escapeHtml(arenaBattleText("rankedVoting"))}</h2>
-        <p>${escapeHtml(arenaBattleText("rankedVotingBody"))}</p>
-      </div>
-      <label>
-        <span>${escapeHtml(arenaBattleText("voteDimension"))}</span>
-        <select data-arena-vote-dimension>${buildArenaVoteDimensionOptions(runtime.voteDimension)}</select>
-      </label>
-      <button type="button" data-arena-random-battle>${escapeHtml(arenaBattleText("randomBattle"))}</button>
-      <div class="arena-vote-actions">
-        <button type="button" data-arena-vote="left">${escapeHtml(arenaBattleText("preferLeft"))}</button>
-        <button type="button" data-arena-vote="tie">${escapeHtml(arenaBattleText("hardToChoose"))}</button>
-        <button type="button" data-arena-vote="right">${escapeHtml(arenaBattleText("preferRight"))}</button>
-      </div>
-      <p class="arena-vote-status" data-arena-vote-status>${escapeHtml(runtime.voteStatus || arenaBattleText("blindHidden"))}</p>
-    </section>
-  `;
-}
-
-function arenaHumanLeaderboardMarkup() {
-  const leaderboard = arenaBattleData?.humanLeaderboard;
-  const rows = Array.isArray(leaderboard?.rows) ? leaderboard.rows.slice(0, 8) : [];
-  const dimension = arenaBattleRuntime?.voteDimension || "overall";
-
-  return `
-    <section class="arena-human-leaderboard" aria-label="${escapeAttr(arenaBattleText("humanLeaderboard"))}">
-      <header>
-        <div>
-          <h3>${escapeHtml(arenaBattleText("humanLeaderboard"))}</h3>
-          <p>${escapeHtml(arenaVoteDimensionLabel(dimension))} · ${escapeHtml(arenaBattleText("rankedVotes"))}: ${escapeHtml(formatArenaNumber(leaderboard?.rankedVotes || 0))}</p>
-        </div>
-      </header>
-      <ol>
-        ${rows.length
-          ? rows
-            .map((row) => `
-              <li>
-                <span>${escapeHtml(String(row.rank))}</span>
-                <strong>${escapeHtml(row.name)}</strong>
-                <em>${escapeHtml(String(row.ratings?.[dimension] || 1500))}</em>
-                <small>${escapeHtml(String(row.battles?.[dimension] || 0))} battles</small>
-              </li>
-            `)
-            .join("")
-          : `<li class="arena-human-empty">${escapeHtml(arenaBattleText("noVotes"))}</li>`}
-      </ol>
-    </section>
-  `;
-}
-
-function updateArenaHumanLeaderboard(runtime) {
-  if (runtime?.dom?.humanLeaderboard) {
-    runtime.dom.humanLeaderboard.innerHTML = arenaHumanLeaderboardMarkup();
-  }
-}
-
 function renderArenaBattleContenderMarkup(side) {
   return `
-    <article class="arena-contender" data-arena-contender="${escapeAttr(side)}">
+    <article class="arena-contender arena-contender--${escapeAttr(side)}" data-arena-contender="${escapeAttr(side)}">
+      <div class="arena-contender-accent" aria-hidden="true"></div>
       <header class="arena-contender-head">
-        <span>${escapeHtml(arenaVoteSideLabel(side))}</span>
+        <div class="arena-contender-label-wrap">
+          <span class="arena-contender-side">${escapeHtml(arenaVoteSideLabel(side))}</span>
+          <p class="arena-model-name" data-arena-model-name="${escapeAttr(side)}">${escapeHtml(arenaBattleText("blindHidden"))}</p>
+        </div>
+        <span class="arena-contender-badge" data-arena-contender-badge="${escapeAttr(side)}">${escapeHtml(arenaBattleText("blindHidden"))}</span>
       </header>
-      <p class="arena-model-name" data-arena-model-name="${escapeAttr(side)}">${escapeHtml(arenaVoteSideLabel(side))}</p>
       <div class="arena-model-meta" data-arena-model-meta="${escapeAttr(side)}"></div>
       <div class="arena-preview" data-arena-preview="${escapeAttr(side)}"></div>
     </article>
   `;
-}
-
-function arenaDataStripMarkup() {
-  const isZh = activeLanguage() === "zh";
-
-  if (arenaBattleDataStatus === "failed") {
-    return `
-      <div class="arena-data-state is-warning">
-        <strong>${escapeHtml(arenaBattleText("dataFailed"))}</strong>
-        <span>${escapeHtml(isZh ? "检查 /api/arena-battle 或后端日志。" : "Check /api/arena-battle or the local server log.")}</span>
-      </div>
-    `;
-  }
-
-  if (arenaBattleDataStatus !== "loaded" || !arenaBattleData) {
-    return `
-      <div class="arena-data-state">
-        <strong>${escapeHtml(arenaBattleText("loadingData"))}</strong>
-        <span>${escapeHtml(isZh ? "来源：config/models 与 artifacts/predictions" : "Source: config/models and artifacts/predictions")}</span>
-      </div>
-    `;
-  }
-
-  const summary = arenaBattleData.summary || {};
-  const verifiedPreviews = arenaBattleModels.reduce((total, model) => {
-    return total + (Array.isArray(model.samples) ? model.samples.length : 0);
-  }, 0);
-  const stats = [
-    [arenaBattleText("integratedModels"), summary.integratedModels],
-    [arenaBattleText("predictionRuns"), summary.predictionRuns],
-    [arenaBattleText("declaredRecords"), summary.declaredRecords],
-    [arenaBattleText("verifiedPreviews"), verifiedPreviews]
-  ];
-
-  return `
-    <div class="arena-data-state is-ready">
-      <strong>${escapeHtml(arenaBattleText("dataReady"))}</strong>
-      <span>${escapeHtml(arenaBattleData.source?.basis || "")}</span>
-    </div>
-    <div class="arena-data-stats">
-      ${stats
-        .map(
-          ([label, value]) => `
-            <article>
-              <span>${escapeHtml(label)}</span>
-              <strong>${escapeHtml(formatArenaNumber(value))}</strong>
-            </article>
-          `
-        )
-        .join("")}
-    </div>
-  `;
-}
-
-function updateArenaDataStrip(runtime) {
-  if (runtime?.dom?.dataStrip) {
-    runtime.dom.dataStrip.innerHTML = arenaDataStripMarkup();
-  }
 }
 
 function refreshArenaBattleControls(runtime) {
@@ -5267,11 +8875,6 @@ function refreshArenaBattleControls(runtime) {
   if (runtime.dom.roundsSelect) {
     runtime.dom.roundsSelect.value = String(runtime.totalRounds);
   }
-  if (runtime.dom.voteDimensionSelect) {
-    runtime.dom.voteDimensionSelect.innerHTML = buildArenaVoteDimensionOptions(runtime.voteDimension);
-    runtime.dom.voteDimensionSelect.value = runtime.voteDimension;
-  }
-  updateArenaDataStrip(runtime);
   renderArenaBattleState(runtime);
 }
 
@@ -5283,7 +8886,69 @@ function arenaModelsWithSamples() {
   return arenaBattleModels.filter((model) => Array.isArray(model.samples) && model.samples.length);
 }
 
-function createArenaRandomVoteBattle(runtime) {
+function applyArenaRandomVoteBattle(runtime, battle) {
+  if (!battle?.leftModelId || !battle?.rightModelId || !battle.leftSample || !battle.rightSample) {
+    return false;
+  }
+
+  const leftSuite = battle.leftSample.suite || battle.suite || "";
+  const rightSuite = battle.rightSample.suite || battle.suite || "";
+  const sharedSampleId = battle.leftSample.sampleId && battle.leftSample.sampleId === battle.rightSample.sampleId
+    ? battle.leftSample.sampleId
+    : "";
+
+  if (!sharedSampleId || leftSuite !== rightSuite) {
+    return false;
+  }
+
+  rememberArenaPreviousBattle(runtime);
+
+  runtime.voteBattle = {
+    ranked: battle.ranked !== false,
+    revealed: false,
+    voted: false,
+    leftModelId: battle.leftModelId,
+    rightModelId: battle.rightModelId,
+    leftSample: battle.leftSample,
+    rightSample: battle.rightSample,
+    sharedSampleId,
+    caseKey: battle.caseKey || `${leftSuite}::${sharedSampleId}`,
+    sameCase: true,
+    suite: leftSuite
+  };
+  runtime.modelLeftId = battle.leftModelId;
+  runtime.modelRightId = battle.rightModelId;
+  runtime.scenarioId = runtime.voteBattle.suite || runtime.scenarioId;
+  runtime.phase = "ready";
+  runtime.currentRound = 1;
+  runtime.fighters = null;
+  runtime.cumulativeLeft = 0;
+  runtime.cumulativeRight = 0;
+  runtime.rounds = [];
+  runtime.voteStatus = arenaBattleText("blindHidden");
+  resetArenaDimensionScores(runtime);
+
+  if (runtime.dom) {
+    if (runtime.dom.modelLeftSelect) {
+      runtime.dom.modelLeftSelect.value = runtime.modelLeftId;
+    }
+    if (runtime.dom.modelRightSelect) {
+      runtime.dom.modelRightSelect.value = runtime.modelRightId;
+    }
+    if (runtime.dom.scenarioSelect && arenaBattleScenarioById(runtime.scenarioId)) {
+      runtime.dom.scenarioSelect.value = runtime.scenarioId;
+    }
+  }
+
+  writeArenaBattleConfig(runtime);
+  refreshArenaScorecard(runtime);
+  updateArenaPreviousBattlePanel(runtime);
+  updateArenaRevealPanel(runtime);
+  renderArenaBattleState(runtime);
+  return true;
+}
+
+async function createArenaRandomVoteBattle(runtime) {
   if (runtime.autoNextHandle) {
     window.clearTimeout(runtime.autoNextHandle);
     runtime.autoNextHandle = 0;
@@ -5295,6 +8960,27 @@ function createArenaRandomVoteBattle(runtime) {
     runtime.frameHandle = 0;
   }
 
+  runtime.voteStatus = arenaBattleText("loadingData");
+  renderArenaBattleState(runtime);
+
+  try {
+    const response = await fetch("/api/arena-random-battle");
+
+    if (response.ok) {
+      const payload = await response.json();
+
+      if (payload.ok && applyArenaRandomVoteBattle(runtime, payload.battle)) {
+        return;
+      }
+    }
+  } catch (error) {
+    console.warn(error);
+  }
+
+  createArenaRandomVoteBattleFromLocalSamples(runtime);
+}
+
+function createArenaRandomVoteBattleFromLocalSamples(runtime) {
   const entries = [];
 
   arenaModelsWithSamples().forEach((model) => {
@@ -5333,25 +9019,7 @@ function createArenaRandomVoteBattle(runtime) {
     }
   });
 
-  let pair = sameInputPairs.length ? arenaRandomItem(sameInputPairs) : null;
-
-  if (!pair && entries.length >= 2) {
-    const bySuite = new Map();
-    entries.forEach((entry) => {
-      const suite = entry.sample.suite || "mixed";
-      if (!bySuite.has(suite)) {
-        bySuite.set(suite, []);
-      }
-      bySuite.get(suite).push(entry);
-    });
-
-    const groups = Array.from(bySuite.values()).filter((group) => new Set(group.map((entry) => entry.model.id)).size >= 2);
-    const group = groups.length ? arenaRandomItem(groups) : entries;
-    const first = arenaRandomItem(group);
-    const candidates = group.filter((entry) => entry.model.id !== first.model.id);
-    const second = candidates.length ? arenaRandomItem(candidates) : arenaRandomItem(entries.filter((entry) => entry.model.id !== first.model.id));
-    pair = [first, second];
-  }
+  const pair = sameInputPairs.length ? arenaRandomItem(sameInputPairs) : null;
 
   if (!pair) {
     runtime.voteBattle = null;
@@ -5366,42 +9034,17 @@ function createArenaRandomVoteBattle(runtime) {
   const left = flip ? pair[1] : pair[0];
   const right = flip ? pair[0] : pair[1];
 
-  runtime.voteBattle = {
+  applyArenaRandomVoteBattle(runtime, {
     ranked: true,
-    revealed: false,
-    voted: false,
     leftModelId: left.model.id,
     rightModelId: right.model.id,
     leftSample: left.sample,
     rightSample: right.sample,
-    sharedSampleId: left.sample.sampleId === right.sample.sampleId ? left.sample.sampleId : "",
-    suite: left.sample.suite || right.sample.suite || ""
-  };
-  runtime.modelLeftId = left.model.id;
-  runtime.modelRightId = right.model.id;
-  runtime.scenarioId = runtime.voteBattle.suite || runtime.scenarioId;
-  runtime.phase = "ready";
-  runtime.currentRound = 1;
-  runtime.fighters = null;
-  runtime.cumulativeLeft = 0;
-  runtime.cumulativeRight = 0;
-  runtime.rounds = [];
-  runtime.voteStatus = arenaBattleText("blindHidden");
-
-  if (runtime.dom) {
-    if (runtime.dom.modelLeftSelect) {
-      runtime.dom.modelLeftSelect.value = runtime.modelLeftId;
-    }
-    if (runtime.dom.modelRightSelect) {
-      runtime.dom.modelRightSelect.value = runtime.modelRightId;
-    }
-    if (runtime.dom.scenarioSelect && arenaBattleScenarioById(runtime.scenarioId)) {
-      runtime.dom.scenarioSelect.value = runtime.scenarioId;
-    }
-  }
-
-  writeArenaBattleConfig(runtime);
-  renderArenaBattleState(runtime);
+    sharedSampleId: left.sample.sampleId,
+    caseKey: `${left.sample.suite || ""}::${left.sample.sampleId}`,
+    sameCase: true,
+    suite: left.sample.suite || ""
+  });
 }
 
 function arenaVoteBattleSampleFor(side, model) {
@@ -5430,54 +9073,191 @@ function arenaVoteSideLabel(side) {
   return side === "left" ? "Model 1" : "Model 2";
 }
 
-function submitArenaVote(runtime, winner) {
+function arenaBattleSideLikertAverage(runtime, side) {
+  const prompt = arenaBattlePromptForRuntime(runtime);
+  let total = 0;
+  let count = 0;
+
+  arenaVoteDimensionDefs.forEach((dimension) => {
+    if (!arenaDimensionApplies(dimension.id, prompt)) {
+      return;
+    }
+
+    const entry = arenaDimensionScoreEntry(runtime, dimension.id);
+    const score = side === "left" ? entry.left : entry.right;
+
+    if (Number.isFinite(score)) {
+      total += score;
+      count += 1;
+    }
+  });
+
+  return count ? +(total / count).toFixed(1) : null;
+}
+
+function arenaBattleRevealStatusMessage(runtime) {
+  const battle = runtime?.voteBattle;
+
+  if (!battle?.revealed) {
+    return arenaBattleText("scorecardSaved");
+  }
+
+  const left = arenaDisplayModelName(arenaBattleModelById(battle.leftModelId));
+  const right = arenaDisplayModelName(arenaBattleModelById(battle.rightModelId));
+
+  return arenaBattleText("revealSavedAs")
+    .replace("{left}", left)
+    .replace("{right}", right);
+}
+
+function arenaRevealSideCardMarkup(runtime, side) {
   const battle = runtime.voteBattle;
 
-  if (!battle || battle.voted) {
+  if (!battle?.revealed) {
+    return "";
+  }
+
+  const modelId = side === "left" ? battle.leftModelId : battle.rightModelId;
+  const model = arenaBattleModelById(modelId);
+  const sample = side === "left" ? battle.leftSample : battle.rightSample;
+  const avg = arenaBattleSideLikertAverage(runtime, side);
+
+  return `
+    <article class="arena-reveal-card" data-arena-reveal-side="${escapeAttr(side)}">
+      <header>
+        <span>${escapeHtml(arenaBattleText("revealBlindLabel"))}</span>
+        <strong>${escapeHtml(arenaVoteSideLabel(side))}</strong>
+      </header>
+      <p class="arena-reveal-model-name">${escapeHtml(arenaDisplayModelName(model))}</p>
+      <dl>
+        <div>
+          <dt>${escapeHtml(arenaBattleText("revealModel"))}</dt>
+          <dd><code>${escapeHtml(model.id)}</code></dd>
+        </div>
+        <div>
+          <dt>${escapeHtml(arenaBattleText("revealFamily"))}</dt>
+          <dd>${escapeHtml(model.family || model.backendType || "n/a")}</dd>
+        </div>
+        ${sample?.sampleId
+          ? `<div>
+              <dt>${escapeHtml(arenaBattleText("revealSampleId"))}</dt>
+              <dd>${escapeHtml(sample.sampleId)}</dd>
+            </div>`
+          : ""}
+        ${avg !== null
+          ? `<div>
+              <dt>${escapeHtml(arenaBattleText("revealMeanLikert"))}</dt>
+              <dd>${escapeHtml(String(avg))}</dd>
+            </div>`
+          : ""}
+      </dl>
+    </article>
+  `;
+}
+
+function arenaRevealPanelMarkup(runtime) {
+  const battle = runtime?.voteBattle;
+
+  if (!battle?.revealed) {
+    return "";
+  }
+
+  return `
+    <section class="arena-reveal-panel" aria-live="polite">
+      <header>
+        <h2>${escapeHtml(arenaBattleText("revealTitle"))}</h2>
+        <p>${escapeHtml(arenaBattleText("revealBody"))}</p>
+      </header>
+      <div class="arena-reveal-grid">
+        ${arenaRevealSideCardMarkup(runtime, "left")}
+        ${arenaRevealSideCardMarkup(runtime, "right")}
+      </div>
+    </section>
+  `;
+}
+
+function arenaPreviousBattleSideCardMarkup(battle, side) {
+  const modelId = side === "left" ? battle.leftModelId : battle.rightModelId;
+  const model = arenaBattleModelMaybeById(modelId);
+  const sample = side === "left" ? battle.leftSample : battle.rightSample;
+  const suite = sample?.suite || battle.suite || "";
+
+  return `
+    <article class="arena-reveal-card arena-previous-card" data-arena-previous-side="${escapeAttr(side)}">
+      <header>
+        <span>${escapeHtml(arenaBattleText("revealBlindLabel"))}</span>
+        <strong>${escapeHtml(arenaVoteSideLabel(side))}</strong>
+      </header>
+      <p class="arena-reveal-model-name">${escapeHtml(arenaDisplayModelName(model, modelId))}</p>
+      <dl>
+        <div>
+          <dt>${escapeHtml(arenaBattleText("revealModel"))}</dt>
+          <dd><code>${escapeHtml(modelId || "n/a")}</code></dd>
+        </div>
+        <div>
+          <dt>${escapeHtml(arenaBattleText("revealFamily"))}</dt>
+          <dd>${escapeHtml(model?.family || model?.backendType || "n/a")}</dd>
+        </div>
+        ${sample?.sampleId
+          ? `<div>
+              <dt>${escapeHtml(arenaBattleText("revealSampleId"))}</dt>
+              <dd>${escapeHtml(sample.sampleId)}</dd>
+            </div>`
+          : ""}
+        ${suite
+          ? `<div>
+              <dt>${escapeHtml(arenaBattleText("suites"))}</dt>
+              <dd>${escapeHtml(suite)}</dd>
+            </div>`
+          : ""}
+      </dl>
+    </article>
+  `;
+}
+
+function arenaPreviousBattlePanelMarkup(runtime) {
+  const battle = runtime?.previousVoteBattle || readArenaPreviousBattleFromStorage();
+
+  if (!battle?.leftModelId || !battle?.rightModelId) {
+    return "";
+  }
+
+  return `
+    <section class="arena-reveal-panel arena-previous-panel" aria-live="polite">
+      <header>
+        <h2>${escapeHtml(arenaBattleText("previousBattleTitle"))}</h2>
+        <p>${escapeHtml(arenaBattleText("previousBattleBody"))}</p>
+      </header>
+      <div class="arena-reveal-grid">
+        ${arenaPreviousBattleSideCardMarkup(battle, "left")}
+        ${arenaPreviousBattleSideCardMarkup(battle, "right")}
+      </div>
+    </section>
+  `;
+}
+
+function updateArenaPreviousBattlePanel(runtime) {
+  const panel = runtime?.dom?.previousPanel;
+
+  if (!panel) {
     return;
   }
 
-  battle.voted = true;
-  battle.revealed = true;
-  runtime.voteStatus = arenaBattleText("revealedAfterVote");
-  renderArenaBattleState(runtime);
+  const markup = arenaPreviousBattlePanelMarkup(runtime);
+  panel.innerHTML = markup;
+  panel.hidden = !markup;
+}
 
-  fetch("/api/arena-vote", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ranked: battle.ranked,
-      dimension: runtime.voteDimension,
-      winner,
-      leftModelId: battle.leftModelId,
-      rightModelId: battle.rightModelId,
-      leftSampleId: battle.leftSample?.sampleId || "",
-      rightSampleId: battle.rightSample?.sampleId || "",
-      sharedSampleId: battle.sharedSampleId,
-      suite: battle.suite,
-      battleMode: "random"
-    })
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`Vote failed: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then((payload) => {
-      if (arenaBattleData && payload.humanLeaderboard) {
-        arenaBattleData.humanLeaderboard = payload.humanLeaderboard;
-      }
-      runtime.voteStatus = arenaBattleText("voteSaved");
-      renderArenaBattleState(runtime);
-      updateArenaHumanLeaderboard(runtime);
-    })
-    .catch((error) => {
-      console.warn(error);
-      battle.voted = false;
-      runtime.voteStatus = arenaBattleText("voteFailed");
-      renderArenaBattleState(runtime);
-    });
+function updateArenaRevealPanel(runtime) {
+  const panel = runtime?.dom?.revealPanel;
+
+  if (!panel) {
+    return;
+  }
+
+  const markup = arenaRevealPanelMarkup(runtime);
+  panel.innerHTML = markup;
+  panel.hidden = !markup;
 }
 
 function arenaBattleSeedFor(runtime) {
@@ -5531,16 +9311,22 @@ function arenaModelSuiteText(model) {
   return suites.slice(0, 4).join(", ") || "n/a";
 }
 
-function renderArenaModelDetails(root, side, model) {
-  const metaNode = root.querySelector(`[data-arena-model-meta="${side}"]`);
-  const previewNode = root.querySelector(`[data-arena-preview="${side}"]`);
+function arenaBattleIsBlind(runtime = arenaBattleRuntime) {
+  return Boolean(runtime?.voteBattle && !runtime.voteBattle.revealed);
+}
+
+function renderArenaModelDetails(root, side, model, blindBattle = arenaBattleIsBlind()) {
+  const contender = root.querySelector(`[data-arena-contender="${side}"]`);
+
+  if (!contender) {
+    return;
+  }
+
+  const metaNode = contender.querySelector(`[data-arena-model-meta="${side}"]`);
+  const previewNode = contender.querySelector(`[data-arena-preview="${side}"]`);
   const battle = arenaBattleRuntime?.voteBattle;
   const battleSample = arenaVoteBattleSampleFor(side, model);
-  const isBattleModel = battle && (
-    (side === "left" && battle.leftModelId === model.id) ||
-    (side === "right" && battle.rightModelId === model.id)
-  );
-  const isBlind = !battle || (!battle.revealed && isBattleModel);
+  const isBlind = blindBattle;
   const sample = battleSample || (isBlind ? null : (Array.isArray(model.samples) ? model.samples[0] : null));
   const previewKey = sample
     ? `${isBlind ? side : model.id}:${sample.mediaUrl}:${isBlind ? "blind" : "revealed"}`
@@ -5564,6 +9350,11 @@ function renderArenaModelDetails(root, side, model) {
       : details.map((item) => `<span>${escapeHtml(item)}</span>`).join("");
   }
 
+  if (previewNode && isBlind !== (previewNode.dataset.previewBlind === "true")) {
+    previewNode.dataset.previewBlind = isBlind ? "true" : "false";
+    delete previewNode.dataset.previewKey;
+  }
+
   if (!previewNode || previewNode.dataset.previewKey === previewKey) {
     return;
   }
@@ -5575,17 +9366,21 @@ function renderArenaModelDetails(root, side, model) {
     return;
   }
 
-  const mediaLabel = isBlind ? arenaVoteSideLabel(side) : (sample.sampleId || model.name);
+  const displayName = arenaDisplayModelName(model);
+  const mediaLabel = isBlind ? arenaVoteSideLabel(side) : displayName;
   const media = sample.mediaKind === "image"
     ? `<img src="${escapeAttr(sample.mediaUrl)}" alt="${escapeAttr(mediaLabel)}" loading="lazy" />`
     : `<video src="${escapeAttr(sample.mediaUrl)}" muted loop playsinline preload="metadata"></video>`;
+  const sharedPrompt = arenaBattlePromptForRuntime(arenaBattleRuntime);
+  const showPromptInCaption = Boolean(sample.prompt && sample.prompt !== sharedPrompt);
 
   previewNode.innerHTML = `
     <div class="arena-preview-media">${media}</div>
-    <div class="arena-preview-caption">
-      <strong>${escapeHtml(sample.suite || "prediction")}</strong>
+    <div class="arena-preview-caption${isBlind ? "" : " is-revealed"}">
+      <strong>${escapeHtml(isBlind ? (sample.suite || "prediction") : displayName)}</strong>
+      ${isBlind ? "" : `<em>${escapeHtml(arenaVoteSideLabel(side))}</em>`}
       <span>${escapeHtml(sample.sampleId || sample.status || "sample")}</span>
-      ${sample.prompt ? `<p>${escapeHtml(sample.prompt)}</p>` : ""}
+      ${showPromptInCaption && sample.prompt ? `<p>${escapeHtml(sample.prompt)}</p>` : ""}
     </div>
   `;
 
@@ -5597,21 +9392,44 @@ function renderArenaModelDetails(root, side, model) {
   }
 }
 
-function renderArenaContender(root, side, fighter, modelId, progressFraction) {
-  const profile = arenaBattleModelById(modelId);
+function renderArenaContender(root, side, fighter, modelId, progressFraction, blindBattle = arenaBattleIsBlind()) {
   const voteBattle = arenaBattleRuntime?.voteBattle;
-  const isCurrentVoteModel = voteBattle &&
-    ((side === "left" && voteBattle.leftModelId === profile.id) || (side === "right" && voteBattle.rightModelId === profile.id));
-  const hiddenForVote = !voteBattle || (!voteBattle.revealed && isCurrentVoteModel);
-  const modelName = hiddenForVote ? arenaVoteSideLabel(side) : profile.name;
-  const modelNode = root.querySelector(`[data-arena-model-name="${side}"]`);
-  const roundScoreNode = root.querySelector(`[data-arena-round-score="${side}"]`);
+  const contender = root.querySelector(`[data-arena-contender="${side}"]`);
 
-  if (modelNode) {
-    modelNode.textContent = modelName;
+  if (!contender) {
+    return;
   }
 
-  renderArenaModelDetails(root, side, profile);
+  const battleModelId = side === "left"
+    ? (voteBattle?.leftModelId || modelId)
+    : (voteBattle?.rightModelId || modelId);
+  const profile = arenaBattleModelById(battleModelId);
+  const isCurrentVoteModel = voteBattle &&
+    ((side === "left" && voteBattle.leftModelId === profile.id) || (side === "right" && voteBattle.rightModelId === profile.id));
+  const hiddenForVote = blindBattle;
+  const modelNode = contender.querySelector(`[data-arena-model-name="${side}"]`);
+  const badgeNode = contender.querySelector(`[data-arena-contender-badge="${side}"]`);
+  const roundScoreNode = contender.querySelector(`[data-arena-round-score="${side}"]`);
+
+  if (modelNode) {
+    if (hiddenForVote) {
+      modelNode.textContent = activeLanguage() === "zh"
+        ? "观看下方生成结果后再打分"
+        : "Watch the rollout below, then score";
+    } else {
+      modelNode.innerHTML = `<strong>${escapeHtml(arenaDisplayModelName(profile))}</strong><span>${escapeHtml(profile.family || profile.backendType || "")}</span>`;
+    }
+  }
+
+  if (badgeNode) {
+    badgeNode.textContent = hiddenForVote
+      ? arenaBattleText("blindHidden")
+      : (profile.family || profile.backendType || arenaBattleText("revealModel"));
+  }
+
+  contender.classList.toggle("is-revealed", !hiddenForVote && isCurrentVoteModel);
+
+  renderArenaModelDetails(root, side, profile, blindBattle);
 
   if (!fighter) {
     if (roundScoreNode) {
@@ -5669,28 +9487,8 @@ function renderArenaContender(root, side, fighter, modelId, progressFraction) {
     progressText.textContent = `${progress}%`;
   }
 
-  const contender = root.querySelector(`[data-arena-contender="${side}"]`);
-  if (contender) {
-    contender.style.setProperty("--arena-color", hiddenForVote ? (side === "left" ? "#2f766f" : "#5d6a75") : profile.color);
-    contender.style.setProperty("--arena-accent", hiddenForVote ? (side === "left" ? "#7ec9bc" : "#c0a575") : profile.accent);
-  }
-}
-
-function arenaVoteBattleSummaryLabel(runtime) {
-  const battle = runtime.voteBattle;
-
-  if (!battle) {
-    return arenaBattleDataStatus === "loading"
-      ? arenaBattleText("loadingData")
-      : arenaBattleText("statusReady");
-  }
-
-  const parts = [
-    battle.sharedSampleId || battle.leftSample?.sampleId || battle.rightSample?.sampleId || "",
-    battle.suite || ""
-  ].filter(Boolean);
-
-  return `${arenaBattleText("battleSample")}: ${parts.length ? parts.join(" · ") : "random pair"}`;
+  contender.style.setProperty("--arena-color", hiddenForVote ? (side === "left" ? "#2f766f" : "#5d6a75") : profile.color);
+  contender.style.setProperty("--arena-accent", hiddenForVote ? (side === "left" ? "#7ec9bc" : "#c0a575") : profile.accent);
 }
 
 function renderArenaBattleState(runtime) {
@@ -5706,49 +9504,34 @@ function renderArenaBattleState(runtime) {
   const voteStatus = runtime.voteStatus ||
     (runtime.voteBattle
       ? runtime.voteBattle.revealed
-        ? arenaBattleText("revealedAfterVote")
+        ? arenaBattleRevealStatusMessage(runtime)
         : arenaBattleText("blindHidden")
       : arenaBattleDataStatus === "loading"
         ? arenaBattleText("loadingData")
         : arenaBattleText("statusReady"));
 
-  if (runtime.dom.roundLabel) {
-    runtime.dom.roundLabel.textContent = arenaVoteDimensionLabel(runtime.voteDimension);
-  }
-  if (runtime.dom.status) {
-    runtime.dom.status.textContent = voteStatus;
-  }
-  if (runtime.dom.scenarioLabel) {
-    runtime.dom.scenarioLabel.textContent = arenaVoteBattleSummaryLabel(runtime);
-  }
-  if (runtime.dom.totalLeft) {
-    runtime.dom.totalLeft.textContent = formatArenaNumber(leaderboard.votes || 0);
-  }
-  if (runtime.dom.totalRight) {
-    runtime.dom.totalRight.textContent = formatArenaNumber(leaderboard.rankedVotes || 0);
-  }
+  updateArenaLeaderboardTotals(runtime);
 
   const progressFraction = renderSimulation && runtime.roundStartAt
     ? clamp((performance.now() - runtime.roundStartAt) / runtime.roundDurationMs, 0, 1)
     : 0;
+  const blindBattle = arenaBattleIsBlind(runtime);
 
-  renderArenaContender(root, "left", left, runtime.modelLeftId, progressFraction);
-  renderArenaContender(root, "right", right, runtime.modelRightId, progressFraction);
+  renderArenaContender(root, "left", left, runtime.voteBattle?.leftModelId || runtime.modelLeftId, progressFraction, blindBattle);
+  renderArenaContender(root, "right", right, runtime.voteBattle?.rightModelId || runtime.modelRightId, progressFraction, blindBattle);
 
   if (runtime.dom.leader) {
-    runtime.dom.leader.textContent = arenaVoteDimensionLabel(runtime.voteDimension);
+    runtime.dom.leader.textContent = arenaLeaderboardDimensionValue(runtime);
   }
 
   if (runtime.dom.voteStatus) {
     runtime.dom.voteStatus.textContent = voteStatus;
   }
 
-  if (Array.isArray(runtime.dom.voteButtons)) {
-    runtime.dom.voteButtons.forEach((button) => {
-      button.disabled = !runtime.voteBattle || runtime.voteBattle.voted;
-    });
-  }
-
+  updateArenaBattleContext(runtime);
+  updateArenaPreviousBattlePanel(runtime);
+  updateArenaRevealPanel(runtime);
+  updateArenaScorecardPanel(runtime);
   updateArenaHumanLeaderboard(runtime);
 }
 
@@ -5796,8 +9579,8 @@ function concludeArenaBattleRound(runtime) {
   runtime.rounds.unshift({
     round: runtime.currentRound,
     scenario,
-    left: { name: arenaBattleModelById(runtime.modelLeftId).name, score: leftScore },
-    right: { name: arenaBattleModelById(runtime.modelRightId).name, score: rightScore },
+    left: { name: arenaDisplayModelName(arenaBattleModelById(runtime.modelLeftId)), score: leftScore },
+    right: { name: arenaDisplayModelName(arenaBattleModelById(runtime.modelRightId)), score: rightScore },
     winner
   });
 
@@ -5927,70 +9710,86 @@ function renderArenaBattle() {
   const runtime = getArenaBattleRuntime();
   normalizeArenaRuntimeSelection(runtime);
 
-  document.body.className = "arena-page";
+  document.body.className = "home-page arena-page arena-page--robodojo";
+  setHomeMicroverseStylesheetEnabled(true);
   const battleTitle = localizedHomeText("arenaBattle");
-  const isZh = activeLanguage() === "zh";
 
   document.title = `${battleTitle} — ${siteTitle}`;
 
   app.innerHTML = `
-    ${shellHeader()}
+    ${shellHeader({ arena: true })}
     ${menuMarkup()}
-    <main class="arena-main" data-arena-page>
-      <section class="arena-hero arena-worktop">
-        <div>
-          <p class="arena-kicker">${escapeHtml(localizedHomeText("arenaBattleCategory"))}</p>
-          <h1 class="arena-title">${escapeHtml(battleTitle)}</h1>
-          <p class="arena-lede">${escapeHtml(isZh ? "基于 WorldArena 真实集成模型和本地 prediction 产物，随机生成双盲对局，用人类偏好投票更新多维 ELO 排名。" : "Random blind battles compare WorldArena-integrated model outputs from local prediction artifacts and update multi-dimensional human ELO rankings.")}</p>
-        </div>
-        <div class="arena-score-strip" aria-label="${escapeAttr(arenaBattleText("humanVotes"))}">
-          <span>${escapeHtml(arenaBattleText("humanVotes"))}</span>
-          <strong><b data-arena-total-left>0</b><em>/</em><b data-arena-total-right>0</b></strong>
-          <small>${escapeHtml(arenaBattleText("activeDimension"))}: <span data-arena-leader>${escapeHtml(arenaVoteDimensionLabel(runtime.voteDimension))}</span></small>
-        </div>
-      </section>
-      <section class="arena-data-strip" data-arena-data-strip>
-        ${arenaDataStripMarkup()}
-      </section>
-      ${arenaVotePanelMarkup(runtime)}
-      <section class="arena-console">
-        <section class="arena-duel-wrap">
-          <div class="arena-summary">
-            <p><span data-arena-status>${escapeHtml(arenaBattleText("statusReady"))}</span></p>
-            <p>${escapeHtml(arenaBattleText("activeDimension"))} <strong data-arena-round>${escapeHtml(arenaVoteDimensionLabel(runtime.voteDimension))}</strong></p>
-            <p data-arena-scenario-name></p>
+    ${shellSearchMarkup()}
+    <main class="home-main arena-main arena-page__shell" data-arena-page>
+      <section class="arena-page__heading">
+        <div class="arena-worktop">
+          <div class="arena-hero-copy">
+            <h1 class="arena-title">${escapeHtml(battleTitle)}</h1>
+            <p class="arena-lede arena-page__lead">${escapeHtml(localizedHomeText("arenaBattleBody"))}</p>
           </div>
-          <section class="arena-duel-scene" data-arena-duel>
-            <div class="arena-duel-panel">
-              ${renderArenaBattleContenderMarkup("left")}
+          <div class="arena-hero-stats" aria-label="${escapeAttr(arenaBattleText("humanVotes"))}">
+            <article class="arena-stat-card">
+              <span>${escapeHtml(arenaBattleText("leaderboardTotalVotes"))}</span>
+              <strong data-arena-total-votes>0</strong>
+            </article>
+            <article class="arena-stat-card">
+              <span>${escapeHtml(arenaBattleText("rankedVotes"))}</span>
+              <strong data-arena-ranked-votes>0</strong>
+            </article>
+            <article class="arena-stat-card arena-stat-card--muted">
+              <span>${escapeHtml(arenaBattleText("leaderboardDimension"))}</span>
+              <strong data-arena-leader>${escapeHtml(arenaLeaderboardDimensionValue(runtime))}</strong>
+            </article>
+          </div>
+        </div>
+      </section>
+      <div class="arena-stage">
+        <div data-arena-battle-context-mount hidden></div>
+        <section class="arena-console arena-console-videos">
+          <div class="arena-duel-wrap">
+            <div class="arena-duel-heading">
+              <h2>${escapeHtml(activeLanguage() === "zh" ? "观看生成结果，按维度打分" : "Watch both rollouts, then score by dimension")}</h2>
             </div>
-            <div class="arena-vs-pill" aria-hidden="true">VS</div>
-            <div class="arena-duel-panel">
-              ${renderArenaBattleContenderMarkup("right")}
-            </div>
-          </section>
-          <div data-arena-human-leaderboard>
-            ${arenaHumanLeaderboardMarkup()}
+            <section class="arena-duel-scene" data-arena-duel>
+              <div class="arena-duel-panel">
+                ${renderArenaBattleContenderMarkup("left")}
+              </div>
+              <div class="arena-vs-pill" aria-hidden="true">
+                <span class="arena-vs-pill-ring"></span>
+                <span class="arena-vs-pill-label">VS</span>
+              </div>
+              <div class="arena-duel-panel">
+                ${renderArenaBattleContenderMarkup("right")}
+              </div>
+            </section>
           </div>
         </section>
-      </section>
+        <div class="arena-reveal-panel-mount" data-arena-reveal-panel></div>
+        <div class="arena-previous-panel-mount" data-arena-previous-panel></div>
+        ${arenaScorecardPanelMarkup(runtime)}
+        <section class="arena-console arena-console-leaderboard">
+          <section class="arena-human-leaderboard" data-arena-human-leaderboard aria-label="${escapeAttr(arenaBattleText("humanLeaderboard"))}">
+            ${arenaHumanLeaderboardInnerMarkup()}
+          </section>
+        </section>
+      </div>
     </main>
   `;
 
   runtime.dom = {
     root: app,
-    status: document.querySelector("[data-arena-status]"),
-    roundLabel: document.querySelector("[data-arena-round]"),
-    totalLeft: document.querySelector("[data-arena-total-left]"),
-    totalRight: document.querySelector("[data-arena-total-right]"),
+    totalVotes: document.querySelector("[data-arena-total-votes]"),
+    rankedVotes: document.querySelector("[data-arena-ranked-votes]"),
     leader: document.querySelector("[data-arena-leader]"),
-    scenarioLabel: document.querySelector("[data-arena-scenario-name]"),
+    battleContext: document.querySelector("[data-arena-battle-context-mount]"),
     log: document.querySelector("[data-arena-log]"),
-    dataStrip: document.querySelector("[data-arena-data-strip]"),
-    voteDimensionSelect: document.querySelector("[data-arena-vote-dimension]"),
     randomBattleButton: document.querySelector("[data-arena-random-battle]"),
     voteStatus: document.querySelector("[data-arena-vote-status]"),
-    voteButtons: Array.from(document.querySelectorAll("[data-arena-vote]")),
+    scorecard: document.querySelector("[data-arena-scorecard]"),
+    scorecardProgress: document.querySelector("[data-arena-scorecard-progress]"),
+    submitScoresButton: document.querySelector("[data-arena-submit-scores]"),
+    revealPanel: document.querySelector("[data-arena-reveal-panel]"),
+    previousPanel: document.querySelector("[data-arena-previous-panel]"),
     humanLeaderboard: document.querySelector("[data-arena-human-leaderboard]")
   };
 
@@ -6011,12 +9810,17 @@ function renderArenaBattle() {
   }
 
   bindShellEvents();
+  bindHomeSearch();
   bindArenaBattleFrame();
   renderArenaBattleState(runtime);
-  ensureArenaBattleData().then(() => {
+  ensureArenaBattleData().then(async () => {
     if (window.location.pathname.startsWith("/arena") && runtime.dom) {
+      await syncArenaLeaderboardFromServer(runtime);
+      renderArenaBattleState(runtime);
+      startArenaLeaderboardPolling(runtime);
+
       if (runtime.phase === "running" || runtime.phase === "break") {
-        updateArenaDataStrip(runtime);
+        renderArenaBattleState(runtime);
       } else {
         refreshArenaBattleControls(runtime);
         if (!runtime.voteBattle) {
@@ -6055,21 +9859,46 @@ function bindArenaBattleFrame() {
     });
   });
 
-  runtime.dom.voteDimensionSelect?.addEventListener("change", () => {
-    runtime.voteDimension = runtime.dom.voteDimensionSelect.value;
-    writeArenaBattleConfig(runtime);
-    renderArenaBattleState(runtime);
-    updateArenaHumanLeaderboard(runtime);
-  });
-
   runtime.dom.randomBattleButton?.addEventListener("click", () => {
     createArenaRandomVoteBattle(runtime);
   });
 
-  runtime.dom.voteButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      submitArenaVote(runtime, button.dataset.arenaVote);
-    });
+  runtime.dom.submitScoresButton?.addEventListener("click", () => {
+    submitArenaScorecard(runtime);
+  });
+
+  runtime.dom.root?.addEventListener("change", (event) => {
+    const select = event.target.closest("[data-arena-leaderboard-dimension]");
+
+    if (!select || !runtime.dom.root.contains(select)) {
+      return;
+    }
+
+    runtime.voteDimension = select.value;
+    writeArenaBattleConfig(runtime);
+    updateArenaHumanLeaderboard(runtime);
+  });
+
+  runtime.dom.root?.addEventListener("click", (event) => {
+    const refreshButton = event.target.closest("[data-arena-leaderboard-refresh]");
+
+    if (refreshButton && runtime.dom.root.contains(refreshButton)) {
+      syncArenaLeaderboardFromServer(runtime);
+      return;
+    }
+
+    const button = event.target.closest("[data-arena-likert-dimension]");
+
+    if (!button || !runtime.dom.root.contains(button)) {
+      return;
+    }
+
+    setArenaDimensionScore(
+      runtime,
+      button.dataset.arenaLikertDimension,
+      button.dataset.arenaLikertSide,
+      button.dataset.arenaLikertValue
+    );
   });
 
   renderArenaBattleState(runtime);
@@ -6081,7 +9910,7 @@ function homeArenaBattleMarkup() {
       {
         kicker: "真实注册表",
         title: "集成模型",
-        body: "模型选项来自 WorldArena/config/models，保留 family、suite、控制信号和产物类型。"
+        body: "模型选项来自 WorldAtlas Arena/config/models，保留 family、suite、控制信号和产物类型。"
       },
       {
         kicker: "预测产物",
@@ -6089,16 +9918,16 @@ function homeArenaBattleMarkup() {
         body: "读取 artifacts/predictions 中的 generation records、batch specs 和可播放样例。"
       },
       {
-        kicker: "人类偏好",
-        title: "多维 ELO",
-        body: "随机盲测投票会按综合偏好、视觉质量、控制对齐和世界一致性更新人类排名。"
+        kicker: "WorldJen 风格",
+        title: "15 维 Likert",
+        body: "运动稳定、逻辑物理、指令遵循、美学质量四组共 15 个维度，每维 1–5 分，参考 WorldJen 量表锚点。"
       }
     ]
     : [
       {
         kicker: "Real registry",
         title: "Integrated models",
-        body: "Model choices come from WorldArena/config/models with family, suite, control signal, and artifact metadata."
+        body: "Model choices come from WorldAtlas Arena/config/models with family, suite, control signal, and artifact metadata."
       },
       {
         kicker: "Prediction artifacts",
@@ -6106,9 +9935,9 @@ function homeArenaBattleMarkup() {
         body: "Reads artifacts/predictions generation records, batch specs, and playable generated samples."
       },
       {
-        kicker: "Human preference",
-        title: "Multi-dimensional ELO",
-        body: "Random blind votes update human rankings across overall, visual quality, control alignment, and world consistency."
+        kicker: "WorldJen-inspired",
+        title: "15-dimension Likert",
+        body: "Four groups and 15 dimensions with 1–5 Likert anchors for motion, physics, instruction adherence, and aesthetics."
       }
     ];
 
@@ -6120,7 +9949,7 @@ function homeArenaBattleMarkup() {
         <p>${escapeHtml(localizedHomeText("arenaBattleBody"))}</p>
         <div class="home-arena-actions">
           <a class="home-primary-action" href="/arena/" data-route>${escapeHtml(localizedHomeText("arenaBattleAction"))}</a>
-          <a href="/docs/benchmark/workflow/" data-route>${escapeHtml(activeLanguage() === "zh" ? "查看流程文档" : "Review workflow")}</a>
+          <a href="/doc/benchmark/">${escapeHtml(activeLanguage() === "zh" ? "查看基准文档" : "Review benchmark docs")}</a>
         </div>
       </div>
       <div class="home-arena-card-grid">

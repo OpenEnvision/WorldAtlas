@@ -1,3 +1,5 @@
+"""Legacy metric implementations kept for backward-compatible eval configs."""
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -24,6 +26,7 @@ BASIC_FRAME_METRIC_BACKENDS = {"framewise"}
 
 
 def _protocol_details(prediction: LoadedMedia) -> dict[str, Any]:
+    """Collect protocol and sampled frame indices for legacy frame metrics."""
     return {
         "frame_indices": list(prediction.protocol_frame_indices),
         "sampled_frame_indices": list(prediction.sampled_frame_indices),
@@ -31,6 +34,7 @@ def _protocol_details(prediction: LoadedMedia) -> dict[str, Any]:
 
 
 def _normalize_or_identity(value: float | None, spec: dict[str, Any]) -> float | None:
+    """Apply normalization when configured, otherwise return the raw float."""
     if value is None:
         return None
     if not spec:
@@ -42,10 +46,46 @@ def _paired_frames(
     prediction: LoadedMedia,
     reference: LoadedMedia,
 ) -> list[tuple[np.ndarray, np.ndarray]]:
-    return list(zip(prediction.frames, reference.frames))
+    """Return aligned prediction/reference frame pairs using broadcast rules."""
+    pairs, _ = _paired_frames_with_details(prediction, reference)
+    return pairs
+
+
+def _paired_frames_with_details(
+    prediction: LoadedMedia,
+    reference: LoadedMedia,
+) -> tuple[list[tuple[np.ndarray, np.ndarray]], dict[str, Any]]:
+    """Pair frames across unequal-length videos and record the pairing policy used."""
+    prediction_frames = prediction.frames or prediction.anchor_frames
+    reference_frames = reference.frames or reference.anchor_frames
+    if not prediction_frames or not reference_frames:
+        pairs: list[tuple[np.ndarray, np.ndarray]] = []
+        pairing_policy = "empty"
+    elif len(prediction_frames) == len(reference_frames):
+        pairs = list(zip(prediction_frames, reference_frames))
+        pairing_policy = "aligned"
+    elif len(reference_frames) == 1:
+        reference_frame = reference_frames[0]
+        pairs = [(prediction_frame, reference_frame) for prediction_frame in prediction_frames]
+        pairing_policy = "broadcast_reference"
+    elif len(prediction_frames) == 1:
+        prediction_frame = prediction_frames[0]
+        pairs = [(prediction_frame, reference_frame) for reference_frame in reference_frames]
+        pairing_policy = "broadcast_prediction"
+    else:
+        pair_count = min(len(prediction_frames), len(reference_frames))
+        pairs = list(zip(prediction_frames[:pair_count], reference_frames[:pair_count]))
+        pairing_policy = "truncated"
+    return pairs, {
+        "prediction_frame_count": len(prediction_frames),
+        "reference_frame_count": len(reference_frames),
+        "paired_frame_count": len(pairs),
+        "pairing_policy": pairing_policy,
+    }
 
 
 def _resize_like(frame: np.ndarray, target: np.ndarray) -> np.ndarray:
+    """Resize a frame to match another frame's height and width when needed."""
     if frame.shape[:2] == target.shape[:2]:
         return frame
     target_size = (target.shape[1], target.shape[0])
@@ -53,6 +93,7 @@ def _resize_like(frame: np.ndarray, target: np.ndarray) -> np.ndarray:
 
 
 def _dinov2_image_features(frames: list[np.ndarray]) -> np.ndarray:
+    """Delegate DINOv2 feature extraction to the shared consistency backend."""
     return _shared_dinov2_image_features(frames)
 
 
@@ -60,6 +101,7 @@ def _dinov2_image_features(frames: list[np.ndarray]) -> np.ndarray:
 def _load_depth_backend(
     model_name: str,
 ) -> tuple[Any, Any, str, str] | None:
+    """Lazily load a Hugging Face depth-estimation model for paired depth scoring."""
     try:
         import torch
         from transformers import AutoImageProcessor, AutoModelForDepthEstimation
@@ -79,6 +121,7 @@ def _load_depth_backend(
 
 
 def _predict_depth_maps(frames: list[np.ndarray], *, model_name: str) -> np.ndarray:
+    """Run depth estimation on a batch of RGB frames at native resolution."""
     backend = _load_depth_backend(model_name)
     if backend is None:
         raise ModuleNotFoundError("transformers/torch not available")
@@ -128,6 +171,7 @@ def _resolved_depth_model_name(value: object | None) -> str:
 
 
 def _reference_semantic_text(sample: BenchmarkSample) -> tuple[str, str]:
+    """Build CLIP reference text from annotations, instructions, or prompt fallback."""
     caption_text = annotation_text(sample.annotation_path).strip()
     instruction_labels = flatten_instruction_labels(sample.annotation_path)
     label_text = ". ".join(instruction_labels).strip()
@@ -142,6 +186,7 @@ def _reference_semantic_text(sample: BenchmarkSample) -> tuple[str, str]:
 
 
 def _psnr(left: np.ndarray, right: np.ndarray) -> float:
+    """Compute peak signal-to-noise ratio between two RGB frames."""
     left = left.astype(np.float32)
     right = right.astype(np.float32)
     mse = float(np.mean((left - right) ** 2))
@@ -151,6 +196,7 @@ def _psnr(left: np.ndarray, right: np.ndarray) -> float:
 
 
 def _ssim_channel(left: np.ndarray, right: np.ndarray) -> float:
+    """Gaussian-window SSIM for a single grayscale channel."""
     c1 = (0.01 * 255.0) ** 2
     c2 = (0.03 * 255.0) ** 2
 
@@ -174,6 +220,7 @@ def _ssim_channel(left: np.ndarray, right: np.ndarray) -> float:
 
 
 def _ssim_rgb(left: np.ndarray, right: np.ndarray) -> float:
+    """Average per-channel SSIM across RGB and clamp to [0, 1]."""
     scores = [
         _ssim_channel(left[:, :, channel], right[:, :, channel])
         for channel in range(left.shape[2])
@@ -182,6 +229,7 @@ def _ssim_rgb(left: np.ndarray, right: np.ndarray) -> float:
 
 
 def _depth_absrel(prediction_depth: np.ndarray, reference_depth: np.ndarray) -> float:
+    """Scale prediction depth by median ratio and report mean absolute relative error."""
     scale = float(np.median(reference_depth) / max(np.median(prediction_depth), 1e-6))
     aligned_prediction = prediction_depth * scale
     valid = reference_depth > 1e-3
@@ -192,11 +240,15 @@ def _depth_absrel(prediction_depth: np.ndarray, reference_depth: np.ndarray) -> 
 
 
 class SemanticAlignmentMetric(Metric):
+    """Score semantic match between prediction frames and annotation-derived text."""
+
     def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+        """Validate CLIP semantic-alignment backend selection."""
         super().__init__("semantic_alignment", backend, normalization)
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the CLIP semantic-alignment backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -210,6 +262,7 @@ class SemanticAlignmentMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Average CLIP similarity between frames and reference semantic text."""
         del reference
 
         backend = self._resolve_backend()
@@ -253,17 +306,21 @@ class SemanticAlignmentMetric(Metric):
 
 
 class DepthAccuracyMetric(Metric):
+    """Compare monocular depth maps between prediction and reference frames."""
+
     def __init__(
         self,
         backend: str,
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Store optional depth-model overrides for Depth Anything inference."""
         super().__init__("depth_accuracy", backend, normalization)
         self.runtime = dict(runtime or {})
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the Depth Anything depth-accuracy backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -277,11 +334,13 @@ class DepthAccuracyMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Average abs-rel depth error on aligned prediction/reference frame pairs."""
         del sample
 
         backend = self._resolve_backend()
         details = _protocol_details(prediction)
-        pairs = _paired_frames(prediction, reference)
+        pairs, pairing_details = _paired_frames_with_details(prediction, reference)
+        details.update(pairing_details)
         if not pairs:
             return MetricOutput(
                 raw=None,
@@ -327,11 +386,15 @@ class DepthAccuracyMetric(Metric):
 
 
 class PsnrMetric(Metric):
+    """Legacy framewise PSNR between prediction and reference videos."""
+
     def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+        """Validate framewise PSNR backend selection."""
         super().__init__("psnr", backend, normalization)
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the framewise PSNR backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -345,11 +408,13 @@ class PsnrMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Average PSNR across aligned prediction/reference frame pairs."""
         del sample
 
         backend = self._resolve_backend()
         details = _protocol_details(prediction)
-        pairs = _paired_frames(prediction, reference)
+        pairs, pairing_details = _paired_frames_with_details(prediction, reference)
+        details.update(pairing_details)
         if not pairs:
             return MetricOutput(
                 raw=None,
@@ -372,11 +437,15 @@ class PsnrMetric(Metric):
 
 
 class SsimMetric(Metric):
+    """Legacy framewise SSIM between prediction and reference videos."""
+
     def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+        """Validate framewise SSIM backend selection."""
         super().__init__("ssim", backend, normalization)
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the framewise SSIM backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -390,11 +459,13 @@ class SsimMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Average RGB SSIM across aligned prediction/reference frame pairs."""
         del sample
 
         backend = self._resolve_backend()
         details = _protocol_details(prediction)
-        pairs = _paired_frames(prediction, reference)
+        pairs, pairing_details = _paired_frames_with_details(prediction, reference)
+        details.update(pairing_details)
         if not pairs:
             return MetricOutput(
                 raw=None,

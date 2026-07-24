@@ -1,3 +1,5 @@
+"""HTTP polling provider for remote video generation APIs."""
+
 from __future__ import annotations
 
 import json
@@ -117,6 +119,7 @@ class HttpPollingProvider(ApiProvider):
         self.default_timeout_seconds = float(self.api_config.get("request_timeout_seconds", 300))
 
     def _resolve_base_url(self) -> str | None:
+        """Resolve base url -> str | None."""
         if self.api_config.get("base_url"):
             return str(self.api_config["base_url"]).rstrip("/")
         env_name = self.api_config.get("base_url_env")
@@ -127,6 +130,7 @@ class HttpPollingProvider(ApiProvider):
         return None
 
     def _headers(self) -> dict[str, str]:
+        """Headers -> dict[str, str]."""
         headers = {
             str(key): str(value)
             for key, value in dict(self.api_config.get("headers", {})).items()

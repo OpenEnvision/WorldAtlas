@@ -1,46 +1,39 @@
+"""Lazy-loaded registry of all supported world model adapters.
+
+Adapters are imported on first access so ``import worldarena.models.adapters``
+does not pull in every model's heavy dependencies at once.
+"""
+
 from __future__ import annotations
 
 from importlib import import_module
 from typing import Any
 
 _ADAPTER_MODULES = {
-    "AC3DAdapter": "worldarena.models.adapters.ac3d",
-    "AstraAdapter": "worldarena.models.adapters.astra",
+    "ABotWorldAdapter": "worldarena.models.adapters.abot_world",
+    "AlayaWorldAdapter": "worldarena.models.adapters.alayaworld",
     "ApiModelAdapter": "worldarena.models.adapters.api",
-    "CameraCtrlAdapter": "worldarena.models.adapters.cameractrl",
-    "CogVideoAdapter": "worldarena.models.adapters.cogvideo",
-    "CosmosFrameworkAdapter": "worldarena.models.adapters.cosmos_framework",
+    "CamI2VAdapter": "worldarena.models.adapters.cami2v",
     "CosmosPredict25Adapter": "worldarena.models.adapters.cosmos_predict25",
-    "DreamXWorldAdapter": "worldarena.models.adapters.dreamx_world",
-    "EchoInfinityAdapter": "worldarena.models.adapters.echo_infinity",
     "FlashWorldAdapter": "worldarena.models.adapters.flashworld",
     "Gen3CAdapter": "worldarena.models.adapters.gen3c",
-    "HeliosAdapter": "worldarena.models.adapters.helios",
     "HYWorldPlayAdapter": "worldarena.models.adapters.hy_worldplay",
     "HunyuanGameCraftAdapter": "worldarena.models.adapters.hunyuan_gamecraft",
-    "HunyuanVideoAdapter": "worldarena.models.adapters.hunyuan_video",
     "HunyuanWorldAdapter": "worldarena.models.adapters.hunyuanworld",
-    "HunyuanWorldVoyagerAdapter": "worldarena.models.adapters.hunyuanworld_voyager",
     "InSpatioWorldAdapter": "worldarena.models.adapters.inspatio_world",
     "InfiniteWorldAdapter": "worldarena.models.adapters.infinite_world",
-    "KairosAdapter": "worldarena.models.adapters.kairos",
+    "LingBotVideoAdapter": "worldarena.models.adapters.lingbot_video",
     "LingBotWorldAdapter": "worldarena.models.adapters.lingbot_world",
-    "LongLiveAdapter": "worldarena.models.adapters.longlive",
-    "LongCatVideoAdapter": "worldarena.models.adapters.longcat_video",
-    "LTX23Adapter": "worldarena.models.adapters.ltx23",
     "LucidDreamerAdapter": "worldarena.models.adapters.luciddreamer",
     "Lyra1Adapter": "worldarena.models.adapters.lyra1",
     "Lyra2Adapter": "worldarena.models.adapters.lyra2",
     "MatrixGameAdapter": "worldarena.models.adapters.matrix_game",
+    "MatrixGame35Adapter": "worldarena.models.adapters.matrix_game_35",
     "ModelAdapter": "worldarena.models.adapters.base",
-    "MotionCtrlAdapter": "worldarena.models.adapters.motionctrl",
     "NeoVerseAdapter": "worldarena.models.adapters.neoverse",
-    "ReCamMasterAdapter": "worldarena.models.adapters.recammaster",
-    "SanaWMAdapter": "worldarena.models.adapters.sana_wm",
+    "RealCamI2VAdapter": "worldarena.models.adapters.realcam_i2v",
     "StableVirtualCameraAdapter": "worldarena.models.adapters.stable_virtual_camera",
     "VideoApiAdapter": "worldarena.models.adapters.video_api",
-    "Wan22Adapter": "worldarena.models.adapters.wan22",
-    "WarpAsHistoryAdapter": "worldarena.models.adapters.warp_as_history",
     "WonderJourneyAdapter": "worldarena.models.adapters.wonderjourney",
     "WonderWorldAdapter": "worldarena.models.adapters.wonderworld",
     "WorldCamAdapter": "worldarena.models.adapters.worldcam",

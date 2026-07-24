@@ -1,3 +1,5 @@
+"""Dispatch long-sequence metric jobs across worker processes."""
+
 from __future__ import annotations
 
 import importlib
@@ -35,7 +37,7 @@ def resolve_long_sequence_evaluator(
     try:
         module_name, attr_name = LONG_SEQUENCE_EVALUATOR_SPECS[dimension]
     except KeyError as exc:
-        raise KeyError(f"unsupported WorldArena long-sequence dimension: {dimension}") from exc
+        raise KeyError(f"unsupported WorldAtlas Arena long-sequence dimension: {dimension}") from exc
     module = importlib.import_module(module_name)
     return getattr(module, attr_name)
 
@@ -63,7 +65,7 @@ def evaluate_long_sequence_dimensions(
     requested_dimensions = list(dict.fromkeys(str(dimension) for dimension in dimensions))
     unsupported = sorted(set(requested_dimensions) - set(SUPPORTED_LONG_DIMENSIONS))
     if unsupported:
-        raise KeyError(f"unsupported WorldArena long-sequence dimensions: {unsupported}")
+        raise KeyError(f"unsupported WorldAtlas Arena long-sequence dimensions: {unsupported}")
 
     videos_root = Path(videos_path)
     output_root = Path(output_path)

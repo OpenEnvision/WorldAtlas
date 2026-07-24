@@ -1,3 +1,5 @@
+"""Abstract types for remote API video generation providers."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -23,6 +25,8 @@ class ApiGenerationResult:
 
 
 class ApiProvider(ABC):
+    """Submit async generation jobs and download finished artifacts."""
+
     @abstractmethod
     def submit(self, payload: dict[str, Any]) -> ApiJobHandle:
         raise NotImplementedError

@@ -1,3 +1,5 @@
+"""Depth-based collision detection backend for physics-related metrics."""
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -21,6 +23,7 @@ DEFAULT_CENTER_CROP_RATIO = 0.2
 
 
 def _default_device() -> str:
+    """Default device -> str."""
     try:
         import torch
     except ModuleNotFoundError:

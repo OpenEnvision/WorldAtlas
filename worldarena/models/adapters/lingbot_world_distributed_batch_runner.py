@@ -1,3 +1,5 @@
+"""Distributed batch subprocess runner for LingBot-World multi-GPU inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -18,7 +20,7 @@ from worldarena.models.config import load_model_config
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena LingBot distributed persistent batch runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena LingBot distributed persistent batch runner.")
     parser.add_argument("--model-config", required=True, type=Path)
     parser.add_argument("--batch-spec-path", required=True, type=Path)
     parser.add_argument("--results-path", required=True, type=Path)

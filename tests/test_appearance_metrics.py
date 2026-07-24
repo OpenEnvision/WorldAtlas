@@ -5,6 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from worldarena.benchmark.aggregates import aggregate_results
 from worldarena.benchmark.config import BenchmarkConfig, BenchmarkPaths
 from worldarena.benchmark.media import LoadedMedia
 from worldarena.benchmark.metrics.appearance import (
@@ -22,9 +23,9 @@ from worldarena.benchmark.metrics.appearance import (
     compute_sharpness_vector_retention,
 )
 from worldarena.benchmark.metrics.catalog import METRIC_DIMENSIONS
-from worldarena.benchmark.metrics.quality import ImageQualityMetric
-from worldarena.benchmark.metrics.registry import build_metrics
-from worldarena.benchmark.schemas import BenchmarkSample
+from worldarena.benchmark.metrics.quality import HPSv3NormMetric, ImageQualityMetric
+from worldarena.benchmark.metrics.registry import build_metrics, canonical_metric_name
+from worldarena.benchmark.schemas import BenchmarkSample, SampleScore
 
 
 def _solid(rgb: tuple[int, int, int], size: int = 16) -> np.ndarray:
@@ -80,6 +81,7 @@ def _sample(suite: str = "video_dynamic") -> BenchmarkSample:
 def _config(tmp_path: Path) -> BenchmarkConfig:
     metric_names = [
         "image_quality",
+        "hpsv3_norm",
         "brightness_consistency",
         "brightness_distribution_consistency",
         "color_temperature_consistency",
@@ -94,6 +96,7 @@ def _config(tmp_path: Path) -> BenchmarkConfig:
             video_root=tmp_path / "videos",
             inventory_dir=tmp_path / "inventory",
             manifest_dir=tmp_path / "manifest",
+            predictions_dir=tmp_path / "predictions",
             reports_dir=tmp_path / "reports",
             cache_dir=tmp_path / "cache",
         ),
@@ -109,6 +112,7 @@ def _config(tmp_path: Path) -> BenchmarkConfig:
         },
         metric_backends={
             "image_quality": "musiq",
+            "hpsv3_norm": "hpsv3",
             "brightness_consistency": "luminance_temporal",
             "brightness_distribution_consistency": "distribution",
             "color_temperature_consistency": "hsv_hue_drift",
@@ -118,6 +122,7 @@ def _config(tmp_path: Path) -> BenchmarkConfig:
         },
         normalization={
             "image_quality": {"lower": 0.0, "upper": 1.0, "higher_is_better": True},
+            "hpsv3_norm": {"lower": 0.0, "upper": 1.0, "higher_is_better": True},
             "brightness_consistency": {"lower": 0.0, "upper": 1.0, "higher_is_better": True},
             "brightness_distribution_consistency": {"lower": 0.0, "upper": 1.0, "higher_is_better": True},
             "color_temperature_consistency": {"lower": 0.0, "upper": 1.0, "higher_is_better": True},
@@ -146,6 +151,8 @@ def test_brightness_distribution_consistency_penalizes_distribution_shift() -> N
     stable_score = compute_brightness_distribution_consistency(stable)["raw"]
     drifting_score = compute_brightness_distribution_consistency(drifting)["raw"]
 
+    assert 0.0 <= stable_score <= 1.0
+    assert 0.0 <= drifting_score <= 1.0
     assert stable_score > 0.95
     assert drifting_score < 0.05
 
@@ -168,6 +175,8 @@ def test_color_temperature_constraint_penalizes_hue_distribution_drift() -> None
     stable_score = compute_color_temperature_constraint(stable)["raw"]
     drifting_score = compute_color_temperature_constraint(drifting)["raw"]
 
+    assert 0.0 <= stable_score <= 1.0
+    assert 0.0 <= drifting_score <= 1.0
     assert stable_score > 0.95
     assert drifting_score < 0.2
 
@@ -223,6 +232,28 @@ def test_sharpness_retention_brisque_gate_is_strict(monkeypatch) -> None:
     assert result["details"]["brisque_gate"] == 0.0
 
 
+def test_sharpness_retention_scores_zero_variance_frames_as_worst_brisque(monkeypatch) -> None:
+    sharp = _checkerboard()
+    flat = np.zeros_like(sharp)
+    monkeypatch.setattr(
+        "worldarena.benchmark.metrics.appearance._brisque_frame_scores",
+        lambda frames: [30.0 for _ in frames],
+    )
+
+    result = compute_sharpness_retention(
+        [sharp, sharp, flat],
+        use_brisque_gate=True,
+        baseline_frame_count=1,
+        brisque_good=30.0,
+        brisque_bad=80.0,
+    )
+
+    assert 0.0 < result["raw"] < 0.5
+    assert result["details"]["brisque_scores"] == [30.0, 30.0, 80.0]
+    assert result["details"]["brisque_zero_variance_frame_indices"] == [2]
+    assert result["details"]["brisque_zero_variance_fallback_score"] == 80.0
+
+
 def test_sharpness_retention_rejects_nonfinite_brisque_scores(monkeypatch) -> None:
     sharp = _checkerboard()
     monkeypatch.setattr(
@@ -238,7 +269,7 @@ def test_sharpness_retention_rejects_nonfinite_brisque_scores(monkeypatch) -> No
 
     assert result.raw is None
     assert result.normalized is None
-    assert result.eligibility_status == "diagnostic"
+    assert result.eligibility_status == "official"
     assert "non-finite" in str(result.error)
 
 
@@ -249,6 +280,7 @@ def test_appearance_metrics_are_registered_as_quality_diagnostics(tmp_path: Path
         metrics = build_metrics(config.metrics_by_suite[suite], config)
         assert [metric.name for metric in metrics] == [
             "image_quality",
+            "hpsv3_norm",
             "brightness_consistency",
             "brightness_distribution_consistency",
             "color_temperature_consistency",
@@ -258,6 +290,7 @@ def test_appearance_metrics_are_registered_as_quality_diagnostics(tmp_path: Path
         ]
 
     assert METRIC_DIMENSIONS["image_quality"] == "quality"
+    assert METRIC_DIMENSIONS["hpsv3_norm"] == "quality"
     assert METRIC_DIMENSIONS["brightness_consistency"] == "quality"
     assert METRIC_DIMENSIONS["brightness_distribution_consistency"] == "quality"
     assert METRIC_DIMENSIONS["color_temperature_consistency"] == "quality"
@@ -266,7 +299,7 @@ def test_appearance_metrics_are_registered_as_quality_diagnostics(tmp_path: Path
     assert METRIC_DIMENSIONS["sharpness_vector_retention"] == "quality"
 
 
-def test_appearance_metric_outputs_are_diagnostic() -> None:
+def test_promoted_quality_metrics_are_official_while_legacy_aliases_remain_diagnostic() -> None:
     media = _media([_solid((120, 120, 120)), _solid((121, 121, 121))])
     sample = _sample()
     brightness = BrightnessConsistencyMetric(
@@ -299,7 +332,29 @@ def test_appearance_metric_outputs_are_diagnostic() -> None:
     sharpness_output = sharpness.compute(sample, _media([sharp, sharp]), media)
 
     assert sharpness_output.normalized is not None
-    assert sharpness_output.eligibility_status == "diagnostic"
+    assert sharpness_output.eligibility_status == "official"
+
+    aggregate = aggregate_results(
+        [
+            SampleScore(
+                sample_id=sample.sample_id,
+                suite=sample.suite,
+                metrics={"sharpness_retention": sharpness_output},
+                path=sample.path,
+                prediction_path="/tmp/prediction.mp4",
+                style=sample.style,
+                environment=sample.environment,
+                scene=sample.scene,
+                motion_category=sample.motion_category,
+            )
+        ]
+    )
+    assert aggregate["per_metric_summary"] == {
+        sample.suite: {"sharpness_retention": sharpness_output.normalized}
+    }
+    assert aggregate["per_dimension_summary"] == {
+        sample.suite: {"quality": sharpness_output.normalized}
+    }
 
     distribution = BrightnessDistributionConsistencyMetric(
         backend="distribution",
@@ -307,6 +362,7 @@ def test_appearance_metric_outputs_are_diagnostic() -> None:
     )
     distribution_output = distribution.compute(sample, media, media)
     assert distribution_output.normalized is not None
+    assert distribution_output.eligibility_status == "official"
 
     constraint = ColorTemperatureConstraintMetric(
         backend="hue_distribution",
@@ -318,6 +374,7 @@ def test_appearance_metric_outputs_are_diagnostic() -> None:
         media,
     )
     assert constraint_output.normalized is not None
+    assert constraint_output.eligibility_status == "official"
 
     vector_retention = SharpnessVectorRetentionMetric(
         backend="tenengrad_vector",
@@ -350,4 +407,44 @@ def test_image_quality_metric_uses_musiq_backend(monkeypatch) -> None:
 
     assert output.raw == 0.75
     assert output.normalized == 0.75
-    assert output.eligibility_status == "diagnostic"
+    assert output.eligibility_status == "official"
+
+
+def test_hpsv3_norm_metric_uses_percentile_normalized_backend(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "worldarena.benchmark.metrics.quality.compute_hpsv3_norm_scores",
+        lambda frames, **kwargs: {
+            "backend": "hpsv3",
+            "raw": 0.5,
+            "raw_reward_mean": 6.935,
+            "raw_rewards": [6.8, 7.07],
+            "normalization_percentiles": [kwargs["p1"], kwargs["p99"]],
+            "score_0_100": 50.0,
+            "checkpoint_path": "/tmp/HPSv3.safetensors",
+            "config_path": "/tmp/HPSv3_7B_local.yaml",
+            "device": "cuda",
+        },
+    )
+    media = _media([_solid((120, 120, 120)), _solid((121, 121, 121))])
+    metric = HPSv3NormMetric(
+        backend="hpsv3",
+        normalization={"lower": 0.0, "upper": 1.0, "higher_is_better": True},
+        runtime={"sample_count": 2, "sample_from_path": False},
+    )
+
+    output = metric.compute(_sample(), media, media)
+
+    assert output.raw == 0.5
+    assert output.normalized == 0.5
+    assert output.backend == "hpsv3"
+    assert output.eligibility_status == "official"
+    assert output.details["score_0_100"] == 50.0
+    assert output.details["hpsv3_normalization_percentiles"] == [5.21, 8.66]
+
+
+def test_hpsv3_quality_alias_builds_hpsv3_norm_metric(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    metrics = build_metrics(["hpsv3_quality"], config)
+
+    assert canonical_metric_name("hpsv3_quality") == "hpsv3_norm"
+    assert [metric.name for metric in metrics] == ["hpsv3_norm"]

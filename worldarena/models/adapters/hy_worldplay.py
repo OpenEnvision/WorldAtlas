@@ -1,3 +1,10 @@
+"""HY-WorldPlay model adapter for WorldAtlas Arena.
+
+HY-WorldPlay is a camera-conditioned video world model. This adapter resolves
+GT or synthetic camera trajectories into a pose JSON sidecar, then launches
+``hy_worldplay_runner`` to invoke the upstream ``hyvideo/generate.py`` entrypoint.
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -43,6 +50,7 @@ from worldarena.models.config import ModelRuntimeConfig
 WORLDPLAY_DEFAULT_WIDTH = 832
 WORLDPLAY_DEFAULT_HEIGHT = 480
 WORLDPLAY_DEFAULT_VIDEO_LENGTH = 125
+# Default focal length scale used when synthesizing intrinsics from image size.
 WORLDPLAY_DEFAULT_FOCAL_SCALE = 0.5050505
 
 
@@ -69,6 +77,7 @@ def _runtime_root(config: ModelRuntimeConfig) -> Path:
 
 
 def _generation_for_suite(generation: dict[str, Any], suite: str) -> dict[str, Any]:
+    """Merge suite-specific overrides from keys like ``video_length_by_suite``."""
     resolved = dict(generation)
     for key, value in generation.items():
         if not key.endswith("_by_suite") or not isinstance(value, dict):
@@ -80,6 +89,7 @@ def _generation_for_suite(generation: dict[str, Any], suite: str) -> dict[str, A
 
 
 def _validated_video_length(value: int) -> int:
+    """Enforce WorldPlay's latent-frame constraints on output video length."""
     video_length = int(value)
     if video_length <= 0:
         raise ValueError(f"video_length must be positive, got {video_length}")
@@ -97,6 +107,7 @@ def _validated_video_length(value: int) -> int:
 
 
 def _latent_frame_count(video_length: int) -> int:
+    """Convert pixel-frame count to WorldPlay's latent temporal dimension."""
     return (int(video_length) - 1) // 4 + 1
 
 
@@ -139,6 +150,7 @@ def _worldplay_camera_delta(token: str) -> np.ndarray:
 
 
 def _synthetic_image_poses(camera_path: list[str], *, latent_count: int) -> np.ndarray:
+    """Build a smooth pose sequence from discrete camera_path tokens for image_static."""
     target_frames = max(int(latent_count), 1)
     if target_frames <= 1:
         return np.repeat(np.eye(4, dtype=np.float32)[None, ...], repeats=target_frames, axis=0)
@@ -272,6 +284,7 @@ def _resolved_pose_root(
     image_width: int,
     image_height: int,
 ) -> tuple[Path, str]:
+    """Prefer on-disk annotations; fall back to synthetic poses from camera_path."""
     annotation_path = _local_annotation_path(sample)
     if annotation_path is not None:
         return annotation_path, "annotation"
@@ -316,6 +329,7 @@ def _resolved_pose_json_path(
     image_width: int,
     image_height: int,
 ) -> tuple[Path, str]:
+    """Materialize or reuse a cached pose JSON file consumed by the upstream model."""
     pose_root, pose_source = _resolved_pose_root(
         config,
         sample,
@@ -352,8 +366,14 @@ def _resolved_pose_json_path(
 
 
 class HYWorldPlayAdapter(ModelAdapter):
+    """Generate camera-guided videos via the HY-WorldPlay upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "reload_per_sample"
 
     def generate_batch(
         self,

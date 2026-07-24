@@ -6,7 +6,7 @@ import numpy as np
 
 from worldarena.benchmark.config import BenchmarkConfig, BenchmarkPaths
 from worldarena.benchmark.manifest import build_manifest
-from worldarena.benchmark.media import LoadedMedia
+from worldarena.benchmark.media import LoadedMedia, protocol_frame_details
 from worldarena.benchmark.runner import run_benchmark
 from worldarena.benchmark.schemas import BenchmarkSample, DiscoveredAsset, MetricOutput
 from worldarena.benchmark.taxonomy import prediction_modality_for_task
@@ -20,6 +20,7 @@ def _make_config(tmp_path: Path) -> BenchmarkConfig:
             video_root=tmp_path / "videos",
             inventory_dir=tmp_path / "inventory",
             manifest_dir=tmp_path / "manifest",
+            predictions_dir=tmp_path / "predictions",
             reports_dir=tmp_path / "reports",
             cache_dir=tmp_path / "cache",
         ),
@@ -43,6 +44,30 @@ def test_prediction_modality_for_image_suite_is_video() -> None:
         )
         == "video"
     )
+
+
+def test_protocol_frame_details_reports_native_indices() -> None:
+    frame = np.zeros((4, 4, 3), dtype=np.uint8)
+    media = LoadedMedia(
+        modality="video",
+        path="/tmp/prediction.mp4",
+        frames=[frame, frame, frame, frame],
+        anchor_frames=[frame, frame],
+        evaluation_protocol="segment_random",
+        sampled_frame_indices=[0, 4, 9, 13],
+        protocol_frame_indices=[1, 3],
+        native_frame_count=16,
+    )
+
+    details = protocol_frame_details(media)
+
+    assert details["evaluation_protocol"] == "segment_random"
+    assert details["frame_indices"] == [1, 3]
+    assert details["sampled_frame_indices"] == [0, 4, 9, 13]
+    assert details["protocol_native_frame_indices"] == [4, 13]
+    assert details["protocol_frame_count"] == 2
+    assert details["loaded_frame_count"] == 4
+    assert details["native_frame_count"] == 16
 
 
 def test_build_manifest_marks_image_suite_as_video_artifact(tmp_path: Path) -> None:

@@ -1,3 +1,5 @@
+"""Scan dataset collection roots and discover benchmark-eligible assets."""
+
 from __future__ import annotations
 
 import csv
@@ -217,19 +219,9 @@ def _configured_vipe_annotation_roots(static_root: Path) -> list[Path]:
 
     if static_root.name == "static":
         video_root = static_root.parent
-        roots.extend(
-            [
-                video_root.with_name(f"{video_root.name}_vipe_ann"),
-                video_root.parent / "videos_test_split_4971_vipe_ann",
-            ]
-        )
+        roots.append(video_root.with_name(f"{video_root.name}_vipe_ann"))
     else:
-        roots.extend(
-            [
-                static_root.with_name(f"{static_root.name}_vipe_ann"),
-                static_root.parent / "videos_test_split_4971_vipe_ann",
-            ]
-        )
+        roots.append(static_root.with_name(f"{static_root.name}_vipe_ann"))
     return _unique_paths(roots)
 
 

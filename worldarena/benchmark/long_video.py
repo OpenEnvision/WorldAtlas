@@ -1,3 +1,5 @@
+"""Long-video chunking and stitching utilities for benchmark metrics."""
+
 from __future__ import annotations
 
 import json

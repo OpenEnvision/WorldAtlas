@@ -1,3 +1,5 @@
+"""Subprocess runner for WorldFM single-sample inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -15,7 +17,7 @@ from worldarena.common.checkpoints import apply_checkpoint_env, resolve_checkpoi
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena WorldFM subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena WorldFM subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", default=None, type=str)
     parser.add_argument("--annotation_path", required=True, type=str)
@@ -107,7 +109,7 @@ def _build_meta_payload(
 
     if len(intrinsics) > 1 and not np.allclose(intrinsics, intrinsics[0], atol=1e-4):
         print(
-            "[WorldArena][WorldFM] intrinsics vary across frames; using the first matrix for all poses.",
+            "[WorldAtlas Arena][WorldFM] intrinsics vary across frames; using the first matrix for all poses.",
             file=sys.stderr,
             flush=True,
         )

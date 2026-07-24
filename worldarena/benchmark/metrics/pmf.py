@@ -1,3 +1,5 @@
+"""PMF (perceptual motion fidelity) metric implementations."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -15,6 +17,7 @@ _PMF_EPSILON = 1e-12
 
 
 def _uniform_indices(length: int, count: int) -> list[int]:
+    """Pick evenly spaced frame indices when resampling to a shorter clip."""
     if length <= 0 or count <= 0:
         return []
     if length == 1 or count == 1:
@@ -23,12 +26,14 @@ def _uniform_indices(length: int, count: int) -> list[int]:
 
 
 def _resample_frames(frames: list[np.ndarray], count: int) -> list[np.ndarray]:
+    """Downsample or upsample a frame list to a target length via uniform indexing."""
     if len(frames) == count:
         return frames
     return [frames[index] for index in _uniform_indices(len(frames), count)]
 
 
 def _resize_frames(frames: list[np.ndarray], *, width: int, height: int) -> tuple[list[np.ndarray], bool]:
+    """Resize frames to a common resolution, reporting whether any resize occurred."""
     resized = False
     output: list[np.ndarray] = []
     for frame in frames:
@@ -41,6 +46,7 @@ def _resize_frames(frames: list[np.ndarray], *, width: int, height: int) -> tupl
 
 
 def _normalized_spectral_energy(video: np.ndarray, *, epsilon: float) -> np.ndarray:
+    """Normalize spatiotemporal FFT power so total energy sums to one."""
     # `video` is RGB with shape (T, H, W, C); PMF applies a 3D DFT over H, W, T per channel.
     channel_first = np.transpose(video, (3, 1, 2, 0))
     spectrum = np.fft.fftn(channel_first, axes=(1, 2, 3))
@@ -59,6 +65,7 @@ def compute_physical_motion_fidelity(
     *,
     epsilon: float = _PMF_EPSILON,
 ) -> dict[str, Any]:
+    """Compare normalized 3D spectral energy between aligned prediction and reference clips."""
     if len(prediction_frames) < 2 or len(reference_frames) < 2:
         raise ValueError("pmf requires at least two frames in both prediction and reference videos")
 
@@ -102,11 +109,15 @@ def compute_physical_motion_fidelity(
 
 
 class PhysicalMotionFidelityMetric(Metric):
+    """Score how closely prediction motion spectra match a reference video."""
+
     def __init__(self, backend: str, normalization: dict[str, Any]) -> None:
+        """Register PMF with the numpy-FFT spectral backend."""
         super().__init__("pmf", backend, normalization)
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the numpy FFT PMF implementation."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -120,6 +131,7 @@ class PhysicalMotionFidelityMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Compute PMF between paired prediction and reference video frames."""
         del sample
 
         backend = self._resolve_backend()
@@ -128,6 +140,15 @@ class PhysicalMotionFidelityMetric(Metric):
             "sampled_frame_indices": list(prediction.sampled_frame_indices),
             "reference_sampled_frame_indices": list(reference.sampled_frame_indices),
         }
+        if prediction.modality != "video" or reference.modality != "video":
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=details,
+                eligibility_status="not_applicable",
+                error="pmf requires video prediction and video reference",
+            )
         try:
             payload = compute_physical_motion_fidelity(prediction.frames, reference.frames)
             raw = float(payload["raw"])

@@ -1,8 +1,8 @@
 # PSNR
 
-`psnr` 用来衡量预测帧相对参考帧的像素级信号保真度。
+**psnr** 用来衡量预测帧相对参考帧的像素级信号保真度。
 PSNR 是 Peak Signal-to-Noise Ratio（峰值信噪比），常用于图像压缩、重建和视频质量评估中，用来描述重建图像相对参考图像的数值误差大小。
-在 WorldArena 中，它是一个 reference-based reconstruction 诊断指标：预测帧越接近参考帧，均方误差越小，PSNR 越高。
+在 WorldArena 中，它是一个 reference-based reconstruction 指标：预测帧越接近参考帧，均方误差越小，PSNR 越高。
 
 ## 它测什么
 
@@ -85,7 +85,7 @@ PSNR 越高，表示预测帧在像素值上越接近参考帧。
 | 参考输入 | 参考的采样帧 |
 | 标注输入 | 无 |
 | 原始输出 | 单个平均 PSNR 标量 |
-| 归一化输出 | 按 `config/benchmark.yaml` 的 `[10,40]` 范围缩放后的诊断分数，越高越好 |
+| 归一化输出 | 按 `config/benchmark.yaml` 的 `[10,40]` 范围缩放后的分数，越高越好 |
 | 细节字段 | `frame_scores`、帧索引元数据 |
 | 失败方式 | 如果没有对齐帧可用，则返回空值和错误字符串 |
 

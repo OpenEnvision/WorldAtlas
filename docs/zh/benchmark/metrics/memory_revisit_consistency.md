@@ -1,6 +1,6 @@
 # 记忆回访一致性
 
-`memory_revisit_consistency` 用来评估 360 度回访类 rollout：模型中途必须真的离开初始视角，最后还要回到同一个生成场景。
+**memory_revisit_consistency** 用来评估 360 度回访类 rollout：模型中途必须真的离开初始视角，最后还要回到同一个生成场景。
 
 ## 它测什么
 
@@ -43,6 +43,6 @@
 | 当前 suite | `experimental` |
 | 当前聚合 | 永远 `diagnostic` |
 | 维度 | `long_sequence` |
-| 论文用法 | 适合作为 memory / loop-closing 附录诊断；不建议进主表 |
+| 论文用法 | 适合作为 memory / loop-closing 附录指标；不建议进主表 |
 
 关键限制：它没有使用几何真值，也不验证相机角度是否真的完成 360 度；它只证明“视觉上离开过，并且末帧像首帧”。

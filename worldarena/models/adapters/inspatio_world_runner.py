@@ -1,3 +1,5 @@
+"""Subprocess runner for InSpatio-World inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -24,7 +26,7 @@ def _parse_bool(value: str | bool) -> bool:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="InSpatio-World subprocess runner for WorldArena.")
+    parser = argparse.ArgumentParser(description="InSpatio-World subprocess runner for WorldAtlas Arena.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", default=None, type=str)
     parser.add_argument("--input_video", required=True, type=str)
@@ -33,7 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--traj_txt_path", default="traj/x_y_circle_cycle.txt", type=str)
     parser.add_argument("--config_path", default="configs/inference_1.3b.yaml", type=str)
     parser.add_argument("--checkpoint_path", default=None, type=str)
-    parser.add_argument("--da3_repo_root", default="../Depth-Anything-3", type=str)
+    parser.add_argument("--da3_repo_root", default="thirdparty/Depth-Anything-3", type=str)
     parser.add_argument("--da3_model_path", default=None, type=str)
     parser.add_argument("--step2_gpus", default="0", type=str)
     parser.add_argument("--step3_gpus", default="0", type=str)

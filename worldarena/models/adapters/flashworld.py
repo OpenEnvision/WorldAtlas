@@ -1,3 +1,9 @@
+"""FlashWorld model adapter for WorldAtlas Arena.
+
+FlashWorld generates camera-guided videos from a conditioning image. When GT poses
+are unavailable, the adapter synthesizes trajectories from ``camera_path`` tokens.
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -10,18 +16,14 @@ import uuid
 
 import numpy as np
 
-from worldarena.benchmark.annotations import (
-    _matrix_to_pose_vector,
-    _pose_vector_to_matrix,
-    _resample_pose_vectors,
-)
 from worldarena.benchmark.schemas import BenchmarkSample
+from worldarena.benchmark.synthetic_camera import synthetic_camera_matrices
 from worldarena.common.annotation_index import split_annotation_reference
 from worldarena.common.media import probe_image
 from worldarena.models.adapters.base import ModelAdapter, PreparedGenerationRequest
 from worldarena.models.adapters.common import build_env, run_command
 from worldarena.models.adapters.flashworld_runner import _build_request_payload, _resolve_checkpoint_path
-from worldarena.models.adapters.lingbot_world import _camera_delta, _camera_path_for_sample
+from worldarena.models.adapters.lingbot_world import _camera_path_for_sample
 from worldarena.models.config import ModelRuntimeConfig
 
 
@@ -63,52 +65,11 @@ def _synthetic_intrinsics_sequence(
     return np.repeat(intrinsics[None, :], repeats=max(int(frame_count), 1), axis=0).astype(np.float32)
 
 
-def _interpolate_pose_segment(start_pose: np.ndarray, end_pose: np.ndarray, *, frames: int) -> np.ndarray:
-    pose_vectors = np.stack(
-        [
-            _matrix_to_pose_vector(start_pose.astype(np.float32)),
-            _matrix_to_pose_vector(end_pose.astype(np.float32)),
-        ],
-        axis=0,
-    ).astype(np.float32)
-    indices = np.asarray([0.0, 1.0], dtype=np.float32)
-    interpolated = _resample_pose_vectors(pose_vectors, indices, frames)
-    return np.stack([_pose_vector_to_matrix(pose_row) for pose_row in interpolated], axis=0).astype(np.float32)
-
-
 def _synthetic_image_poses(camera_path: list[str], *, frame_count: int) -> np.ndarray:
-    target_frames = max(int(frame_count), 1)
-    if target_frames <= 1:
-        return np.repeat(np.eye(4, dtype=np.float32)[None, ...], repeats=target_frames, axis=0)
-
-    normalized_path = [token for token in camera_path if token] or ["fixed"]
-    keyframes: list[np.ndarray] = [np.eye(4, dtype=np.float32)]
-    current_pose = np.eye(4, dtype=np.float32)
-    for token in normalized_path:
-        current_pose = (current_pose @ _camera_delta(token)).astype(np.float32)
-        keyframes.append(current_pose.copy())
-
-    segment_count = max(1, len(normalized_path))
-    remaining_intervals = target_frames - 1
-    base_intervals = remaining_intervals // segment_count
-    remainder = remaining_intervals % segment_count
-
-    segments: list[np.ndarray] = []
-    for index in range(segment_count):
-        segment_intervals = base_intervals + (1 if index < remainder else 0)
-        segment_frames = segment_intervals + 1
-        segment = _interpolate_pose_segment(
-            keyframes[index],
-            keyframes[index + 1],
-            frames=segment_frames,
-        )
-        if index:
-            segment = segment[1:]
-        segments.append(segment.astype(np.float32))
-    poses = np.concatenate(segments, axis=0).astype(np.float32)
-    if len(poses) != target_frames:
-        raise ValueError(f"expected {target_frames} synthetic poses, got {len(poses)}")
-    return poses
+    return synthetic_camera_matrices(
+        camera_path,
+        target_frames=max(int(frame_count), 1),
+    ).matrices
 
 
 def _synthetic_image_annotation_path(
@@ -225,8 +186,14 @@ def _subprocess_error_text(exc: subprocess.CalledProcessError) -> str:
 
 
 class FlashWorldAdapter(ModelAdapter):
+    """Generate camera-guided videos via the FlashWorld upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
 
     def generate_batch(
         self,

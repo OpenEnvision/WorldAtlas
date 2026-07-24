@@ -1,3 +1,10 @@
+"""Lyra-1 model adapter for WorldAtlas Arena.
+
+Lyra-1 is a multi-stage 3D-aware world model. Single-sample runs delegate to
+``lyra1_runner``; batch runs write a JSONL spec and invoke ``lyra1_batch_runner``
+so the heavy model can stay loaded across samples.
+"""
+
 from __future__ import annotations
 
 import json
@@ -23,6 +30,7 @@ def _run_lyra1_command(
     env: dict[str, str],
     log_path: Path,
 ) -> None:
+    """Run a Lyra subprocess and surface the last log lines on failure."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("w", encoding="utf-8") as log_file:
         try:
@@ -54,13 +62,20 @@ def _view_indices_arg(value: object | None) -> str | None:
 
 
 class Lyra1Adapter(ModelAdapter):
+    """Generate trajectory-controlled videos from a single conditioning image."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return True
+
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
 
     def generate_batch(
         self,
         requests: list[PreparedGenerationRequest],
     ) -> dict[str, dict[str, Any]]:
+        # Batch path amortizes model load; all samples must share one output dir.
         if not requests:
             return {}
         if self.config.repo_root is None:
@@ -189,6 +204,21 @@ class Lyra1Adapter(ModelAdapter):
         output_path: Path,
         prompt: str,
     ) -> dict[str, Any]:
+        if sample.suite == "image_static" and len(sample.camera_path) > 1:
+            result = self.generate_batch(
+                [
+                    PreparedGenerationRequest(
+                        sample=sample,
+                        conditioning_image=conditioning_image,
+                        output_path=output_path,
+                        prompt=prompt,
+                    )
+                ]
+            )[sample.sample_id]
+            if result.get("status") != "generated":
+                raise RuntimeError(str(result.get("error") or "Lyra-1 batch generation failed"))
+            return result
+
         if self.config.repo_root is None:
             raise ValueError("Lyra-1 adapter requires repo_root")
         if self.config.checkpoint_dir is None:

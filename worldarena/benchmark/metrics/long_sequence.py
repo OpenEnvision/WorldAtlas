@@ -1,3 +1,5 @@
+"""Metric implementations for long-sequence temporal coherence."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,10 +16,20 @@ from worldarena.benchmark.long_sequence_runtime import (
 
 LONG_SEQUENCE_BACKENDS = {"long_sequence"}
 ALL_LONG_SEQUENCE_METRICS = tuple(LONG_SEQUENCE_DIMENSION_MAP)
-_LONG_SEQUENCE_RESULT_CACHE: dict[tuple[str, int, int, str], dict[str, Any]] = {}
+LONG_SEQUENCE_QUALITY_METRICS = (
+    "long_sequence_aesthetic_quality",
+    "long_sequence_imaging_quality",
+)
+_LONG_SEQUENCE_RESULT_CACHE: dict[tuple[str, int, int, str, tuple[str, ...]], dict[str, Any]] = {}
 
 
-def _cache_key(prediction_path: str, *, runtime: dict[str, Any]) -> tuple[str, int, int, str]:
+def _cache_key(
+    prediction_path: str,
+    *,
+    runtime: dict[str, Any],
+    metric_names: tuple[str, ...],
+) -> tuple[str, int, int, str, tuple[str, ...]]:
+    """Key long-sequence results by video file identity, runtime, and metric group."""
     path = Path(prediction_path).expanduser().resolve()
     stat = path.stat()
     runtime_key = repr(sorted(runtime.items()))
@@ -26,17 +38,31 @@ def _cache_key(prediction_path: str, *, runtime: dict[str, Any]) -> tuple[str, i
         stat.st_mtime_ns,
         stat.st_size,
         runtime_key,
+        metric_names,
     )
 
 
-def _long_sequence_result(prediction_path: str, *, runtime: dict[str, Any]) -> dict[str, Any]:
-    key = _cache_key(prediction_path, runtime=runtime)
+def _metric_group(metric_name: str) -> tuple[str, ...]:
+    """Batch aesthetic and imaging quality metrics into one backend call."""
+    if metric_name in LONG_SEQUENCE_QUALITY_METRICS:
+        return LONG_SEQUENCE_QUALITY_METRICS
+    return (metric_name,)
+
+
+def _long_sequence_result(
+    prediction_path: str,
+    *,
+    runtime: dict[str, Any],
+    metric_names: tuple[str, ...],
+) -> dict[str, Any]:
+    """Compute or reuse the shared long-sequence runtime payload for a video."""
+    key = _cache_key(prediction_path, runtime=runtime, metric_names=metric_names)
     cached = _LONG_SEQUENCE_RESULT_CACHE.get(key)
     if cached is not None:
         return cached
     payload = compute_long_sequence_metrics(
         prediction_path,
-        metric_names=ALL_LONG_SEQUENCE_METRICS,
+        metric_names=metric_names,
         runtime=runtime,
     )
     _LONG_SEQUENCE_RESULT_CACHE[key] = payload
@@ -44,6 +70,8 @@ def _long_sequence_result(prediction_path: str, *, runtime: dict[str, Any]) -> d
 
 
 class LongSequenceMetric(Metric):
+    """Surface one long-horizon diagnostic metric from the shared runtime backend."""
+
     def __init__(
         self,
         *,
@@ -52,11 +80,13 @@ class LongSequenceMetric(Metric):
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Register a named long-sequence sub-metric and its runtime overrides."""
         super().__init__(metric_name, backend, normalization)
         self.runtime = dict(runtime or {})
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
+        """Require the bundled long-sequence evaluation backend."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -70,6 +100,7 @@ class LongSequenceMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Extract one long-sequence score from the cached backend payload."""
         del reference
 
         backend = self._resolve_backend()
@@ -80,7 +111,12 @@ class LongSequenceMetric(Metric):
             "duration_seconds": sample.duration_seconds,
         }
         try:
-            result = _long_sequence_result(prediction.path, runtime=self.runtime)
+            metric_names = _metric_group(self.name)
+            result = _long_sequence_result(
+                prediction.path,
+                runtime=self.runtime,
+                metric_names=metric_names,
+            )
             raw = result["metrics"].get(self.name)
             if raw is None:
                 raise RuntimeError(f"long-sequence backend did not return a score for {self.name}")

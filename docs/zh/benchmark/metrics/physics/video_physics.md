@@ -1,6 +1,6 @@
 # Video Physics Metrics
 
-`video_physics` group 直接比较生成视频与 simulator reference 在视频平面上的一致性。它更像是低层对齐检查：预测可以在视觉上好看，但只要颜色、位置、形状或运动区域偏离 simulator rollout，这组指标就会下降。
+**video_physics** group 直接比较生成视频与 simulator reference 在视频平面上的一致性。它更像是低层对齐检查：预测可以在视觉上好看，但只要颜色、位置、形状或运动区域偏离 simulator rollout，这组指标就会下降。
 
 ## 输入
 

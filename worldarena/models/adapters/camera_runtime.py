@@ -1,3 +1,9 @@
+"""Shared camera-annotation resolution for camera-conditioned model adapters.
+
+When a sample lacks on-disk poses, adapters synthesize trajectories from
+``camera_path`` tokens and cache the resulting ``poses.npy`` / ``intrinsics.npy``.
+"""
+
 from __future__ import annotations
 
 import hashlib
@@ -26,6 +32,7 @@ def camera_annotation_for_conditioning_image(
     namespace: str,
     focal_scale: float = 0.6,
 ) -> tuple[Path, str]:
+    """Return a pose annotation directory and whether it came from GT or synthesis."""
     local_annotation = local_pose_annotation_path(sample)
     if local_annotation is not None:
         return local_annotation, "annotation"

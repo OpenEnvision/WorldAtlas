@@ -1,3 +1,5 @@
+"""Metric implementations for motion quality and dynamics."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -20,6 +22,7 @@ from worldarena.benchmark.schemas import BenchmarkSample, MetricOutput
 
 
 def _flow_magnitudes(frames: list[np.ndarray]) -> list[float]:
+    """Compute mean Farneback optical-flow magnitude for each consecutive frame pair."""
     if len(frames) < 2:
         return []
     magnitudes = []
@@ -47,6 +50,7 @@ DISABLED_MOTION_BACKENDS = {"pixel_diff"}
 
 
 def _resolve_flow_backend(metric_name: str, backend: str) -> str:
+    """Pick official SEA-RAFT/VFI backends or fall back to Farneback flow."""
     auto_backend = "sea_raft" if metric_name == "motion_magnitude" else "vfi_mamba"
     supported_backends = {"farneback", auto_backend}
     return resolve_metric_backend(
@@ -59,6 +63,7 @@ def _resolve_flow_backend(metric_name: str, backend: str) -> str:
 
 
 def _distribution_details(prefix: str, values: list[float]) -> dict[str, float]:
+    """Summarize flow statistics used when comparing prediction to reference motion."""
     return {
         f"{prefix}_mean": round(float(np.mean(values)), 4),
         f"{prefix}_median": round(float(np.median(values)), 4),
@@ -67,12 +72,15 @@ def _distribution_details(prefix: str, values: list[float]) -> dict[str, float]:
 
 
 class MotionMagnitudeMetric(Metric):
+    """Compare overall motion amount between prediction and reference videos."""
+
     def __init__(
         self,
         backend: str,
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Validate backend early and store official-runtime overrides."""
         super().__init__("motion_magnitude", backend, normalization)
         self.runtime = dict(runtime or {})
         _resolve_flow_backend(self.name, self.backend)
@@ -83,6 +91,7 @@ class MotionMagnitudeMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Score median motion magnitude similarity via SEA-RAFT or Farneback fallback."""
         del sample
 
         backend = _resolve_flow_backend(self.name, self.backend)
@@ -148,12 +157,15 @@ class MotionMagnitudeMetric(Metric):
 
 
 class MotionSmoothnessMetric(Metric):
+    """Compare temporal jitter in motion magnitude against a reference video."""
+
     def __init__(
         self,
         backend: str,
         normalization: dict[str, Any],
         runtime: dict[str, Any] | None = None,
     ) -> None:
+        """Validate backend early and store official-runtime overrides."""
         super().__init__("motion_smoothness", backend, normalization)
         self.runtime = dict(runtime or {})
         _resolve_flow_backend(self.name, self.backend)
@@ -164,6 +176,7 @@ class MotionSmoothnessMetric(Metric):
         prediction: LoadedMedia,
         reference: LoadedMedia,
     ) -> MetricOutput:
+        """Penalize excess frame-to-frame motion variation relative to reference."""
         del sample
 
         backend = _resolve_flow_backend(self.name, self.backend)

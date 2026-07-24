@@ -1,6 +1,6 @@
 # Trajectory Dynamics Metrics
 
-`trajectory_dynamics` group 用完整 rollout 评估 simulator-backed inertia 行为。它面向不能只看最后一帧的场景：模型可能刚好落在正确终点附近，但中间过程出现明显非惯性运动。
+**trajectory_dynamics** group 用完整 rollout 评估 simulator-backed inertia 行为。它面向不能只看最后一帧的场景：模型可能刚好落在正确终点附近，但中间过程出现明显非惯性运动。
 
 ## 输入
 

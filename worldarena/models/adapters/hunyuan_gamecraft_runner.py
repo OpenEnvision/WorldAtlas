@@ -1,3 +1,5 @@
+"""Subprocess runner for Hunyuan GameCraft single-sample inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -34,7 +36,7 @@ def _parse_bool(value: str | bool) -> bool:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena Hunyuan-GameCraft subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena Hunyuan-GameCraft subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", default=None, type=str)
     parser.add_argument("--conditioning_image", required=True, type=str)

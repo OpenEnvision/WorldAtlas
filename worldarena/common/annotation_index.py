@@ -1,3 +1,5 @@
+"""Index and resolve annotation sidecars referenced by ``annotation_path::`` syntax."""
+
 from __future__ import annotations
 
 import json

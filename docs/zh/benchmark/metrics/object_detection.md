@@ -1,6 +1,6 @@
 # Object Detection
 
-`object_detection` 用来衡量在 benchmark 规定的 prompt-matching 合同下，预测帧里是否能恢复出要求的场景物体。
+**object_detection** 用来衡量在 benchmark 规定的 prompt-matching 合同下，预测帧里是否能恢复出要求的场景物体。
 
 ## 这个指标测什么
 

@@ -5,7 +5,7 @@ WorldArena keeps simulator-backed physics metrics under the `physics` dimension 
 Within the broader six-pillar benchmark framing, this entire track should be read as the high-fidelity end of the `physics` pillar rather than as a separate conceptual taxonomy.
 
 !!! note "Do not conflate the two experimental suites"
-    `config/benchmark.yaml` contains a diagnostic-only `experimental` suite. `config/benchmark_physics.yaml` also uses the suite label `experimental`, but there it names the simulator-backed physics track and its metrics are aggregated into that run's `per_metric_summary.json`.
+    `config/benchmark.yaml` contains a non-official `experimental` suite. `config/benchmark_physics.yaml` also uses the suite label `experimental`, but there it names the simulator-backed physics track and its metrics are aggregated into that run's `per_metric_summary.json`.
 
 ## Config Identity
 

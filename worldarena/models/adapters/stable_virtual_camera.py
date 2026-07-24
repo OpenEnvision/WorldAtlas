@@ -10,6 +10,9 @@ class StableVirtualCameraAdapter(ExternalBatchAdapter):
     runner_module = "worldarena.models.adapters.stable_virtual_camera_batch_runner"
     label = "Stable Virtual Camera"
 
+    def batch_checkpoint_load_policy(self) -> str:
+        return "load_once"
+
     def batch_spec_payload(self, request: PreparedGenerationRequest) -> dict[str, Any]:
         payload = super().batch_spec_payload(request)
         payload.update(

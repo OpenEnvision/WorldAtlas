@@ -9,6 +9,7 @@ from PIL import Image
 import pytest
 
 from worldarena.benchmark.schemas import BenchmarkSample
+from worldarena.benchmark.synthetic_camera import synthetic_camera_matrices
 from worldarena.common import checkpoints
 from worldarena.models.adapters.base import PreparedGenerationRequest
 from worldarena.models.adapters.lingbot_world import (
@@ -22,7 +23,7 @@ from worldarena.models.config import ModelRuntimeConfig
 
 
 def _patch_workspace(monkeypatch, tmp_path: Path) -> tuple[Path, Path]:
-    workspace_root = tmp_path / "WorldArena"
+    workspace_root = tmp_path / "WorldAtlas Arena"
     ckpt_root = workspace_root / "ckpt"
     monkeypatch.setattr(checkpoints, "PROJECT_ROOT", workspace_root)
     monkeypatch.setattr(checkpoints, "CANONICAL_CHECKPOINT_ROOT", ckpt_root)
@@ -157,7 +158,7 @@ def test_prepare_annotation_action_path_materializes_pixel_intrinsics(tmp_path: 
     prepared = _prepare_annotation_action_path(config, sample, annotation_path)
 
     assert prepared != annotation_path
-    assert str(prepared).startswith(str(tmp_path / "WorldArena" / "cache"))
+    assert str(prepared).startswith(str(tmp_path / "WorldAtlas Arena" / "cache"))
     exported = np.load(prepared / "intrinsics.npy")
     np.testing.assert_allclose(
         exported[0],
@@ -200,7 +201,7 @@ def test_annotation_action_path_synthesizes_dynamic_image_controls(tmp_path: Pat
     prepared = _annotation_action_path(config, sample, action_string=None)
 
     assert prepared is not None
-    assert str(prepared).startswith(str(tmp_path / "WorldArena" / "cache"))
+    assert str(prepared).startswith(str(tmp_path / "WorldAtlas Arena" / "cache"))
     poses = np.load(prepared / "poses.npy")
     intrinsics = np.load(prepared / "intrinsics.npy")
     assert poses.shape == (81, 4, 4)
@@ -230,8 +231,14 @@ def test_annotation_action_path_synthesizes_static_multi_step_image_controls(tmp
     assert poses.shape == (81, 4, 4)
     assert intrinsics.shape == (81, 4)
     assert not np.allclose(poses[0], poses[-1])
-    assert poses[-1, 0, 3] > 0.0
-    assert poses[-1, 2, 3] > 0.0
+    expected = synthetic_camera_matrices(
+        ["pan_right", "move_right", "pull_out"],
+        target_frames=81,
+    ).matrices
+    np.testing.assert_allclose(poses, expected, atol=1e-6)
+    # The move-right segment ends at frame 54. Pull-out then moves in the
+    # rotated local frame, so the final world-X sign is not a valid direction test.
+    assert poses[54, 0, 3] > 0.0
 
 
 def test_generation_kwargs_for_runtime_uses_full_settings() -> None:

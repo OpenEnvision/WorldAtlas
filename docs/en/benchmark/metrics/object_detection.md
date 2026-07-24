@@ -1,6 +1,6 @@
 # Object Detection
 
-`object_detection` measures whether requested scene objects can be recovered from prediction frames under the benchmark's prompt-matching contract.
+**object_detection** measures whether requested scene objects can be recovered from prediction frames under the benchmark's prompt-matching contract.
 
 ## What It Measures
 

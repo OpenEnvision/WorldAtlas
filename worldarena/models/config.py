@@ -1,3 +1,5 @@
+"""Model runtime configuration loaded from YAML model config files."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -27,6 +29,8 @@ from worldarena.common.taxonomy import (
 
 @dataclass(slots=True)
 class ModelRuntimeConfig:
+    """Resolved settings for one benchmarked world model."""
+
     config_path: Path
     name: str
     family: str

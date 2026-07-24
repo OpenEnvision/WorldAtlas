@@ -1,3 +1,5 @@
+"""Batch subprocess runner for Lyra-2 inference."""
+
 from __future__ import annotations
 
 import argparse
@@ -24,7 +26,7 @@ from worldarena.models.adapters.lyra2_runner import (
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldArena Lyra-2 batch subprocess runner.")
+    parser = argparse.ArgumentParser(description="WorldAtlas Arena Lyra-2 batch subprocess runner.")
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--checkpoint_dir", required=True, type=str)
     parser.add_argument("--batch_spec_path", required=True, type=str)

@@ -1,3 +1,5 @@
+"""Dynamic region mask loading and alignment for region-based metrics."""
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -1,3 +1,5 @@
+"""Scan dataset roots and build benchmark inventory artifacts."""
+
 from __future__ import annotations
 
 import hashlib
@@ -207,12 +209,7 @@ def _configured_vipe_annotation_roots(video_root: Path) -> list[Path]:
     env_root = os.environ.get(VIPE_ANNOTATION_ENV)
     if env_root:
         roots.append(Path(env_root).expanduser())
-    roots.extend(
-        [
-            video_root.with_name(f"{video_root.name}_vipe_ann"),
-            video_root.parent / "videos_test_split_4971_vipe_ann",
-        ]
-    )
+    roots.append(video_root.with_name(f"{video_root.name}_vipe_ann"))
     return _unique_paths(roots)
 
 

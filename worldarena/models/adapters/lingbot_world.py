@@ -1,3 +1,10 @@
+"""LingBot-World model adapter for WorldAtlas Arena.
+
+LingBot-World is a camera-conditioned world model. This adapter resolves pose
+annotations (GT or synthetic), manages runtime caches, and supports both single
+and distributed batch generation via dedicated runner modules.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -37,6 +44,7 @@ from worldarena.models.adapters.common import (
 )
 from worldarena.models.config import ModelRuntimeConfig
 from worldarena.benchmark.schemas import BenchmarkSample
+from worldarena.benchmark.synthetic_camera import synthetic_camera_matrices
 
 
 LINGBOT_INTRINSICS_BASE_WIDTH = 832.0
@@ -285,46 +293,8 @@ def _rigid_transform(rotation: np.ndarray | None = None, translation: np.ndarray
 
 
 def _camera_delta(token: str) -> np.ndarray:
-    token = str(token or "").strip().lower()
-    if not token or token == "fixed":
-        return np.eye(4, dtype=np.float32)
-    if token == "push_in":
-        return _translation_matrix(z=LINGBOT_FORWARD_STEP)
-    if token == "pull_out":
-        return _translation_matrix(z=-LINGBOT_FORWARD_STEP)
-    if token == "move_left":
-        return _translation_matrix(x=-LINGBOT_LATERAL_STEP)
-    if token == "move_right":
-        return _translation_matrix(x=LINGBOT_LATERAL_STEP)
-    if token == "pedestal_up":
-        return _translation_matrix(y=LINGBOT_VERTICAL_STEP)
-    if token == "pedestal_down":
-        return _translation_matrix(y=-LINGBOT_VERTICAL_STEP)
-    if token == "pan_left":
-        return _rigid_transform(rotation=_rotation_matrix_y(LINGBOT_ROTATION_DEGREES))
-    if token == "pan_right":
-        return _rigid_transform(rotation=_rotation_matrix_y(-LINGBOT_ROTATION_DEGREES))
-    if token == "tilt_up":
-        return _rigid_transform(rotation=_rotation_matrix_x(LINGBOT_TILT_DEGREES))
-    if token == "tilt_down":
-        return _rigid_transform(rotation=_rotation_matrix_x(-LINGBOT_TILT_DEGREES))
-    if token == "roll_cw":
-        return _rigid_transform(rotation=_rotation_matrix_z(-LINGBOT_ROLL_DEGREES))
-    if token == "roll_ccw":
-        return _rigid_transform(rotation=_rotation_matrix_z(LINGBOT_ROLL_DEGREES))
-    if token == "orbit_left":
-        return (
-            _translation_matrix(z=LINGBOT_ORBIT_RADIUS)
-            @ _rigid_transform(rotation=_rotation_matrix_y(-LINGBOT_ROTATION_DEGREES))
-            @ _translation_matrix(z=-LINGBOT_ORBIT_RADIUS)
-        )
-    if token == "orbit_right":
-        return (
-            _translation_matrix(z=LINGBOT_ORBIT_RADIUS)
-            @ _rigid_transform(rotation=_rotation_matrix_y(LINGBOT_ROTATION_DEGREES))
-            @ _translation_matrix(z=-LINGBOT_ORBIT_RADIUS)
-        )
-    return np.eye(4, dtype=np.float32)
+    normalized = str(token or "fixed").strip().lower() or "fixed"
+    return synthetic_camera_matrices([normalized], target_frames=2).matrices[-1]
 
 
 def _camera_path_for_sample(sample: BenchmarkSample) -> list[str]:
@@ -357,37 +327,10 @@ def _interpolate_pose_segment(start_pose: np.ndarray, end_pose: np.ndarray, *, f
 
 def _synthetic_image_poses(camera_path: list[str], *, frame_num: int) -> np.ndarray:
     target_frames = _normalized_frame_num(frame_num)
-    if target_frames <= 1:
-        return np.repeat(np.eye(4, dtype=np.float32)[None, ...], repeats=target_frames, axis=0)
-
-    normalized_path = [token for token in camera_path if token] or ["fixed"]
-    keyframes: list[np.ndarray] = [np.eye(4, dtype=np.float32)]
-    current_pose = np.eye(4, dtype=np.float32)
-    for token in normalized_path:
-        current_pose = (current_pose @ _camera_delta(token)).astype(np.float32)
-        keyframes.append(current_pose.copy())
-
-    segment_count = max(1, len(normalized_path))
-    remaining_intervals = target_frames - 1
-    base_intervals = remaining_intervals // segment_count
-    remainder = remaining_intervals % segment_count
-
-    segments: list[np.ndarray] = []
-    for index in range(segment_count):
-        segment_intervals = base_intervals + (1 if index < remainder else 0)
-        segment_frames = segment_intervals + 1
-        segment = _interpolate_pose_segment(
-            keyframes[index],
-            keyframes[index + 1],
-            frames=segment_frames,
-        )
-        if index:
-            segment = segment[1:]
-        segments.append(segment.astype(np.float32))
-    poses = np.concatenate(segments, axis=0).astype(np.float32)
-    if len(poses) != target_frames:
-        raise ValueError(f"expected {target_frames} synthetic poses, got {len(poses)}")
-    return poses
+    return synthetic_camera_matrices(
+        camera_path,
+        target_frames=target_frames,
+    ).matrices
 
 
 def _synthetic_intrinsics_sequence(frame_num: int) -> np.ndarray:
@@ -862,8 +805,6 @@ def _run_persistent_generation(
     output_path: Path,
     prompt: str,
 ) -> dict[str, Any]:
-    from PIL import Image
-
     conditioning_image = conditioning_image.expanduser().resolve()
     output_path = output_path.expanduser().resolve()
     _debug_runtime_stage(runtime, sample, "runtime_enter", conditioning_image=conditioning_image, output_path=output_path)
@@ -926,6 +867,8 @@ def _run_persistent_generation(
         "fps": runtime.cfg.sample_fps,
         "entrypoint": runtime.entrypoint_name,
         "checkpoint_dir": str(runtime.checkpoint_dir),
+        "persistent_engine": True,
+        "checkpoint_load_count": 1,
         "rank": runtime.rank,
         "world_size": runtime.world_size,
     }
@@ -967,15 +910,27 @@ def _torchrun_prefix(config: ModelRuntimeConfig, generation: dict[str, Any]) -> 
     )
     if master_addr is not None:
         command.extend(["--master_addr", str(master_addr)])
-    master_port = generation.get("master_port")
+    master_port = os.environ.get(
+        "WORLDARENA_LOCAL_MASTER_PORT",
+        generation.get("master_port"),
+    )
     if master_port is not None:
         command.extend(["--master_port", str(int(master_port))])
     return command
 
 
 class LingBotWorldAdapter(ModelAdapter):
+    """Generate camera-guided world videos via the LingBot-World upstream repo."""
+
     def supports_batch_generation(self) -> bool:
+        """Supports batch generation -> bool."""
         return not bool(self.config.generation.get("disable_batch_generation", False))
+
+    def batch_checkpoint_load_policy(self) -> str:
+        """Both LingBot batch runners keep one resident runtime per shard."""
+        if not self.supports_batch_generation():
+            return "unsupported"
+        return "load_once"
 
     def generate_batch(
         self,

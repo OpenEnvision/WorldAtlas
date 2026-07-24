@@ -1,3 +1,5 @@
+"""CLIP feature extraction backend for alignment and quality metrics."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -81,6 +83,7 @@ def resolve_cached_clip_artifacts(
 def load_clip_backend(
     model_name: str = DEFAULT_CLIP_MODEL_NAME,
 ) -> tuple[str, Any, Any, str, str | None, str | None] | None:
+    """Load the CLIP model for feature extraction."""
     try:
         import torch
         from safetensors.torch import load_file
@@ -121,6 +124,7 @@ def load_clip_backend(
 
 
 def clip_backend_available(model_name: str = DEFAULT_CLIP_MODEL_NAME) -> bool:
+    """Check if the CLIP backend is available."""
     try:
         return load_clip_backend(model_name) is not None
     except FileNotFoundError:
@@ -135,6 +139,7 @@ def clip_image_features(
     frames: Sequence[np.ndarray],
     model_name: str = DEFAULT_CLIP_MODEL_NAME,
 ) -> tuple[np.ndarray, str]:
+    """Extract CLIP image features from a list of frames."""
     backend = load_clip_backend(model_name)
     if backend is None:
         raise ModuleNotFoundError("transformers/torch/safetensors CLIP backend is unavailable")
@@ -159,6 +164,7 @@ def clip_text_features(
     texts: Sequence[str],
     model_name: str = DEFAULT_CLIP_MODEL_NAME,
 ) -> tuple[np.ndarray, str]:
+    """Extract CLIP text features from a list of prompts."""
     backend = load_clip_backend(model_name)
     if backend is None:
         raise ModuleNotFoundError("transformers/torch/safetensors CLIP backend is unavailable")

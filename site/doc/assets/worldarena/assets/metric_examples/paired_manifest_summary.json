@@ -1,0 +1,133 @@
+{
+  "source_export": "artifacts/benchmark/reports/metric_value_exports_20260706/all_runs_long.csv",
+  "candidate_records": 449444,
+  "selected_rows": 88,
+  "selected_cases": 62,
+  "selection_summary": {
+    "brightness_distribution_consistency": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 9755
+    },
+    "camera_error": {
+      "mode": "fallback_extremes",
+      "good": 2,
+      "bad": 2,
+      "pair_candidates": 0
+    },
+    "color_temperature_constraint": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 9272
+    },
+    "depth_accuracy": {
+      "mode": "fallback_extremes",
+      "good": 2,
+      "bad": 2,
+      "pair_candidates": 0
+    },
+    "depth_collision": {
+      "mode": "fallback_extremes",
+      "good": 2,
+      "bad": 2,
+      "pair_candidates": 0
+    },
+    "epipolar_error": {
+      "mode": "fallback_extremes",
+      "good": 2,
+      "bad": 2,
+      "pair_candidates": 0
+    },
+    "epipolar_inlier_rate": {
+      "mode": "fallback_extremes",
+      "good": 2,
+      "bad": 2,
+      "pair_candidates": 0
+    },
+    "feature_match_coverage": {
+      "mode": "fallback_extremes",
+      "good": 2,
+      "bad": 2,
+      "pair_candidates": 0
+    },
+    "long_sequence_aesthetic_quality": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 2937
+    },
+    "long_sequence_imaging_quality": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 3138
+    },
+    "motion_accuracy": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 3256
+    },
+    "motion_magnitude": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 2965
+    },
+    "motion_smoothness": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 3256
+    },
+    "optical_flow_aepe": {
+      "mode": "fallback_extremes",
+      "good": 2,
+      "bad": 2,
+      "pair_candidates": 0
+    },
+    "perceptual_quality": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 3874
+    },
+    "prompt_alignment": {
+      "mode": "fallback_extremes",
+      "good": 2,
+      "bad": 2,
+      "pair_candidates": 0
+    },
+    "rollout_aesthetic_drift": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 4723
+    },
+    "rollout_imaging_drift": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 4990
+    },
+    "rollout_visual_score": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 4816
+    },
+    "semantic_alignment": {
+      "mode": "fallback_extremes",
+      "good": 2,
+      "bad": 2,
+      "pair_candidates": 0
+    },
+    "sharpness_retention": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 10076
+    },
+    "style_consistency": {
+      "mode": "paired_same_input_prompt",
+      "pairs": 2,
+      "available_pair_candidates": 3930
+    }
+  },
+  "unique_video_assets": 84,
+  "unique_input_assets": 58,
+  "asset_errors": [],
+  "elapsed_sec": 4.977,
+  "video_codec": "h264/yuv420p via imageio-ffmpeg; even dimensions enforced",
+  "h264_rewrite_count": 84
+}

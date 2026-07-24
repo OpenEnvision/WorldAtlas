@@ -1,6 +1,6 @@
 # Temporal Consistency Metrics
 
-`temporal_consistency` group 检查相邻帧之间的几何、光流和 RGB 自一致性。它关注预测是否能形成连续的时间演化，而不是每一帧单独看起来是否合理。
+**temporal_consistency** group 检查相邻帧之间的几何、光流和 RGB 自一致性。它关注预测是否能形成连续的时间演化，而不是每一帧单独看起来是否合理。
 
 ## 输入
 

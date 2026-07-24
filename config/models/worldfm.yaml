@@ -8,19 +8,20 @@ model:
   roles: [candidate]
   # WorldFM's published environment targets Python 3.10 with a dedicated CUDA stack.
   # Use the prepared upstream repo with populated submodules.
-  repo_root: ../tmp/worldfm
+  repo_root: thirdparty/worldfm
   # Run `python download_ckpts.py --weights-dir ckpt/worldfm` inside the repo to populate the unified ckpt tree.
   checkpoint_dir: ckpt/worldfm
   entrypoint: run_pipeline.py
   output_ext: .mp4
   supported_suites:
     - image_static
-    - image_dynamic
     - video_static
-    - video_dynamic
+  # WorldFM performs novel-view synthesis of a static reconstructed scene; it
+  # cannot model independently moving subjects in the dynamic suites.
   prompt_mode: none
   reference_mode: first_frame
   generation:
+    require_persistent_batch: true
     # HunyuanWorld's image-to-panorama stage is text-conditioned. Use the
     # current-scene caption so panorama completion stays semantically aligned.
     panorama_prompt_mode: prompt_current

@@ -1,3 +1,5 @@
+"""Build manifests for WorldArena physics seed evaluation."""
+
 from __future__ import annotations
 
 import json
@@ -96,6 +98,7 @@ CORE_PHYSICS_METADATA_KEYS: frozenset[str] = frozenset(
 
 
 def utc_now_iso() -> str:
+    """Utc now iso -> str."""
     return datetime.now(timezone.utc).isoformat()
 
 
@@ -230,7 +233,7 @@ def _build_metadata_template(
         "secondary": str(meta.get("secondary", "")).strip(),
         "submitted_video_path": str(submitted_video_path.resolve()),
         "notes": (
-            "WorldArena simulator-backed physics case. "
+            "WorldAtlas Arena simulator-backed physics case. "
             "Populate submitted_video.mp4 with a generated rollout before evaluation."
         ),
     }

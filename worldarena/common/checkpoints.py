@@ -1,3 +1,5 @@
+"""Checkpoint and HuggingFace cache path resolution for models and metrics."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -21,6 +23,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CANONICAL_CHECKPOINT_ROOT = PROJECT_ROOT / "ckpt"
 HF_REPO_SUBPATHS: dict[str, tuple[str, ...]] = {
     "depth-anything/DA3-GIANT": ("DA3-GIANT",),
+    "depth-anything/DA3-GIANT-1.1": ("DA3-GIANT",),
     "depth-anything/DA3NESTED-GIANT-LARGE-1.1": ("depth-anything--DA3NESTED-GIANT-LARGE",),
     "depth-anything/Depth-Anything-V2-Small-hf": ("models--depth-anything--Depth-Anything-V2-Small-hf",),
     "facebook/dinov2-base": ("models--facebook--dinov2-base",),
@@ -43,12 +46,12 @@ class CheckpointCacheEnv:
 
 
 def project_root() -> Path:
-    """Return the WorldArena repository root used for all relative path resolution."""
+    """Return the WorldAtlas Arena repository root used for all relative path resolution."""
     return PROJECT_ROOT
 
 
 def workspace_root() -> Path:
-    """Return the workspace root that contains this WorldArena checkout."""
+    """Return the workspace root that contains this WorldAtlas Arena checkout."""
     return PROJECT_ROOT.parent.parent
 
 
@@ -85,7 +88,7 @@ def rehome_legacy_workspace_path(value: str | os.PathLike[str] | None) -> Path |
 def checkpoint_root(*, create: bool = True) -> Path:
     """Return the active checkpoint root.
 
-    WorldArena keeps `ckpt/` as the canonical in-repo layout. Some shared
+    WorldAtlas Arena keeps `ckpt/` as the canonical in-repo layout. Some shared
     workspaces keep the actual large checkpoint tree next to the checkout and
     point this helper at it with WORLDARENA_CHECKPOINT_ROOT.
     """
@@ -101,6 +104,7 @@ def canonical_checkpoint_root() -> Path:
 
 
 def _configured_checkpoint_root() -> Path | None:
+    """Configured checkpoint root -> Path | None."""
     raw = os.environ.get(CHECKPOINT_ROOT_ENV)
     if not raw:
         return None
@@ -111,10 +115,12 @@ def _configured_checkpoint_root() -> Path | None:
 
 
 def _active_checkpoint_root() -> Path:
+    """Active checkpoint root -> Path."""
     return _configured_checkpoint_root() or CANONICAL_CHECKPOINT_ROOT
 
 
 def _allowed_checkpoint_roots() -> tuple[Path, ...]:
+    """Allowed checkpoint roots -> tuple[Path, ...]."""
     roots: list[Path] = []
     for candidate in (
         _configured_checkpoint_root(),
@@ -130,7 +136,7 @@ def _allowed_checkpoint_roots() -> tuple[Path, ...]:
 
 
 def resolve_project_path(value: str | os.PathLike[str] | None) -> Path | None:
-    """Resolve a project-relative or absolute path against the WorldArena root."""
+    """Resolve a project-relative or absolute path against the WorldAtlas Arena root."""
     if value is None:
         return None
     path = rehome_legacy_workspace_path(value)

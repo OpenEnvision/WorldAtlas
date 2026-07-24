@@ -1,3 +1,5 @@
+"""Benchmark YAML configuration and path resolution."""
+
 from __future__ import annotations
 
 from copy import deepcopy
@@ -17,6 +19,7 @@ class BenchmarkPaths:
     video_root: Path
     inventory_dir: Path
     manifest_dir: Path
+    predictions_dir: Path
     reports_dir: Path
     cache_dir: Path
 
@@ -30,6 +33,7 @@ DEFAULT_DERIVED_AGGREGATION_WEIGHTS: dict[str, float] = {
 
 
 def _default_derived_aggregation_weights() -> dict[str, float]:
+    """Default derived aggregation weights -> dict[str, float]."""
     return dict(DEFAULT_DERIVED_AGGREGATION_WEIGHTS)
 
 
@@ -97,6 +101,10 @@ def load_config(path: Path) -> BenchmarkConfig:
         video_root=_resolve(project_root, path_payload["video_root"]),
         inventory_dir=_resolve(project_root, path_payload["inventory_dir"]),
         manifest_dir=_resolve(project_root, path_payload["manifest_dir"]),
+        predictions_dir=_resolve(
+            project_root,
+            path_payload.get("predictions_dir", "artifacts/predictions"),
+        ),
         reports_dir=_resolve(project_root, path_payload["reports_dir"]),
         cache_dir=_resolve(project_root, path_payload["cache_dir"]),
     )

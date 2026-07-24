@@ -5,7 +5,7 @@ WorldArena 把 simulator-backed physics 指标放在 `physics` 维度下，因�
 放到更宽的六支柱 benchmark 叙事里看，这整条 track 应被理解为 `physics` 支柱的高保真端，而不是另一套独立的概念 taxonomy。
 
 !!! note "不要把两个 experimental suite 混为一谈"
-    `config/benchmark.yaml` 里有一个仅用于诊断的 `experimental` suite。`config/benchmark_physics.yaml` 也使用了 suite 名 `experimental`，但这里指的是 simulator-backed physics track，并且它的指标会进入该 physics run 自己的 `per_metric_summary.json`。
+    `config/benchmark.yaml` 里有一个仅作补充的 `experimental` suite。`config/benchmark_physics.yaml` 也使用了 suite 名 `experimental`，但这里指的是 simulator-backed physics track，并且它的指标会进入该 physics run 自己的 `per_metric_summary.json`。
 
 ## 配置身份
 
