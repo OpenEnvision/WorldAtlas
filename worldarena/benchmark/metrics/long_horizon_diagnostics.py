@@ -967,6 +967,98 @@ def _nearest_distances(query: np.ndarray, target: np.ndarray, *, chunk_size: int
         return np.concatenate(distances, axis=0) if distances else np.asarray([], dtype=np.float32)
 
 
+def _nearest_indices(query: np.ndarray, target: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return nearest-neighbor distances and indices for rigid alignment."""
+    query = _finite_points(query)
+    target = _finite_points(target)
+    if not len(query) or not len(target):
+        raise ValueError("nearest-neighbor alignment requires non-empty point clouds")
+    try:
+        from scipy.spatial import cKDTree
+
+        distance, index = cKDTree(target).query(query, k=1, workers=-1)
+        return distance.astype(np.float64), index.astype(np.int64)
+    except Exception:
+        distance_parts: list[np.ndarray] = []
+        index_parts: list[np.ndarray] = []
+        for start in range(0, len(query), 2048):
+            chunk = query[start : start + 2048]
+            squared = np.sum((chunk[:, None, :] - target[None, :, :]) ** 2, axis=2)
+            index = np.argmin(squared, axis=1)
+            index_parts.append(index)
+            distance_parts.append(np.sqrt(squared[np.arange(len(chunk)), index]))
+        return np.concatenate(distance_parts), np.concatenate(index_parts)
+
+
+def _rigid_transform(source: np.ndarray, target: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Fit the proper SE(3) transform mapping source points to target points."""
+    source_center = np.mean(source, axis=0)
+    target_center = np.mean(target, axis=0)
+    covariance = (source - source_center).T @ (target - target_center)
+    left, _, right_t = np.linalg.svd(covariance)
+    rotation = right_t.T @ left.T
+    if np.linalg.det(rotation) < 0.0:
+        right_t[-1] *= -1.0
+        rotation = right_t.T @ left.T
+    translation = target_center - rotation @ source_center
+    return rotation, translation
+
+
+def trimmed_icp_align(
+    source: np.ndarray,
+    target: np.ndarray,
+    *,
+    trim_fraction: float = 0.80,
+    max_iterations: int = 20,
+    tolerance: float = 1e-5,
+    max_translation_ratio: float = 0.10,
+    max_rotation_degrees: float = 10.0,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    """Apply bounded trimmed point-to-point ICP without scale fitting."""
+    moving = _finite_points(source).astype(np.float64)
+    fixed = _finite_points(target).astype(np.float64)
+    if len(moving) < 3 or len(fixed) < 3:
+        raise ValueError("trimmed ICP requires at least three points per cloud")
+    original = moving.copy()
+    total_rotation = np.eye(3, dtype=np.float64)
+    total_translation = np.zeros(3, dtype=np.float64)
+    previous_error = float("inf")
+    iterations = 0
+    keep_fraction = min(max(float(trim_fraction), 0.1), 1.0)
+    for iteration in range(max(int(max_iterations), 1)):
+        distance, index = _nearest_indices(moving, fixed)
+        keep_count = max(3, int(math.ceil(len(distance) * keep_fraction)))
+        keep = np.argpartition(distance, keep_count - 1)[:keep_count]
+        rotation, translation = _rigid_transform(moving[keep], fixed[index[keep]])
+        moving = (rotation @ moving.T).T + translation
+        total_translation = rotation @ total_translation + translation
+        total_rotation = rotation @ total_rotation
+        error = float(np.mean(distance[keep]))
+        iterations = iteration + 1
+        if abs(previous_error - error) <= float(tolerance):
+            break
+        previous_error = error
+
+    diagonal = float(np.linalg.norm(np.ptp(fixed, axis=0)))
+    translation_norm = float(np.linalg.norm(total_translation))
+    rotation_degrees = math.degrees(
+        math.acos(float(np.clip((np.trace(total_rotation) - 1.0) * 0.5, -1.0, 1.0)))
+    )
+    accepted = bool(
+        translation_norm <= max(diagonal * float(max_translation_ratio), 1e-8)
+        and rotation_degrees <= float(max_rotation_degrees)
+    )
+    return (moving if accepted else original).astype(np.float32), {
+        "alignment": "trimmed_icp" if accepted else "trimmed_icp_rejected_identity",
+        "alignment_iterations": iterations,
+        "alignment_trim_fraction": keep_fraction,
+        "alignment_translation": translation_norm,
+        "alignment_translation_ratio": translation_norm / max(diagonal, 1e-8),
+        "alignment_rotation_degrees": rotation_degrees,
+        "alignment_accepted": accepted,
+    }
+
+
 def scene_memory_f1(
     observation_points: np.ndarray,
     revisit_points: np.ndarray,
@@ -1222,7 +1314,19 @@ def compute_scene_memory_metric(
     voxel_size = float(runtime.get("voxel_size", 0.0))
     obs = _voxel_downsample(obs, voxel_size)
     rev = _voxel_downsample(rev, voxel_size)
-    if bool(runtime.get("centroid_align", True)) and len(obs) and len(rev):
+    alignment_mode = runtime.get("alignment")
+    if alignment_mode == "trimmed_icp" and len(obs) and len(rev):
+        rev, alignment_details = trimmed_icp_align(
+            rev,
+            obs,
+            trim_fraction=float(runtime.get("icp_trim_fraction", 0.80)),
+            max_iterations=int(runtime.get("icp_max_iterations", 20)),
+            tolerance=float(runtime.get("icp_tolerance", 1e-5)),
+            max_translation_ratio=float(runtime.get("icp_max_translation_ratio", 0.10)),
+            max_rotation_degrees=float(runtime.get("icp_max_rotation_degrees", 10.0)),
+        )
+        details.update(alignment_details)
+    elif bool(runtime.get("centroid_align", True)) and len(obs) and len(rev):
         rev = rev + (np.mean(obs, axis=0) - np.mean(rev, axis=0))
         details["alignment"] = "centroid_translation"
     else:
@@ -1480,9 +1584,38 @@ class SceneMemoryF1Metric(Metric):
                     "observation_point_count": int(result["observation_point_count"]),
                     "revisit_point_count": int(result["revisit_point_count"]),
                     "scene_diagonal": round(float(result["scene_diagonal"]), 6),
+                    "metric_uses_vlm": False,
+                    "metric_uses_llm_as_judge": False,
                 }
             )
             raw = float(result["scene_memory_f1"])
+            if bool(self.runtime.get("require_return_gate", False)):
+                from worldarena.benchmark.metrics.memory import (
+                    compute_revisit_return_gate,
+                    resolve_revisit_pose_sidecar,
+                )
+
+                poses, pose_source = resolve_revisit_pose_sidecar(prediction_path, self.runtime)
+                gate = compute_revisit_return_gate(
+                    poses,
+                    tail_fraction=float(self.runtime.get("return_tail_fraction", 0.15)),
+                    min_departure_translation=float(
+                        self.runtime.get("min_departure_translation", 0.10)
+                    ),
+                    min_departure_rotation_degrees=float(
+                        self.runtime.get("min_departure_rotation_degrees", 45.0)
+                    ),
+                    max_return_translation_ratio=float(
+                        self.runtime.get("max_return_translation_ratio", 0.12)
+                    ),
+                    max_return_rotation_degrees=float(
+                        self.runtime.get("max_return_rotation_degrees", 8.0)
+                    ),
+                )
+                details["pose_source"] = pose_source
+                details["return_gate"] = gate
+                details["conditional_scene_memory_f1"] = round(raw, 6)
+                raw = raw if gate["passed"] else 0.0
             return MetricOutput(
                 raw=raw,
                 normalized=normalize_score(raw, self.normalization) if self.normalization else raw,
@@ -1522,4 +1655,5 @@ __all__ = [
     "segment_drift",
     "strict_partial_accuracy",
     "trajectory_score",
+    "trimmed_icp_align",
 ]

@@ -128,7 +128,7 @@ python -m pip install decord==0.6.0
 
 #### 3. 安装 official metric 运行时依赖
 
-多个 headline 指标（`camera_error`、`reprojection_error`、`object_detection`、`motion_accuracy` 及相关 flow 指标）会通过 in-tree adapter 复用上游实现。需要完整 official benchmark 路径时，请初始化指标源码 submodule 并编译 DROID-SLAM：
+多个 headline 指标（`camera_error`、`reprojection_error`、`motion_accuracy` 及相关 flow 指标）会通过 in-tree adapter 复用上游实现。需要完整 official benchmark 路径时，请初始化指标源码 submodule 并编译 DROID-SLAM：
 
 WorldArena 只在 `worldarena/benchmark/official_backends/` 中保留指标
 adapter。DROID-SLAM、SEA-RAFT、GroundingDINO、SAM2 和 VFIMamba 都会
@@ -228,7 +228,7 @@ python -m pytest \
 | `long_sequence_*`、`long_horizon_diagnostics` | `amt_model/amt-s.pth`、`raft_model/models/raft-things.pth`、`musiq/musiq_spaq_ckpt-358bb6af.pth` | [HF: lalala125/AMT](https://huggingface.co/lalala125/AMT)、[RAFT Dropbox](https://dl.dropboxusercontent.com/s/4j4z58wuv8o0mfz/models.zip)、[IQA-PyTorch](https://github.com/chaofengc/IQA-PyTorch/releases/download/v0.1-weights/musiq_spaq_ckpt-358bb6af.pth) |
 | `temporal_calibration`、`physical_fps_*` | `Pulse-of-Motion/vc_common_10_60fps.ckpt` | [HF: xiangbog/Visual_Chronometer](https://huggingface.co/xiangbog/Visual_Chronometer) |
 | `camera_error`、`reprojection_error`（DROID） | `official_metrics/droid.pth` | [Google Drive（gdown）](https://drive.google.com/file/d/1PpqVt1H4maBa_GbPJp4NwxRsd9jk-elh) |
-| `object_detection`、`motion_accuracy` | `official_metrics/groundingdino_swint_ogc.pth`、`sam_vit_h_4b8939.pth`、`sam2.1_hiera_base_plus.pt`、`bert-base-uncased/` | [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth)、[SAM ViT-H](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth)、[HF: sam2.1-hiera-base-plus](https://huggingface.co/facebook/sam2.1-hiera-base-plus)、[HF: bert-base-uncased](https://huggingface.co/google-bert/bert-base-uncased) |
+| `motion_accuracy` | `official_metrics/groundingdino_swint_ogc.pth`、`sam_vit_h_4b8939.pth`、`sam2.1_hiera_base_plus.pt`、`bert-base-uncased/` | [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth)、[SAM ViT-H](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth)、[HF: sam2.1-hiera-base-plus](https://huggingface.co/facebook/sam2.1-hiera-base-plus)、[HF: bert-base-uncased](https://huggingface.co/google-bert/bert-base-uncased) |
 | `optical_flow_aepe`、`motion_magnitude`、`motion_accuracy` | `official_metrics/Tartan-C-T-TSKH-spring540x960-M.pth`、`official_metrics/models/raft-things.pth` | [HF: Yarimasune/SEA-RAFT](https://huggingface.co/Yarimasune/SEA-RAFT)，从 `raft_model/` 复制 |
 | `motion_smoothness` | `official_metrics/VFIMamba.pkl` | [HF: MCG-NJU/VFIMamba](https://huggingface.co/MCG-NJU/VFIMamba)（`model.pkl` 复制为 `VFIMamba.pkl`） |
 | `long_sequence_aesthetic_quality` | `official_metrics/sac+logos+ava1-l14-linearMSE.pth` | [improved-aesthetic-predictor](https://github.com/christophschuhmann/improved-aesthetic-predictor/raw/main/sac%2Blogos%2Bava1-l14-linearMSE.pth) |
@@ -276,7 +276,7 @@ wget -q -O "$CKPT/musiq/musiq_spaq_ckpt-358bb6af.pth" \
 
 #### 2. Official metric 运行时权重
 
-这些权重支撑 official camera/flow 指标（`object_detection`、`motion_accuracy`、camera/flow 指标）：
+这些权重支撑 `motion_accuracy` 与 official camera/flow 指标：
 
 ```shell
 CKPT="${WORLDARENA_CHECKPOINT_ROOT:-ckpt}"
@@ -414,6 +414,7 @@ PY
 | `stable_virtual_camera.yaml` | `thirdparty/stable-virtual-camera` | `stable-virtual-camera/*` |
 | `yume.yaml` | `thirdparty/YUME` | `Yume-5B-720P` |
 | `abot_world.yaml` | `thirdparty/ABot-World` | `ABot-World-0-5B-LF` |
+| `open_dreamer.yaml` | `thirdparty/open-dreamer` | `open-dreamer/<step>/`（Orbax 的 `tokenizer/` + `dynamics_ema/`） |
 
 示例：
 

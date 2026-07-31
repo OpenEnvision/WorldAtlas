@@ -24,6 +24,7 @@ from worldarena.models.adapters import (
     MatrixGameAdapter,
     ModelAdapter,
     NeoVerseAdapter,
+    OpenDreamerAdapter,
     RealCamI2VAdapter,
     StableVirtualCameraAdapter,
     VideoApiAdapter,
@@ -113,6 +114,8 @@ def build_model_adapter(config: ModelRuntimeConfig) -> ModelAdapter:
         return InfiniteWorldAdapter(config)
     if family in {"neoverse", "neo_verse", "neo-verse"}:
         return NeoVerseAdapter(config)
+    if family in {"open_dreamer", "open-dreamer", "opendreamer", "dreamer4", "dreamer_4"}:
+        return OpenDreamerAdapter(config)
     if family in {"stable_virtual_camera", "stable-virtual-camera"}:
         return StableVirtualCameraAdapter(config)
     if family in {"wonderworld", "wonder_world", "wonder-world"}:

@@ -27,3 +27,9 @@
 为提高吞吐，WorldArena 通过一次顺序解码取得相同的目标帧，不再为每个目标帧反复 seek。启用该模式前，会对每个预测目录的代表视频做逐字节 parity 检查；目标帧索引和 RGB 像素必须完全相同，因此该优化不改变指标输入或得分逻辑。
 
 采样后至少需要三帧。DA3 失败、帧数不足或点云构建失败时两个分数为 null。`geometric_consistency` 与 `photometric_consistency` 都作为 `consistency_3d_4d` 下的 official metric，并在每条视频上复用同一次 DA3 推理。WorldArena 保留单条视频的完整精度，到聚合序列化时才舍入。旧别名 `S_recon`、`score_reconstruction` 解析为 `geometric_consistency`；旧的 `reconstruction_consistency` 输出仍作为诊断兼容名保留。
+
+<!-- metric-examples:start -->
+## 暂无可核验的同 Case 对比
+
+> 当前保留的正式快照中，重建一致性的两个子指标（几何与光度）都只有一个完成的模型报告。强行组成同-case高/低分对照会产生误导，因此暂不展示视频对比。
+<!-- metric-examples:end -->

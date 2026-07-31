@@ -17,6 +17,7 @@ from worldarena.benchmark.metrics.long_horizon_diagnostics import (
     scene_memory_f1,
     segment_drift,
     strict_partial_accuracy,
+    trimmed_icp_align,
 )
 from worldarena.benchmark.schemas import BenchmarkSample
 
@@ -165,6 +166,23 @@ def test_scene_memory_f1_balances_retention_and_hallucination() -> None:
     assert result["retention"] == pytest.approx(0.5)
     assert result["hallucination"] == pytest.approx(0.5)
     assert result["scene_memory_f1"] == pytest.approx(0.5)
+
+
+def test_trimmed_icp_accepts_small_rigid_drift_and_rejects_large_correction() -> None:
+    target = np.asarray(
+        [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0]],
+        dtype=np.float32,
+    )
+    small = target + np.asarray([0.03, 0.0, 0.0], dtype=np.float32)
+    large = target + np.asarray([1.0, 0.0, 0.0], dtype=np.float32)
+
+    aligned, accepted = trimmed_icp_align(small, target, max_translation_ratio=0.10)
+    unchanged, rejected = trimmed_icp_align(large, target, max_translation_ratio=0.10)
+
+    assert accepted["alignment_accepted"] is True
+    assert np.mean(np.linalg.norm(aligned - target, axis=1)) < 1e-5
+    assert rejected["alignment_accepted"] is False
+    assert np.allclose(unchanged, large)
 
 
 def test_scene_memory_metric_reads_explicit_npz_sidecar(tmp_path: Path) -> None:

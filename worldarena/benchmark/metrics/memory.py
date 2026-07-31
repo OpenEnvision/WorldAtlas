@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -16,6 +18,8 @@ from worldarena.benchmark.schemas import BenchmarkSample, MetricOutput
 
 MEMORY_REVISIT_BACKENDS = {"dinov2"}
 MEMORY_SYMMETRY_BACKENDS = {"mse_symmetry"}
+REVISIT_RETURN_BACKENDS = {"pose_gate"}
+ENTITY_REAPPEARANCE_BACKENDS = {"masked_dinov2"}
 
 
 def _protocol_details(prediction: LoadedMedia) -> dict[str, Any]:
@@ -37,6 +41,177 @@ def _mse_similarity(left: np.ndarray, right: np.ndarray, *, tau: float) -> tuple
     right_float = right.astype(np.float32) / 255.0
     mse = float(np.mean((left_float - right_float) ** 2))
     return mse, 1.0 - clamp01(mse / max(float(tau), 1e-6))
+
+
+def _rotation_error_degrees(left: np.ndarray, right: np.ndarray) -> float:
+    """Return the geodesic SO(3) angle between two rotation matrices."""
+    relative = np.asarray(left, dtype=np.float64).T @ np.asarray(right, dtype=np.float64)
+    cosine = float(np.clip((np.trace(relative) - 1.0) * 0.5, -1.0, 1.0))
+    return math.degrees(math.acos(cosine))
+
+
+def compute_revisit_return_gate(
+    poses_c2w: np.ndarray,
+    *,
+    tail_fraction: float = 0.15,
+    min_departure_translation: float = 0.10,
+    min_departure_rotation_degrees: float = 45.0,
+    max_return_translation_ratio: float = 0.12,
+    max_return_rotation_degrees: float = 8.0,
+    max_return_translation: float | None = None,
+) -> dict[str, Any]:
+    """Verify that a trajectory actually departs and returns to its anchor pose.
+
+    Translation is normalized by the observed departure magnitude so monocular
+    pose tracks with unknown metric scale remain usable. Pure rotational loops
+    are accepted through the rotation departure branch.
+    """
+    poses = np.asarray(poses_c2w, dtype=np.float64)
+    if poses.ndim != 3 or poses.shape[1:] != (4, 4) or len(poses) < 3:
+        raise ValueError(f"expected at least three [4,4] camera poses, got {poses.shape}")
+    if not np.isfinite(poses).all():
+        raise ValueError("camera poses contain non-finite values")
+
+    anchor = poses[0]
+    translation = np.linalg.norm(poses[:, :3, 3] - anchor[:3, 3], axis=1)
+    rotation = np.asarray(
+        [_rotation_error_degrees(anchor[:3, :3], pose[:3, :3]) for pose in poses],
+        dtype=np.float64,
+    )
+    max_translation = float(np.max(translation))
+    max_rotation = float(np.max(rotation))
+    translation_departed = max_translation >= float(min_departure_translation)
+    rotation_departed = max_rotation >= float(min_departure_rotation_degrees)
+    departure_passed = bool(translation_departed or rotation_departed)
+
+    tail_count = max(1, int(math.ceil(len(poses) * clamp01(float(tail_fraction)))))
+    tail_start = max(1, len(poses) - tail_count)
+    translation_ratio = translation / max(max_translation, 1e-8)
+    combined_error = (
+        translation_ratio / max(float(max_return_translation_ratio), 1e-8)
+        + rotation / max(float(max_return_rotation_degrees), 1e-8)
+    )
+    revisit_index = int(tail_start + np.argmin(combined_error[tail_start:]))
+    revisit_translation = float(translation[revisit_index])
+    revisit_translation_ratio = float(translation_ratio[revisit_index])
+    revisit_rotation = float(rotation[revisit_index])
+
+    translation_returned = revisit_translation_ratio <= float(max_return_translation_ratio)
+    if max_return_translation is not None:
+        translation_returned = translation_returned and revisit_translation <= float(
+            max_return_translation
+        )
+    rotation_returned = revisit_rotation <= float(max_return_rotation_degrees)
+    return_passed = bool(translation_returned and rotation_returned)
+    passed = bool(departure_passed and return_passed)
+
+    departure_score = max(
+        clamp01(max_translation / max(float(min_departure_translation), 1e-8)),
+        clamp01(max_rotation / max(float(min_departure_rotation_degrees), 1e-8)),
+    )
+    translation_return_score = 1.0 - clamp01(
+        revisit_translation_ratio / max(float(max_return_translation_ratio), 1e-8)
+    )
+    rotation_return_score = 1.0 - clamp01(
+        revisit_rotation / max(float(max_return_rotation_degrees), 1e-8)
+    )
+    return {
+        "passed": passed,
+        "gate_score": clamp01(
+            departure_score * min(translation_return_score, rotation_return_score)
+        ),
+        "departure_passed": departure_passed,
+        "return_passed": return_passed,
+        "translation_departed": translation_departed,
+        "rotation_departed": rotation_departed,
+        "max_departure_translation": max_translation,
+        "max_departure_rotation_degrees": max_rotation,
+        "revisit_index": revisit_index,
+        "revisit_translation": revisit_translation,
+        "revisit_translation_ratio": revisit_translation_ratio,
+        "revisit_rotation_degrees": revisit_rotation,
+        "tail_start_index": tail_start,
+    }
+
+
+def _load_pose_array(path: Path) -> np.ndarray:
+    """Load a [N,4,4] pose sidecar from a directory, NPY, or NPZ file."""
+    if path.is_dir():
+        for name in ("poses_c2w.npy", "poses.npy", "camera_poses.npy"):
+            candidate = path / name
+            if candidate.exists():
+                return _load_pose_array(candidate)
+        raise FileNotFoundError(f"pose directory has no supported pose file: {path}")
+    if path.suffix.lower() == ".npz":
+        payload = np.load(path)
+        for key in ("poses_c2w", "poses", "data"):
+            if key in payload:
+                poses = payload[key]
+                break
+        else:
+            raise KeyError(f"pose archive has no supported array: {path}")
+    else:
+        poses = np.load(path)
+    poses = np.asarray(poses, dtype=np.float32)
+    if poses.ndim != 3 or poses.shape[1:] != (4, 4):
+        raise ValueError(f"expected pose array [N,4,4], got {poses.shape}")
+    return poses
+
+
+def resolve_revisit_pose_sidecar(
+    prediction_path: Path,
+    runtime: dict[str, Any],
+) -> tuple[np.ndarray, str]:
+    """Resolve the estimated camera trajectory used by the return gate."""
+    base = prediction_path.resolve().parent
+    candidates: list[Path] = []
+    explicit = runtime.get("pose_path") or runtime.get("prediction_pose_path")
+    if explicit:
+        candidate = Path(str(explicit)).expanduser()
+        candidates.append(candidate if candidate.is_absolute() else base / candidate)
+    stem = prediction_path.stem
+    candidates.extend(
+        [
+            base / "annotations_vipe" / f"{stem}_vipe_ann",
+            base / f"{stem}_vipe_ann",
+            base / f"{stem}_poses_c2w.npy",
+            base / f"{stem}_poses.npy",
+        ]
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return _load_pose_array(candidate), str(candidate)
+    raise FileNotFoundError("revisit return gate requires a camera-pose sidecar")
+
+
+def compute_entity_reappearance_consistency(
+    anchor_descriptor: np.ndarray,
+    revisit_descriptor: np.ndarray,
+    *,
+    anchor_area: float,
+    revisit_area: float,
+    return_gate_passed: bool = True,
+    appearance_weight: float = 0.80,
+) -> dict[str, float | bool]:
+    """Score masked entity identity and scale without language supervision."""
+    left = np.asarray(anchor_descriptor, dtype=np.float64).reshape(-1)
+    right = np.asarray(revisit_descriptor, dtype=np.float64).reshape(-1)
+    if left.shape != right.shape or left.size == 0:
+        raise ValueError("anchor and revisit descriptors must be non-empty and shape-matched")
+    if anchor_area <= 0.0 or revisit_area <= 0.0:
+        raise ValueError("anchor and revisit mask areas must be positive")
+    denominator = float(np.linalg.norm(left) * np.linalg.norm(right))
+    appearance = 0.0 if denominator <= 1e-12 else clamp01(float(np.dot(left, right) / denominator))
+    area_consistency = float(math.exp(-abs(math.log(float(revisit_area) / float(anchor_area)))))
+    weight = clamp01(float(appearance_weight))
+    conditional = weight * appearance + (1.0 - weight) * area_consistency
+    return {
+        "entity_reappearance_consistency": conditional if return_gate_passed else 0.0,
+        "conditional_consistency": conditional,
+        "appearance_consistency": appearance,
+        "area_consistency": area_consistency,
+        "return_gate_passed": bool(return_gate_passed),
+    }
 
 
 def _frame_mse(left: np.ndarray, right: np.ndarray) -> float:
@@ -177,6 +352,30 @@ class MemoryRevisitConsistencyMetric(Metric):
             progress_gate_weight = clamp01(float(self.runtime.get("progress_gate_weight", 0.35)))
             raw = closure_score * ((1.0 - progress_gate_weight) + progress_gate_weight * progress_score)
 
+            return_gate: dict[str, Any] | None = None
+            if bool(self.runtime.get("require_return_gate", False)):
+                poses, pose_source = resolve_revisit_pose_sidecar(Path(prediction.path), self.runtime)
+                return_gate = compute_revisit_return_gate(
+                    poses,
+                    tail_fraction=float(self.runtime.get("return_tail_fraction", 0.15)),
+                    min_departure_translation=float(
+                        self.runtime.get("min_departure_translation", 0.10)
+                    ),
+                    min_departure_rotation_degrees=float(
+                        self.runtime.get("min_departure_rotation_degrees", 45.0)
+                    ),
+                    max_return_translation_ratio=float(
+                        self.runtime.get("max_return_translation_ratio", 0.12)
+                    ),
+                    max_return_rotation_degrees=float(
+                        self.runtime.get("max_return_rotation_degrees", 8.0)
+                    ),
+                    max_return_translation=self.runtime.get("max_return_translation"),
+                )
+                details["pose_source"] = pose_source
+                details["conditional_visual_consistency"] = round(float(raw), 6)
+                raw = float(raw) if return_gate["passed"] else 0.0
+
             details.update(
                 {
                     "dino_revisit": round(dino_revisit, 4),
@@ -189,6 +388,9 @@ class MemoryRevisitConsistencyMetric(Metric):
                     "mean_quarter_displacement": round(mean_quarter_displacement, 4),
                     "progress_score": round(progress_score, 4),
                     "progress_gate_weight": progress_gate_weight,
+                    "return_gate": return_gate,
+                    "metric_uses_vlm": False,
+                    "metric_uses_llm_as_judge": False,
                 }
             )
             return MetricOutput(
@@ -205,6 +407,207 @@ class MemoryRevisitConsistencyMetric(Metric):
                 backend=backend,
                 details=details,
                 eligibility_status="diagnostic",
+                error=str(exc),
+            )
+
+
+class RevisitReturnGateMetric(Metric):
+    """Expose the actual depart-and-return pose gate as a leaderboard metric."""
+
+    def __init__(
+        self,
+        backend: str,
+        normalization: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__("revisit_return_gate", backend, normalization)
+        self.runtime = dict(runtime or {})
+        resolve_metric_backend(
+            metric_name=self.name,
+            configured_backend=self.backend,
+            auto_backend="pose_gate",
+            supported_backends=REVISIT_RETURN_BACKENDS,
+        )
+
+    def compute(
+        self,
+        sample: BenchmarkSample,
+        prediction: LoadedMedia,
+        reference: LoadedMedia,
+    ) -> MetricOutput:
+        del sample, reference
+        backend = "pose_gate" if self.backend == "auto" else self.backend
+        details = _protocol_details(prediction)
+        try:
+            poses, pose_source = resolve_revisit_pose_sidecar(Path(prediction.path), self.runtime)
+            gate = compute_revisit_return_gate(
+                poses,
+                tail_fraction=float(self.runtime.get("return_tail_fraction", 0.15)),
+                min_departure_translation=float(
+                    self.runtime.get("min_departure_translation", 0.10)
+                ),
+                min_departure_rotation_degrees=float(
+                    self.runtime.get("min_departure_rotation_degrees", 45.0)
+                ),
+                max_return_translation_ratio=float(
+                    self.runtime.get("max_return_translation_ratio", 0.12)
+                ),
+                max_return_rotation_degrees=float(
+                    self.runtime.get("max_return_rotation_degrees", 8.0)
+                ),
+                max_return_translation=self.runtime.get("max_return_translation"),
+            )
+            raw = 1.0 if gate["passed"] else 0.0
+            details.update(
+                {
+                    "pose_source": pose_source,
+                    "return_gate": gate,
+                    "metric_uses_vlm": False,
+                    "metric_uses_llm_as_judge": False,
+                }
+            )
+            return MetricOutput(
+                raw=raw,
+                normalized=normalize_score(raw, self.normalization) if self.normalization else raw,
+                backend=backend,
+                details=details,
+            )
+        except FileNotFoundError as exc:
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=details,
+                eligibility_status="not_applicable",
+                error=str(exc),
+            )
+        except Exception as exc:
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=details,
+                error=str(exc),
+            )
+
+
+def _load_entity_revisit_sidecar(
+    prediction_path: Path,
+    runtime: dict[str, Any],
+) -> tuple[dict[str, np.ndarray], str]:
+    """Load precomputed masked DINO descriptors and mask areas."""
+    base = prediction_path.resolve().parent
+    explicit = runtime.get("entity_revisit_sidecar_path")
+    candidates: list[Path] = []
+    if explicit:
+        path = Path(str(explicit)).expanduser()
+        candidates.append(path if path.is_absolute() else base / path)
+    candidates.append(base / f"{prediction_path.stem}_entity_revisit.npz")
+    for candidate in candidates:
+        if not candidate.exists():
+            continue
+        payload = np.load(candidate)
+        required = {
+            "anchor_descriptor",
+            "revisit_descriptor",
+            "anchor_mask_area",
+            "revisit_mask_area",
+        }
+        missing = required - set(payload.files)
+        if missing:
+            raise KeyError(f"entity revisit sidecar is missing: {sorted(missing)}")
+        return {key: np.asarray(payload[key]) for key in required}, str(candidate)
+    raise FileNotFoundError("entity reappearance metric requires an entity-revisit NPZ sidecar")
+
+
+class EntityReappearanceConsistencyMetric(Metric):
+    """Score a returning entity with masked DINO features and mask geometry."""
+
+    def __init__(
+        self,
+        backend: str,
+        normalization: dict[str, Any],
+        runtime: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__("entity_reappearance_consistency", backend, normalization)
+        self.runtime = dict(runtime or {})
+        resolve_metric_backend(
+            metric_name=self.name,
+            configured_backend=self.backend,
+            auto_backend="masked_dinov2",
+            supported_backends=ENTITY_REAPPEARANCE_BACKENDS,
+        )
+
+    def compute(
+        self,
+        sample: BenchmarkSample,
+        prediction: LoadedMedia,
+        reference: LoadedMedia,
+    ) -> MetricOutput:
+        del sample, reference
+        backend = "masked_dinov2" if self.backend == "auto" else self.backend
+        details = _protocol_details(prediction)
+        try:
+            payload, source = _load_entity_revisit_sidecar(
+                Path(prediction.path), self.runtime
+            )
+            poses, pose_source = resolve_revisit_pose_sidecar(Path(prediction.path), self.runtime)
+            gate = compute_revisit_return_gate(
+                poses,
+                tail_fraction=float(self.runtime.get("return_tail_fraction", 0.15)),
+                min_departure_translation=float(
+                    self.runtime.get("min_departure_translation", 0.10)
+                ),
+                min_departure_rotation_degrees=float(
+                    self.runtime.get("min_departure_rotation_degrees", 45.0)
+                ),
+                max_return_translation_ratio=float(
+                    self.runtime.get("max_return_translation_ratio", 0.12)
+                ),
+                max_return_rotation_degrees=float(
+                    self.runtime.get("max_return_rotation_degrees", 8.0)
+                ),
+            )
+            result = compute_entity_reappearance_consistency(
+                payload["anchor_descriptor"],
+                payload["revisit_descriptor"],
+                anchor_area=float(payload["anchor_mask_area"].reshape(-1)[0]),
+                revisit_area=float(payload["revisit_mask_area"].reshape(-1)[0]),
+                return_gate_passed=bool(gate["passed"]),
+                appearance_weight=float(self.runtime.get("appearance_weight", 0.80)),
+            )
+            raw = float(result["entity_reappearance_consistency"])
+            details.update(
+                {
+                    "entity_sidecar_source": source,
+                    "pose_source": pose_source,
+                    "return_gate": gate,
+                    **result,
+                    "metric_uses_vlm": False,
+                    "metric_uses_llm_as_judge": False,
+                }
+            )
+            return MetricOutput(
+                raw=raw,
+                normalized=normalize_score(raw, self.normalization) if self.normalization else raw,
+                backend=backend,
+                details=details,
+            )
+        except FileNotFoundError as exc:
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=details,
+                eligibility_status="not_applicable",
+                error=str(exc),
+            )
+        except Exception as exc:
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=details,
                 error=str(exc),
             )
 
@@ -272,7 +675,12 @@ class MemorySymmetryMetric(Metric):
 
 
 __all__ = [
+    "EntityReappearanceConsistencyMetric",
     "MemoryRevisitConsistencyMetric",
     "MemorySymmetryMetric",
+    "RevisitReturnGateMetric",
+    "compute_entity_reappearance_consistency",
     "compute_memory_symmetry",
+    "compute_revisit_return_gate",
+    "resolve_revisit_pose_sidecar",
 ]

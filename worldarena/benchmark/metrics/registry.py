@@ -24,7 +24,6 @@ from worldarena.benchmark.metrics.consistency import (
 from worldarena.benchmark.metrics.control import (
     CameraErrorMetric,
     MotionAccuracyMetric,
-    ObjectDetectionMetric,
 )
 from worldarena.benchmark.metrics.depth_collision import DepthCollisionMetric
 from worldarena.benchmark.metrics.alignment import PromptAlignmentMetric
@@ -53,7 +52,12 @@ from worldarena.benchmark.metrics.style import StyleConsistencyMetric
 from worldarena.benchmark.metrics.temporal import TemporalCalibrationMetric
 from worldarena.benchmark.metrics.temporal_flickering import TemporalFlickeringMetric
 from worldarena.benchmark.metrics.long_sequence import LongSequenceMetric
-from worldarena.benchmark.metrics.memory import MemoryRevisitConsistencyMetric, MemorySymmetryMetric
+from worldarena.benchmark.metrics.memory import (
+    EntityReappearanceConsistencyMetric,
+    MemoryRevisitConsistencyMetric,
+    MemorySymmetryMetric,
+    RevisitReturnGateMetric,
+)
 from worldarena.benchmark.metrics.long_horizon_diagnostics import (
     LONG_HORIZON_ACTION_METRICS,
     LONG_HORIZON_MEMORY_METRICS,
@@ -69,7 +73,6 @@ METRIC_ALIASES: dict[str, str] = {
     "dynamic_alignment": "prompt_alignment",
     "subjective_quality": "perceptual_quality",
     "camera_control": "camera_error",
-    "object_control": "object_detection",
     "content_alignment": "prompt_alignment",
     "clip_score": "prompt_alignment",
     "3d_consistency": "reprojection_error",
@@ -323,14 +326,6 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
                     normalization=normalization,
                 )
             )
-        elif metric_name == "object_detection":
-            metrics.append(
-                ObjectDetectionMetric(
-                    backend=backend,
-                    normalization=normalization,
-                    runtime=official_runtime,
-                )
-            )
         elif metric_name == "object_permanence":
             metrics.append(
                 ObjectPermanenceMetric(
@@ -447,6 +442,22 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
         elif metric_name == "memory_revisit_consistency":
             metrics.append(
                 MemoryRevisitConsistencyMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
+        elif metric_name == "revisit_return_gate":
+            metrics.append(
+                RevisitReturnGateMetric(
+                    backend=backend,
+                    normalization=normalization,
+                    runtime=runtime,
+                )
+            )
+        elif metric_name == "entity_reappearance_consistency":
+            metrics.append(
+                EntityReappearanceConsistencyMetric(
                     backend=backend,
                     normalization=normalization,
                     runtime=runtime,

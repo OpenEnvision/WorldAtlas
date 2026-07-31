@@ -32,6 +32,7 @@ _ADAPTER_MODULES = {
     "MatrixGame35Adapter": "worldarena.models.adapters.matrix_game_35",
     "ModelAdapter": "worldarena.models.adapters.base",
     "NeoVerseAdapter": "worldarena.models.adapters.neoverse",
+    "OpenDreamerAdapter": "worldarena.models.adapters.open_dreamer",
     "RealCamI2VAdapter": "worldarena.models.adapters.realcam_i2v",
     "StableVirtualCameraAdapter": "worldarena.models.adapters.stable_virtual_camera",
     "VideoApiAdapter": "worldarena.models.adapters.video_api",

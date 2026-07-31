@@ -32,7 +32,6 @@ nav_translations:
   Background Consistency: 背景一致性
   Segment Continuity: 片段连续性
   Camera Error: 相机误差
-  Object Detection: 目标检测
   Reprojection Error: 重投影误差
   Depth Accuracy: 深度准确性
   Depth Collision: 深度碰撞
@@ -78,7 +77,6 @@ nav:
               - Prompt Alignment: benchmark/metrics/prompt_alignment.md
               - Semantic Alignment: benchmark/metrics/semantic_alignment.md
               - Camera Error: benchmark/metrics/camera_error.md
-              - Object Detection: benchmark/metrics/object_detection.md
               - Motion Accuracy: benchmark/metrics/motion_accuracy.md
               - Keystroke Strict Action Accuracy: benchmark/metrics/keystroke_strict_action_accuracy.md
               - Keystroke Partial Action Accuracy: benchmark/metrics/keystroke_partial_action_accuracy.md

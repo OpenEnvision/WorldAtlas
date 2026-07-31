@@ -128,3 +128,53 @@ SSIM 越高，说明预测帧与参考帧在局部亮度、对比度和结构上
 
     结构相似性指标从亮度、对比度和结构三个方面衡量两张图像的相似程度。  
     [https://zh.wikipedia.org/wiki/結構相似性](https://zh.wikipedia.org/wiki/%E7%B5%90%E6%A7%8B%E7%9B%B8%E4%BC%BC%E6%80%A7)
+
+<!-- metric-examples:start -->
+## 人工精选的同 Case 对比
+
+下列案例来自 `artifacts/reports` 生成的同-case比较索引。输入图、sample ID 与实际生成 prompt 完全一致；候选先按分位数和分差筛选，再逐帧人工复核。标签只表示该 metric 的相对高低，不代表模型整体优劣；为避免把单一案例误读成排行榜，卡片不展示模型名称。
+
+Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
+
+<div class="metric-case-stack">
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/205a86ec0eb6__image_static_photorealistic_living_spaces_0069__input.jpg" alt="输入图像: image_static_photorealistic_living_spaces_0069" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">人工复核 · 同一 case、输入与 prompt · gap 0.8650</div>
+      <h4><code>image_static_photorealistic_living_spaces_0069</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / indoor / living_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>实际生成 prompt</span>
+        <p>Camera pull out. A living room corner with bookshelf, floor lamp, and small side table. Camera pan right. A living room corner with framed photos, coat rack, and small rug. Camera move right. A dining area with dining table, chairs, and hanging light fixture.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">较高分结果保留了输入房间的空间布局和主要结构；较低分结果漂移成布局不同的通用室内场景。SSIM 更强调对参考图的结构保真度。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_living_spaces_0069">
+          <source src="../../../assets/metric_examples/curated_20260801/b2598580eefe__image_static_photorealistic_living_spaces_0069__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 0.9625</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>ssim</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_living_spaces_0069">
+          <source src="../../../assets/metric_examples/curated_20260801/a50c49b082e2__image_static_photorealistic_living_spaces_0069__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0975</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>ssim</span></figcaption>
+    </figure>
+  </div>
+</article>
+</div>
+<!-- metric-examples:end -->

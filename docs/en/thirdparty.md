@@ -128,7 +128,7 @@ python -m pip install decord==0.6.0
 
 #### 3. Install official metric runtime dependencies
 
-Several headline metrics (`camera_error`, `reprojection_error`, `object_detection`, `motion_accuracy`, and related flow metrics) reuse upstream implementations through in-tree adapters. Initialize the metric-source submodules and build DROID-SLAM when you need the full official benchmark path:
+Several headline metrics (`camera_error`, `reprojection_error`, `motion_accuracy`, and related flow metrics) reuse upstream implementations through in-tree adapters. Initialize the metric-source submodules and build DROID-SLAM when you need the full official benchmark path:
 
 WorldArena keeps only the metric adapters under
 `worldarena/benchmark/official_backends/`. DROID-SLAM, SEA-RAFT,
@@ -230,7 +230,7 @@ Missing checkpoints raise `FileNotFoundError` during evaluation — WorldArena d
 | `long_sequence_*`, `long_horizon_diagnostics` | `amt_model/amt-s.pth`, `raft_model/models/raft-things.pth`, `musiq/musiq_spaq_ckpt-358bb6af.pth` | [HF: lalala125/AMT](https://huggingface.co/lalala125/AMT), [RAFT Dropbox models.zip](https://dl.dropboxusercontent.com/s/4j4z58wuv8o0mfz/models.zip), [IQA-PyTorch release](https://github.com/chaofengc/IQA-PyTorch/releases/download/v0.1-weights/musiq_spaq_ckpt-358bb6af.pth) |
 | `temporal_calibration`, `physical_fps_*` | `Pulse-of-Motion/vc_common_10_60fps.ckpt` | [HF: xiangbog/Visual_Chronometer](https://huggingface.co/xiangbog/Visual_Chronometer) |
 | `camera_error`, `reprojection_error` (DROID) | `official_metrics/droid.pth` | [Google Drive via gdown](https://drive.google.com/file/d/1PpqVt1H4maBa_GbPJp4NwxRsd9jk-elh) |
-| `object_detection`, `motion_accuracy` | `official_metrics/groundingdino_swint_ogc.pth`, `sam_vit_h_4b8939.pth`, `sam2.1_hiera_base_plus.pt`, `bert-base-uncased/` | [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth), [SAM ViT-H](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth), [HF: facebook/sam2.1-hiera-base-plus](https://huggingface.co/facebook/sam2.1-hiera-base-plus), [HF: google-bert/bert-base-uncased](https://huggingface.co/google-bert/bert-base-uncased) |
+| `motion_accuracy` | `official_metrics/groundingdino_swint_ogc.pth`, `sam_vit_h_4b8939.pth`, `sam2.1_hiera_base_plus.pt`, `bert-base-uncased/` | [GroundingDINO](https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth), [SAM ViT-H](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth), [HF: facebook/sam2.1-hiera-base-plus](https://huggingface.co/facebook/sam2.1-hiera-base-plus), [HF: google-bert/bert-base-uncased](https://huggingface.co/google-bert/bert-base-uncased) |
 | `optical_flow_aepe`, `motion_magnitude`, `motion_accuracy` | `official_metrics/Tartan-C-T-TSKH-spring540x960-M.pth`, `official_metrics/models/raft-things.pth` | [HF: Yarimasune/SEA-RAFT](https://huggingface.co/Yarimasune/SEA-RAFT), copy from `raft_model/` |
 | `motion_smoothness` | `official_metrics/VFIMamba.pkl` | [HF: MCG-NJU/VFIMamba](https://huggingface.co/MCG-NJU/VFIMamba) (`model.pkl` copied as `VFIMamba.pkl`) |
 | `long_sequence_aesthetic_quality` | `official_metrics/sac+logos+ava1-l14-linearMSE.pth` | [improved-aesthetic-predictor](https://github.com/christophschuhmann/improved-aesthetic-predictor/raw/main/sac%2Blogos%2Bava1-l14-linearMSE.pth) |
@@ -278,7 +278,7 @@ wget -q -O "$CKPT/musiq/musiq_spaq_ckpt-358bb6af.pth" \
 
 #### 2. Official metric runtime weights
 
-These weights back the official camera and flow metrics (`object_detection`, `motion_accuracy`, camera/flow metrics):
+These weights back `motion_accuracy` and the official camera/flow metrics:
 
 ```shell
 CKPT="${WORLDARENA_CHECKPOINT_ROOT:-ckpt}"
@@ -416,6 +416,7 @@ Large model weights are optional. Add only the checkpoints for the adapters you 
 | `cami2v.yaml` | `thirdparty/CamI2V` | `CamI2V/512_cami2v_100k.pt` |
 | `realcam_i2v.yaml` | `thirdparty/RealCam-I2V` | `RealCam-I2V/*.pt` + `CogVideoX1.5-5B-I2V` |
 | `stable_virtual_camera.yaml` | `thirdparty/stable-virtual-camera` | `stable-virtual-camera/*` |
+| `open_dreamer.yaml` | `thirdparty/open-dreamer` | `open-dreamer/<step>/` (Orbax `tokenizer/` + `dynamics_ema/`) |
 | `yume.yaml` | `thirdparty/YUME` | `Yume-5B-720P` |
 | `abot_world.yaml` | `thirdparty/ABot-World` | `ABot-World-0-5B-LF` |
 

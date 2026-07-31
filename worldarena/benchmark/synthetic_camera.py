@@ -98,9 +98,9 @@ def _rotation_matrix_y(angle_degrees: float) -> np.ndarray:
     sine = float(np.sin(radians))
     return np.asarray(
         [
-            [cosine, 0.0, -sine],
+            [cosine, 0.0, sine],
             [0.0, 1.0, 0.0],
-            [sine, 0.0, cosine],
+            [-sine, 0.0, cosine],
         ],
         dtype=np.float32,
     )
@@ -151,9 +151,9 @@ def _camera_delta(token: str, runtime: dict[str, Any]) -> np.ndarray:
     if token == "pedestal_down":
         return _translation_matrix(y=-vertical_step)
     if token == "pan_left":
-        return _rigid_transform(rotation=_rotation_matrix_y(rotation_degrees))
-    if token == "pan_right":
         return _rigid_transform(rotation=_rotation_matrix_y(-rotation_degrees))
+    if token == "pan_right":
+        return _rigid_transform(rotation=_rotation_matrix_y(rotation_degrees))
     if token == "tilt_up":
         return _rigid_transform(rotation=_rotation_matrix_x(tilt_degrees))
     if token == "tilt_down":
@@ -165,13 +165,13 @@ def _camera_delta(token: str, runtime: dict[str, Any]) -> np.ndarray:
     if token == "orbit_left":
         return (
             _translation_matrix(z=orbit_radius)
-            @ _rigid_transform(rotation=_rotation_matrix_y(-rotation_degrees))
+            @ _rigid_transform(rotation=_rotation_matrix_y(rotation_degrees))
             @ _translation_matrix(z=-orbit_radius)
         ).astype(np.float32)
     if token == "orbit_right":
         return (
             _translation_matrix(z=orbit_radius)
-            @ _rigid_transform(rotation=_rotation_matrix_y(rotation_degrees))
+            @ _rigid_transform(rotation=_rotation_matrix_y(-rotation_degrees))
             @ _translation_matrix(z=-orbit_radius)
         ).astype(np.float32)
     raise ValueError(f"unsupported synthetic camera token: {token!r}")

@@ -40,6 +40,7 @@ git submodule update --init --recursive
 | `Matrix-Game` | [SkyworkAI/Matrix-Game](https://github.com/SkyworkAI/Matrix-Game) | `matrix_game.yaml` → `Matrix-Game/Matrix-Game-3`; `matrix_game_1.yaml` → `Matrix-Game/Matrix-Game-1`; `matrix_game_2.yaml` → `Matrix-Game/Matrix-Game-2` |
 | `Matrix-Game-3.5` | [Riemann-Dynamics/Matrix-Game-3.5](https://github.com/Riemann-Dynamics/Matrix-Game-3.5) | `matrix_game_35_*.yaml` |
 | `NeoVerse` | [IamCreateAI/NeoVerse](https://github.com/IamCreateAI/NeoVerse) | `neoverse.yaml` |
+| `open-dreamer` | [next-state/open-dreamer](https://github.com/next-state/open-dreamer) | `open_dreamer.yaml` |
 | `RealCam-I2V` | [ZGCTroy/RealCam-I2V](https://github.com/ZGCTroy/RealCam-I2V) | `realcam_i2v.yaml` |
 | `stable-virtual-camera` | [Stability-AI/stable-virtual-camera](https://github.com/Stability-AI/stable-virtual-camera) | `stable_virtual_camera.yaml` |
 | `WonderJourney` | [KovenYu/WonderJourney](https://github.com/KovenYu/WonderJourney) | `wonderjourney.yaml` |

@@ -70,225 +70,50 @@ S_{\mathrm{Brightness}}
 \]
 
 <!-- metric-examples:start -->
-## 代表性同 Case 对比
-每个展示块先给出该 case 的 input image 和完全一致的展示 prompt，然后比较模型生成结果。paired 展示必须满足 input image 相同、prompt 文本相同，并且一个模型高分、一个模型低分。若当前正式快照中该 metric 没有这种跨模型同 case pair，则单独展示高分/低分极值样例，不把它们伪装成同 case 对比。
-机器可读 paired 导出： `docs/assets/metric_examples/paired_manifest.csv`.
-### `brightness_distribution_consistency`
+## 人工精选的同 Case 对比
+
+下列案例来自 `artifacts/reports` 生成的同-case比较索引。输入图、sample ID 与实际生成 prompt 完全一致；候选先按分位数和分差筛选，再逐帧人工复核。标签只表示该 metric 的相对高低，不代表模型整体优劣；为避免把单一案例误读成排行榜，卡片不展示模型名称。
+
+Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
+
 <div class="metric-case-stack">
-<article class="metric-case-exhibit">
+<article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
       <img src="../../../assets/metric_examples/inputs/38c5df592fc3__image_static_photorealistic_aquatic_landscape_0098.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0098" loading="lazy" decoding="async">
       <figcaption>输入图像</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 1 · 同一输入图像 + 同一 prompt · 分差 0.9991</div>
+      <div class="metric-case-kicker">人工复核 · 同一 case、输入与 prompt · gap 0.9727</div>
       <h4><code>image_static_photorealistic_aquatic_landscape_0098</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / outdoor / aquatic_landscape</span></div>
       <div class="metric-case-prompt">
-        <span>目标 prompt</span>
+        <span>实际生成 prompt</span>
         <p>Camera pan right. An aquatic landscape with pebble beach, calm sea, and blue sky.</p>
-        <small>prompt 来源: prompt_target</small>
+        <small>prompt source: prompt_target</small>
       </div>
+      <p class="metric-case-note">较高分结果持续保持明亮海岸的曝光分布；较低分结果很快转成昏暗、浑浊的亮度分布。</p>
     </div>
   </div>
   <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_aquatic_landscape_0098">
-      <source src="../../../assets/metric_examples/6dcb1b7c126c__cosmos3-nano-image-static__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9991</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_aquatic_landscape_0098">
-      <source src="../../../assets/metric_examples/a153996e000e__longcat-video-image-static-8gpu-20260612_133950__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/70502be4e8e4__image_static_photorealistic_workspaces_0012.png" alt="输入图像: image_static_photorealistic_workspaces_0012" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_aquatic_landscape_0098">
+          <source src="../../../assets/metric_examples/6dcb1b7c126c__cosmos3-nano-image-static__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 0.9991</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>brightness_distribution_consistency</span></figcaption>
     </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 2 · 同一输入图像 + 同一 prompt · 分差 0.9990</div>
-      <h4><code>image_static_photorealistic_workspaces_0012</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / workspaces</span></div>
-      <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera pan right. A minimalist workspace with desk, laptop, and chair. Camera move right. A minimalist workspace with desk, laptop, and chair. Camera pull out. A minimalist workspace with desk, laptop, and chair.</p>
-        <small>prompt 来源: prompt_target</small>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_aquatic_landscape_0098">
+          <source src="../../../assets/metric_examples/curated_20260801/f1f662bdef18__image_static_photorealistic_aquatic_landscape_0098__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0264</div>
       </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_workspaces_0012">
-      <source src="../../../assets/metric_examples/4ce7235be4d7__yume_sample5b__image_static_photorealistic_workspaces_0012.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9999</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_workspaces_0012">
-      <source src="../../../assets/metric_examples/940042a83949__dreamx_world__image_static_photorealistic_workspaces_0012.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0009</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/2a2ecb6a511d__image_static_photorealistic_passageways_0050.jpg" alt="输入图像: image_static_photorealistic_passageways_0050" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>brightness_distribution_consistency</span></figcaption>
     </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 3 · 同一输入图像 + 同一 prompt · 分差 0.9985</div>
-      <h4><code>image_static_photorealistic_passageways_0050</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / passageways</span></div>
-      <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera move right. A modern walk-in closet with shelving, shoe rack, and mirror.</p>
-        <small>prompt 来源: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_passageways_0050">
-      <source src="../../../assets/metric_examples/9d5b5b64512b__hy_worldplay_ar_rl_image_test_balanced_5000_5s__image_static_photorealistic_passageways_0050.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_passageways_0050">
-      <source src="../../../assets/metric_examples/a0c6cd5ddefe__lingbot_world__image_static_photorealistic_passageways_0050.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0015</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/573103498bf2__image_static_photorealistic_workspaces_0086.png" alt="输入图像: image_static_photorealistic_workspaces_0086" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 4 · 同一输入图像 + 同一 prompt · 分差 0.9983</div>
-      <h4><code>image_static_photorealistic_workspaces_0086</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / workspaces</span></div>
-      <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera move left. An empty office with glass partition, windows, and carpeted floor.</p>
-        <small>prompt 来源: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_workspaces_0086">
-      <source src="../../../assets/metric_examples/755a7634ea65__wan22-ti2v-5b-image-static-plan-missing__image_static_photorealistic_workspaces_0086.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 0.9999</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_workspaces_0086">
-      <source src="../../../assets/metric_examples/d5997ae5d656__dreamx_world__image_static_photorealistic_workspaces_0086.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0016</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/47bdf207f40a__image_static_stylized_terrestrial_landscape_0138.png" alt="输入图像: image_static_stylized_terrestrial_landscape_0138" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 5 · 同一输入图像 + 同一 prompt · 分差 0.9968</div>
-      <h4><code>image_static_stylized_terrestrial_landscape_0138</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / terrestrial_landscape</span></div>
-      <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera pull out. An expansive desert with mountains, path, and rocks.</p>
-        <small>prompt 来源: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_stylized_terrestrial_landscape_0138">
-      <source src="../../../assets/metric_examples/d85d8c9f7579__hy_worldplay_ar_rl_image_test_balanced_5000_5s__image_static_stylized_terrestrial_landscape_0138.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_stylized_terrestrial_landscape_0138">
-      <source src="../../../assets/metric_examples/b2a98165e36f__cosmos3-nano-image-static-8gpu-singleload-20260612_170108__image_static_stylized_terrestrial_landscape_0138.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0032</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/05921dcab542__image_static_photorealistic_aquatic_landscape_0162.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0162" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 6 · 同一输入图像 + 同一 prompt · 分差 0.9964</div>
-      <h4><code>image_static_photorealistic_aquatic_landscape_0162</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
-      <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera move right. An aquatic landscape with lake, shoreline, and trees.</p>
-        <small>prompt 来源: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: image_static_photorealistic_aquatic_landscape_0162">
-      <source src="../../../assets/metric_examples/9fa9ba3b8c50__longcat-video-image-static-8gpu-20260612_133950__image_static_photorealistic_aquatic_landscape_0162.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: image_static_photorealistic_aquatic_landscape_0162">
-      <source src="../../../assets/metric_examples/ea022fe1d259__hy_worldplay_ar_image_test_balanced_5000_5s__image_static_photorealistic_aquatic_landscape_0162.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0036</div>
-  </div>
-</figure>
   </div>
 </article>
 </div>

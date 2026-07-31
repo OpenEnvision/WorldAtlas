@@ -53,225 +53,50 @@ S_{\mathrm{Sharpness}}
 where $S(\mathbf{g}_t, \mathbf{g}_1)$ is the cosine similarity between the sharpness vector of frame $t$ and the initial frame. This mechanism distinguishes genuine detail from high-frequency noise and penalizes systematic visual collapse.
 
 <!-- metric-examples:start -->
-## Representative Same-Case Comparisons
-Each exhibit first shows the input image and the exact displayed prompt for the case, then compares generated outputs. Paired exhibits require the same input image and the same prompt text, with one high-scoring and one low-scoring model output. Metrics without such a cross-model pair in the current formal snapshot are separated as high/low extrema rather than presented as same-case comparisons.
-Machine-readable paired export: `docs/assets/metric_examples/paired_manifest.csv`.
-### `sharpness_retention`
+## Human-reviewed Same-Case Example
+
+The examples below come from the same-case comparison index generated from `artifacts/reports`. The input image, sample ID, and exact generation prompt are identical within each pair. Candidates were shortlisted by score quantiles and gap, then reviewed frame by frame. Labels describe only this metric—not overall model quality—and model names are intentionally omitted so a single case is not mistaken for a leaderboard.
+
+Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
+
 <div class="metric-case-stack">
-<article class="metric-case-exhibit">
+<article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/564b5211b4ae__image_static_photorealistic_passageways_0077.jpg" alt="Input image: image_static_photorealistic_passageways_0077" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/0d2acb3aad70__image_static_stylized_city_0023__input.jpg" alt="Input image: image_static_stylized_city_0023" loading="lazy" decoding="async">
       <figcaption>Input image</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 1 · same input image + same prompt · score gap 1.0000</div>
-      <h4><code>image_static_photorealistic_passageways_0077</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / passageways</span></div>
+      <div class="metric-case-kicker">Human reviewed · same case, input and prompt · gap 0.9009</div>
+      <h4><code>image_static_stylized_city_0023</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / city</span></div>
       <div class="metric-case-prompt">
-        <span>Prompt target</span>
-        <p>Camera pan left. A japanese pathway with torii gates, stone lantern, and fox statues. Camera move left. A japanese garden with small pond, stone bridge, and red foliage. Camera pull out. A japanese garden with tea house, bamboo grove, and garden plants.</p>
+        <span>Exact generation prompt</span>
+        <p>Camera move right. A stylized city street with buildings, pedestrians, and trees. Camera pan right. A stylized city street with park gates, benches, and trees. Camera pull out. A stylized city street with fountain, people, and paved square.</p>
         <small>prompt source: prompt_target</small>
       </div>
+      <p class="metric-case-note">The higher-scoring rollout retains crisp edges and fine structure; the lower-scoring rollout progressively blurs and dissolves the city scene.</p>
     </div>
   </div>
   <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_photorealistic_passageways_0077">
-      <source src="../../../assets/metric_examples/641521aff88e__cosmos3-nano-image-static__image_static_photorealistic_passageways_0077.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">Good output · Score 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_photorealistic_passageways_0077">
-      <source src="../../../assets/metric_examples/4e91b9f3e95c__longcat-video-image-static-8gpu-20260612_133950__image_static_photorealistic_passageways_0077.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/2f79eec6bacb__image_static_photorealistic_public_spaces_0037.jpg" alt="Input image: image_static_photorealistic_public_spaces_0037" loading="lazy" decoding="async">
-      <figcaption>Input image</figcaption>
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_stylized_city_0023">
+          <source src="../../../assets/metric_examples/curated_20260801/2cfbdda4e56c__image_static_stylized_city_0023__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9858</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>sharpness_retention</span></figcaption>
     </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 2 · same input image + same prompt · score gap 1.0000</div>
-      <h4><code>image_static_photorealistic_public_spaces_0037</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / public_spaces</span></div>
-      <div class="metric-case-prompt">
-        <span>Prompt target</span>
-        <p>Camera move right. Modern buildings with street and pedestrians.</p>
-        <small>prompt source: prompt_target</small>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_stylized_city_0023">
+          <source src="../../../assets/metric_examples/curated_20260801/b4f81c8fb084__image_static_stylized_city_0023__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0849</div>
       </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_photorealistic_public_spaces_0037">
-      <source src="../../../assets/metric_examples/7e1b20e236f8__cosmos3-nano-image-static__image_static_photorealistic_public_spaces_0037.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">Good output · Score 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_photorealistic_public_spaces_0037">
-      <source src="../../../assets/metric_examples/5b5643c5c871__longcat-video-image-static-8gpu-20260612_133950__image_static_photorealistic_public_spaces_0037.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/45fb3a6472c9__image_static_photorealistic_suburb_0012.jpg" alt="Input image: image_static_photorealistic_suburb_0012" loading="lazy" decoding="async">
-      <figcaption>Input image</figcaption>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>sharpness_retention</span></figcaption>
     </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 3 · same input image + same prompt · score gap 1.0000</div>
-      <h4><code>image_static_photorealistic_suburb_0012</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / suburb</span></div>
-      <div class="metric-case-prompt">
-        <span>Prompt target</span>
-        <p>Camera pull out. A suburban landscape with city skyline, green hills, and road. Camera move right. A suburban landscape with road, residential area, and green hills. Camera pan right. A residential area with park, playground, and green hills.</p>
-        <small>prompt source: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_photorealistic_suburb_0012">
-      <source src="../../../assets/metric_examples/3c1ba8c5ffad__wan22-ti2v-5b-image-static-plan-missing__image_static_photorealistic_suburb_0012.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">Good output · Score 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_photorealistic_suburb_0012">
-      <source src="../../../assets/metric_examples/9f1698417770__dreamx_world__image_static_photorealistic_suburb_0012.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/f116c80bb018__image_static_stylized_dining_spaces_0027.jpg" alt="Input image: image_static_stylized_dining_spaces_0027" loading="lazy" decoding="async">
-      <figcaption>Input image</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 4 · same input image + same prompt · score gap 1.0000</div>
-      <h4><code>image_static_stylized_dining_spaces_0027</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / indoor / dining_spaces</span></div>
-      <div class="metric-case-prompt">
-        <span>Prompt target</span>
-        <p>Camera move left. A modern kitchen with dining table, chairs, and greenery outside. Camera pan left. A modern kitchen with sofa, coffee table, and living area. Camera pull out. A modern kitchen with hallway, artwork, and indoor plants.</p>
-        <small>prompt source: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_stylized_dining_spaces_0027">
-      <source src="../../../assets/metric_examples/166bdb8a9374__astra__image_static_stylized_dining_spaces_0027.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">Good output · Score 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_stylized_dining_spaces_0027">
-      <source src="../../../assets/metric_examples/8119a3b3dbfc__warp-as-history-image-static-8gpu-20260612_152000__image_static_stylized_dining_spaces_0027.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/2c0214795c05__image_static_stylized_passageways_0073.png" alt="Input image: image_static_stylized_passageways_0073" loading="lazy" decoding="async">
-      <figcaption>Input image</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 5 · same input image + same prompt · score gap 1.0000</div>
-      <h4><code>image_static_stylized_passageways_0073</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / indoor / passageways</span></div>
-      <div class="metric-case-prompt">
-        <span>Prompt target</span>
-        <p>Camera orbit left. A stylized hallway with console table, circular mirror, and lamps.</p>
-        <small>prompt source: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_stylized_passageways_0073">
-      <source src="../../../assets/metric_examples/95936cc0040a__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_passageways_0073.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">Good output · Score 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_stylized_passageways_0073">
-      <source src="../../../assets/metric_examples/da49df4a04bd__warp-as-history-image-static-8gpu-20260612_152000__image_static_stylized_passageways_0073.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/38fa6cdab0e6__image_static_stylized_public_spaces_0033.jpg" alt="Input image: image_static_stylized_public_spaces_0033" loading="lazy" decoding="async">
-      <figcaption>Input image</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 6 · same input image + same prompt · score gap 1.0000</div>
-      <h4><code>image_static_stylized_public_spaces_0033</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / indoor / public_spaces</span></div>
-      <div class="metric-case-prompt">
-        <span>Prompt target</span>
-        <p>Camera orbit right. A library hall with bookshelves, chandeliers, and reading tables.</p>
-        <small>prompt source: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Good output: image_static_stylized_public_spaces_0033">
-      <source src="../../../assets/metric_examples/d463b04eb239__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_public_spaces_0033.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">Good output · Score 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Poor output: image_static_stylized_public_spaces_0033">
-      <source src="../../../assets/metric_examples/7fd273eb810c__hy_worldplay_ar_rl_image_test_balanced_5000_5s__image_static_stylized_public_spaces_0033.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">Poor output · Score 0.0000</div>
-  </div>
-</figure>
   </div>
 </article>
 </div>

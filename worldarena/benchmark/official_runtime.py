@@ -20,6 +20,10 @@ from typing import Any, Iterator
 import cv2
 import numpy as np
 
+from worldarena.benchmark.camera_alignment import (
+    resample_camera_matrices,
+    score_camera_trajectories,
+)
 from worldarena.common.checkpoints import (
     apply_checkpoint_env,
     checkpoint_env,
@@ -67,10 +71,6 @@ OFFICIAL_IMPORT_TARGETS = {
     "motion_smoothness": (
         "motion_smoothness",
         "MotionSmoothnessMetric",
-    ),
-    "object_detection": (
-        "object_detection",
-        "ObjectDetectionMetric",
     ),
     "motion_accuracy": (
         "motion_accuracy",
@@ -555,6 +555,40 @@ def _first_frame_resolution(frame_paths: list[str]) -> tuple[int, int]:
     return int(width), int(height)
 
 
+def _media_resolution_and_frame_count(media_path: str) -> tuple[int, int, int | None]:
+    """Read video metadata without materializing every frame on shared storage."""
+    path = Path(media_path)
+    if path.is_dir():
+        frame_paths = [
+            str(frame_path)
+            for frame_path in sorted(path.iterdir())
+            if frame_path.suffix.lower() in {".jpg", ".jpeg", ".png"}
+        ]
+        width, height = _first_frame_resolution(frame_paths)
+        return width, height, len(frame_paths)
+    if path.suffix.lower() in {".png", ".jpg", ".jpeg"}:
+        width, height = _first_frame_resolution([str(path)])
+        return width, height, 1
+
+    capture = cv2.VideoCapture(str(path))
+    if not capture.isOpened():
+        raise RuntimeError(f"failed to open video: {path}")
+    try:
+        width = int(round(capture.get(cv2.CAP_PROP_FRAME_WIDTH)))
+        height = int(round(capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        frame_count = int(round(capture.get(cv2.CAP_PROP_FRAME_COUNT)))
+        if width <= 0 or height <= 0:
+            success, frame = capture.read()
+            if not success or frame is None:
+                raise RuntimeError(f"video contains no decodable frames: {path}")
+            height, width = frame.shape[:2]
+    finally:
+        capture.release()
+    if width <= 0 or height <= 0:
+        raise ValueError(f"invalid video resolution: {width}x{height}")
+    return int(width), int(height), frame_count if frame_count > 0 else None
+
+
 def _derive_droid_calib_from_runtime(
     frame_paths: list[str],
     runtime: dict[str, Any] | None,
@@ -775,35 +809,45 @@ def _run_megasam_tracking(
         command.append("--depth-localhub")
     else:
         command.append("--no-depth-localhub")
-    if _coerce_runtime_bool(runtime.get("megasam_overwrite"), default=False):
+    overwrite = _coerce_runtime_bool(runtime.get("megasam_overwrite"), default=False)
+    skip_existing = _coerce_runtime_bool(runtime.get("megasam_skip_existing"), default=True)
+    if overwrite:
         command.append("--overwrite")
-    elif _coerce_runtime_bool(runtime.get("megasam_skip_existing"), default=True):
+    elif skip_existing:
         command.append("--skip-existing")
 
     log_path = run_root / "camera_error_megasam.log"
-    try:
-        with log_path.open("a", encoding="utf-8") as log_file:
-            log_file.write("\n" + "=" * 80 + "\n")
-            log_file.write(" ".join(command) + "\n")
-            log_file.flush()
-            subprocess.run(
-                command,
-                cwd=str(PROJECT_ROOT),
-                stdout=log_file,
-                stderr=subprocess.STDOUT,
-                text=True,
-                check=True,
-            )
-    except subprocess.CalledProcessError as exc:
-        tail = _tail_text(log_path)
-        message = f"MegaSAM tracking failed for {prediction_path}; log: {log_path}"
-        if tail:
-            message += f" | log tail: {tail}"
-        raise RuntimeError(message) from exc
-
     recon_scene = run_root / "reconstructions" / scene
     poses_path = recon_scene / "poses.npy"
     intrinsics_path = recon_scene / "intrinsics.npy"
+    metadata_path = run_root / "run_config.json"
+    cache_complete = (
+        not overwrite
+        and skip_existing
+        and poses_path.is_file()
+        and metadata_path.is_file()
+    )
+    if not cache_complete:
+        try:
+            with log_path.open("a", encoding="utf-8") as log_file:
+                log_file.write("\n" + "=" * 80 + "\n")
+                log_file.write(" ".join(command) + "\n")
+                log_file.flush()
+                subprocess.run(
+                    command,
+                    cwd=str(PROJECT_ROOT),
+                    stdout=log_file,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    check=True,
+                )
+        except subprocess.CalledProcessError as exc:
+            tail = _tail_text(log_path)
+            message = f"MegaSAM tracking failed for {prediction_path}; log: {log_path}"
+            if tail:
+                message += f" | log tail: {tail}"
+            raise RuntimeError(message) from exc
+
     if not poses_path.exists():
         raise FileNotFoundError(f"MegaSAM poses not found: {poses_path}")
     poses = np.load(poses_path).astype(np.float32)
@@ -814,7 +858,6 @@ def _run_megasam_tracking(
     if intrinsics_path.exists():
         intrinsics = np.load(intrinsics_path).astype(np.float32)
 
-    metadata_path = run_root / "run_config.json"
     metadata: dict[str, Any] = {}
     if metadata_path.exists():
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
@@ -833,29 +876,7 @@ def _run_megasam_tracking(
 
 
 def _resample_camera_matrices(cameras: np.ndarray, target_frames: int) -> np.ndarray:
-    cameras = np.asarray(cameras, dtype=np.float32)
-    if cameras.ndim != 3 or cameras.shape[1:] != (4, 4):
-        raise ValueError(f"camera matrices must have shape (N, 4, 4), got {cameras.shape}")
-    if target_frames <= 0:
-        raise ValueError(f"target_frames must be positive, got {target_frames}")
-    if len(cameras) == target_frames:
-        return cameras.astype(np.float32)
-
-    from worldarena.benchmark.annotations import (  # noqa: PLC0415
-        _matrix_to_pose_vector,
-        _pose_vector_to_matrix,
-        _resample_pose_vectors,
-    )
-
-    pose_vectors = np.stack([_matrix_to_pose_vector(matrix) for matrix in cameras], axis=0)
-    pose_indices = np.linspace(
-        0.0,
-        float(len(pose_vectors) - 1),
-        num=len(pose_vectors),
-        dtype=np.float32,
-    )
-    interpolated = _resample_pose_vectors(pose_vectors, pose_indices, target_frames)
-    return np.stack([_pose_vector_to_matrix(pose_row) for pose_row in interpolated], axis=0)
+    return resample_camera_matrices(cameras, target_frames)
 
 
 def _select_gt_for_megasam(
@@ -910,71 +931,15 @@ def _pose_vectors_to_camera_matrices(pose_vectors: np.ndarray) -> np.ndarray:
         return cameras_pred.detach().cpu().numpy().astype(np.float32)
 
 
-def _camera_accuracy_components(
-    pred_Rs: np.ndarray,
-    gt_Rs: np.ndarray,
-    pred_ts: np.ndarray,
-    gt_ts: np.ndarray,
-) -> tuple[tuple[float, float], dict[str, Any]]:
-    pred_Rs = np.asarray(pred_Rs, dtype=np.float64)
-    gt_Rs = np.asarray(gt_Rs, dtype=np.float64)
-    pred_ts = np.asarray(pred_ts, dtype=np.float64)
-    gt_ts = np.asarray(gt_ts, dtype=np.float64)
-    if len(pred_Rs) == 0:
-        raise ValueError("cannot compute camera accuracy with zero predicted poses")
-
-    translation_alignment = "cvxpy"
-    translation_scale = None
-    try:
-        import cvxpy as cp  # noqa: PLC0415
-
-        c_opt = cp.Variable()
-        objective = cp.Minimize(cp.sum(cp.norm(gt_ts - (c_opt * pred_ts), axis=1)))
-        problem = cp.Problem(objective, [])
-        problem.solve()
-        translation_scale = float(c_opt.value)
-        if not np.isfinite(translation_scale):
-            raise ValueError("cvxpy returned a non-finite translation scale")
-        t_fixed = translation_scale * pred_ts
-    except Exception:
-        translation_alignment = "mean_distance_fallback"
-        gt_distances = float(np.linalg.norm(gt_ts, axis=1).mean())
-        pred_distances = float(np.linalg.norm(pred_ts, axis=1).mean())
-        translation_scale = gt_distances / (pred_distances + 1e-8)
-        t_fixed = translation_scale * pred_ts if translation_scale != 0 else pred_ts
-
-    translation_error = float(np.linalg.norm(t_fixed - gt_ts, axis=-1).mean())
-    rotation_product = pred_Rs @ np.swapaxes(gt_Rs, 1, 2)
-    cos_error = (np.trace(rotation_product, axis1=1, axis2=2) - 1.0) / 2.0
-    rotation_error = np.arccos(np.clip(cos_error, -1.0, 1.0)) * 180.0 / np.pi
-    return (
-        (float(rotation_error.mean()), translation_error),
-        {
-            "translation_alignment": translation_alignment,
-            "translation_alignment_scale": float(translation_scale),
-        },
-    )
-
-
 def _score_camera_matrices(
     cameras_pred: np.ndarray,
     cameras_gt: np.ndarray,
     scale: float,
 ) -> tuple[list[float], dict[str, Any]]:
-    cameras_pred = np.asarray(cameras_pred, dtype=np.float32)
-    cameras_gt = np.asarray(cameras_gt, dtype=np.float32)
-    if cameras_pred.ndim != 3 or cameras_pred.shape[1:] != (4, 4):
-        raise ValueError(f"predicted cameras must have shape (N, 4, 4), got {cameras_pred.shape}")
-    if cameras_gt.ndim != 3 or cameras_gt.shape[1:] != (4, 4):
-        raise ValueError(f"ground-truth cameras must have shape (N, 4, 4), got {cameras_gt.shape}")
-    if len(cameras_pred) != len(cameras_gt):
-        cameras_gt = _resample_camera_matrices(cameras_gt, len(cameras_pred))
-
-    components, details = _camera_accuracy_components(
-        cameras_pred[:, :3, :3],
-        cameras_gt[:, :3, :3],
-        cameras_pred[:, :3, 3],
-        cameras_gt[:, :3, 3] / float(scale),
+    components, details = score_camera_trajectories(
+        cameras_pred,
+        cameras_gt,
+        gt_scale=float(scale),
     )
     return [float(components[0]), float(components[1])], details
 
@@ -1269,6 +1234,7 @@ def compute_camera_error(
                 torch.as_tensor(np.asarray(cameras_gt)),
                 scale=scale,
             )
+            alignment_details = dict(getattr(metric, "_alignment_details", {}))
         finally:
             del metric
             _empty_cuda_cache()
@@ -1284,6 +1250,7 @@ def compute_camera_error(
             "frame_count": len(frame_paths),
             "camera_scale": float(scale),
             **droid_details,
+            **alignment_details,
             **_native_score_details(raw_components),
         },
     }
@@ -1365,8 +1332,14 @@ def compute_camera_error_megasam_native_intended(
     del normalization
     from worldarena.benchmark.native_camera import score_native_intended_cameras  # noqa: PLC0415
 
-    frame_paths = list(frame_paths) if frame_paths is not None else materialize_frame_paths(prediction_path)
-    source_width, source_height = _first_frame_resolution(frame_paths)
+    if frame_paths is None:
+        source_width, source_height, source_frame_count = _media_resolution_and_frame_count(
+            prediction_path
+        )
+    else:
+        frame_paths = list(frame_paths)
+        source_width, source_height = _first_frame_resolution(frame_paths)
+        source_frame_count = len(frame_paths)
 
     megasam = _run_megasam_tracking(prediction_path, runtime)
     poses = np.asarray(megasam["poses"], dtype=np.float32)
@@ -1376,6 +1349,8 @@ def compute_camera_error_megasam_native_intended(
 
     metadata = dict(megasam.get("metadata") or {})
     prepared_frame_count = int(metadata.get("frame_count") or pose_count)
+    if source_frame_count is None:
+        source_frame_count = prepared_frame_count
     cameras_pred = _pose_vectors_to_camera_matrices(poses)
     native_result = score_native_intended_cameras(
         sample,
@@ -1385,7 +1360,7 @@ def compute_camera_error_megasam_native_intended(
 
     details = {
         "frame_count": pose_count,
-        "source_frame_count": len(frame_paths),
+        "source_frame_count": source_frame_count,
         "megasam_scene": str(megasam["scene"]),
         "megasam_run_root": str(megasam["run_root"]),
         "megasam_log_path": str(megasam["log_path"]),
@@ -1429,6 +1404,8 @@ def compute_reprojection_error(
         metric = _run_metric("reprojection_error")
         _configure_droid_runtime(metric)
         droid_details = _configure_droid_intrinsics(metric, frame_paths, runtime)
+        droid_details["droid_frame_stride"] = int(getattr(metric._args, "stride", 1))
+        droid_details["droid_max_factors"] = int(getattr(metric._args, "max_factors", 0))
         try:
             score = float(metric._compute_scores(frame_paths))
         finally:
@@ -1571,52 +1548,12 @@ def compute_motion_smoothness(
         "details": {
             "frame_count": len(frame_paths),
             "frame_max_side": frame_max_side,
+            "motion_smoothness_scoring_version": "v2_float32_mse",
             "native_components": {
                 "mse": round(components[0], 4),
                 "ssim": round(components[1], 4),
                 "lpips": round(components[2], 4),
             },
-        },
-    }
-
-
-def compute_object_detection(
-    prediction_path: str,
-    prompt_string: str,
-    normalization: dict[str, Any],
-    *,
-    runtime: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    delegated = _maybe_run_metric_in_subprocess(
-        "object_detection",
-        {
-            "prediction_path": prediction_path,
-            "prompt_string": prompt_string,
-            "normalization": normalization,
-            "runtime": runtime,
-        },
-        runtime,
-    )
-    if delegated is not None:
-        return delegated
-    frame_paths = materialize_frame_paths(prediction_path)
-    with metric_runtime_context():
-        metric = _run_metric("object_detection")
-        try:
-            score = float(metric._compute_scores(frame_paths, prompt_string))
-        finally:
-            del metric
-            _empty_cuda_cache()
-    return {
-        "raw": score,
-        "normalized": normalize_official_score(score, normalization),
-        "backend": "grounding_dino",
-        "details": {
-            "evaluation_frame_policy": "full_video",
-            "evaluated_frame_count": len(frame_paths),
-            "frame_count": len(frame_paths),
-            "prompt_string": prompt_string,
-            **_native_score_details(score),
         },
     }
 
@@ -1685,7 +1622,6 @@ __all__ = [
     "compute_motion_accuracy",
     "compute_motion_magnitude",
     "compute_motion_smoothness",
-    "compute_object_detection",
     "compute_optical_flow_aepe",
     "compute_reprojection_error",
     "inspect_metric_source_layout",

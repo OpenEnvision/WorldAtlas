@@ -1,13 +1,13 @@
 from typing import List
-import torch
-import torch.nn.functional as F
-import numpy as np
 import argparse
 import cv2
+import json
+import numpy as np
+import torch
+import torch.nn.functional as F
 
 from raft import RAFT
 from utils.utils import load_ckpt
-from parser import parse_args
 
 from worldarena.benchmark.official_backends.base import (
     BaseMetric,
@@ -94,12 +94,11 @@ class OpticalFlowAverageEndPointErrorMetric(BaseMetric):
     def __init__(self) -> None:
         super().__init__()
 
-        args = {
-            "cfg": thirdparty_path("SEA-RAFT", "config", "eval", "spring-M.json"),
-            "path": official_checkpoint_path("Tartan-C-T-TSKH-spring540x960-M.pth"),
-        }
-        args = argparse.Namespace(**args)
-        args = parse_args(args)
+        config_path = thirdparty_path("SEA-RAFT", "config", "eval", "spring-M.json")
+        with open(config_path, encoding="utf-8") as handle:
+            args = argparse.Namespace(**json.load(handle))
+        args.cfg = config_path
+        args.path = official_checkpoint_path("Tartan-C-T-TSKH-spring540x960-M.pth")
 
         # load model
         model = RAFT(args)

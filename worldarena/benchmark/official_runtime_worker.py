@@ -13,7 +13,6 @@ from worldarena.benchmark.official_runtime import (
     compute_motion_accuracy,
     compute_motion_magnitude,
     compute_motion_smoothness,
-    compute_object_detection,
     compute_optical_flow_aepe,
     compute_reprojection_error,
 )
@@ -25,7 +24,6 @@ METRIC_HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
     "optical_flow_aepe": compute_optical_flow_aepe,
     "motion_magnitude": compute_motion_magnitude,
     "motion_smoothness": compute_motion_smoothness,
-    "object_detection": compute_object_detection,
     "motion_accuracy": compute_motion_accuracy,
 }
 

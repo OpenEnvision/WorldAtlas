@@ -19,9 +19,9 @@
 
 | Suite | 指标数 | 说明 |
 | --- | ---: | --- |
-| `image_static` | 44 | 以 image 为条件的静态世界生成；video prediction 在输入允许时按 video 指标面扩展评测 |
-| `image_dynamic` | 34 | 同 `image_static`，通常覆盖更多 motion / object prompt |
-| `video_static` | 38 | 以 video 为条件的静态世界生成 |
+| `image_static` | 43 | 以 image 为条件的静态世界生成；video prediction 在输入允许时按 video 指标面扩展评测 |
+| `image_dynamic` | 33 | 同 `image_static`，通常覆盖更多 motion prompt |
+| `video_static` | 37 | 以 video 为条件的静态世界生成 |
 | `video_dynamic` | 44 | 以 video 为条件的动态世界生成 |
 | `experimental` | 3 | 补充切片，不参与 formal headline 汇总 |
 
@@ -44,7 +44,7 @@ Metrics 导航按六个顶层维度组织；每个维度有独立索引页，汇
 
 下列链接按维度分组。算法、后端、归一化与聚合状态见各指标页。
 
-**Action control** — [`prompt_alignment`](prompt_alignment.md) · [`semantic_alignment`](semantic_alignment.md) · [`object_detection`](object_detection.md) · [`camera_error`](camera_error.md) · [`motion_accuracy`](motion_accuracy.md)
+**Action control** — [`prompt_alignment`](prompt_alignment.md) · [`semantic_alignment`](semantic_alignment.md) · [`camera_error`](camera_error.md) · [`motion_accuracy`](motion_accuracy.md)
 
 **Quality** — [`style_consistency`](style_consistency.md) · [`perceptual_quality`](perceptual_quality.md) · [`image_quality`](image_quality.md) · [`hpsv3_norm`](hpsv3_norm.md) · [`brightness_distribution_consistency`](brightness_consistency.md) · [`color_temperature_constraint`](color_temperature_consistency.md) · [`sharpness_retention`](sharpness_retention.md) · [`psnr`](psnr.md) · [`ssim`](ssim.md) · [`long_sequence_aesthetic_quality`](long_sequence.md) · [`long_sequence_imaging_quality`](long_sequence.md)
 

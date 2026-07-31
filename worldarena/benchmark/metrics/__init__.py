@@ -16,7 +16,6 @@ from worldarena.benchmark.metrics.consistency import (
 from worldarena.benchmark.metrics.control import (
     CameraErrorMetric,
     MotionAccuracyMetric,
-    ObjectDetectionMetric,
 )
 from worldarena.benchmark.metrics.depth_collision import DepthCollisionMetric
 from worldarena.benchmark.metrics.catalog import METRIC_DIMENSIONS, group_metrics_by_dimension
@@ -62,7 +61,6 @@ __all__ = [
     "MotionAccuracyMetric",
     "MotionMagnitudeMetric",
     "MotionSmoothnessMetric",
-    "ObjectDetectionMetric",
     "ObjectPermanenceMetric",
     "PhysicalMotionFidelityMetric",
     "OpticalFlowAepeMetric",

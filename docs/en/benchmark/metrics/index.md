@@ -19,9 +19,9 @@ Per-metric normalization, suite coverage, and official eligibility are documente
 
 | Suite | Metrics | Notes |
 | --- | ---: | --- |
-| `image_static` | 44 | Image-conditioned static world generation; video predictions are evaluated with the video metric surface when inputs allow |
-| `image_dynamic` | 34 | Same as `image_static`, usually with broader motion- and object-prompt coverage |
-| `video_static` | 38 | Video-conditioned static world generation |
+| `image_static` | 43 | Image-conditioned static world generation; video predictions are evaluated with the video metric surface when inputs allow |
+| `image_dynamic` | 33 | Same as `image_static`, usually with broader motion-prompt coverage |
+| `video_static` | 37 | Video-conditioned static world generation |
 | `video_dynamic` | 44 | Video-conditioned dynamic world generation |
 | `experimental` | 3 | Supplemental slice; not part of the formal headline benchmark |
 
@@ -44,7 +44,7 @@ The Metrics navigation is organized by six top-level dimensions. Each dimension 
 
 Links below are grouped by dimension. Algorithm, backend, normalization, and aggregation status are documented on each metric page.
 
-**Action control** — [`prompt_alignment`](prompt_alignment.md) · [`semantic_alignment`](semantic_alignment.md) · [`object_detection`](object_detection.md) · [`camera_error`](camera_error.md) · [`motion_accuracy`](motion_accuracy.md)
+**Action control** — [`prompt_alignment`](prompt_alignment.md) · [`semantic_alignment`](semantic_alignment.md) · [`camera_error`](camera_error.md) · [`motion_accuracy`](motion_accuracy.md)
 
 **Quality** — [`style_consistency`](style_consistency.md) · [`perceptual_quality`](perceptual_quality.md) · [`image_quality`](image_quality.md) · [`hpsv3_norm`](hpsv3_norm.md) · [`brightness_distribution_consistency`](brightness_consistency.md) · [`color_temperature_constraint`](color_temperature_consistency.md) · [`sharpness_retention`](sharpness_retention.md) · [`psnr`](psnr.md) · [`ssim`](ssim.md) · [`long_sequence_aesthetic_quality`](long_sequence.md) · [`long_sequence_imaging_quality`](long_sequence.md)
 

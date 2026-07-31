@@ -112,3 +112,6 @@
 [submodule "thirdparty/VFIMamba"]
 	path = thirdparty/VFIMamba
 	url = https://github.com/MCG-NJU/VFIMamba.git
+[submodule "thirdparty/open-dreamer"]
+	path = thirdparty/open-dreamer
+	url = https://github.com/next-state/open-dreamer.git

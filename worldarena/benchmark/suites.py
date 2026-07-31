@@ -58,7 +58,6 @@ SUITE_DEFINITIONS: dict[str, SuiteDefinition] = {
             "sharpness_retention",
             "camera_error",
             "seen_region_preservation",
-            "object_detection",
             "reprojection_error",
             "optical_flow_aepe",
             "depth_accuracy",

@@ -234,7 +234,6 @@ export const leaderboardMetricDimensions = [
       "prompt_alignment",
       "semantic_alignment",
       "camera_error",
-      "object_detection",
       "motion_accuracy",
       "keystroke_strict_action_accuracy",
       "keystroke_partial_action_accuracy",

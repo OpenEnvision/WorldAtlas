@@ -38,7 +38,6 @@ The manifest stores this contract per sample, so downstream generation and evalu
 | Metric or family | Official gate |
 | --- | --- |
 | `prompt_alignment` | sample must have explicit instruction supervision and must not be self-conditioned |
-| `object_detection` | computed only when object prompts come from explicit structured annotations; caption-derived prompts are not scored |
 | `camera_error` | requires pose annotations under `sample.annotation_path` |
 | `motion_accuracy` | requires aligned segmentation masks |
 | `object_permanence` | requires aligned dynamic masks plus a readable reference video |
@@ -53,7 +52,6 @@ The manifest stores this contract per sample, so downstream generation and evalu
 Two common consequences:
 
 - Self-conditioned samples, or samples without explicit instruction labels, do not compute `prompt_alignment`; they are listed in `not_applicable_summary.json`.
-- Caption-derived object prompts are not used for `object_detection`; samples without explicit object annotations are `not_applicable`.
 - `image_static` and `image_dynamic` predictions are I2V videos. Prediction-only video metrics run normally; metrics requiring reference video, pose, or masks return unavailable when those sidecars are missing.
 
 ## Normalization

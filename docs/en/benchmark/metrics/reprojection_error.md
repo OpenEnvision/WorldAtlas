@@ -56,3 +56,9 @@ In WorldArena, the runtime decodes the full prediction into a frame sequence, ru
         year = {2021},
     }
     ```
+
+<!-- metric-examples:start -->
+## No Verified Same-Case Pair Yet
+
+> No comparable same-case prediction pair for this metric is retained in `artifacts/reports`. The page remains documented, but an example will be added only after two compatible formal reports are available.
+<!-- metric-examples:end -->

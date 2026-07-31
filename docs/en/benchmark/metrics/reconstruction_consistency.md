@@ -27,3 +27,9 @@ The default path follows the published reference implementation at commit `47f0d
 For throughput, WorldArena decodes the same requested indices in one sequential pass instead of repeatedly seeking the decoder. This changes no sampled index or RGB value: parity checks across representative videos from every prediction directory require byte-identical frames before the optimized mode is used.
 
 At least three sampled frames are required. DA3 failure, insufficient frames, or point-cloud construction failure produces null scores. `geometric_consistency` and `photometric_consistency` are official metrics under `consistency_3d_4d`; both reuse one DA3 inference for each video. WorldArena retains full per-video precision until aggregate serialization. Legacy aliases `S_recon` and `score_reconstruction` resolve to `geometric_consistency`; the old `reconstruction_consistency` output remains available as a diagnostic compatibility name.
+
+<!-- metric-examples:start -->
+## No Verified Same-Case Pair Yet
+
+> The retained formal snapshot contains only one completed model report for each reconstruction submetric (geometric and photometric consistency). A same-case high/low pair would therefore be fabricated, so no video comparison is shown.
+<!-- metric-examples:end -->

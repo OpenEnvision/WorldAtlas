@@ -21,7 +21,7 @@ e_{\mathrm{reproj}}
 
 其中 \(p^{*}_{ij}\) 是第 \(i\) 帧中的观测像素位置，\(P_{ij}\) 是由位姿与深度恢复的三维点，\(\Pi(\cdot)\) 为投影算子。若生成视频在三维上自洽，同一 scene point 投影回其他帧应接近对应观测；几何漂移、深度不稳定或跨帧结构不一致都会使该距离增大。
 
-在 WorldArena 中，runtime 将整段 prediction 解码为帧序列，运行 DROID-SLAM 估计轨迹与内部几何，并取有效观测重投影误差 `valid_errors` 的均值作为原始分数 `raw = mean(valid_errors)`。WorldArena 在经验范围 \([0, 1.0719]\) 上反向归一化到 \([0, 1]\)（**归一化分数越高越好**）。若 SLAM 重建失败或未产生有效分数，则返回 `raw = null`、`normalized = null`。DROID-SLAM 计算成功时，该指标在所有 formal suite 中为 **official**，并写入 `consistency_3d_4d` 聚合；它是有用的几何一致性信号，但不能替代 camera error 等几何真值监督，且受固定内参 SLAM 假设影响，跨异构数据解读时应保持谨慎。
+在 WorldArena 中，runtime 将整段 prediction 解码为帧序列，并以固定时间步长 4 均匀抽帧运行 DROID-SLAM，以统一约束长视频的显存占用；抽样覆盖整段视频而非只取片段。系统估计轨迹与内部几何，并取有效观测重投影误差 `valid_errors` 的均值作为原始分数 `raw = mean(valid_errors)`。WorldArena 在经验范围 \([0, 1.0719]\) 上反向归一化到 \([0, 1]\)（**归一化分数越高越好**）。若 SLAM 重建失败或未产生有效分数，则返回 `raw = null`、`normalized = null`。DROID-SLAM 计算成功时，该指标在所有 formal suite 中为 **official**，并写入 `consistency_3d_4d` 聚合；它是有用的几何一致性信号，但不能替代 camera error 等几何真值监督，且受固定内参 SLAM 假设影响，跨异构数据解读时应保持谨慎。
 
 ## 参考文献 {#reference}
 
@@ -56,3 +56,9 @@ e_{\mathrm{reproj}}
         year = {2021},
     }
     ```
+
+<!-- metric-examples:start -->
+## 暂无可核验的同 Case 对比
+
+> `artifacts/reports` 中尚未保留该指标可比较的同-case预测对。指标说明继续保留，待至少两份兼容的正式报告齐备后再加入示例。
+<!-- metric-examples:end -->

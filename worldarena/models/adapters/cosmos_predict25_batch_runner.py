@@ -399,10 +399,6 @@ def main() -> int:
 
     os.environ.pop("HF_HUB_OFFLINE", None)
     os.environ.pop("TRANSFORMERS_OFFLINE", None)
-    # uvx-spawned ``hf download`` uses httpx; SOCKS proxies require socksio in the
-    # uv tool env (not our venv). Prefer HTTP proxies only for auxiliary downloads.
-    os.environ.pop("ALL_PROXY", None)
-    os.environ.pop("all_proxy", None)
 
     spec_path = Path(args.batch_spec_path).expanduser().resolve()
     rows = load_batch_spec(spec_path)

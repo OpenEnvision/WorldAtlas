@@ -77,7 +77,9 @@ const SUPPLEMENTAL_ATOMIC_SOURCES = [
     suite: "image_dynamic",
     modelName: "stable-virtual-camera-image-dynamic-5s",
     expectedSamples: 1628,
-    metrics: ["motion_accuracy", "motion_magnitude", "motion_smoothness"]
+    // Withhold motion_smoothness until this report is regenerated with
+    // v2_float32_mse; its retained score used uint8-wrapped pixel arithmetic.
+    metrics: ["motion_accuracy", "motion_magnitude"]
   },
   imageStaticReport(
     "artifacts/benchmark/reports/camera_error_megasam_image_static_resumable_20260721/cameractrl_image_static",
@@ -85,12 +87,12 @@ const SUPPLEMENTAL_ATOMIC_SOURCES = [
     { requirePerSampleRows: true }
   ),
   imageStaticReport(
-    "artifacts/reports/hy_worldplay_ar_rl_image_test_balanced_5000_5s_image_static_static7_temporal_calibration_parallel_remaining_20260722",
+    "artifacts/reports/hy_worldplay_ar_rl_image_test_balanced_5000_5s_image_static_physical_fps_completion_14shard_7gpu2w_20260728",
     TEMPORAL_CALIBRATION_METRICS,
     { requirePerSampleRows: true }
   ),
   imageStaticReport(
-    "artifacts/reports/lingbot_world_image_static_image_static_static7_temporal_calibration_parallel_remaining_20260722",
+    "artifacts/reports/lingbot_world_image_static_image_static_physical_fps_completion_14shard_7gpu2w_20260728",
     TEMPORAL_CALIBRATION_METRICS,
     { requirePerSampleRows: true }
   ),
@@ -116,6 +118,41 @@ const SUPPLEMENTAL_ATOMIC_SOURCES = [
   ),
   imageStaticReport(
     "artifacts/reports/motionctrl_image_static_official_default_tmp2_image_static_static7_temporal_calibration_4gpu2m_validref_20260722",
+    TEMPORAL_CALIBRATION_METRICS,
+    { requirePerSampleRows: true }
+  ),
+  imageStaticReport(
+    "artifacts/reports/luciddreamer-image-static-8gpu-20260613_151844_image_static_physical_fps_audited_20260728",
+    TEMPORAL_CALIBRATION_METRICS,
+    { requireMetricCoverage: true, requirePerSampleRows: true }
+  ),
+  imageStaticReport(
+    "artifacts/reports/matrix-game-1-image-static-worldarena-prompt-min5-lowmem-rmsnorm-v2_image_static_static7_temporal_calibration_4gpu2m_validref_20260722",
+    TEMPORAL_CALIBRATION_METRICS,
+    { requirePerSampleRows: true }
+  ),
+  imageStaticReport(
+    "artifacts/reports/matrix_game3_5s_image_static_dynamic_image_static_static7_temporal_calibration_4gpu2m_validref_20260722",
+    TEMPORAL_CALIBRATION_METRICS,
+    { requirePerSampleRows: true }
+  ),
+  imageStaticReport(
+    "artifacts/reports/sana-wm-image-static_image_static_static7_temporal_calibration_4gpu2m_validref_20260722",
+    TEMPORAL_CALIBRATION_METRICS,
+    { requirePerSampleRows: true }
+  ),
+  imageStaticReport(
+    "artifacts/reports/stable_virtual_camera_image_static_5s_image_static_static7_temporal_calibration_4gpu2m_validref_20260722",
+    TEMPORAL_CALIBRATION_METRICS,
+    { requirePerSampleRows: true }
+  ),
+  imageStaticReport(
+    "artifacts/reports/stable_virtual_camera_image_static_worldscore_v2_image_static_static7_temporal_calibration_4gpu2m_validref_20260722",
+    TEMPORAL_CALIBRATION_METRICS,
+    { requirePerSampleRows: true }
+  ),
+  imageStaticReport(
+    "artifacts/reports/warp-as-history-image-static-8gpu-20260612_152000_image_static_static7_temporal_calibration_4gpu2m_validref_20260722",
     TEMPORAL_CALIBRATION_METRICS,
     { requirePerSampleRows: true }
   ),
@@ -158,37 +195,21 @@ const SUPPLEMENTAL_ATOMIC_SOURCES = [
     ["geometric_consistency", "photometric_consistency"],
     { requireMetricCoverage: true }
   ),
-  {
-    type: "report",
-    path: "artifacts/benchmark/reports/wan22-ti2v-5b-image-static-all22-full-20260722",
-    suite: "image_static",
-    expectedSamples: 3372,
-    requireMetricCoverage: true,
-    metrics: [
-      "background_consistency",
-      "brightness_distribution_consistency",
-      "camera_error",
-      "color_temperature_constraint",
-      "epipolar_error",
-      "epipolar_inlier_rate",
-      "feature_match_coverage",
-      "geometric_consistency",
-      "hpsv3_norm",
-      "image_quality",
-      "met3r_consistency",
-      "optical_flow_aepe",
-      "perceptual_quality",
-      "photometric_consistency",
-      "physical_fps_error",
-      "physical_fps_intra_video_cv",
-      "physical_fps_pct_error",
-      "prompt_alignment",
-      "segment_continuity",
-      "sharpness_retention",
-      "style_consistency",
-      "temporal_flickering"
-    ]
-  }
+  imageStaticReport(
+    "artifacts/benchmark/reports/wan22-ti2v-5b-image-static-full-met3r-audited-20260722",
+    ["met3r_consistency"],
+    { requireMetricCoverage: true, requirePerSampleRows: true }
+  ),
+  imageStaticReport(
+    "artifacts/benchmark/reports/wan22-ti2v-5b-image-static-optical-physical-audited-20260725",
+    ["optical_flow_aepe", ...TEMPORAL_CALIBRATION_METRICS],
+    { requireMetricCoverage: true, requirePerSampleRows: true }
+  ),
+  imageStaticReport(
+    "artifacts/benchmark/reports/wan22-ti2v-5b-image-static-reprojection-stride4-full-8gpu-20260726",
+    ["reprojection_error"],
+    { requirePerSampleRows: true }
+  )
 ];
 
 function readJson(filePath) {
@@ -695,7 +716,12 @@ function buildAtomicLeaderboard(
 
   return {
     schemaVersion: 1,
-    generatedAt: finalManifest?.generated_at || new Date().toISOString(),
+    generatedAt: Array.from(candidates.values()).reduce(
+      (latest, candidate) => String(candidate.generatedAt || "") > latest
+        ? String(candidate.generatedAt)
+        : latest,
+      String(finalManifest?.generated_at || "")
+    ) || new Date().toISOString(),
     policy: {
       resultLevel: "atomic_metric_only",
       includeAllCompletedNumericAtomicMetrics: true,

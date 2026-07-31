@@ -81,6 +81,14 @@ def remove_path(path: Path) -> None:
 
 def link_or_copy(source: Path, target: Path) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists() or target.is_symlink():
+        try:
+            if source.samefile(target):
+                return
+        except OSError:
+            # A broken symlink or a partially written target is replaced below.
+            pass
+        remove_path(target)
     try:
         os.link(source, target)
     except OSError:

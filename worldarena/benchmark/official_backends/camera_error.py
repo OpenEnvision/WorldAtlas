@@ -6,8 +6,8 @@ import argparse
 from lietorch import SE3
 from tqdm import tqdm
 from droid import Droid
-import cvxpy as cp
 
+from worldarena.benchmark.camera_alignment import score_camera_trajectories
 from worldarena.benchmark.official_backends.base import (
     BaseMetric,
     official_checkpoint_path,
@@ -48,56 +48,17 @@ def image_stream(image_list, stride, calib):
         yield t, image[None], intrinsics
 
 
-def compare_rotations(R1, R2):
-    cos_err = (
-        torch.bmm(R1, R2.transpose(1, 2))[:, torch.arange(3), torch.arange(3)].sum(
-            dim=-1
-        )
-        - 1
-    ) / 2
-    cos_err[cos_err > 1] = 1
-    cos_err[cos_err < -1] = -1
-    return cos_err.acos() * 180 / np.pi
-
-
 def get_cameras_accuracy(pred_Rs, gt_Rs, pred_ts, gt_ts):
-    """Align predicted pose to gt pose and print cameras accuracy"""
-
-    # find rotation
-    n = pred_Rs.shape[0]
-
-    R_opt = torch.diag(torch.tensor([1.0, 1, 1.0], device=gt_Rs.device)).double()
-    R_fixed = torch.bmm(R_opt.repeat(n, 1, 1), pred_Rs)
-
-    try:
-        c_opt = cp.Variable()
-        constraints = []
-        obj = cp.Minimize(
-            cp.sum(cp.norm(gt_ts.numpy() - (c_opt * pred_ts.numpy()), axis=1))
-        )
-        prob = cp.Problem(obj, constraints)
-        prob.solve()
-        t_fixed = c_opt.value * pred_ts.numpy()
-    except Exception as e:
-        print(f"Optimization failed, using fallback method: {str(e)}")
-        # Fallback: Use simple scaling based on mean distances
-        gt_distances = np.linalg.norm(gt_ts.numpy(), axis=1).mean()
-        pred_distances = np.linalg.norm(pred_ts.numpy(), axis=1).mean()
-        scale = gt_distances / (pred_distances + 1e-8)
-        if scale != 0:
-            t_fixed = scale * pred_ts.numpy()
-        else:
-            t_fixed = pred_ts.numpy()
-
-    # Calculate transaltion error
-    t_error = np.linalg.norm(t_fixed - gt_ts.numpy(), axis=-1)
-    t_score = np.mean(t_error).item()
-
-    # Calculate rotation error
-    R_error = compare_rotations(R_fixed, gt_Rs)
-    R_error = R_error.numpy()
-
-    r_score = np.mean(R_error).item()
+    """Align predicted poses to GT with Sim(3) and return camera errors."""
+    pred_count = int(pred_Rs.shape[0])
+    gt_count = int(gt_Rs.shape[0])
+    cameras_pred = np.repeat(np.eye(4, dtype=np.float64)[None], pred_count, axis=0)
+    cameras_gt = np.repeat(np.eye(4, dtype=np.float64)[None], gt_count, axis=0)
+    cameras_pred[:, :3, :3] = pred_Rs.detach().cpu().numpy()
+    cameras_pred[:, :3, 3] = pred_ts.detach().cpu().numpy()
+    cameras_gt[:, :3, :3] = gt_Rs.detach().cpu().numpy()
+    cameras_gt[:, :3, 3] = gt_ts.detach().cpu().numpy()
+    (r_score, t_score), _ = score_camera_trajectories(cameras_pred, cameras_gt)
     print(f"Rotation error: {r_score}")
     print(f"Translation error: {t_score}")
     return (r_score, t_score)
@@ -175,12 +136,12 @@ class CameraErrorMetric(BaseMetric):
         w2c_cameras_pred = to_blender @ w2c_cameras_pred
         cameras_pred = torch.inverse(w2c_cameras_pred)
 
-        pred_Rs = cameras_pred[:, :3, :3].cpu().double()
-        pred_Ts = cameras_pred[:, :3, 3].cpu().double()
-
-        gt_Rs = cameras_gt[:, :3, :3].cpu().double()
-        gt_Ts = cameras_gt[:, :3, 3].cpu().double() / scale
-        camera_error = get_cameras_accuracy(pred_Rs, gt_Rs, pred_Ts, gt_Ts)
+        camera_error, alignment_details = score_camera_trajectories(
+            cameras_pred.detach().cpu().numpy(),
+            cameras_gt.detach().cpu().numpy(),
+            gt_scale=float(scale),
+        )
+        self._alignment_details = alignment_details
 
         self.droid = None
         return camera_error

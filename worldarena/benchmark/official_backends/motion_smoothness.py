@@ -5,6 +5,7 @@ import numpy as np
 
 from worldarena.benchmark.official_backends.base import (
     BaseMetric,
+    mean_squared_pixel_error,
     official_checkpoint_path,
 )
 
@@ -83,7 +84,7 @@ class MotionSmoothnessMetric(BaseMetric):
             ssim_score = self._ssim_metric._compute_scores(mid, mid_pred)
             lpips_score = self._lpips_metric._compute_scores(mid, mid_pred)
             # psnr_score = self._psnr_metric._compute_scores(mid, mid_pred)
-            mse_score = np.mean((mid - mid_pred) ** 2)
+            mse_score = mean_squared_pixel_error(mid, mid_pred)
 
             scores_ssim.append(ssim_score)
             scores_lpips.append(lpips_score)

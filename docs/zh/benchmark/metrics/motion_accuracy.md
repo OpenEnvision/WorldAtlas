@@ -19,225 +19,50 @@ S_{\mathrm{mot}}^{\mathrm{raw}} = \frac{1}{N-1}\sum_{t=1}^{N-1} \Delta_t
 WorldArena 以 \(\mu = -0.1965\)、\(\sigma = 2.3687\) 做 z-score 校准，裁剪至 \([-1.6147, 1.5180]\)，并映射至 \([0.25, 0.75]\)。归一化得分越高，表示相对背景的前景 mask 运动越显著。当 `sample.mask_path` 下存在逐帧分割 mask 时，该指标为 **official**。
 
 <!-- metric-examples:start -->
-## 代表性同 Case 对比
-每个展示块先给出该 case 的 input image 和完全一致的展示 prompt，然后比较模型生成结果。paired 展示必须满足 input image 相同、prompt 文本相同，并且一个模型高分、一个模型低分。若当前正式快照中该 metric 没有这种跨模型同 case pair，则单独展示高分/低分极值样例，不把它们伪装成同 case 对比。
-机器可读 paired 导出： `docs/assets/metric_examples/paired_manifest.csv`.
-### `motion_accuracy`
+## 人工精选的同 Case 对比
+
+下列案例来自 `artifacts/reports` 生成的同-case比较索引。输入图、sample ID 与实际生成 prompt 完全一致；候选先按分位数和分差筛选，再逐帧人工复核。标签只表示该 metric 的相对高低，不代表模型整体优劣；为避免把单一案例误读成排行榜，卡片不展示模型名称。
+
+Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
+
 <div class="metric-case-stack">
-<article class="metric-case-exhibit">
+<article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/22ce019a26a7__image_dynamic_photorealistic_articulated_0031.jpg" alt="输入图像: image_dynamic_photorealistic_articulated_0031" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/ae595b686cab__image_dynamic_stylized_articulated_0020__input.jpg" alt="输入图像: image_dynamic_stylized_articulated_0020" loading="lazy" decoding="async">
       <figcaption>输入图像</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 1 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
-      <h4><code>image_dynamic_photorealistic_articulated_0031</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
+      <div class="metric-case-kicker">人工复核 · 同一 case、输入与 prompt · gap 0.8605</div>
+      <h4><code>image_dynamic_stylized_articulated_0020</code></h4>
+      <div class="metric-case-meta"><span>套件: image_dynamic</span><span>场景: stylized / articulated</span></div>
       <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera fixed. The ibex steps over the sunlit rocky terrain, bending its knees and lowering its curved horns as it navigates patches of grass. The earthy background remains stable.</p>
-        <small>prompt 来源: prompt_target</small>
+        <span>实际生成 prompt</span>
+        <p>Camera fixed. Two stylized sharks glide over the underwater landscape, their tails sweeping gently as they pass seaweed and rocky formations. Sunlight filters through the clear water while the seabed remains steady.</p>
+        <small>prompt source: prompt_target</small>
       </div>
+      <p class="metric-case-note">较高分结果让两条鲨鱼成为相对稳定海床上的显著运动前景；较低分结果把物体形变与更大范围的场景运动混在一起。</p>
     </div>
   </div>
   <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: yume-sample5b-image-dynamic-5s image_dynamic_photorealistic_articulated_0031">
-      <source src="../../../assets/metric_examples/93d9df1827ff__yume-sample5b-image-dynamic-5s__image_dynamic_photorealistic_articulated_0031.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: ltx23-image-dynamic-8gpu-full_20260702_233041 image_dynamic_photorealistic_articulated_0031">
-      <source src="../../../assets/metric_examples/8731ae302368__ltx23-image-dynamic-8gpu-full_20260702_233041__image_dynamic_photorealistic_articulated_0031.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/a21cd517f8bc__image_dynamic_photorealistic_articulated_0065.jpg" alt="输入图像: image_dynamic_photorealistic_articulated_0065" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_dynamic_stylized_articulated_0020">
+          <source src="../../../assets/metric_examples/curated_20260801/ceb76b5f7507__image_dynamic_stylized_articulated_0020__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 0.9535</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>motion_accuracy</span></figcaption>
     </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 2 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
-      <h4><code>image_dynamic_photorealistic_articulated_0065</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
-      <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera fixed. The elephant steps through savanna grass, swinging its trunk and flapping its ears while sunlight highlights its tusks. Acacia trees and the clear sky remain stable.</p>
-        <small>prompt 来源: prompt_target</small>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_dynamic_stylized_articulated_0020">
+          <source src="../../../assets/metric_examples/curated_20260801/8f5a70ee480e__image_dynamic_stylized_articulated_0020__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0930</div>
       </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: longcat-video-image-dynamic image_dynamic_photorealistic_articulated_0065">
-      <source src="../../../assets/metric_examples/a793606886de__longcat-video-image-dynamic__image_dynamic_photorealistic_articulated_0065.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: echo-infinity-image-dynamic image_dynamic_photorealistic_articulated_0065">
-      <source src="../../../assets/metric_examples/b55b5fe13514__echo-infinity-image-dynamic__image_dynamic_photorealistic_articulated_0065.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/59c71978624c__image_dynamic_photorealistic_deformable_0152.jpg" alt="输入图像: image_dynamic_photorealistic_deformable_0152" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>motion_accuracy</span></figcaption>
     </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 3 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
-      <h4><code>image_dynamic_photorealistic_deformable_0152</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
-      <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera fixed. The suspended white fabric undulates in slow waves, folding and unfurling along its silky edges. Its overall position stays centered against the blue-gray gradient background.</p>
-        <small>prompt 来源: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: echo-infinity-image-dynamic image_dynamic_photorealistic_deformable_0152">
-      <source src="../../../assets/metric_examples/13447b8c023e__echo-infinity-image-dynamic__image_dynamic_photorealistic_deformable_0152.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: sana-wm-image-dynamic image_dynamic_photorealistic_deformable_0152">
-      <source src="../../../assets/metric_examples/a4db33c6a26d__sana-wm-image-dynamic__image_dynamic_photorealistic_deformable_0152.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/19ee2a11ee26__image_dynamic_photorealistic_rigid_0104.jpg" alt="输入图像: image_dynamic_photorealistic_rigid_0104" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 4 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
-      <h4><code>image_dynamic_photorealistic_rigid_0104</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: photorealistic</span></div>
-      <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera fixed. The helicopter flies low over the calm sea, moving across the open water with its body level. Cargo ships, distant hills, and the clear sky remain steady in the background.</p>
-        <small>prompt 来源: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: echo-infinity-image-dynamic image_dynamic_photorealistic_rigid_0104">
-      <source src="../../../assets/metric_examples/2030d2058a70__echo-infinity-image-dynamic__image_dynamic_photorealistic_rigid_0104.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: yume-sample5b-image-dynamic-5s image_dynamic_photorealistic_rigid_0104">
-      <source src="../../../assets/metric_examples/ba4163c69f03__yume-sample5b-image-dynamic-5s__image_dynamic_photorealistic_rigid_0104.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/66442cb7a3b1__image_dynamic_stylized_articulated_0114.png" alt="输入图像: image_dynamic_stylized_articulated_0114" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 5 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
-      <h4><code>image_dynamic_stylized_articulated_0114</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: stylized</span></div>
-      <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera fixed. The adult horse and foal run side by side along the dirt path, legs alternating, manes and tails streaming while fences, farm buildings, hills, and trees remain still.</p>
-        <small>prompt 来源: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: yume-sample5b-image-dynamic-5s image_dynamic_stylized_articulated_0114">
-      <source src="../../../assets/metric_examples/74b0886de041__yume-sample5b-image-dynamic-5s__image_dynamic_stylized_articulated_0114.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: lingbot_world image_dynamic_stylized_articulated_0114">
-      <source src="../../../assets/metric_examples/3d3f5820d0fa__lingbot_world__image_dynamic_stylized_articulated_0114.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
-  </div>
-</figure>
-  </div>
-</article>
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/2e07620250c1__image_dynamic_stylized_deformable_0105.png" alt="输入图像: image_dynamic_stylized_deformable_0105" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 6 · 同一输入图像 + 同一 prompt · 分差 1.0000</div>
-      <h4><code>image_dynamic_stylized_deformable_0105</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_dynamic</span><span>Scene: stylized</span></div>
-      <div class="metric-case-prompt">
-        <span>目标 prompt</span>
-        <p>Camera fixed. Wide sheets of fabric spiral around the barren tree, folding, twisting, and tightening into a vortex above the pond. The tree trunk, grass, scattered leaves, and pond edge stay stable.</p>
-        <small>prompt 来源: prompt_target</small>
-      </div>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-<figure class="metric-output-card metric-output-card--good">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="好结果: echo-infinity-image-dynamic image_dynamic_stylized_deformable_0105">
-      <source src="../../../assets/metric_examples/67477bd7cc6c__echo-infinity-image-dynamic__image_dynamic_stylized_deformable_0105.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--good">好结果 · 分数 1.0000</div>
-  </div>
-</figure>
-<figure class="metric-output-card metric-output-card--bad">
-  <div class="metric-output-media-wrap">
-    <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="差结果: yume-sample5b-image-dynamic-5s image_dynamic_stylized_deformable_0105">
-      <source src="../../../assets/metric_examples/00244e911711__yume-sample5b-image-dynamic-5s__image_dynamic_stylized_deformable_0105.mp4" type="video/mp4">
-    </video>
-    <div class="metric-score-pill metric-score-pill--bad">差结果 · 分数 0.0000</div>
-  </div>
-</figure>
   </div>
 </article>
 </div>

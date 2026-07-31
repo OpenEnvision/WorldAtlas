@@ -38,7 +38,6 @@ manifest 会把这个契约写到每个样本里，因此下游生成和评测�
 | 指标或指标族 | official 门槛 |
 | --- | --- |
 | `prompt_alignment` | 样本必须有显式 instruction supervision，并且不能是 self-conditioned |
-| `object_detection` | 只有当 object prompt 来自显式结构化标注字段时才计算并进入 official；caption 推导 prompt 不打分 |
 | `camera_error` | 需要 `sample.annotation_path` 下存在姿态标注 |
 | `motion_accuracy` | 需要对齐好的 segmentation mask |
 | `object_permanence` | 需要对齐好的动态 mask，以及可读取的参考视频 |
@@ -50,10 +49,9 @@ manifest 会把这个契约写到每个样本里，因此下游生成和评测�
 | `semantic_alignment`、`depth_accuracy`、`long_sequence_*` | 永远不进 headline 聚合 |
 | formal suite 中其余指标 | 只要成功返回数值，就属于 official |
 
-三个常见后果：
+两个常见后果：
 
 - 自条件或缺少显式 instruction 的样本不会计算 `prompt_alignment`，而是进入 `not_applicable_summary.json`。
-- 从 caption 推导出的 object prompt 不再用于 `object_detection` 打分；没有显式 object 标注就标为 `not_applicable`。
 - `image_static` / `image_dynamic` 的输出是 I2V 视频，所以 prediction-only 视频指标会被正常计算；需要 reference video、pose 或 mask 的指标会在 sidecar 不足时返回空值，而不是强行打分。
 
 ## 归一化

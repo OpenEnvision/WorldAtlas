@@ -80,6 +80,7 @@ def test_every_checkpoint_resident_model_has_an_explicit_batch_launcher() -> Non
         "launch_luciddreamer_8gpu.sh",
         "launch_lyra_8gpu.sh",
         "launch_model_batch_8gpu.sh",
+        "launch_open_dreamer_8gpu.sh",
         "launch_stable_virtual_camera_8gpu.sh",
         "launch_wonder_8gpu.sh",
         "launch_worldfm_8gpu.sh",

@@ -79,7 +79,7 @@ An additional **`experimental`** slice exists for supplemental metrics (e.g. phy
 
 | Dimension | Representative metrics | What it measures |
 |-----------|------------------------|------------------|
-| **Action control** | `camera_error`, `motion_accuracy`, `prompt_alignment`, `object_detection` | Following camera trajectories, prompts, and object instructions |
+| **Action control** | `camera_error`, `motion_accuracy`, `prompt_alignment` | Following camera trajectories, prompts, and motion instructions |
 | **3D/4D consistency** | `reprojection_error`, `optical_flow_aepe`, `depth_collision`, `met3r_consistency`, `reconstruction_consistency` | Geometric and photometric self-consistency |
 | **Physics** | `pmf`, `fvmd`, `motion_magnitude`, `motion_smoothness`, `physics_judge_*` | Physical plausibility of motion and interactions |
 | **Quality** | `perceptual_quality`, `style_consistency`, `image_quality`, `hpsv3_norm`, `sharpness_retention` | Visual fidelity and artifact severity |
@@ -165,6 +165,7 @@ Each upstream world model typically needs its **own** Python environment (CUDA v
 | CamI2V / RealCam-I2V | `thirdparty/CamI2V`, `thirdparty/RealCam-I2V` | optional: [`scripts/launch_camera_i2v_8gpu.sh`](scripts/launch_camera_i2v_8gpu.sh) |
 | ABot-World | `thirdparty/ABot-World` | upstream README |
 | Matrix-Game 3.5 | `bash scripts/setup_matrix_game_35.sh` | installs from upstream `requirements.txt` + downloads weights |
+| Open Dreamer | `bash scripts/setup_open_dreamer.sh` | JAX/CUDA 12 stack built with upstream `uv sync` + downloads weights |
 
 Point `python_bin` in the model YAML at the interpreter of that dedicated environment, or export `<MODEL>_PYTHON_BIN` in launch scripts.
 
@@ -307,7 +308,7 @@ Full commands and environment notes: [`docs/en/thirdparty.md`](docs/en/thirdpart
 | `long_sequence_*`, `long_horizon_diagnostics` | `amt_model/amt-s.pth`, `raft_model/models/raft-things.pth`, `musiq/musiq_spaq_ckpt-358bb6af.pth` | [HF: lalala125/AMT](https://huggingface.co/lalala125/AMT), [RAFT Dropbox models.zip](https://dl.dropboxusercontent.com/s/4j4z58wuv8o0mfz/models.zip), [IQA-PyTorch release](https://github.com/chaofengc/IQA-PyTorch/releases/download/v0.1-weights/musiq_spaq_ckpt-358bb6af.pth) |
 | `temporal_calibration`, `physical_fps_*` | `Pulse-of-Motion/vc_common_10_60fps.ckpt` | [HF: xiangbog/Visual_Chronometer](https://huggingface.co/xiangbog/Visual_Chronometer) |
 | `camera_error`, `reprojection_error` (DROID) | `official_metrics/droid.pth` | [Google Drive via gdown](https://drive.google.com/file/d/1PpqVt1H4maBa_GbPJp4NwxRsd9jk-elh) |
-| `object_detection`, `motion_accuracy` | `official_metrics/groundingdino_swint_ogc.pth`, `sam_vit_h_4b8939.pth`, `sam2.1_hiera_base_plus.pt`, `bert-base-uncased/` | [GroundingDINO release](https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth), [SAM ViT-H](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth), [HF: facebook/sam2.1-hiera-base-plus](https://huggingface.co/facebook/sam2.1-hiera-base-plus), [HF: google-bert/bert-base-uncased](https://huggingface.co/google-bert/bert-base-uncased) |
+| `motion_accuracy` | `official_metrics/groundingdino_swint_ogc.pth`, `sam_vit_h_4b8939.pth`, `sam2.1_hiera_base_plus.pt`, `bert-base-uncased/` | [GroundingDINO release](https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth), [SAM ViT-H](https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth), [HF: facebook/sam2.1-hiera-base-plus](https://huggingface.co/facebook/sam2.1-hiera-base-plus), [HF: google-bert/bert-base-uncased](https://huggingface.co/google-bert/bert-base-uncased) |
 | `optical_flow_aepe`, `motion_magnitude`, `motion_accuracy` | `official_metrics/Tartan-C-T-TSKH-spring540x960-M.pth`, `official_metrics/models/raft-things.pth` | [HF: Yarimasune/SEA-RAFT](https://huggingface.co/Yarimasune/SEA-RAFT), copy from `raft_model/` |
 | `motion_smoothness` | `official_metrics/VFIMamba.pkl` | [HF: MCG-NJU/VFIMamba](https://huggingface.co/MCG-NJU/VFIMamba) (`model.pkl` → rename) |
 | `long_sequence_aesthetic_quality` (CLIP aesthetic head) | `official_metrics/sac+logos+ava1-l14-linearMSE.pth` | [improved-aesthetic-predictor](https://github.com/christophschuhmann/improved-aesthetic-predictor/raw/main/sac%2Blogos%2Bava1-l14-linearMSE.pth) |
@@ -356,6 +357,7 @@ model:
 | `stable_virtual_camera.yaml` | `thirdparty/stable-virtual-camera` | `stable-virtual-camera/*` |
 | `yume.yaml` | `thirdparty/YUME` | `Yume-5B-720P` |
 | `abot_world.yaml` | `thirdparty/ABot-World` | `ABot-World-0-5B-LF` |
+| `open_dreamer.yaml` | `thirdparty/open-dreamer` | `open-dreamer/<step>/` (Orbax: `tokenizer/`, `dynamics_ema/`) |
 
 Model weights retain their **original licenses**. WorldArena code is [MIT](LICENSE).
 
@@ -692,6 +694,27 @@ worldarena generate \
 
 </details>
 
+<details>
+<summary><b>Open Dreamer</b></summary>
+
+```bash
+bash scripts/setup_open_dreamer.sh   # submodule + uv venv (JAX/CUDA 12) + Orbax weights
+
+worldarena generate \
+  --config config/benchmark.yaml \
+  --model-config config/models/open_dreamer.yaml
+```
+
+Open Dreamer takes **no text prompt**: the only control signal is one Minecraft/VPT
+action per frame, so `open_dreamer_actions.py` translates each `camera_path` segment
+into keyboard/mouse events (`push_in` → `w`, `pan_right` → mouse `dx`, …) laid out
+over the same frame boundaries the camera metrics score against. `roll_cw` /
+`roll_ccw` segments are rejected because the VPT action space has no roll axis, and
+the model is trained on 368×640 Minecraft footage — expect out-of-domain behaviour
+on natural video.
+
+</details>
+
 ---
 
 ## Supported Models
@@ -723,6 +746,7 @@ worldarena generate \
 | Matrix-Game 3.5 | `matrix_game_35_*.yaml` | image_static, image_dynamic |
 | Hunyuan GameCraft | `hunyuan_gamecraft.yaml` | image_dynamic, video_dynamic |
 | Cosmos-Predict 2.5 | `cosmos_predict25_*.yaml` | image_static, video_static |
+| Open Dreamer | `open_dreamer.yaml` | all four (VPT action rollout) |
 
 ---
 

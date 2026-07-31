@@ -11,6 +11,7 @@ from worldarena.benchmark.media import LoadedMedia
 from worldarena.benchmark.metrics.control import CameraErrorMetric
 from worldarena.benchmark.schemas import BenchmarkSample
 from worldarena.benchmark.synthetic_camera import (
+    _rotation_matrix_y,
     synthetic_camera_matrices,
     synthetic_camera_matrices_for_sample,
 )
@@ -171,9 +172,8 @@ def test_camera_error_dispatches_megasam_backend(monkeypatch) -> None:
 def test_camera_error_dispatches_megasam_native_intended_policy(monkeypatch) -> None:
     captured: dict[str, object] = {}
 
-    def fake_materialize_frame_paths(path: str) -> list[str]:
-        assert path == "/tmp/prediction.mp4"
-        return ["/tmp/000.png", "/tmp/001.png", "/tmp/002.png"]
+    def fail_materialize_frame_paths(path: str) -> list[str]:
+        raise AssertionError(f"native-intended MegaSAM must not materialize frames: {path}")
 
     def fake_compute_camera_error_megasam_native_intended(prediction_path: str, **kwargs):
         assert prediction_path == "/tmp/prediction.mp4"
@@ -195,7 +195,7 @@ def test_camera_error_dispatches_megasam_native_intended_policy(monkeypatch) -> 
 
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.control.materialize_frame_paths",
-        fake_materialize_frame_paths,
+        fail_materialize_frame_paths,
     )
     monkeypatch.setattr(
         "worldarena.benchmark.metrics.control.compute_camera_error_megasam_native_intended",
@@ -213,7 +213,7 @@ def test_camera_error_dispatches_megasam_native_intended_policy(monkeypatch) -> 
     assert output.details["native_camera_policy"] == "intended_camera_path"
     assert captured["sample"] is sample
     assert captured["runtime"] == runtime
-    assert captured["frame_paths"] == ["/tmp/000.png", "/tmp/001.png", "/tmp/002.png"]
+    assert "frame_paths" not in captured
 
 
 def test_camera_error_does_not_synthesize_dynamic(monkeypatch) -> None:
@@ -247,6 +247,26 @@ def test_synthetic_camera_matrices_exact_frame_count() -> None:
     trajectory = synthetic_camera_matrices(["push_in", "move_left"], target_frames=6)
     assert trajectory.matrices.shape == (6, 4, 4)
     np.testing.assert_allclose(trajectory.matrices[0], np.eye(4, dtype=np.float32))
+
+
+def test_synthetic_y_rotation_uses_standard_right_handed_convention() -> None:
+    angle = np.deg2rad(30.0)
+    expected = np.asarray(
+        [
+            [np.cos(angle), 0.0, np.sin(angle)],
+            [0.0, 1.0, 0.0],
+            [-np.sin(angle), 0.0, np.cos(angle)],
+        ],
+        dtype=np.float32,
+    )
+    np.testing.assert_allclose(_rotation_matrix_y(30.0), expected, atol=1e-6)
+
+    pan_left = synthetic_camera_matrices(["pan_left"], target_frames=3).matrices[-1]
+    pan_right = synthetic_camera_matrices(["pan_right"], target_frames=3).matrices[-1]
+    orbit_left = synthetic_camera_matrices(["orbit_left"], target_frames=3).matrices[-1]
+    orbit_right = synthetic_camera_matrices(["orbit_right"], target_frames=3).matrices[-1]
+    assert pan_left[0, 2] < 0.0 < pan_right[0, 2]
+    assert orbit_left[0, 3] < 0.0 < orbit_right[0, 3]
 
 
 def test_official_camera_error_scales_droid_intrinsics_to_frame_resolution(
