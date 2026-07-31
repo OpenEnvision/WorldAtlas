@@ -4,7 +4,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORLD_ROOT="${WORLD_ROOT:-$(cd -- "$SCRIPT_DIR/.." && pwd)}"
+ARENA_ROOT="$(cd -- "$WORLD_ROOT/.." && pwd)"
 VARIANT="${CAMERA_I2V_MODEL:-cami2v}"
+
+# CamI2V / RealCam-I2V weights live under ../world_models; expose them as an
+# approved checkpoint root so symlinked ckpt/ paths pass validation.
+export WORLDARENA_CHECKPOINT_ROOT="${WORLDARENA_CHECKPOINT_ROOT:-$ARENA_ROOT/world_models}"
 
 case "$VARIANT" in
     cami2v)

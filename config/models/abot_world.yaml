@@ -9,7 +9,11 @@ model:
   # Keep ABot-World in an isolated Python 3.12 environment; its CUDA/PyTorch
   # stack differs from WorldArena's evaluation environment.
   repo_root: thirdparty/ABot-World
-  python_bin: thirdparty/ABot-World/.venv/bin/python
+  # abot 自己的 .venv 里 flash_attn 只能编出旧-ABI 或 kernel-invalid 的版本（本机
+  # gcc 强制旧 ABI 而 torch 2.8 是新 ABI，且 nvcc 12.6 cubin 版本高于驱动 12.2）。
+  # lingbot-world-v2 env(torch 2.5.1+cu121, 旧 ABI)自带可跑的 flash_attn FA2，
+  # 且满足 abot 依赖(diffusers 0.38 有 LinearActivation, transformers 4.51)，故借用。
+  python_bin: ../conda/envs/lingbot-world-v2/bin/python
   checkpoint_dir: ckpt/ABot-World-0-5B-LF
   entrypoint: web_client/pipeline_loader.py
   output_ext: .mp4

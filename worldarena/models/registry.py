@@ -16,6 +16,7 @@ from worldarena.models.adapters import (
     InfiniteWorldAdapter,
     LingBotVideoAdapter,
     LingBotWorldAdapter,
+    LingBotWorldV2Adapter,
     LucidDreamerAdapter,
     Lyra1Adapter,
     Lyra2Adapter,
@@ -61,6 +62,8 @@ def build_model_adapter(config: ModelRuntimeConfig) -> ModelAdapter:
         "cosmos_predict2_5",
     }:
         return CosmosPredict25Adapter(config)
+    if family in {"lingbot_world_v2", "lingbot-world-v2"}:
+        return LingBotWorldV2Adapter(config)
     if family in {"lingbot", "lingbot_world", "lingbot-world"}:
         return LingBotWorldAdapter(config)
     if family in {"lingbot_video", "lingbot-video"}:

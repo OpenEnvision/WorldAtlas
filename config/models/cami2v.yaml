@@ -7,6 +7,11 @@ model:
   control_signals: [text, image, camera_pose]
   roles: [candidate]
   # Official environment: Python 3.10, PyTorch 2.4.1, CUDA 12.1.
+  # requirements.txt leaves transformers/av unpinned; with torch 2.4.1 they must
+  # be held back: transformers==4.44.2 (newer needs torch.distributed.tensor.DTensor,
+  # added in torch 2.5) and av==12.3.0 (av>=14 drops the str pict_type API that
+  # torchvision 0.19 write_video relies on).
+  python_bin: ../conda/envs/cami2v/bin/python
   repo_root: thirdparty/CamI2V
   checkpoint_dir: ckpt/CamI2V
   entrypoint: demo/cami2v_test.py
