@@ -24,6 +24,7 @@ _ADAPTER_MODULES = {
     "InfiniteWorldAdapter": "worldarena.models.adapters.infinite_world",
     "LingBotVideoAdapter": "worldarena.models.adapters.lingbot_video",
     "LingBotWorldAdapter": "worldarena.models.adapters.lingbot_world",
+    "LingBotWorldV2Adapter": "worldarena.models.adapters.lingbot_world_v2",
     "LucidDreamerAdapter": "worldarena.models.adapters.luciddreamer",
     "Lyra1Adapter": "worldarena.models.adapters.lyra1",
     "Lyra2Adapter": "worldarena.models.adapters.lyra2",

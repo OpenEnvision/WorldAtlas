@@ -6,6 +6,9 @@ model:
   artifact_types: [video]
   control_signals: [text, image, camera_pose]
   roles: [candidate]
+  # The batch runner subprocess (and the infer.py it spawns via sys.executable)
+  # must run in the Matrix-Game 3.5 env; linked from envs/ by prepare_basic_metric.sh.
+  python_bin: ../conda/envs/matrix-game-3.5/bin/python
   repo_root: thirdparty/Matrix-Game-3.5
   checkpoint_dir: ckpt/Matrix-Game-3.5
   entrypoint: infer.py
@@ -21,6 +24,14 @@ model:
     DIFFSYNTH_SKIP_DOWNLOAD: "true"
   generation:
     person: third
+    # Pin the anchor image to the official third-person input size (1280x704,
+    # width*height) via cover+center-crop before infer.py. Dataset originals
+    # reach 20-40 MP; their full-res DA3 depth map overflows torch.quantile's
+    # 2**24-element cap in frustum _edge_aware_smooth. All official
+    # samples/third_person inputs are 1280x704, so this matches the upstream
+    # anchor resolution. Intrinsics are recomputed from this size (README:
+    # intrinsics are in anchor-image pixels).
+    conditioning_resize: 1280*704
     num_blocks: 1
     steps: 25
     cfg_scale: 5.0

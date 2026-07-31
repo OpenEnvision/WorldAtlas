@@ -42,7 +42,75 @@ def _slug(value: Any) -> str:
     return result or "sample"
 
 
-def _image_size(row: dict[str, Any]) -> tuple[int, int]:
+def _parse_size(value: object) -> tuple[int, int]:
+    """Parse a ``width*height`` (or ``widthxheight``) spec into (width, height)."""
+    raw = str(value).lower().replace("x", "*")
+    width_text, height_text = raw.split("*", 1)
+    return int(width_text), int(height_text)
+
+
+def _target_size(generation: dict[str, Any]) -> tuple[int, int] | None:
+    """Resolve the configured conditioning_resize target, or None if unset."""
+    value = generation.get("conditioning_resize")
+    if not value:
+        return None
+    width, height = _parse_size(value)
+    if width <= 0 or height <= 0:
+        raise ValueError(f"invalid conditioning_resize: {value!r}")
+    return width, height
+
+
+def _cover_center_crop(image: "Image.Image", target_width: int, target_height: int) -> "Image.Image":
+    """Resize-to-cover then center-crop to exactly (target_width, target_height).
+
+    Replicates Matrix-Game's own center_crop_resize verbatim
+    (diffsynth/core/data/batch_encode_videos.py): torch bilinear interpolation
+    with antialias=True, int(round()) for the covered size, and max((new-t)//2,0)
+    center-crop offsets. The pipeline itself would run this same op on the anchor
+    frames, so doing it here (before infer.py) keeps the transform identical while
+    shrinking the input the pipeline generates at 1280x704 (configs/infer_*_person
+    height:704/width:1280). Needed because dataset originals reach 20-40 MP, whose
+    full-res DA3 depth map overflows torch.quantile's 2**24-element cap in
+    frustum _edge_aware_smooth.
+    """
+    import torch
+    import torch.nn.functional as F
+
+    raw = (
+        torch.from_numpy(np.asarray(image.convert("RGB")).copy())
+        .permute(2, 0, 1)
+        .unsqueeze(0)
+        .float()
+    )
+    old_height, old_width = raw.shape[-2:]
+    scale = max(target_height / old_height, target_width / old_width)
+    new_height = int(round(old_height * scale))
+    new_width = int(round(old_width * scale))
+    if (new_height, new_width) != (old_height, old_width):
+        raw = F.interpolate(
+            raw,
+            size=(new_height, new_width),
+            mode="bilinear",
+            align_corners=False,
+            antialias=True,
+        )
+    top = max((new_height - target_height) // 2, 0)
+    left = max((new_width - target_width) // 2, 0)
+    cropped = raw[:, :, top : top + target_height, left : left + target_width]
+    arr = cropped.squeeze(0).permute(1, 2, 0).clamp(0, 255).round().to(torch.uint8).numpy()
+    return Image.fromarray(arr)
+
+
+def _image_size(row: dict[str, Any], generation: dict[str, Any] | None = None) -> tuple[int, int]:
+    """Effective anchor size: the conditioning_resize target if set, else original.
+
+    Intrinsics are expressed in pixels of the anchor image (see README), so this
+    must return the same size the anchor image is actually fed to infer.py at.
+    """
+    if generation is not None:
+        target = _target_size(generation)
+        if target is not None:
+            return target
     with Image.open(Path(str(row["conditioning_image"])).expanduser()) as image:
         width, height = image.size
     if width <= 0 or height <= 0:
@@ -76,7 +144,7 @@ def write_camera_npz(
         target_frames=pose_count,
         runtime=generation,
     )
-    width, height = _image_size(row)
+    width, height = _image_size(row, generation)
     intrinsic = _intrinsics(
         width,
         height,
@@ -229,13 +297,24 @@ def _run_row(
     with tempfile.TemporaryDirectory(prefix=f"{_slug(sample_id)}_", dir=run_parent) as temp_raw:
         temp_dir = Path(temp_raw)
         run_name = _slug(sample_id)
+        source_image = Path(str(row["conditioning_image"])).expanduser().resolve()
+        anchor_image = source_image
+        target = _target_size(generation)
+        if target is not None:
+            target_width, target_height = target
+            with Image.open(source_image) as handle:
+                image = handle.convert("RGB")
+                if image.size != (target_width, target_height):
+                    image = _cover_center_crop(image, target_width, target_height)
+                anchor_image = temp_dir / f"{run_name}_anchor.png"
+                image.save(anchor_image)
         command = [
             os.fspath(Path(sys.executable).resolve()),
             os.fspath(repo_root / "infer.py"),
             "--person",
             person,
             "--image",
-            str(Path(str(row["conditioning_image"])).expanduser().resolve()),
+            str(anchor_image),
             "--camera",
             str(camera_path),
             "--prompt",

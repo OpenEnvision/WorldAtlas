@@ -6,6 +6,10 @@ model:
   artifact_types: [video]
   control_signals: [text, image, camera_pose]
   roles: [candidate]
+  # The batch runner subprocess must run in the AlayaWorld env; linked from
+  # envs/ by prepare_basic_metric.sh. Set explicitly so it does not silently
+  # fall back to the orchestrator python.
+  python_bin: ../conda/envs/alayaworld/bin/python
   repo_root: thirdparty/AlayaWorld
   checkpoint_dir: ckpt/AlayaWorld
   entrypoint: inference/run.py
@@ -18,12 +22,16 @@ model:
   prompt_mode: prompt_target
   reference_mode: first_frame
   env:
-    PYTORCH_ALLOC_CONF: expandable_segments:True
+    # NOTE: the correct var is PYTORCH_CUDA_ALLOC_CONF (with CUDA); the old
+    # PYTORCH_ALLOC_CONF was ignored, so expandable_segments never took effect.
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
   generation:
     require_persistent_batch: true
-    # Official long-horizon rollout: 45 autoregressive chunks. Each chunk is
-    # 4 latents x stride 8 = 32 frames, yielding 1,440 frames / 60 seconds.
-    rounds: 45
+    # Each round is 4 latents x stride 8 = 32 frames at 24 fps. The official
+    # 45-round rollout (1,440 frames / 60 s) needs far more than one 80 GB A100
+    # for the accumulated history/KV cache and OOMs on a single GPU. Basic-metric
+    # only needs a short 5-10 s clip, so use 4 rounds = ~129 frames = ~5.4 s.
+    rounds: 4
     chunk_latent_frames: 4
     temporal_stride: 8
     sink_latent_frames: 1
@@ -55,11 +63,14 @@ model:
     da3_repo: thirdparty/Depth-Anything-3
     da3_model: depth-anything/DA3NESTED-GIANT-LARGE-1.1
     da3_cache: ckpt/huggingface
-    attention_type: xformers
+    # FlashAttention-3 on H100 (sm_90). FA3 was compiled from source into this
+    # env (flash_attn_3 / flash_attn_interface, see scripts/../script3.sh); the
+    # upstream attention module detects it (_FLASH_ATTN_3_AVAILABLE=True) and uses
+    # the native FA3 kernels. Fall back to `pytorch` (SDPA) if FA3 is unavailable.
+    attention_type: flash_attention_3
     sampling_steps: 4
     # One resident engine per GPU shard; weights are loaded once for the batch.
     persistent: true
-    # Eager xFormers avoids a large one-time compile before production.
     compile: none
     flex_attn: false
     nproc_per_node: 1

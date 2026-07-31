@@ -159,6 +159,8 @@ class ObjectDetectionMetric(OfficialMetric):
         del reference
 
         backend = self._resolve_backend()
+        details = self._base_details(prediction)
+        prompt_candidates, prompt_source = derive_object_prompts(sample.annotation_path)
         if not prompt_candidates:
             details["prompt_source"] = prompt_source
             return MetricOutput(
