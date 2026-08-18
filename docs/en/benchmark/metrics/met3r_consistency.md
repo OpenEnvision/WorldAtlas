@@ -28,41 +28,41 @@ Adapter-specific conditioning may differ, so these are metric diagnostics rather
 <article class="metric-case-exhibit">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/5cd19d15663a__image_static_photorealistic_aquatic_landscape_0098.jpg" alt="Input image: image_static_photorealistic_aquatic_landscape_0098" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/inputs/0a296f3513d2__image_static_stylized_dining_spaces_0115.jpg" alt="Input image: image_static_stylized_dining_spaces_0115" loading="lazy" decoding="async">
       <figcaption>Input image</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 1 · lower multi-view consistency under visible distortion</div>
-      <h4><code>image_static_photorealistic_aquatic_landscape_0098</code></h4>
-      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-kicker">Case 1 · visible structural drift lowers multi-view consistency</div>
+      <h4><code>image_static_stylized_dining_spaces_0115</code></h4>
+      <div class="metric-case-meta"><span>image_static</span><span>stylized / indoor / dining_spaces</span></div>
       <div class="metric-case-prompt">
         <span>Benchmark prompt target</span>
-        <p>Camera pan right. An aquatic landscape with pebble beach, calm sea, and blue sky.</p>
+        <p>Camera pan right. A futuristic dining area with dining table, chairs, and digital displays. Camera pull out. A futuristic living room with sofa, digital screens, and neon accents. Camera move right. A futuristic balcony with neon signs, railing, and skyscrapers.</p>
       </div>
-      <p class="metric-case-note">Output A keeps the beach structure stable. Output B develops large view distortions and black borders, reducing valid overlap and increasing raw MEt3R distance.</p>
+      <p class="metric-case-note">Output A follows the requested scene progression with stable, well-defined structure at the evaluated anchor. Output B develops translucent duplicate contours and warped room geometry; valid overlap drops and raw MEt3R distance rises.</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: ac3d-image-static, aquatic landscape 0098">
-          <source src="../../../assets/metric_examples/d6290f43f723__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: LongCat-Video, stylized dining space 0115">
+          <source src="../../../assets/metric_examples/5842a0b01dda__longcat-video-image-static-8gpu-20260612_133950__image_static_stylized_dining_spaces_0115.mp4" type="video/mp4">
         </video>
       </div>
       <figcaption class="metric-output-caption">
         <strong>Output A</strong>
-        <span>MEt3R: <strong>0.9730</strong> normalized · 0.0540 raw · 0.7044 overlap</span>
+        <span>MEt3R: <strong>0.9823</strong> normalized · 0.0354 raw · 0.9388 overlap</span>
       </figcaption>
     </figure>
     <figure class="metric-output-card">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: LucidDreamer, aquatic landscape 0098">
-          <source src="../../../assets/metric_examples/20dc16268a49__luciddreamer-image-static-8gpu-20260613_151844__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: AC3D, stylized dining space 0115">
+          <source src="../../../assets/metric_examples/d47ca5e1e3f1__ac3d-image-static__image_static_stylized_dining_spaces_0115.mp4" type="video/mp4">
         </video>
       </div>
       <figcaption class="metric-output-caption">
         <strong>Output B</strong>
-        <span>MEt3R: <strong>0.6341</strong> normalized · 0.7317 raw · 0.3180 overlap</span>
+        <span>MEt3R: <strong>0.5737</strong> normalized · 0.8527 raw · 0.4778 overlap</span>
       </figcaption>
     </figure>
   </div>
@@ -71,41 +71,41 @@ Adapter-specific conditioning may differ, so these are metric diagnostics rather
 <article class="metric-case-exhibit">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/f6e5fd26f831__image_static_photorealistic_workspaces_0106.jpg" alt="Input image: image_static_photorealistic_workspaces_0106" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/inputs/6504e40a15dd__image_static_photorealistic_aquatic_landscape_0006.jpg" alt="Input image: image_static_photorealistic_aquatic_landscape_0006" loading="lazy" decoding="async">
       <figcaption>Input image</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 2 · empty projected overlap receives the worst value</div>
-      <h4><code>image_static_photorealistic_workspaces_0106</code></h4>
-      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / indoor / workspaces</span></div>
+      <div class="metric-case-kicker">Case 2 · low anchor overlap after an abrupt view change</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0006</code></h4>
+      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / outdoor / aquatic_landscape</span></div>
       <div class="metric-case-prompt">
         <span>Benchmark prompt target</span>
-        <p>Camera move left. A workspaces scene with bookshelf, indoor plants, and adjacent wall.</p>
+        <p>Camera pull out. A forest edge with rocky shore and trees. Camera pan right. A forest edge with open meadow, grassy field, and distant hills. Camera move right. A hiking trail with path through trees and small clearing.</p>
       </div>
-      <p class="metric-case-note">Output B does not preserve the reference workspace. MEt3R finds no valid projected overlap and applies the documented worst-value policy: raw 2.0, normalized 0.0.</p>
+      <p class="metric-case-note">Output A changes viewpoint gradually while retaining mountain, treeline, and shore structure. Output B jumps more abruptly toward the trail; at the evaluated anchor, valid projected overlap falls to 0.0529 and raw MEt3R distance increases.</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: ac3d-image-static, workspace 0106">
-          <source src="../../../assets/metric_examples/c0b5d552bebf__ac3d-image-static__image_static_photorealistic_workspaces_0106.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: AC3D, aquatic landscape 0006">
+          <source src="../../../assets/metric_examples/4d5bdc0d37b0__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0006.mp4" type="video/mp4">
         </video>
       </div>
       <figcaption class="metric-output-caption">
         <strong>Output A</strong>
-        <span>MEt3R: <strong>0.9948</strong> normalized · 0.0104 raw · 0.9237 overlap</span>
+        <span>MEt3R: <strong>0.9559</strong> normalized · 0.0883 raw · 0.8652 overlap</span>
       </figcaption>
     </figure>
     <figure class="metric-output-card">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: CameraCtrl, workspace 0106">
-          <source src="../../../assets/metric_examples/5a90ac712030__cameractrl_image_static__image_static_photorealistic_workspaces_0106.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: LongCat-Video, aquatic landscape 0006">
+          <source src="../../../assets/metric_examples/4043d273f2b0__longcat-video-image-static-8gpu-20260612_133950__image_static_photorealistic_aquatic_landscape_0006.mp4" type="video/mp4">
         </video>
       </div>
       <figcaption class="metric-output-caption">
         <strong>Output B</strong>
-        <span>MEt3R: <strong>0.0000</strong> normalized · 2.0000 raw · 0.0000 overlap</span>
+        <span>MEt3R: <strong>0.7167</strong> normalized · 0.5666 raw · 0.0529 overlap</span>
       </figcaption>
     </figure>
   </div>

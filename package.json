@@ -2,9 +2,10 @@
   "name": "worldarena",
   "private": true,
   "scripts": {
-    "docs:sync": "npm --prefix docs-site run sync && npm --prefix docs-site run generate:css",
-    "docs:dev": "npm --prefix docs-site run dev",
-    "docs:build": "npm --prefix docs-site run build",
+    "docs:sync": "npm --prefix docs run sync && npm --prefix docs run generate:css",
+    "docs:dev": "npm --prefix docs run dev",
+    "docs:build": "npm --prefix docs run build",
+    "leaderboard:import-reports": "node site/scripts/export-leaderboard-results.cjs",
     "site": "node site/server.cjs"
   }
 }

@@ -114,7 +114,7 @@ nav:
               - Long Sequence Imaging Quality: benchmark/metrics/long_sequence_imaging_quality.md
               - Rollout Aesthetic Drift: benchmark/metrics/rollout_aesthetic_drift.md
               - Rollout Imaging Drift: benchmark/metrics/rollout_imaging_drift.md
-          - Long Sequence:
+          - Long Sequence / Memory:
               - Overview: benchmark/metrics/dimensions/long_sequence.md
               - Scene Memory F1: benchmark/metrics/scene_memory_f1.md
           - Real Time:

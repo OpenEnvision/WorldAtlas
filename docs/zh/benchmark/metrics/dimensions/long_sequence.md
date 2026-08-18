@@ -1,65 +1,13 @@
 # Long Sequence（Memory）
 
-<p class="dimension-lede"><code>long_sequence</code> 维度覆盖状态记忆、外观保持与长时序 rollout 稳定性。它关注模型是否能在长视频中维持已见区域、物体存在性、回访行为，以及长时运动或画质表现。</p>
+`long_sequence` 维度覆盖状态记忆、外观保持与长时序 rollout 稳定性。它关注模型是否能在长视频中维持已见区域、物体存在性和回访行为，以及长时运动或画质表现，并将维度汇总结果写入 `per_dimension_summary.json`。核心问题是模型是否记得之前生成过什么。
 
-<div class="dimension-overview dimension-overview--long_sequence">
+### 覆盖范围
 
-<div class="dimension-hero-grid">
-<div class="dimension-hero-card dimension-hero-card--primary">
-  <div class="dimension-hero-label">维度键</div>
-  <div class="dimension-hero-value"><code>long_sequence</code></div>
-  <div class="dimension-hero-note">汇总写入 <code>per_dimension_summary.json</code></div>
-</div>
-<div class="dimension-hero-card">
-  <div class="dimension-hero-label">指标族</div>
-  <div class="dimension-hero-value">3</div>
-  <div class="dimension-hero-note">回访稳定性、持久性、长时运动</div>
-</div>
-<div class="dimension-hero-card">
-  <div class="dimension-hero-label">核心问题</div>
-  <div class="dimension-hero-value dimension-hero-value--compact">状态记忆</div>
-  <div class="dimension-hero-note">模型是否记得之前生成过什么</div>
-</div>
-</div>
+本维度按长时记忆的不同层面组织指标。回访稳定性由 [`memory_revisit_consistency`](../memory_revisit_consistency.md) 衡量，用于检查模型在重新访问场景时是否保持一致。
 
-<div class="dimension-section">
-<p class="dimension-section-label">覆盖范围</p>
-<p class="dimension-section-note">按长时记忆的不同层面组织指标。</p>
+已见区域与物体持久性由 [`seen_region_preservation`](../seen_region_preservation.md) 和 [`object_permanence`](../object_permanence.md) 衡量，分别关注已见区域的外观保持与物体在长序列中的持续存在。Long-Sequence backend 还提供 [`long_sequence_motion_smoothness`](../long_sequence.md)，用于补充长时运动平滑性读数。
 
-<div class="dimension-family-grid">
+### 解读边界
 
-<div class="dimension-family-card">
-  <div class="dimension-family-label">回访稳定性</div>
-  <ul class="dimension-family-metrics">
-    <li><a href="../memory_revisit_consistency.md">memory_revisit_consistency</a></li>
-  </ul>
-</div>
-
-<div class="dimension-family-card">
-  <div class="dimension-family-label">已见区域与物体持久性</div>
-  <ul class="dimension-family-metrics">
-    <li><a href="../seen_region_preservation.md">seen_region_preservation</a></li>
-    <li><a href="../object_permanence.md">object_permanence</a></li>
-  </ul>
-</div>
-
-<div class="dimension-family-card">
-  <div class="dimension-family-label">Long-Sequence backend 指标</div>
-  <ul class="dimension-family-metrics">
-    <li><a href="../long_sequence.md">long_sequence_motion_smoothness</a></li>
-  </ul>
-</div>
-
-</div>
-</div>
-
-<div class="dimension-notes">
-<p class="dimension-notes-label">解读重点</p>
-<ul>
-<li>这些指标主要回答“模型是否记得之前生成过什么”。</li>
-<li><code>seen_region_preservation</code> 与 <code>object_permanence</code> 在有 reference video / mask 时更强；监督缺失时通常为 <code>not_applicable</code> 或非 official。</li>
-<li>bundled Long-Sequence 指标适合和 formal suite 指标一起看，不单独构成 headline 总分。</li>
-</ul>
-</div>
-
-</div>
+这些指标主要回答“模型是否记得之前生成过什么”。`seen_region_preservation` 与 `object_permanence` 在有 reference video / mask 时更强；监督缺失时通常为 `not_applicable` 或非 official。bundled Long-Sequence 指标适合和 formal suite 指标一起看，不单独构成 headline 总分。

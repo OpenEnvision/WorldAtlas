@@ -7027,6 +7027,19 @@ button:hover {
   opacity: 1;
 }
 
+/* Keep the shared Community icon inert until the responsive shell enables it. */
+.header-community-icon {
+  display: none;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .auth-user-chip {
   position: relative;
 }

@@ -2,71 +2,104 @@ const leaderboardOrgRegistry = {
   tsinghua: {
     nameEn: "Tsinghua University",
     nameZh: "清华大学",
-    logo: "/assets/leaderboard-orgs/thu.png",
+    logo: "/assets/leaderboard-orgs/thu.png?v=20260808-model-icons-v4",
     inset: true
   },
   kuaishou: {
     nameEn: "Kuaishou Technology",
     nameZh: "快手",
-    logo: "/assets/leaderboard-orgs/kuaishou.svg"
+    logo: "/assets/leaderboard-orgs/kuaishou.svg?v=20260808-model-icons-v4"
   },
   nvidia: {
     nameEn: "NVIDIA",
     nameZh: "NVIDIA",
-    logo: "/assets/leaderboard-orgs/nvidia.png",
+    logo: "/assets/leaderboard-orgs/nvidia.png?v=20260808-model-icons-v4",
     inset: true
   },
   tencent: {
     nameEn: "Tencent",
     nameZh: "腾讯",
-    logo: "/assets/leaderboard-orgs/tencent-hunyuan.svg"
+    logo: "/assets/leaderboard-orgs/tencent-hunyuan.svg?v=20260808-model-icons-v4"
   },
   lingbot: {
     nameEn: "Ant Lingbo",
     nameZh: "蚂蚁灵波",
-    logo: "/assets/leaderboard-orgs/ant-lingbo.png",
+    logo: "/assets/leaderboard-orgs/ant-lingbo.png?v=20260808-model-icons-v4",
     inset: true
   },
   meituan: {
     nameEn: "Meituan",
     nameZh: "美团",
-    logo: "/assets/leaderboard-orgs/meituan.png",
+    logo: "/assets/leaderboard-orgs/meituan.png?v=20260808-model-icons-v4",
     inset: true
   },
   wan: {
     nameEn: "Alibaba Wan Team",
     nameZh: "阿里 Wan 团队",
-    logo: "/assets/leaderboard-orgs/wan.png",
-    inset: true
+    logo: "/assets/leaderboard-orgs/wan.png?v=20260808-model-icons-v4",
+    cropLeft: true
   },
   sjtu: {
     nameEn: "Shanghai Jiao Tong University",
     nameZh: "上海交通大学",
-    logo: "/assets/leaderboard-orgs/sjtu.png",
+    logo: "/assets/leaderboard-orgs/sjtu.png?v=20260808-model-icons-v4",
+    inset: true
+  },
+  snu: {
+    nameEn: "Seoul National University",
+    nameZh: "首尔大学",
+    logo: "/assets/leaderboard-orgs/snu.png?v=20260808-model-icons-v4",
+    inset: true
+  },
+  cuhk: {
+    nameEn: "The Chinese University of Hong Kong",
+    nameZh: "香港中文大学",
+    logo: "/assets/leaderboard-orgs/cuhk.png?v=20260808-model-icons-v5",
+    inset: true
+  },
+  snap: {
+    nameEn: "Snap Inc.",
+    nameZh: "Snap Inc.",
+    logo: "/assets/leaderboard-orgs/snap.png?v=20260808-model-icons-v5",
+    inset: true
+  },
+  skywork: {
+    nameEn: "Skywork AI",
+    nameZh: "昆仑万维 Skywork AI",
+    logo: "/assets/leaderboard-orgs/skywork.png?v=20260808-model-icons-v5",
+    inset: true
+  },
+  stabilityai: {
+    nameEn: "Stability AI",
+    nameZh: "Stability AI",
+    logo: "/assets/leaderboard-orgs/stability-ai.png?v=20260808-model-icons-v5",
     inset: true
   },
   openenvision: {
     nameEn: "OpenEnvision Lab",
     nameZh: "OpenEnvision Lab",
-    logo: "/assets/leaderboard-orgs/openenvision.svg"
+    logo: "/assets/leaderboard-orgs/openenvision.svg?v=20260808-model-icons-v4"
   },
   default: {
     nameEn: "World Model",
     nameZh: "世界模型",
-    logo: "/assets/leaderboard-orgs/default.svg"
+    logo: "/assets/leaderboard-orgs/default.svg?v=20260808-model-icons-v4"
   }
 };
 
 const leaderboardAffiliationRules = [
   { orgs: ["tsinghua"], match: /^(astra)/ },
-  { orgs: ["nvidia"], match: /^(cosmos|gen3c|sana|cosmos3|dreamx|ltx23)/ },
-  { orgs: ["tencent"], match: /^(hunyuan|hyworldplay|motionctrl|cogvideo)/ },
+  { orgs: ["nvidia"], match: /^(cosmos|gen3c|sana|cosmos3|dreamx|ltx23|lyra)/ },
+  { orgs: ["tencent"], match: /^(hunyuan|hyworldplay|motionctrl|cogvideo|flashworld)/ },
   { orgs: ["lingbot"], match: /^(lingbot)/ },
   { orgs: ["meituan"], match: /^(longcat)/ },
   { orgs: ["wan"], match: /^(wan22|wan2|want2v|want|yume)/ },
+  { orgs: ["snap"], match: /^(ac3d)/ },
+  { orgs: ["skywork"], match: /^(matrixgame)/ },
+  { orgs: ["stabilityai"], match: /^(stablevirtual)/ },
   {
     orgs: ["openenvision"],
-    match: /^(worldfm|worldcam|infiniteworld|inspatio|matrixgame|flashworld|lyra|wonder|stablevirtual|ac3d|cami2v|realcam|neoverse|luciddreamer)/
+    match: /^(worldfm|worldcam|infiniteworld|inspatio|wonder|cami2v|realcam|neoverse)/
   },
   { orgs: ["sjtu"], match: /^(warp)/ }
 ];
@@ -89,13 +122,18 @@ const leaderboardAffiliationExact = {
   wan22imagestatic8gpu20260612160808: ["wan"],
   wan22imagedynamic5sflashattnseedfix: ["wan"],
   wan22ti2v5bimagestaticplanmissing: ["wan"],
-  matrix_game: ["openenvision"],
-  matrix_game_1: ["openenvision"],
-  matrix_game_2: ["openenvision"],
-  lyra2: ["openenvision"],
-  lyra1: ["openenvision"],
-  lyra2imagestaticopenenvision: ["openenvision"],
-  lyra1imagestaticopenenvision: ["openenvision"],
+  matrixgame: ["skywork"],
+  matrixgame1: ["skywork"],
+  matrixgame2: ["skywork"],
+  lyra2: ["nvidia"],
+  lyra1: ["nvidia"],
+  ac3d: ["snap"],
+  flashworld: ["tencent"],
+  stablevirtualcamera: ["stabilityai"],
+  cameractrl: ["cuhk"],
+  luciddreamer: ["snu"],
+  lyra2imagestaticopenenvision: ["nvidia"],
+  lyra1imagestaticopenenvision: ["nvidia"],
   sanawmimagestatic: ["nvidia"],
   sanawmimagedynamic: ["nvidia"],
   infiniteworld: ["openenvision"],
@@ -156,6 +194,7 @@ export function resolveLeaderboardAffiliations(row, language = "en") {
     .map((org) => ({
       name: localizedLeaderboardOrg(org, language),
       logo: org.logo,
-      inset: Boolean(org.inset)
+      inset: Boolean(org.inset),
+      cropLeft: Boolean(org.cropLeft)
     }));
 }

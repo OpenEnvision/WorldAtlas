@@ -1,80 +1,15 @@
 # Quality
 
-<p class="dimension-lede"><code>quality</code> 维度覆盖风格、感知质量、低层外观稳定性与重建式保真。它关注输出是否视觉上稳定、清晰、自然，以及在 paired reference 存在时是否有较好的重建相似性。</p>
+`quality` 维度覆盖风格、感知质量、低层外观稳定性与重建式保真。它关注输出是否视觉上稳定、清晰、自然，以及在 paired reference 存在时是否有较好的重建相似性，并将维度汇总结果写入 `per_dimension_summary.json`。
 
-<div class="dimension-overview dimension-overview--quality">
+### 覆盖范围
 
-<div class="dimension-hero-grid">
-<div class="dimension-hero-card dimension-hero-card--primary">
-  <div class="dimension-hero-label">维度键</div>
-  <div class="dimension-hero-value"><code>quality</code></div>
-  <div class="dimension-hero-note">汇总写入 <code>per_dimension_summary.json</code></div>
-</div>
-<div class="dimension-hero-card">
-  <div class="dimension-hero-label">指标族</div>
-  <div class="dimension-hero-value">4</div>
-  <div class="dimension-hero-note">风格、外观稳定性、重建式保真、长序列质量</div>
-</div>
-<div class="dimension-hero-card">
-  <div class="dimension-hero-label">核心问题</div>
-  <div class="dimension-hero-value dimension-hero-value--compact">视觉稳定性</div>
-  <div class="dimension-hero-note">清晰度、自然度，以及有参考时的重建相似性</div>
-</div>
-</div>
+本维度按视觉质量的不同层面组织指标。风格与感知质量由 [`style_consistency`](../style_consistency.md)、[`perceptual_quality`](../perceptual_quality.md)、[`image_quality`](../image_quality.md) 和 [`hpsv3_norm`](../hpsv3_norm.md) 共同刻画。
 
-<div class="dimension-section">
-<p class="dimension-section-label">覆盖范围</p>
-<p class="dimension-section-note">按视觉质量的不同层面组织指标。</p>
+外观稳定性由 [`brightness_distribution_consistency`](../brightness_consistency.md)、[`color_temperature_constraint`](../color_temperature_consistency.md) 和 [`sharpness_retention`](../sharpness_retention.md) 衡量，分别关注亮度分布、色温约束与清晰度保持。Paired reconstruction 指标包括 [`psnr`](../psnr.md) 和 [`ssim`](../ssim.md)，用于在存在配对参考时衡量重建相似性。Long-Sequence quality 则由 [`long_sequence_aesthetic_quality`](../long_sequence.md) 和 [`long_sequence_imaging_quality`](../long_sequence.md) 补充长序列场景下的审美与成像质量。
 
-<div class="dimension-family-grid">
+### 解读边界
 
-<div class="dimension-family-card">
-  <div class="dimension-family-label">风格与感知质量</div>
-  <ul class="dimension-family-metrics">
-    <li><a href="../style_consistency.md">style_consistency</a></li>
-    <li><a href="../perceptual_quality.md">perceptual_quality</a></li>
-    <li><a href="../image_quality.md">image_quality</a></li>
-    <li><a href="../hpsv3_norm.md">hpsv3_norm</a></li>
-  </ul>
-</div>
+七个完整的正式 `image_static` quality 指标为：`sharpness_retention`、`perceptual_quality`、`style_consistency`、`brightness_distribution_consistency`、`color_temperature_constraint`、`image_quality` 和 `hpsv3_norm`。七项全部进入 `per_metric_summary`，并等权计入 `quality` 维度总分；旧别名 `brightness_consistency` 与 `color_temperature_consistency` 仍保留为 diagnostic。
 
-<div class="dimension-family-card">
-  <div class="dimension-family-label">外观稳定性</div>
-  <ul class="dimension-family-metrics">
-    <li><a href="../brightness_consistency.md">brightness_distribution_consistency</a></li>
-    <li><a href="../color_temperature_consistency.md">color_temperature_constraint</a></li>
-    <li><a href="../sharpness_retention.md">sharpness_retention</a></li>
-  </ul>
-</div>
-
-<div class="dimension-family-card">
-  <div class="dimension-family-label">Paired reconstruction</div>
-  <ul class="dimension-family-metrics">
-    <li><a href="../psnr.md">psnr</a></li>
-    <li><a href="../ssim.md">ssim</a></li>
-  </ul>
-</div>
-
-<div class="dimension-family-card">
-  <div class="dimension-family-label">Long-Sequence quality</div>
-  <ul class="dimension-family-metrics">
-    <li><a href="../long_sequence.md">long_sequence_aesthetic_quality</a></li>
-    <li><a href="../long_sequence.md">long_sequence_imaging_quality</a></li>
-  </ul>
-</div>
-
-</div>
-</div>
-
-<div class="dimension-notes">
-<p class="dimension-notes-label">解读重点</p>
-<ul>
-<li>七个完整的正式 <code>image_static</code> quality 指标为：<code>sharpness_retention</code>、<code>perceptual_quality</code>、<code>style_consistency</code>、<code>brightness_distribution_consistency</code>、<code>color_temperature_constraint</code>、<code>image_quality</code>、<code>hpsv3_norm</code>。</li>
-<li>七项全部进入 <code>per_metric_summary</code>，并等权计入 <code>quality</code> 维度总分；旧别名 <code>brightness_consistency</code> 与 <code>color_temperature_consistency</code> 仍保留为 diagnostic。</li>
-<li>这些低层指标受 iWorld-Bench quality 槽位启发，但不是对未公开 iWorld-Bench 官方代码的复现。</li>
-<li><code>psnr</code> / <code>ssim</code> 是 paired-frame 重建式指标，更适合作为补充指标，不应替代语义或物理指标。</li>
-<li>quality 指标无法单独说明 control、memory、physics 是否正确。</li>
-</ul>
-</div>
-
-</div>
+这些低层指标受 iWorld-Bench quality 槽位启发，但不是对未公开 iWorld-Bench 官方代码的复现。`psnr` / `ssim` 是 paired-frame 重建式指标，更适合作为补充读数，不应替代语义或物理指标。quality 指标也无法单独说明 control、memory 或 physics 是否正确。

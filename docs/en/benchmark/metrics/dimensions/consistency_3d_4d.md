@@ -1,89 +1,28 @@
 # 3D/4D Consistency
 
-<p class="dimension-lede">The <code>consistency_3d_4d</code> dimension evaluates whether a generated rollout admits a <strong>stable spatiotemporal geometric explanation</strong> in three or four dimensions. Unlike quality metrics that judge single-frame plausibility or low-level appearance stability, this dimension asks whether camera motion, depth layering, cross-frame correspondence, newly exposed regions, and motion fields can be explained jointly under one geometric hypothesis across the full video.</p>
+The consistency_3d_4d dimension evaluates whether a generated rollout admits a **stable spatiotemporal geometric explanation** in three or four dimensions. Unlike quality metrics that judge single-frame plausibility or low-level appearance stability, this dimension asks whether camera motion, depth layering, cross-frame correspondence, newly exposed regions, and motion fields can be explained jointly under one geometric hypothesis across the full video.
 
-<div class="dimension-overview dimension-overview--consistency_3d_4d">
+**Dimension key:** consistency_3d_4d. Results roll up into per_dimension_summary.json.
 
-<div class="dimension-hero-grid">
-<div class="dimension-hero-card dimension-hero-card--primary">
-  <div class="dimension-hero-label">Dimension key</div>
-  <div class="dimension-hero-value"><code>consistency_3d_4d</code></div>
-  <div class="dimension-hero-note">Rolls up into <code>per_dimension_summary.json</code></div>
-</div>
-<div class="dimension-hero-card">
-  <div class="dimension-hero-label">Metric families</div>
-  <div class="dimension-hero-value">6</div>
-  <div class="dimension-hero-note">Novel regions, multiview, epipolar, reprojection, depth, motion</div>
-</div>
-<div class="dimension-hero-card">
-  <div class="dimension-hero-label">Core question</div>
-  <div class="dimension-hero-value dimension-hero-value--compact">Geometric coherence</div>
-  <div class="dimension-hero-note">Does the video evolve like a continuous viewpoint in a 3D world?</div>
-</div>
-</div>
+**Metric families:** Six: novel regions, multiview, epipolar geometry, reprojection, depth, and motion.
 
-<div class="dimension-section">
-<p class="dimension-section-label">Metric families and geometric semantics</p>
-<p class="dimension-section-note">Readings organized from visible regions to newly exposed regions, local epipolar constraints to global reconstruction, depth structure to short-horizon motion fields.</p>
+**Core question:** Geometric coherence. Does the video evolve like a continuous viewpoint in a 3D world?
 
-<div class="dimension-family-grid">
+**Metric families and geometric semantics**
 
-<div class="dimension-family-card">
-  <div class="dimension-family-label">Novel regions</div>
-  <p class="dimension-family-note">Masked appearance fidelity when the reference camera path exposes regions unseen in the first frame.</p>
-  <ul class="dimension-family-metrics">
-    <li><a href="../novel_region_fidelity.md">novel_region_fidelity</a></li>
-  </ul>
-</div>
+Readings are organized from visible regions to newly exposed regions, from local epipolar constraints to global reconstruction, and from depth structure to short-horizon motion fields.
 
-<div class="dimension-family-card">
-  <div class="dimension-family-label">Multiview / 3D representation</div>
-  <p class="dimension-family-note">Consistency between anchor viewpoints and whether the prediction can be reconstructed as 3D Gaussians and re-rendered along the view path.</p>
-  <ul class="dimension-family-metrics">
-    <li><a href="../met3r_consistency.md">met3r_consistency</a></li>
-    <li><a href="../reconstruction_consistency.md">reconstruction_consistency</a></li>
-  </ul>
-</div>
+**Novel regions.** Masked appearance fidelity when the reference camera path exposes regions unseen in the first frame. Metric: [novel_region_fidelity](../novel_region_fidelity.md).
 
-<div class="dimension-family-card">
-  <div class="dimension-family-label">Classical epipolar geometry</div>
-  <p class="dimension-family-note">Whether adjacent frames admit a stable fundamental-matrix / Sampson epipolar explanation.</p>
-  <ul class="dimension-family-metrics">
-    <li><a href="../gvgc_geometry.md#epipolar-error">epipolar_error</a></li>
-    <li><a href="../gvgc_geometry.md#epipolar-inlier-rate">epipolar_inlier_rate</a></li>
-    <li><a href="../gvgc_geometry.md#feature-match-coverage">feature_match_coverage</a></li>
-  </ul>
-</div>
+**Multiview / 3D representation.** Consistency between anchor viewpoints and whether the prediction can be reconstructed as 3D Gaussians and re-rendered along the view path. Metrics: [met3r_consistency](../met3r_consistency.md) and [reconstruction_consistency](../reconstruction_consistency.md).
 
-<div class="dimension-family-card">
-  <div class="dimension-family-label">Camera and reprojection</div>
-  <p class="dimension-family-note">Whether dense SLAM-recovered poses and depths reproject covisible points consistently onto the image plane.</p>
-  <ul class="dimension-family-metrics">
-    <li><a href="../reprojection_error.md">reprojection_error</a></li>
-  </ul>
-</div>
+**Classical epipolar geometry.** Whether adjacent frames admit a stable fundamental-matrix / Sampson epipolar explanation. Metrics: [epipolar_error](../gvgc_geometry.md#epipolar-error), [epipolar_inlier_rate](../gvgc_geometry.md#epipolar-inlier-rate), and [feature_match_coverage](../gvgc_geometry.md#feature-match-coverage).
 
-<div class="dimension-family-card">
-  <div class="dimension-family-label">Depth structure</div>
-  <p class="dimension-family-note">Whether relative depth ordering is preserved and whether the forward viewing corridor shows implausible near geometry.</p>
-  <ul class="dimension-family-metrics">
-    <li><a href="../depth_accuracy.md">depth_accuracy</a></li>
-    <li><a href="../depth_collision.md">depth_collision</a></li>
-  </ul>
-</div>
+**Camera and reprojection.** Whether dense SLAM-recovered poses and depths reproject covisible points consistently onto the image plane. Metric: [reprojection_error](../reprojection_error.md).
 
-<div class="dimension-family-card">
-  <div class="dimension-family-label">Motion field</div>
-  <p class="dimension-family-note">Short-horizon photometric self-consistency under forward–backward optical-flow round-trips.</p>
-  <ul class="dimension-family-metrics">
-    <li><a href="../optical_flow_aepe.md">optical_flow_aepe</a></li>
-  </ul>
-</div>
+**Depth structure.** Whether relative depth ordering is preserved and whether the forward viewing corridor shows implausible near geometry. Metrics: [depth_accuracy](../depth_accuracy.md) and [depth_collision](../depth_collision.md).
 
-</div>
-</div>
-
-<div class="dimension-body">
+**Motion field.** Short-horizon photometric self-consistency under forward-backward optical-flow round-trips. Metric: [optical_flow_aepe](../optical_flow_aepe.md).
 
 ### Formal Reading
 
@@ -110,6 +49,3 @@ On the current public benchmark surface, `novel_region_fidelity`, `reprojection_
 
 `consistency_3d_4d` measures **internal geometric self-consistency of the generated video**, not instruction following, semantic correctness, or aesthetic quality. It does not replace camera/motion-control readings in [`action_control`](action_control.md), nor is it equivalent to style and perceptual scores in [`quality`](quality.md). $S_{\mathrm{3D/4D}}$ should be reported alongside action control, quality, and physics dimensions: a high score means the output is more easily explained by a unified 3D/4D structure, but it does not guarantee correct prompt execution or physically plausible object behavior.
 
-</div>
-
-</div>

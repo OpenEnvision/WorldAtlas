@@ -21,9 +21,9 @@ where $N$ is the number of evaluated frames and $\cos(\cdot,\cdot)$ is cosine si
     [https://arxiv.org/abs/2103.00020](https://arxiv.org/abs/2103.00020)
 
 <!-- metric-examples:start -->
-## Human-reviewed Same-Case Example
+## Verified Same-Input Examples
 
-The examples below come from the same-case comparison index generated from `artifacts/reports`. The input image, sample ID, and exact generation prompt are identical within each pair. Candidates were shortlisted by score quantiles and gap, then reviewed frame by frame. Labels describe only this metric—not overall model quality—and model names are intentionally omitted so a single case is not mistaken for a leaderboard.
+Up to three cases are shown per metric. Within each case, both videos must belong to the same benchmark sample, and both first frames must pass SIFT + RANSAC geometric matching against that case's displayed input. Candidates that fail are not published. Labels compare this metric only, not overall model quality.
 
 Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 
@@ -31,19 +31,97 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/curated_20260801/d0f020e9108d__image_static_stylized_aquatic_landscape_0063__input.jpg" alt="Input image: image_static_stylized_aquatic_landscape_0063" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/340a8644362b__image_static_photorealistic_city_0043__input.jpg" alt="Input image: image_static_photorealistic_city_0043" loading="lazy" decoding="async">
       <figcaption>Input image</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Human reviewed · same case, input and prompt · gap 0.1793</div>
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.1517</div>
+      <h4><code>image_static_photorealistic_city_0043</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / city</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera orbit left. A narrow city street with historic buildings, street corner, and streetlights.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_city_0043">
+          <source src="../../../assets/metric_examples/curated_20260801/48e0a8e64f87__image_static_photorealistic_city_0043__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9849</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>background_consistency</span><span>Mean adjacent-frame similarity: 0.9849</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_city_0043">
+          <source src="../../../assets/metric_examples/curated_20260801/cafc8cbd4022__image_static_photorealistic_city_0043__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.8333</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>background_consistency</span><span>Mean adjacent-frame similarity: 0.8333</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/6889d948d9ba__image_static_photorealistic_city_0041__input.jpg" alt="Input image: image_static_photorealistic_city_0041" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.1444</div>
+      <h4><code>image_static_photorealistic_city_0041</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / city</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera move right. An old industrial building with adjacent street, buildings, and parked cars.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_city_0041">
+          <source src="../../../assets/metric_examples/curated_20260801/346b0f1c5c3b__image_static_photorealistic_city_0041__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9882</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>background_consistency</span><span>Mean adjacent-frame similarity: 0.9882</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_city_0041">
+          <source src="../../../assets/metric_examples/curated_20260801/49d5f2e01c18__image_static_photorealistic_city_0041__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.8437</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>background_consistency</span><span>Mean adjacent-frame similarity: 0.8437</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/087c40c40545__image_static_stylized_aquatic_landscape_0063__input.jpg" alt="Input image: image_static_stylized_aquatic_landscape_0063" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.1793</div>
       <h4><code>image_static_stylized_aquatic_landscape_0063</code></h4>
       <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / aquatic_landscape</span></div>
       <div class="metric-case-prompt">
-        <span>Exact generation prompt</span>
+        <span>Benchmark prompt target</span>
         <p>Camera move right. A stylized lake with trees, hills, and clouds.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">The higher-scoring rollout keeps the lake, mountain, and shoreline coherent through the camera move; the lower-scoring rollout loses the background and ends in a collapsed texture.</p>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
     </div>
   </div>
   <div class="metric-output-grid">

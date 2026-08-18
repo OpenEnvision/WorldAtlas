@@ -47,9 +47,9 @@ S_{\mathrm{pq}}
 \]
 
 <!-- metric-examples:start -->
-## Human-reviewed Same-Case Example
+## Verified Same-Input Examples
 
-The examples below come from the same-case comparison index generated from `artifacts/reports`. The input image, sample ID, and exact generation prompt are identical within each pair. Candidates were shortlisted by score quantiles and gap, then reviewed frame by frame. Labels describe only this metric—not overall model quality—and model names are intentionally omitted so a single case is not mistaken for a leaderboard.
+Up to three cases are shown per metric. Within each case, both videos must belong to the same benchmark sample, and both first frames must pass SIFT + RANSAC geometric matching against that case's displayed input. Candidates that fail are not published. Labels compare this metric only, not overall model quality.
 
 Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 
@@ -57,37 +57,76 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/curated_20260801/662196f81a7b__image_static_stylized_dining_spaces_0028__input.jpg" alt="Input image: image_static_stylized_dining_spaces_0028" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/1ae68213d599__image_static_photorealistic_aquatic_landscape_0079__input.jpg" alt="Input image: image_static_photorealistic_aquatic_landscape_0079" loading="lazy" decoding="async">
       <figcaption>Input image</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Human reviewed · same case, input and prompt · gap 0.3476</div>
-      <h4><code>image_static_stylized_dining_spaces_0028</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / indoor / dining_spaces</span></div>
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.3998</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0079</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
       <div class="metric-case-prompt">
-        <span>Exact generation prompt</span>
-        <p>Camera pull out. A dining area with dining table, chairs, and place settings.</p>
+        <span>Benchmark prompt target</span>
+        <p>Camera move right. A stone archway with pathway, grassy area, and mountains.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">The higher-scoring rollout remains clean and photorealistic; the lower-scoring rollout contains severe tearing and reconstruction artifacts.</p>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card metric-output-card--good">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_stylized_dining_spaces_0028">
-          <source src="../../../assets/metric_examples/curated_20260801/c55fe27825e7__image_static_stylized_dining_spaces_0028__high.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_aquatic_landscape_0079">
+          <source src="../../../assets/metric_examples/f47c73e21fbd__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0079.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.7350</div>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.7155</div>
       </div>
       <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>perceptual_quality</span></figcaption>
     </figure>
     <figure class="metric-output-card metric-output-card--bad">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_stylized_dining_spaces_0028">
-          <source src="../../../assets/metric_examples/curated_20260801/2949a852d70a__image_static_stylized_dining_spaces_0028__low.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_aquatic_landscape_0079">
+          <source src="../../../assets/metric_examples/faeffc40fff5__matrix-game-1-image-static-worldarena-prompt-min5-lowmem-rmsnorm-v2__image_static_photorealistic_aquatic_landscape_0079.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.3874</div>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.3157</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>perceptual_quality</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/d774d136896a__image_static_stylized_aquatic_landscape_0110__input.jpg" alt="Input image: image_static_stylized_aquatic_landscape_0110" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.3910</div>
+      <h4><code>image_static_stylized_aquatic_landscape_0110</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera orbit right. An aquatic landscape with oil rig, industrial buildings, and rocky platform.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_stylized_aquatic_landscape_0110">
+          <source src="../../../assets/metric_examples/0476470e1b85__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_aquatic_landscape_0110.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.6485</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>perceptual_quality</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_stylized_aquatic_landscape_0110">
+          <source src="../../../assets/metric_examples/dc4ffb2550a8__matrix_game2_5s__image_static_stylized_aquatic_landscape_0110.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.2576</div>
       </div>
       <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>perceptual_quality</span></figcaption>
     </figure>

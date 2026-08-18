@@ -759,7 +759,10 @@ on natural video.
 | Build docs (Astro + Starlight) | `npm run docs:build` |
 | Preview docs locally | `npm run docs:dev` → `http://localhost:4321/doc/` |
 | Leaderboard & arena site | `npm run site` → `http://localhost:4173/` |
+| Editable leaderboard results | `site/leaderboard-results.json` |
 | Site OAuth setup | [`site/AUTH.md`](site/AUTH.md), [`site/.env.example`](site/.env.example) |
+
+The leaderboard reads only `site/leaderboard-results.json` at runtime. Edit `overall` or any value under `scores` directly; the running site reloads the file after it is saved. To replace manual values with a fresh import from benchmark reports, run `npm run leaderboard:import-reports`.
 
 Full contributor workflow: [`docs/en/development.md`](docs/en/development.md).
 
@@ -781,8 +784,7 @@ WorldArena/
 │   ├── benchmark.yaml          # suites, metrics, paths
 │   ├── datasets.yaml           # analytics scanners
 │   └── models/                 # adapter YAML configs
-├── docs/                       # authoritative Markdown (en/zh)
-├── docs-site/                  # Astro / Starlight builder
+├── docs/                       # Markdown, assets, and Astro / Starlight builder
 ├── site/                       # static leaderboard & arena UI
 ├── scripts/                    # optional helpers (see scripts/README.md)
 ├── tests/                      # adapter & metric unit tests

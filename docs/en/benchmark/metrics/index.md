@@ -39,23 +39,3 @@ The Metrics navigation is organized by six top-level dimensions. Each dimension 
 | Physics | [Physics](dimensions/physics.md) |
 | Quality | [Quality](dimensions/quality.md) |
 | Real time | [Real Time](dimensions/real_time.md) |
-
-## Metric Index
-
-Links below are grouped by dimension. Algorithm, backend, normalization, and aggregation status are documented on each metric page.
-
-**Action control** — [`prompt_alignment`](prompt_alignment.md) · [`semantic_alignment`](semantic_alignment.md) · [`camera_error`](camera_error.md) · [`motion_accuracy`](motion_accuracy.md)
-
-**Quality** — [`style_consistency`](style_consistency.md) · [`perceptual_quality`](perceptual_quality.md) · [`image_quality`](image_quality.md) · [`hpsv3_norm`](hpsv3_norm.md) · [`brightness_distribution_consistency`](brightness_consistency.md) · [`color_temperature_constraint`](color_temperature_consistency.md) · [`sharpness_retention`](sharpness_retention.md) · [`psnr`](psnr.md) · [`ssim`](ssim.md) · [`long_sequence_aesthetic_quality`](long_sequence.md) · [`long_sequence_imaging_quality`](long_sequence.md)
-
-**Long sequence (memory)** — [`seen_region_preservation`](seen_region_preservation.md) · [`object_permanence`](object_permanence.md) · [`memory_revisit_consistency`](memory_revisit_consistency.md) · [`long_sequence_motion_smoothness`](long_sequence.md)
-
-**3D/4D consistency** — [`novel_region_fidelity`](novel_region_fidelity.md) · [`reprojection_error`](reprojection_error.md) · [`optical_flow_aepe`](optical_flow_aepe.md) · [`epipolar_error`](gvgc_geometry.md#epipolar-error) · [`epipolar_inlier_rate`](gvgc_geometry.md#epipolar-inlier-rate) · [`feature_match_coverage`](gvgc_geometry.md#feature-match-coverage) · [`depth_accuracy`](depth_accuracy.md) · [`depth_collision`](depth_collision.md) · [`met3r_consistency`](met3r_consistency.md) · [`reconstruction_consistency`](reconstruction_consistency.md)
-
-**Physics** — [`pmf`](pmf.md) · [`motion_magnitude`](motion_magnitude.md) · [`motion_smoothness`](motion_smoothness.md) · [`long_sequence_dynamic_degree`](long_sequence.md)
-
-**Real time** — [`physical_fps_error`](temporal_calibration.md) · [`physical_fps_pct_error`](temporal_calibration.md) · [`physical_fps_intra_video_cv`](temporal_calibration.md) · [`effective_generation_fps`](realtime_throughput_latency.md#effective-generation-fps) · [`realtime_factor`](realtime_throughput_latency.md#realtime-factor) · [`action_response_latency`](realtime_throughput_latency.md#action-response-latency) · [`latency_budget_pass_rate`](realtime_throughput_latency.md#latency-budget-pass-rate)
-
-## Separate Physics Track
-
-`config/benchmark_physics.yaml` is the simulator-backed physics configuration, and it is not the same evaluation surface as the `experimental` suite in the default `config/benchmark.yaml`. It carries simulator-backed physics metrics and rolls them up into the top-level `physics` dimension. Metric semantics, artifact requirements, and comparability are governed by [Physics](dimensions/physics.md), [Simulator-Backed Physics](physics/index.md), and [Physics Metrics & Contracts](physics/metrics.md).

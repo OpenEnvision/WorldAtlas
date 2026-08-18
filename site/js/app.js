@@ -22,12 +22,12 @@ import {
   menuSections,
   openEnvisionUrl,
   siteTitle
-} from "./data.js?v=20260722-openenvision-hub-v1";
-import { resolveLeaderboardAffiliations } from "./leaderboard-affiliations.js?v=20260721-ant-lingbo-logo-v1";
+} from "./data.js?v=20260808-quick-paths-prune-v1";
+import { resolveLeaderboardAffiliations } from "./leaderboard-affiliations.js?v=20260808-model-icons-v5";
 import {
   formatLeaderboardModelLabel,
   leaderboardModelFullName
-} from "./leaderboard-model-labels.js?v=20260722-model-variants-v1";
+} from "./leaderboard-model-labels.js?v=20260808-leaderboard-label-v3";
 import { ArchiveWebGLView } from "./archive-webgl.js?v=20260722-archive-perf-v1";
 import {
   arenaDimensionApplies,
@@ -181,7 +181,74 @@ const homeCopy = {
     leaderboard: "Leaderboard",
     benchmark: "Benchmark",
     metrics: "Metrics",
+    metricsShowcaseKicker: "Metrics",
+    metricsShowcaseAria: "WorldAtlas Arena metric comparison",
+    metricsExploreDocs: "Explore all metric docs",
+    metricsRelatedAria: "Related metrics",
+    metricsCount: "metrics",
+    metricsInput: "Input",
+    metricsHigher: "Higher metric score",
+    metricsLower: "Lower metric score",
+    metricsPlaceholderDescription: "A representative benchmark comparison is being curated for this metric.",
+    metricsPlaceholderLabel: "Example selection in progress",
+    metricsCase: "Case",
+    metricsCaseNavigation: "Metric case navigation",
+    metricsPreviousCase: "Previous case",
+    metricsNextCase: "Next case",
+    metricsShowCase: "Show case",
     heroVisualAria: "WorldAtlas Arena sample worlds",
+    datasetShowcaseKicker: "Dataset",
+    datasetShowcaseTipLabel: "Tip",
+    datasetShowcaseTip: "Want to explore the full dataset? Click the black swan.",
+    datasetShowcaseBody: "Static scene diversity and dynamic motion across image- and video-conditioned cases.",
+    datasetAtlasTabsAria: "Dataset atlas view",
+    datasetPhotorealistic: "Photorealistic scene atlas",
+    datasetStylized: "Stylized scene atlas",
+    datasetVideoStaticPhotorealistic: "Photorealistic static video",
+    datasetVideoStaticStylized: "Stylized static video",
+    datasetImageDynamic: "Dynamic image atlas",
+    datasetVideoDynamic: "Dynamic video atlas",
+    datasetPhotorealisticAlt: "Photorealistic examples spanning dining, living, passageway, public, workspace, city, suburb, aquatic, terrestrial, and verdant scenes.",
+    datasetStylizedAlt: "Stylized examples spanning dining, living, passageway, public, workspace, city, suburb, aquatic, terrestrial, and verdant scenes.",
+    datasetVideoStaticPhotorealisticAlt: "Photorealistic video-static examples spanning dining, living, passageway, public, workspace, city, suburb, aquatic, terrestrial, and verdant scenes, with temporal frame strips.",
+    datasetVideoStaticStylizedAlt: "Stylized video-static examples spanning dining, living, passageway, public, workspace, city, suburb, aquatic, terrestrial, and verdant scenes, with temporal frame strips.",
+    datasetImageDynamicAlt: "Dynamic-image benchmark examples spanning photorealistic and stylized articulated, deformable, fluid, multi-motion, and rigid-body motion categories.",
+    datasetVideoDynamicAlt: "Dynamic-video benchmark examples spanning photorealistic and stylized articulated, deformable, fluid, multi-motion, and rigid-body motion categories, with temporal frame strips.",
+    homeTopModelsKicker: "Leaderboard",
+    homeTopModelsTitle: "Top 10 Models",
+    homeTopModelsContext: "Image Static · Overall",
+    homeTopModelsViewAll: "View full leaderboard",
+    homeTopModelsAria: "Top 10 image-static models ranked by overall score",
+    homeTopModelsRank: "Rank",
+    homeTopModelsStyle: "Style",
+    homeTopModelsImageQuality: "Image quality",
+    homeTopModels3d: "3D consistency",
+    homeTopModelsBackground: "Background consistency",
+    homeTopModelsLoading: "Loading Top 10 models…",
+    homeTopModelsUnavailable: "Top 10 models are temporarily unavailable.",
+    comparisonKicker: "Benchmark landscape · 16",
+    comparisonTableAria: "Union comparison of 16 world-model and video-generation benchmarks",
+    comparisonBenchmark: "Benchmark",
+    comparisonDesignGroup: "Benchmark design",
+    comparisonScale: "Evaluation scale",
+    comparisonModels: "Models",
+    comparisonCoverageGroup: "Capability coverage",
+    comparisonQuality: "Quality",
+    comparisonControl: "Control",
+    comparisonSpatial: "3D consistency",
+    comparisonViewpoint: "First / third person",
+    comparisonPhysics: "Physics",
+    comparisonLongHorizon: "Long horizon",
+    comparisonMemory: "Memory / revisit",
+    comparisonRealtime: "Real time",
+    comparisonStateFull: "Dedicated evaluation coverage",
+    comparisonStatePartial: "Partial or indirect coverage",
+    comparisonStateNone: "Not a stated primary target",
+    comparisonLegendFull: "Dedicated track or explicit evaluation dimension",
+    comparisonLegendPartial: "Covered through a subset, proxy, or adjacent metric",
+    comparisonLegendNone: "Not presented as a primary evaluation target",
+    comparisonSourceAria: "Open cited source for",
+    comparisonOurs: "Ours",
     coverageTitle: "World Model Coverage",
     coverageBody: "image · video · physics · 3D/4D · real time",
     summaryAria: "WorldAtlas Arena summary",
@@ -218,6 +285,12 @@ const homeCopy = {
     arenaBattleFailed: "Arena Battle is blocked in embed view. Please open in a new tab.",
     openArena: "Open Arena Battle",
     homeCategory: "Home",
+    communityMenuLabel: "Community",
+    communityTitle: "Community",
+    communityBody: "A shared space for WorldAtlas Arena researchers, contributors, and practitioners.",
+    communityChannelsAria: "Community channels",
+    communityComingSoon: "Coming soon",
+    communityPlaceholder: "Official community links and QR codes will be published here.",
     docsLayerCategory: "Docs layer",
     pillarCategory: "Evaluation pillar",
     signalCategory: "Benchmark summary",
@@ -280,7 +353,74 @@ const homeCopy = {
     leaderboard: "排行榜",
     benchmark: "基准评测",
     metrics: "指标体系",
+    metricsShowcaseKicker: "指标体系",
+    metricsShowcaseAria: "WorldAtlas Arena 指标对比",
+    metricsExploreDocs: "浏览全部指标文档",
+    metricsRelatedAria: "相关指标",
+    metricsCount: "项指标",
+    metricsInput: "输入",
+    metricsHigher: "较高指标分数",
+    metricsLower: "较低指标分数",
+    metricsPlaceholderDescription: "该指标的代表性基准对比案例正在整理中。",
+    metricsPlaceholderLabel: "展示案例整理中",
+    metricsCase: "案例",
+    metricsCaseNavigation: "指标案例导航",
+    metricsPreviousCase: "上一个案例",
+    metricsNextCase: "下一个案例",
+    metricsShowCase: "显示案例",
     heroVisualAria: "WorldAtlas Arena 样例世界",
+    datasetShowcaseKicker: "数据集",
+    datasetShowcaseTipLabel: "提示",
+    datasetShowcaseTip: "想更完整地浏览数据？点击黑天鹅进入自由探索。",
+    datasetShowcaseBody: "从静态场景到动态图像与动态视频，覆盖多样外观和运动类型。",
+    datasetAtlasTabsAria: "数据集图谱视图",
+    datasetPhotorealistic: "写实场景图谱",
+    datasetStylized: "风格化场景图谱",
+    datasetVideoStaticPhotorealistic: "写实静态视频",
+    datasetVideoStaticStylized: "风格化静态视频",
+    datasetImageDynamic: "动态图像图谱",
+    datasetVideoDynamic: "动态视频图谱",
+    datasetPhotorealisticAlt: "涵盖餐饮、起居、通道、公共空间、工作空间、城市、郊区、水域、陆地和植被景观的写实样例。",
+    datasetStylizedAlt: "涵盖餐饮、起居、通道、公共空间、工作空间、城市、郊区、水域、陆地和植被景观的风格化样例。",
+    datasetVideoStaticPhotorealisticAlt: "写实 video-static 样例，涵盖餐饮、起居、通道、公共空间、工作空间、城市、郊区、水域、陆地和植被景观，并展示时序帧条。",
+    datasetVideoStaticStylizedAlt: "风格化 video-static 样例，涵盖餐饮、起居、通道、公共空间、工作空间、城市、郊区、水域、陆地和植被景观，并展示时序帧条。",
+    datasetImageDynamicAlt: "动态图像基准样例，横跨写实与风格化的关节运动、形变运动、流体动力、多运动和刚体运动类别。",
+    datasetVideoDynamicAlt: "动态视频基准样例，横跨写实与风格化的关节运动、形变运动、流体动力、多运动和刚体运动类别，并展示时序帧条。",
+    homeTopModelsKicker: "排行榜",
+    homeTopModelsTitle: "Top 10 模型",
+    homeTopModelsContext: "静态图像 · 综合总榜",
+    homeTopModelsViewAll: "查看完整排行榜",
+    homeTopModelsAria: "按综合分排序的静态图像 Top 10 模型",
+    homeTopModelsRank: "排名",
+    homeTopModelsStyle: "风格",
+    homeTopModelsImageQuality: "图像质量",
+    homeTopModels3d: "3D 一致性",
+    homeTopModelsBackground: "背景一致性",
+    homeTopModelsLoading: "正在加载 Top 10 模型…",
+    homeTopModelsUnavailable: "Top 10 模型暂时无法加载。",
+    comparisonKicker: "基准版图 · 16 项",
+    comparisonTableAria: "16 项世界模型与视频生成基准并集对比",
+    comparisonBenchmark: "基准",
+    comparisonDesignGroup: "基准设计",
+    comparisonScale: "评测规模",
+    comparisonModels: "模型",
+    comparisonCoverageGroup: "能力覆盖",
+    comparisonQuality: "质量",
+    comparisonControl: "控制",
+    comparisonSpatial: "3D 一致性",
+    comparisonViewpoint: "第一 / 第三人称",
+    comparisonPhysics: "物理",
+    comparisonLongHorizon: "长序列",
+    comparisonMemory: "记忆 / 重访",
+    comparisonRealtime: "实时性",
+    comparisonStateFull: "设有专项评测",
+    comparisonStatePartial: "部分或间接覆盖",
+    comparisonStateNone: "未作为主要评测目标",
+    comparisonLegendFull: "独立轨道或明确的评测维度",
+    comparisonLegendPartial: "通过子集、代理信号或相邻指标涉及",
+    comparisonLegendNone: "未被公开资料列为主要评测目标",
+    comparisonSourceAria: "打开项目来源：",
+    comparisonOurs: "本项目",
     coverageTitle: "世界模型覆盖面",
     coverageBody: "图像 · 视频 · 物理 · 3D/4D · 实时",
     summaryAria: "WorldAtlas Arena 摘要",
@@ -317,6 +457,12 @@ const homeCopy = {
     arenaBattleFailed: "该页面在当前环境下无法嵌入，请在新标签页打开。",
     openArena: "打开 Arena 竞技场",
     homeCategory: "首页",
+    communityMenuLabel: "社区",
+    communityTitle: "Community",
+    communityBody: "面向 WorldAtlas Arena 研究者、贡献者与实践者的交流空间。",
+    communityChannelsAria: "社区渠道",
+    communityComingSoon: "即将开放",
+    communityPlaceholder: "官方社区链接与二维码将在这里发布。",
     docsLayerCategory: "文档层",
     pillarCategory: "评测支柱",
     signalCategory: "基准摘要",
@@ -366,6 +512,1229 @@ const homeCopy = {
     leaderboardAscentCaption: "共 {total} 个模型沿山脊向未被征服的峰顶进发（显示 {shown}）。"
   }
 };
+
+const homeMetricComparisonDimensions = [
+  {
+    id: "action-control",
+    label: { en: "Action Control", zh: "动作控制" },
+    key: "prompt_alignment",
+    metricTitle: "Prompt Alignment",
+    description: {
+      en: "Semantic agreement between protocol anchor frames and the target instruction.",
+      zh: "衡量协议锚点帧与目标指令之间的语义一致性。"
+    },
+    dimensionHref: "/doc/benchmark/metrics/dimensions/action-control/",
+    metricHref: "/doc/benchmark/metrics/prompt-alignment/",
+    related: [
+      ["Prompt Alignment", "/doc/benchmark/metrics/prompt-alignment/"],
+      ["Semantic Alignment", "/doc/benchmark/metrics/semantic-alignment/"],
+      ["Camera Error", "/doc/benchmark/metrics/camera-error/"],
+      ["Motion Accuracy", "/doc/benchmark/metrics/motion-accuracy/"]
+    ],
+    cases: [
+      {
+        caseId: "image_static_stylized_public_spaces_0029",
+        prompt: "Camera orbit left. A vintage car display with wooden floor, framed artworks, and cars.",
+        input: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/acb20f90f503__image_static_stylized_public_spaces_0029__input.jpg",
+        higherVideo: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/cc11f324a93f__image_static_stylized_public_spaces_0029__high.mp4",
+        higherScore: "0.3508",
+        lowerVideo: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/117df6803bf2__image_static_stylized_public_spaces_0029__low.mp4",
+        lowerScore: "0.1982"
+      },
+      {
+        caseId: "image_static_stylized_workspaces_0016",
+        prompt: "Camera pan right. A cozy workspace with desk, plants, and window. Everything in the scene remains completely motionless.",
+        input: "/doc/assets/worldarena/assets/metric_examples/inputs/066d09fa43d6__image_static_stylized_workspaces_0016.jpg",
+        higherVideo: "/doc/assets/worldarena/assets/metric_examples/df6952a08217__lyra-2-image-static-openenvision__image_static_stylized_workspaces_0016.mp4",
+        higherScore: "0.3210",
+        lowerVideo: "/doc/assets/worldarena/assets/metric_examples/cea803b80e21__matrix_game2_5s_image_static__image_static_stylized_workspaces_0016.mp4",
+        lowerScore: "0.1781"
+      },
+      {
+        caseId: "image_static_photorealistic_passageways_0027",
+        prompt: "Camera pan right. A dimly lit hallway with bulletin boards, side corridor, and fluorescent lights. Everything in the scene remains completely motionless.",
+        input: "/doc/assets/worldarena/assets/metric_examples/inputs/ba211409b845__image_static_photorealistic_passageways_0027.jpg",
+        higherVideo: "/doc/assets/worldarena/assets/metric_examples/ff54cba4f8aa__matrix-game-1-image-static-worldarena-prompt-min5-lowmem-rmsnorm-v2__image_static_photorealistic_passageways_0027.mp4",
+        higherScore: "0.3307",
+        lowerVideo: "/doc/assets/worldarena/assets/metric_examples/d4e2b61f96b4__matrix_game3_5s_image_static_dynamic__image_static_photorealistic_passageways_0027.mp4",
+        lowerScore: "0.1908"
+      },
+      {
+        caseId: "image_static_stylized_living_spaces_0053",
+        prompt: "Camera push in. An attic bedroom with tree tops, sunlight, and large window. Everything in the scene remains completely motionless.",
+        input: "/doc/assets/worldarena/assets/metric_examples/inputs/49bd12360acb__image_static_stylized_living_spaces_0053.jpg",
+        higherVideo: "/doc/assets/worldarena/assets/metric_examples/82d6e3fe8cb2__dreamx_world_image_static__image_static_stylized_living_spaces_0053.mp4",
+        higherScore: "0.2906",
+        lowerVideo: "/doc/assets/worldarena/assets/metric_examples/e1dae4a903b7__astra_image_static__image_static_stylized_living_spaces_0053.mp4",
+        lowerScore: "0.1572"
+      }
+    ]
+  },
+  {
+    id: "consistency-3d-4d",
+    label: { en: "3D/4D Consistency", zh: "3D/4D 一致性" },
+    key: "optical_flow_aepe",
+    metricTitle: "Optical Flow AEPE",
+    description: {
+      en: "Short-horizon photometric consistency through forward–backward optical-flow round trips.",
+      zh: "通过前后向光流往返误差衡量短时域外观一致性。"
+    },
+    dimensionHref: "/doc/benchmark/metrics/dimensions/consistency-3d-4d/",
+    metricHref: "/doc/benchmark/metrics/optical-flow-aepe/",
+    related: [
+      ["Optical Flow AEPE", "/doc/benchmark/metrics/optical-flow-aepe/"],
+      ["Reprojection Error", "/doc/benchmark/metrics/reprojection-error/"],
+      ["MEt3R Consistency", "/doc/benchmark/metrics/met3r-consistency/"],
+      ["Novel Region Fidelity", "/doc/benchmark/metrics/novel-region-fidelity/"]
+    ],
+    caseId: "image_static_stylized_city_0098",
+    input: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/357ac0fd24a0__image_static_stylized_city_0098__input.jpg",
+    higherVideo: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/940d25c65988__image_static_stylized_city_0098__high.mp4",
+    higherScore: "0.9566",
+    lowerVideo: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/d93109cae860__image_static_stylized_city_0098__low.mp4",
+    lowerScore: "0.0167"
+  },
+  {
+    id: "physics",
+    label: { en: "Physics", zh: "物理" },
+    key: "motion_smoothness",
+    metricTitle: "Motion Smoothness",
+    description: {
+      en: "Temporal interpolatability under a frame-interpolation prior, separating smooth motion from abrupt artifacts.",
+      zh: "在帧插值先验下衡量时序可插值性，区分平滑运动与突变伪影。"
+    },
+    dimensionHref: "/doc/benchmark/metrics/dimensions/physics/",
+    metricHref: "/doc/benchmark/metrics/motion-smoothness/",
+    related: [
+      ["Motion Smoothness", "/doc/benchmark/metrics/motion-smoothness/"],
+      ["Motion Magnitude", "/doc/benchmark/metrics/motion-magnitude/"],
+      ["PMF", "/doc/benchmark/metrics/pmf/"],
+      ["Physics Judge", "/doc/benchmark/metrics/physics/physics-judge/"]
+    ],
+    caseId: "image_dynamic_photorealistic_deformable_0096",
+    input: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/928a4bb3a461__image_dynamic_photorealistic_deformable_0096__input.jpg",
+    higherVideo: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/154e282065d6__image_dynamic_photorealistic_deformable_0096__high.mp4",
+    higherScore: "0.9462",
+    lowerVideo: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/120a8a389b9d__image_dynamic_photorealistic_deformable_0096__low.mp4",
+    lowerScore: "0.0511"
+  },
+  {
+    id: "quality",
+    label: { en: "Quality", zh: "质量" },
+    key: "style_consistency",
+    metricTitle: "Style Consistency",
+    description: {
+      en: "Stability of color palette, texture, and coarse appearance across a generated rollout.",
+      zh: "衡量生成序列中色彩、纹理与整体外观风格的稳定性。"
+    },
+    dimensionHref: "/doc/benchmark/metrics/dimensions/quality/",
+    metricHref: "/doc/benchmark/metrics/style-consistency/",
+    related: [
+      ["Style Consistency", "/doc/benchmark/metrics/style-consistency/"],
+      ["Perceptual Quality", "/doc/benchmark/metrics/perceptual-quality/"],
+      ["Image Quality", "/doc/benchmark/metrics/image-quality/"],
+      ["Sharpness Retention", "/doc/benchmark/metrics/sharpness-retention/"]
+    ],
+    caseId: "image_static_photorealistic_dining_spaces_0150",
+    input: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/2a97f5440de6__image_static_photorealistic_dining_spaces_0150__input.jpg",
+    higherVideo: "/doc/assets/worldarena/assets/metric_examples/0bcc7d417411__wan22-image-static-8gpu-20260612_160808__image_static_photorealistic_dining_spaces_0150.mp4",
+    higherScore: "1.0000",
+    lowerVideo: "/doc/assets/worldarena/assets/metric_examples/6122df6dd5c2__yume-sample5b-image-static-dynamic-5s__image_static_photorealistic_dining_spaces_0150.mp4",
+    lowerScore: "0.0000"
+  },
+  {
+    id: "long-sequence",
+    label: { en: "Long Sequence / Memory", zh: "长序列 / 记忆" },
+    key: "long_sequence_motion_smoothness",
+    metricTitle: "Long-Sequence Motion Smoothness",
+    description: {
+      en: "Long-horizon motion continuity and visual quality after a rollout extends beyond adjacent frames.",
+      zh: "衡量长时生成超出相邻帧后，运动连续性与视觉质量是否仍能保持。"
+    },
+    dimensionHref: "/doc/benchmark/metrics/dimensions/long-sequence/",
+    metricHref: "/doc/benchmark/metrics/long-sequence/",
+    related: [
+      ["Long-Sequence Metrics", "/doc/benchmark/metrics/long-sequence/"],
+      ["Memory Revisit", "/doc/benchmark/metrics/memory-revisit-consistency/"],
+      ["Seen Region", "/doc/benchmark/metrics/seen-region-preservation/"],
+      ["Object Permanence", "/doc/benchmark/metrics/object-permanence/"]
+    ],
+    caseId: "image_static_stylized_terrestrial_landscape_0001",
+    input: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/f2f1a5bacaf1__image_static_stylized_terrestrial_landscape_0001__input.jpg",
+    higherVideo: "/doc/assets/worldarena/assets/metric_examples/5a5135ed4314__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_terrestrial_landscape_0001.mp4",
+    higherScore: "0.8615",
+    lowerVideo: "/doc/assets/worldarena/assets/metric_examples/c643ca835a4a__stable_virtual_camera__image_static_stylized_terrestrial_landscape_0001.mp4",
+    lowerScore: "0.4401"
+  },
+  {
+    id: "real-time",
+    label: { en: "Real Time", zh: "实时" },
+    key: "physical_fps_error",
+    metricTitle: "Temporal Calibration",
+    description: {
+      en: "Agreement between the physical clock implied by visible motion and the declared playback frame rate.",
+      zh: "衡量可见运动所暗示的物理时钟与声明播放帧率是否一致。"
+    },
+    dimensionHref: "/doc/benchmark/metrics/dimensions/real-time/",
+    metricHref: "/doc/benchmark/metrics/temporal-calibration/",
+    related: [
+      ["Temporal Calibration", "/doc/benchmark/metrics/temporal-calibration/"],
+      ["Generation Throughput", "/doc/benchmark/metrics/realtime-throughput-latency/#effective-generation-fps"],
+      ["Action Latency", "/doc/benchmark/metrics/realtime-throughput-latency/#action-response-latency"]
+    ],
+    caseId: "image_static_stylized_verdant_landscape_0159",
+    input: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/b7d0e735d01a__image_static_stylized_verdant_landscape_0159__input.jpg",
+    higherVideo: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/d10703dd2dfa__image_static_stylized_verdant_landscape_0159__high.mp4",
+    higherScore: "0.9867",
+    lowerVideo: "/doc/assets/worldarena/assets/metric_examples/curated_20260801/641547bfe52f__image_static_stylized_verdant_landscape_0159__low.mp4",
+    lowerScore: "0.0133"
+  }
+];
+
+const homeMetricLabelOverrides = {
+  hpsv3_norm: "HPSv3 Norm",
+  met3r_consistency: "MEt3R Consistency",
+  optical_flow_aepe: "Optical Flow AEPE",
+  fvmd: "FVMD",
+  jedi: "JEDi",
+  pmf: "PMF",
+  scene_memory_f1: "Scene Memory F1",
+  realtime_factor: "Real-Time Factor",
+  effective_generation_fps: "Effective Generation FPS",
+  physical_fps_error: "Physical FPS Error",
+  physical_fps_pct_error: "Physical FPS Percent Error",
+  physical_fps_intra_video_cv: "Physical FPS Intra-Video CV",
+  keystroke_traj_score: "Keystroke Trajectory Score",
+  keystroke_natet: "Keystroke NatET",
+  keystroke_nater: "Keystroke NatER"
+};
+
+function formatHomeMetricLabel(metric) {
+  if (homeMetricLabelOverrides[metric]) {
+    return homeMetricLabelOverrides[metric];
+  }
+
+  return String(metric || "")
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function homeMetricDimensionDefinition(item) {
+  return leaderboardMetricDimensions.find((dimension) => (
+    String(dimension.id || "").replaceAll("_", "-") === item.id
+  ));
+}
+
+function homeMetricDimensionMetrics(item) {
+  const metrics = [...(homeMetricDimensionDefinition(item)?.metrics || [])];
+
+  if (!metrics.length) {
+    return [item.key];
+  }
+
+  return metrics.includes(item.key) ? metrics : [item.key, ...metrics];
+}
+
+const homeComparisonCoverage = (states = {}) => Object.fromEntries(
+  ["quality", "control", "spatial", "viewpoint", "physics", "longHorizon", "memory", "realtime"].map((key) => {
+    const value = states[key];
+    return [key, typeof value === "string" ? { state: value } : value || { state: "none" }];
+  })
+);
+
+const homeBenchmarkComparisonsSource = [
+  {
+    name: "WorldScore",
+    href: "https://haoyi-duan.github.io/WorldScore/",
+    target: {
+      en: "Unified world generation",
+      zh: "统一世界生成评测"
+    },
+    protocol: {
+      en: "Next-scene sequences with explicit camera trajectories",
+      zh: "沿显式相机轨迹拆分为连续的下一场景生成任务"
+    },
+    input: {
+      en: "Text / image",
+      zh: "文本 / 图像"
+    },
+    output: {
+      en: "Video · 3D · 4D",
+      zh: "视频 · 3D · 4D"
+    },
+    scalePrimary: {
+      en: "3,000 examples",
+      zh: "3,000 个样例"
+    },
+    scaleSecondary: {
+      en: "3 metric families · static + dynamic",
+      zh: "3 类指标 · 静态 + 动态"
+    },
+    models: "19",
+    coverage: {
+      quality: { state: "full" },
+      control: { state: "full" },
+      spatial: { state: "full" },
+      physics: {
+        state: "partial",
+        note: {
+          en: "Dynamics metrics are included, without a dedicated physical-law track.",
+          zh: "包含动态指标，但没有独立的物理规律评测轨道。"
+        }
+      },
+      longHorizon: { state: "full" },
+      memory: { state: "none" },
+      realtime: { state: "none" }
+    }
+  },
+  {
+    name: "WorldMark",
+    href: "https://alayalab.github.io/WorldMark/",
+    target: {
+      en: "Interactive I2V models",
+      zh: "交互式 I2V 模型"
+    },
+    protocol: {
+      en: "Shared WASD actions · matched scenes · FPV / TPV · 20–60s",
+      zh: "统一 WASD · 相同场景 · 第一/第三人称 · 20–60 秒"
+    },
+    input: {
+      en: "Image + action adapter",
+      zh: "图像 + 动作适配器"
+    },
+    output: {
+      en: "Interactive video",
+      zh: "交互视频"
+    },
+    scalePrimary: {
+      en: "500 cases",
+      zh: "500 个测试用例"
+    },
+    scaleSecondary: {
+      en: "9 metrics",
+      zh: "9 项指标"
+    },
+    models: "10",
+    coverage: {
+      quality: { state: "full" },
+      control: { state: "full" },
+      spatial: {
+        state: "partial",
+        note: {
+          en: "Global memory measures accumulated geometric self-consistency.",
+          zh: "全局记忆通过累计几何自洽性间接覆盖空间一致性。"
+        }
+      },
+      physics: { state: "none" },
+      longHorizon: { state: "full" },
+      memory: { state: "full" },
+      realtime: { state: "none" }
+    }
+  },
+  {
+    name: "iWorld-Bench",
+    href: "https://iworld-bench.com/",
+    target: {
+      en: "Interactive world models",
+      zh: "交互式世界模型"
+    },
+    protocol: {
+      en: "Unified action generation · 6 task types · multi-perspective",
+      zh: "统一动作生成 · 6 类任务 · 多视角"
+    },
+    input: {
+      en: "Multimodal scene + action / pose",
+      zh: "多模态场景 + 动作 / 位姿"
+    },
+    output: {
+      en: "Interactive video",
+      zh: "交互视频"
+    },
+    scalePrimary: {
+      en: "4,900 tasks",
+      zh: "4,900 个任务"
+    },
+    scaleSecondary: {
+      en: "330K source clips · 9 metrics",
+      zh: "33 万源视频片段 · 9 项指标"
+    },
+    models: "14",
+    coverage: {
+      quality: { state: "full" },
+      control: { state: "full" },
+      spatial: {
+        state: "partial",
+        note: {
+          en: "Trajectory alignment and loop topology provide spatial signals.",
+          zh: "通过轨迹对齐与回环拓扑提供空间信号。"
+        }
+      },
+      physics: { state: "none" },
+      longHorizon: {
+        state: "partial",
+        note: {
+          en: "Cyclic memory tasks are present, but sustained long rollouts are not the primary protocol.",
+          zh: "包含循环记忆任务，但持续长序列生成并非主要协议。"
+        }
+      },
+      memory: { state: "full" },
+      realtime: { state: "none" }
+    }
+  },
+  {
+    name: "WBench",
+    href: "https://meituan-longcat.github.io/WBench/",
+    target: {
+      en: "Multi-turn interactive video",
+      zh: "多轮交互视频"
+    },
+    protocol: {
+      en: "Navigation · subject action · event edit · perspective switch",
+      zh: "导航 · 主体动作 · 事件编辑 · 视角切换"
+    },
+    input: {
+      en: "Text / image + text, pose, action",
+      zh: "文本 / 图像 + 文本、位姿、动作"
+    },
+    output: {
+      en: "Multi-turn video",
+      zh: "多轮视频"
+    },
+    scalePrimary: {
+      en: "289 cases",
+      zh: "289 个测试用例"
+    },
+    scaleSecondary: {
+      en: "1,058 turns · 22 metrics",
+      zh: "1,058 轮 · 22 项指标"
+    },
+    models: "30",
+    coverage: {
+      quality: { state: "full" },
+      control: { state: "full" },
+      spatial: { state: "full" },
+      physics: { state: "full" },
+      longHorizon: {
+        state: "partial",
+        note: {
+          en: "Multi-turn error accumulation is tested rather than a sustained continuous rollout.",
+          zh: "评测多轮误差累积，而非持续的连续长序列生成。"
+        }
+      },
+      memory: {
+        state: "partial",
+        note: {
+          en: "State persistence appears through multi-turn consistency; memory is not a standalone dimension.",
+          zh: "多轮一致性涉及状态保持，但记忆并非独立维度。"
+        }
+      },
+      realtime: { state: "none" }
+    }
+  },
+  {
+    name: "WorldOlympiad",
+    href: "https://alibaba-damo-academy.github.io/WorldOlympiad/",
+    target: {
+      en: "Video-based world models",
+      zh: "视频式世界模型"
+    },
+    protocol: {
+      en: "Gaming · robotics · real-world · chunked long rollouts",
+      zh: "游戏 · 机器人 · 真实世界 · 分块长序列生成"
+    },
+    input: {
+      en: "Video chunks + action captions",
+      zh: "视频分块 + 动作描述"
+    },
+    output: {
+      en: "Long video",
+      zh: "长视频"
+    },
+    scalePrimary: {
+      en: "1,000 videos",
+      zh: "1,000 条视频"
+    },
+    scaleSecondary: {
+      en: "3 diagnostic tracks",
+      zh: "3 条诊断轨道"
+    },
+    models: "8",
+    coverage: {
+      quality: {
+        state: "partial",
+        note: {
+          en: "CLIP and reconstructed-view quality are supporting signals, not a general quality track.",
+          zh: "CLIP 与重建视图质量属于辅助信号，并非通用质量轨道。"
+        }
+      },
+      control: { state: "full" },
+      spatial: { state: "full" },
+      physics: { state: "full" },
+      longHorizon: { state: "full" },
+      memory: {
+        state: "partial",
+        note: {
+          en: "Long-range global coherence is measured, without a dedicated revisit-memory protocol.",
+          zh: "评测长程全局一致性，但没有独立的重访记忆协议。"
+        }
+      },
+      realtime: { state: "none" }
+    }
+  },
+  {
+    name: "WorldRoamBench",
+    href: "https://arxiv.org/abs/2606.31672",
+    target: {
+      en: "Long-horizon interactive stability",
+      zh: "长时交互稳定性"
+    },
+    protocol: {
+      en: "Nature / urban / indoor · FPV / TPV · continuous WASD · 10–60s",
+      zh: "自然 / 城市 / 室内 · 第一/第三人称 · 连续 WASD · 10–60 秒"
+    },
+    input: {
+      en: "Image + WASD / IJKL",
+      zh: "图像 + WASD / IJKL"
+    },
+    output: {
+      en: "Interactive video",
+      zh: "交互视频"
+    },
+    scalePrimary: {
+      en: "600+ cases",
+      zh: "600+ 个测试用例"
+    },
+    scaleSecondary: {
+      en: "4 stability dimensions",
+      zh: "4 项稳定性维度"
+    },
+    models: "10+",
+    coverage: {
+      quality: { state: "full" },
+      control: { state: "full" },
+      spatial: {
+        state: "partial",
+        note: {
+          en: "3D consistency is evaluated inside the interaction-physics dimension.",
+          zh: "3D 一致性被纳入交互物理维度，而非独立轨道。"
+        }
+      },
+      physics: { state: "full" },
+      longHorizon: { state: "full" },
+      memory: { state: "full" },
+      realtime: { state: "none" }
+    }
+  },
+  {
+    name: "WorldExam",
+    href: "https://worldexam.github.io/",
+    target: {
+      en: "Appearance to world reactivity",
+      zh: "从表观质量到世界反应性"
+    },
+    protocol: {
+      en: "4 levels · 8 tasks · camera-, action-, and language-driven models",
+      zh: "4 个层级 · 8 类任务 · 相机、动作与语言驱动模型"
+    },
+    input: {
+      en: "Image + camera / action / language",
+      zh: "图像 + 相机 / 动作 / 语言"
+    },
+    output: {
+      en: "Controllable video",
+      zh: "可控视频"
+    },
+    scalePrimary: {
+      en: "1,474 cases",
+      zh: "1,474 个测试用例"
+    },
+    scaleSecondary: {
+      en: "8 dedicated tasks",
+      zh: "8 类专项任务"
+    },
+    models: "20",
+    coverage: {
+      quality: { state: "full" },
+      control: { state: "full" },
+      spatial: { state: "full" },
+      physics: {
+        state: "partial",
+        note: {
+          en: "Physical reaction is one task within the broader world-reactivity level.",
+          zh: "物理反应是“世界反应性”层级中的一项任务。"
+        }
+      },
+      longHorizon: { state: "full" },
+      memory: { state: "full" },
+      realtime: { state: "none" }
+    }
+  },
+  {
+    name: "MIND",
+    href: "https://csu-jpg.github.io/MIND.github.io/",
+    target: { en: "Memory consistency + action control", zh: "记忆一致性与动作控制" },
+    protocol: {
+      en: "Closed-loop out-and-back trajectories · 8 scenes · FPV / TPV",
+      zh: "闭环往返轨迹 · 8 类场景 · 第一 / 第三人称"
+    },
+    input: { en: "Image + action sequence", zh: "图像 + 动作序列" },
+    output: { en: "Interactive video", zh: "交互视频" },
+    scalePrimary: { en: "250 cases", zh: "250 个测试用例" },
+    scaleSecondary: { en: "Action + memory tracks", zh: "动作 + 记忆轨道" },
+    models: "2",
+    coverage: homeComparisonCoverage({
+      quality: "partial",
+      control: "full",
+      spatial: "partial",
+      longHorizon: "partial",
+      memory: "full"
+    })
+  },
+  {
+    name: "Omni-WorldBench",
+    href: "https://arxiv.org/abs/2603.22212",
+    target: { en: "Causal interaction + 4D state evolution", zh: "因果交互与 4D 状态演化" },
+    protocol: {
+      en: "Multi-level interactions · outcome and intermediate-state evaluation",
+      zh: "多层级交互 · 结果与中间状态演化评测"
+    },
+    input: { en: "Text / image + interaction", zh: "文本 / 图像 + 交互" },
+    output: { en: "Video / 4D reconstruction", zh: "视频 / 4D 重建" },
+    scalePrimary: { en: "1,068 cases", zh: "1,068 个测试用例" },
+    scaleSecondary: { en: "Causal interaction hierarchy", zh: "因果交互层级" },
+    models: "18",
+    coverage: homeComparisonCoverage({
+      quality: "partial",
+      control: "full",
+      spatial: "full",
+      physics: "partial",
+      longHorizon: "partial",
+      memory: "full"
+    })
+  },
+  {
+    name: "WildWorld / WildBench",
+    href: "https://arxiv.org/abs/2603.23497",
+    target: { en: "Game-state and action alignment", zh: "游戏状态与动作对齐" },
+    protocol: {
+      en: "Single ARPG · action following · explicit state alignment",
+      zh: "单一 ARPG · 动作遵循 · 显式状态对齐"
+    },
+    input: { en: "Game frame + rich actions / state", zh: "游戏帧 + 丰富动作 / 状态" },
+    output: { en: "Interactive game video", zh: "交互式游戏视频" },
+    scalePrimary: { en: "WildBench", zh: "WildBench" },
+    scaleSecondary: { en: "108M source frames · 450+ actions", zh: "1.08 亿源帧 · 450+ 动作" },
+    models: "5",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "full",
+      spatial: "partial",
+      longHorizon: "partial"
+    })
+  },
+  {
+    name: "MBench",
+    href: "https://peanutup.github.io/MBench-project/",
+    target: { en: "Long-horizon world memory", zh: "长时世界记忆" },
+    protocol: {
+      en: "Entity · environment · causal consistency · action/text tracks",
+      zh: "实体 · 环境 · 因果一致性 · 动作 / 文本轨道"
+    },
+    input: { en: "Long real video + action / text continuation", zh: "真实长视频 + 动作 / 文本续写" },
+    output: { en: "Long video continuation", zh: "长视频续写" },
+    scalePrimary: { en: "12 sub-dimensions", zh: "12 个子维度" },
+    scaleSecondary: { en: "3 memory axes", zh: "3 条记忆轴" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "partial",
+      control: "partial",
+      spatial: "partial",
+      physics: "partial",
+      longHorizon: "full",
+      memory: "full"
+    })
+  },
+  {
+    name: "InterBench",
+    href: "https://hunyuan-gamecraft-2.github.io/",
+    target: { en: "Instruction-driven game interaction", zh: "指令驱动的游戏交互" },
+    protocol: {
+      en: "Trigger · alignment · fluency · scope · end state · physics",
+      zh: "触发 · 对齐 · 流畅度 · 作用范围 · 终态 · 物理"
+    },
+    input: { en: "Image / video + language, keyboard, mouse", zh: "图像 / 视频 + 语言、键盘、鼠标" },
+    output: { en: "Interactive game video", zh: "交互式游戏视频" },
+    scalePrimary: { en: "920 cases", zh: "920 个测试用例" },
+    scaleSecondary: { en: "6 interaction dimensions", zh: "6 个交互维度" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "full",
+      spatial: "partial",
+      physics: "full",
+      longHorizon: "partial",
+      memory: "partial"
+    })
+  },
+  {
+    name: "WR-Arena",
+    href: "https://arxiv.org/abs/2603.25887",
+    target: { en: "Simulation, forecasting, and planning", zh: "模拟、预测与规划" },
+    protocol: {
+      en: "Action simulation · long forecast · simulative reasoning",
+      zh: "动作模拟 · 长程预测 · 模拟式推理"
+    },
+    input: { en: "Observations + multi-step instruction / goal", zh: "观测 + 多步指令 / 目标" },
+    output: { en: "Counterfactual rollouts + plans", zh: "反事实 rollout + 规划" },
+    scalePrimary: { en: "62 cases", zh: "62 个测试用例" },
+    scaleSecondary: { en: "≤558 turns", zh: "≤558 轮" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      control: "full",
+      physics: "full",
+      longHorizon: "full"
+    })
+  },
+  {
+    name: "World-in-World",
+    href: "https://arxiv.org/abs/2510.18135",
+    target: { en: "Closed-loop embodied utility", zh: "闭环具身效用" },
+    protocol: {
+      en: "4 environments · unified planner / action API · task success",
+      zh: "4 个环境 · 统一规划器 / 动作 API · 任务成功率"
+    },
+    input: { en: "Observation + action plan", zh: "观测 + 动作规划" },
+    output: { en: "Closed-loop rollout", zh: "闭环 rollout" },
+    scalePrimary: { en: "1,079 cases", zh: "1,079 个测试用例" },
+    scaleSecondary: { en: "4 closed-loop environments", zh: "4 个闭环环境" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "full",
+      spatial: "partial",
+      longHorizon: "partial"
+    })
+  },
+  {
+    name: "WorldArena",
+    href: "https://world-arena.ai/",
+    target: { en: "Embodied perception + functional utility", zh: "具身感知与功能效用" },
+    protocol: {
+      en: "16 perceptual metrics · data engine · policy evaluator · planner",
+      zh: "16 项感知指标 · 数据引擎 · 策略评估 · 规划"
+    },
+    input: { en: "Observation + text / action", zh: "观测 + 文本 / 动作" },
+    output: { en: "Predicted video + task utility", zh: "预测视频 + 任务效用" },
+    scalePrimary: { en: "500 cases", zh: "500 个测试用例" },
+    scaleSecondary: { en: "6 perceptual sub-dimensions", zh: "6 个感知子维度" },
+    models: "14",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "full",
+      spatial: "full",
+      physics: "full",
+      longHorizon: "partial"
+    })
+  },
+  {
+    name: "WorldLens",
+    href: "https://github.com/worldbench/worldlens",
+    target: { en: "Full-spectrum driving world models", zh: "全谱系驾驶世界模型" },
+    protocol: {
+      en: "Generation · reconstruction · action following · downstream · human",
+      zh: "生成 · 重建 · 动作遵循 · 下游任务 · 人评"
+    },
+    input: { en: "Driving context + ego action", zh: "驾驶上下文 + 自车动作" },
+    output: { en: "4D driving rollout", zh: "4D 驾驶 rollout" },
+    scalePrimary: { en: "26,808 annotations", zh: "26,808 条标注" },
+    scaleSecondary: { en: "5 aspects · 24 dimensions", zh: "5 个方面 · 24 个维度" },
+    models: "6",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "full",
+      spatial: "full",
+      physics: "full",
+      longHorizon: "partial",
+      memory: "partial"
+    })
+  },
+  {
+    name: "WorldSimBench",
+    href: "https://arxiv.org/abs/2410.18072",
+    target: { en: "Video models as embodied simulators", zh: "作为具身模拟器的视频模型" },
+    protocol: {
+      en: "Explicit human preference + implicit manipulative evaluation",
+      zh: "显式人类偏好 + 隐式操控评测"
+    },
+    input: { en: "Context + task / action", zh: "上下文 + 任务 / 动作" },
+    output: { en: "Predicted video + control signal", zh: "预测视频 + 控制信号" },
+    scalePrimary: { en: "35K cases", zh: "3.5 万个测试用例" },
+    scaleSecondary: { en: "3 embodied domains", zh: "3 个具身领域" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "full",
+      spatial: "partial",
+      longHorizon: "partial",
+      memory: "partial"
+    })
+  },
+  {
+    name: "EWMBench",
+    href: "https://github.com/AgibotTech/EWMBench",
+    target: { en: "Embodied scene, motion, and semantics", zh: "具身场景、运动与语义" },
+    protocol: {
+      en: "Scene consistency · motion correctness · semantic alignment",
+      zh: "场景一致性 · 运动正确性 · 语义对齐"
+    },
+    input: { en: "Scene + instruction / action", zh: "场景 + 指令 / 动作" },
+    output: { en: "Embodied rollout video", zh: "具身 rollout 视频" },
+    scalePrimary: { en: "2,100 cases", zh: "2,100 个测试用例" },
+    scaleSecondary: { en: "3 evaluation axes", zh: "3 条评测轴" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "full",
+      spatial: "partial"
+    })
+  },
+  {
+    name: "WorldEval",
+    href: "https://github.com/liyaxuanliyaxuan/Worldeval",
+    target: { en: "Real-world robot policy evaluation", zh: "真实机器人策略评估" },
+    protocol: {
+      en: "Policy2Vec rollouts · policy ranking · safety detection",
+      zh: "Policy2Vec rollout · 策略排序 · 安全检测"
+    },
+    input: { en: "Robot observation + policy / action", zh: "机器人观测 + 策略 / 动作" },
+    output: { en: "Manipulation rollout + evaluation", zh: "操作 rollout + 评估" },
+    scalePrimary: { en: "1,400 cases", zh: "1,400 个测试用例" },
+    scaleSecondary: { en: "Online policy-evaluation pipeline", zh: "在线策略评估流程" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "partial",
+      control: "full",
+      longHorizon: "partial"
+    })
+  },
+  {
+    name: "WorldModelBench",
+    href: "https://worldmodelbench-team.github.io/",
+    target: { en: "World-modeling violations in video", zh: "视频中的世界建模违例" },
+    protocol: {
+      en: "7 domains · 56 subdomains · instruction, commonsense, physics",
+      zh: "7 个领域 · 56 个子领域 · 指令、常识、物理"
+    },
+    input: { en: "Text / image", zh: "文本 / 图像" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "350 prompts", zh: "350 条提示词" },
+    scaleSecondary: { en: "67K human labels", zh: "6.7 万条人类标注" },
+    models: "14",
+    coverage: homeComparisonCoverage({
+      quality: "partial",
+      control: "partial",
+      spatial: "partial",
+      physics: "full"
+    })
+  },
+  {
+    name: "WorldBench",
+    href: "https://world-bench.github.io/",
+    target: { en: "Disentangled physical fidelity", zh: "解耦的物理保真度" },
+    protocol: {
+      en: "Intuitive concepts + physical constants / material properties",
+      zh: "直觉物理概念 + 物理常量 / 材料属性"
+    },
+    input: { en: "Text / image condition", zh: "文本 / 图像条件" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "425 cases", zh: "425 个测试用例" },
+    scaleSecondary: { en: "2 diagnostic levels", zh: "2 个诊断层级" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "partial",
+      spatial: "partial",
+      physics: "full",
+      memory: "partial"
+    })
+  },
+  {
+    name: "4DWorldBench",
+    href: "https://yeppp27.github.io/4DWorldBench.github.io/",
+    target: { en: "3D / 4D world generation", zh: "3D / 4D 世界生成" },
+    protocol: {
+      en: "Perception · condition alignment · physics · 4D consistency",
+      zh: "感知 · 条件对齐 · 物理 · 4D 一致性"
+    },
+    input: { en: "Image / video / text", zh: "图像 / 视频 / 文本" },
+    output: { en: "3D / 4D world", zh: "3D / 4D 世界" },
+    scalePrimary: { en: "333 cases", zh: "333 个测试用例" },
+    scaleSecondary: { en: "4 evaluation dimensions", zh: "4 个评测维度" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "partial",
+      spatial: "full",
+      physics: "full",
+      longHorizon: "partial"
+    })
+  },
+  {
+    name: "MoveBench",
+    href: "https://arxiv.org/abs/2512.08765",
+    target: { en: "Dense motion-controlled video", zh: "稠密运动控制视频" },
+    protocol: {
+      en: "Point trajectories · diverse content · hybrid-verified annotation",
+      zh: "点轨迹 · 多样内容 · 混合验证标注"
+    },
+    input: { en: "Image + dense point trajectories", zh: "图像 + 稠密点轨迹" },
+    output: { en: "5s motion-controlled video", zh: "5 秒运动控制视频" },
+    scalePrimary: { en: "1,018 cases", zh: "1,018 个测试用例" },
+    scaleSecondary: { en: "480p · multi-scene", zh: "480p · 多场景" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "full",
+      spatial: "partial"
+    })
+  },
+  {
+    name: "VMBench",
+    href: "https://arxiv.org/abs/2503.10076",
+    target: { en: "Perception-aligned video motion", zh: "感知对齐的视频运动" },
+    protocol: {
+      en: "5 motion-quality dimensions · 6 dynamic-scene categories",
+      zh: "5 个运动质量维度 · 6 类动态场景"
+    },
+    input: { en: "Text prompt", zh: "文本提示词" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "1,050 prompts", zh: "1,050 条提示词" },
+    scaleSecondary: { en: "Human-aligned motion metrics", zh: "人类对齐的运动指标" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "partial"
+    })
+  },
+  {
+    name: "VBench",
+    href: "https://vchitect.github.io/VBench-project/",
+    target: { en: "General video-generation quality", zh: "通用视频生成质量" },
+    protocol: {
+      en: "Hierarchical prompt suite · automatic metrics · human alignment",
+      zh: "分层提示词集 · 自动指标 · 人类偏好对齐"
+    },
+    input: { en: "Text / image", zh: "文本 / 图像" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "946 prompts", zh: "946 条提示词" },
+    scaleSecondary: { en: "16 quality dimensions", zh: "16 个质量维度" },
+    models: "40+",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "partial",
+      spatial: "partial",
+      longHorizon: "partial"
+    })
+  },
+  {
+    name: "VBench++",
+    href: "https://vchitect.github.io/VBench-project/",
+    target: { en: "Versatile quality + trustworthiness", zh: "多任务质量与可信性" },
+    protocol: {
+      en: "T2V / I2V · technical quality · trustworthiness · long-video track",
+      zh: "T2V / I2V · 技术质量 · 可信性 · 长视频轨道"
+    },
+    input: { en: "Text / adaptive image suite", zh: "文本 / 自适应图像集" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "1,260 prompts", zh: "1,260 条提示词" },
+    scaleSecondary: { en: "16+ dimensions", zh: "16+ 个维度" },
+    models: "40+",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "partial",
+      spatial: "partial",
+      physics: "partial",
+      longHorizon: "full"
+    })
+  },
+  {
+    name: "VBench-2.0",
+    href: "https://arxiv.org/abs/2503.21755",
+    target: { en: "Intrinsic faithfulness in video", zh: "视频内在真实性" },
+    protocol: {
+      en: "Human fidelity · controllability · creativity · physics · commonsense",
+      zh: "人体保真 · 可控性 · 创造力 · 物理 · 常识"
+    },
+    input: { en: "Text / image condition", zh: "文本 / 图像条件" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "5 dimensions", zh: "5 个维度" },
+    scaleSecondary: { en: "Fine-grained capability suite", zh: "细粒度能力评测集" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "full",
+      spatial: "partial",
+      physics: "full"
+    })
+  },
+  {
+    name: "PhyGenBench",
+    href: "https://arxiv.org/abs/2410.05363",
+    target: { en: "Physical commonsense generation", zh: "物理常识生成" },
+    protocol: {
+      en: "27 physical laws · 4 domains · human-aligned evaluation",
+      zh: "27 条物理规律 · 4 个领域 · 人类对齐评测"
+    },
+    input: { en: "Text prompt", zh: "文本提示词" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "160 prompts", zh: "160 条提示词" },
+    scaleSecondary: { en: "27 physical laws", zh: "27 条物理规律" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "partial",
+      physics: "full"
+    })
+  },
+  {
+    name: "VideoPhy-2",
+    href: "https://videophy2.github.io/",
+    target: { en: "Action-centric physical commonsense", zh: "动作中心的物理常识" },
+    protocol: {
+      en: "Semantic adherence · physical commonsense · rule grounding",
+      zh: "语义遵循 · 物理常识 · 规律归因"
+    },
+    input: { en: "Action-centric text prompt", zh: "动作中心文本提示词" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "590 cases", zh: "590 个测试用例" },
+    scaleSecondary: { en: "200 real-world actions", zh: "200 个真实世界动作" },
+    models: "7",
+    coverage: homeComparisonCoverage({
+      quality: "partial",
+      control: "partial",
+      physics: "full"
+    })
+  },
+  {
+    name: "TC-Bench",
+    href: "https://arxiv.org/abs/2406.08656",
+    target: { en: "Temporal compositionality", zh: "时间组合性" },
+    protocol: {
+      en: "Initial/final-state prompts · reference videos · transition metrics",
+      zh: "初末状态提示 · 参考视频 · 转换完成度指标"
+    },
+    input: { en: "Text / initial image", zh: "文本 / 初始图像" },
+    output: { en: "Transition video", zh: "状态转换视频" },
+    scalePrimary: { en: "150 cases", zh: "150 个测试用例" },
+    scaleSecondary: { en: "T2V + I2V protocols", zh: "T2V + I2V 协议" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "partial",
+      spatial: "partial",
+      longHorizon: "partial"
+    })
+  },
+  {
+    name: "EvalCrafter",
+    href: "https://evalcrafter.github.io/",
+    target: { en: "Large video-generation evaluation", zh: "大规模视频生成评测" },
+    protocol: {
+      en: "Visual · content · motion · text alignment · human calibration",
+      zh: "视觉 · 内容 · 运动 · 文本对齐 · 人类校准"
+    },
+    input: { en: "Text prompt", zh: "文本提示词" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "700 prompts", zh: "700 条提示词" },
+    scaleSecondary: { en: "17 objective metrics", zh: "17 项客观指标" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "partial"
+    })
+  },
+  {
+    name: "FETV",
+    href: "https://github.com/llyx97/FETV",
+    target: { en: "Fine-grained open-domain T2V", zh: "细粒度开放域 T2V" },
+    protocol: {
+      en: "Content · controllable attributes · prompt complexity · temporal categories",
+      zh: "内容 · 可控属性 · 提示复杂度 · 时间类别"
+    },
+    input: { en: "Text prompt", zh: "文本提示词" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "619 prompts", zh: "619 条提示词" },
+    scaleSecondary: { en: "3 orthogonal taxonomies", zh: "3 套正交分类" },
+    models: "4",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "partial",
+      longHorizon: "partial"
+    })
+  },
+  {
+    name: "Video-Bench",
+    href: "https://video-bench.github.io/",
+    target: { en: "Human-aligned video generation", zh: "人类对齐的视频生成" },
+    protocol: {
+      en: "MLLM few-shot scoring · chain-of-query · quality + alignment",
+      zh: "MLLM 少样本评分 · 查询链 · 质量 + 对齐"
+    },
+    input: { en: "Text prompt", zh: "文本提示词" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "419 cases", zh: "419 个测试用例" },
+    scaleSecondary: { en: "Quality + condition alignment", zh: "质量 + 条件对齐" },
+    models: "7",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "partial"
+    })
+  },
+  {
+    name: "T2V-CompBench",
+    href: "https://t2v-compbench.github.io/",
+    target: { en: "Compositional text-to-video", zh: "组合式文本生成视频" },
+    protocol: {
+      en: "Attributes · spatial relations · motion/action binding · interaction · numeracy",
+      zh: "属性 · 空间关系 · 运动 / 动作绑定 · 交互 · 数量"
+    },
+    input: { en: "Compositional text prompt", zh: "组合式文本提示词" },
+    output: { en: "Video", zh: "视频" },
+    scalePrimary: { en: "1,400 prompts", zh: "1,400 条提示词" },
+    scaleSecondary: { en: "7 compositional categories", zh: "7 类组合能力" },
+    models: "—",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "partial",
+      spatial: "partial",
+      physics: "partial"
+    })
+  },
+  {
+    name: "ChronoMagic-Bench",
+    href: "https://pku-yuangroup.github.io/ChronoMagic-Bench/",
+    target: { en: "Metamorphic time-lapse generation", zh: "变形时间流逝生成" },
+    protocol: {
+      en: "Biological · human-made · meteorological · physical phenomena",
+      zh: "生物 · 人造 · 气象 · 物理现象"
+    },
+    input: { en: "Free-form text prompt", zh: "自由文本提示词" },
+    output: { en: "Time-lapse video", zh: "延时视频" },
+    scalePrimary: { en: "1,649 prompts", zh: "1,649 条提示词" },
+    scaleSecondary: { en: "75 subcategories", zh: "75 个子类别" },
+    models: "10",
+    coverage: homeComparisonCoverage({
+      quality: "full",
+      control: "partial",
+      physics: "partial",
+      longHorizon: "partial"
+    })
+  },
+  {
+    name: "WorldAtlas Arena",
+    href: "/doc/benchmark/",
+    ours: true,
+    target: {
+      en: "Cross-modal generated worlds",
+      zh: "跨模态生成世界"
+    },
+    protocol: {
+      en: "Static · dynamic · interaction-conditioned · formal eligibility",
+      zh: "静态 · 动态 · 交互条件 · 正式准入契约"
+    },
+    input: {
+      en: "Image / video + text, trajectory, action",
+      zh: "图像 / 视频 + 文本、轨迹、动作"
+    },
+    output: {
+      en: "Video · 3D · 4D",
+      zh: "视频 · 3D · 4D"
+    },
+    scalePrimary: {
+      en: "10,000 core cases",
+      zh: "10,000 个核心用例"
+    },
+    scaleSecondary: {
+      en: "+ 1,400 physics · 36+ metrics",
+      zh: "+ 1,400 条物理视频 · 36+ 项指标"
+    },
+    models: "33",
+    coverage: {
+      quality: { state: "full" },
+      control: { state: "full" },
+      spatial: { state: "full" },
+      physics: { state: "full" },
+      longHorizon: { state: "full" },
+      memory: { state: "full" },
+      realtime: { state: "full" }
+    }
+  }
+];
+
+const homeComparisonExcludedNames = new Set([
+  "WildWorld / WildBench",
+  "InterBench",
+  "WR-Arena",
+  "World-in-World",
+  "WorldArena",
+  "WorldLens",
+  "EWMBench",
+  "WorldEval",
+  "MoveBench",
+  "VMBench",
+  "PhyGenBench",
+  "VideoPhy-2",
+  "EvalCrafter",
+  "FETV",
+  "Video-Bench",
+  "T2V-CompBench",
+  "ChronoMagic-Bench",
+  "TC-Bench",
+  "4DWorldBench",
+  "WorldBench"
+]);
+
+const homeComparisonPublishedAt = new Map([
+  ["VBench", "2023-11-29"],
+  ["TC-Bench", "2024-06-12"],
+  ["WorldSimBench", "2024-10-23"],
+  ["VBench++", "2024-11-20"],
+  ["WorldModelBench", "2025-02-28"],
+  ["VBench-2.0", "2025-03-27"],
+  ["WorldScore", "2025-04-01"],
+  ["4DWorldBench", "2025-11-25"],
+  ["WorldBench", "2026-01-29"],
+  ["MIND", "2026-02-08"],
+  ["Omni-WorldBench", "2026-03-23"],
+  ["WorldMark", "2026-04-23"],
+  ["iWorld-Bench", "2026-05-05"],
+  ["WBench", "2026-05-25"],
+  ["MBench", "2026-05-30"],
+  ["WorldOlympiad", "2026-06-09"],
+  ["WorldRoamBench", "2026-07-02"],
+  ["WorldExam", "2026-08-03"]
+]);
+
+const homeBenchmarkComparisons = homeBenchmarkComparisonsSource
+  .filter((item) => !homeComparisonExcludedNames.has(item.name))
+  .sort((left, right) => {
+    if (left.ours) return 1;
+    if (right.ours) return -1;
+    return (homeComparisonPublishedAt.get(left.name) || "9999-12-31").localeCompare(
+      homeComparisonPublishedAt.get(right.name) || "9999-12-31"
+    );
+  });
+const homeComparisonViewpointStates = new Map([
+  ["MIND", "full"],
+  ["WorldMark", "full"],
+  ["iWorld-Bench", "partial"],
+  ["WBench", "full"],
+  ["WorldRoamBench", "full"],
+  ["WorldAtlas Arena", "full"]
+]);
+homeBenchmarkComparisons.forEach((item) => {
+  item.coverage.viewpoint = { state: homeComparisonViewpointStates.get(item.name) || "none" };
+});
 const homeHeroLabelZh = new Map([
   ["Static Worlds", "静态世界"],
   ["Physics Tracks", "物理轨道"],
@@ -448,6 +1817,16 @@ const leaderboardState = {
   activeRank: 0
 };
 
+const homeTopModelsState = {
+  requestId: 0
+};
+
+const HOME_TOP_MODELS_SUITE = "image_static";
+const HOME_TOP_MODELS_SORT_METRIC = "overall";
+const HOME_TOP_MODELS_COLUMNS = [
+  { metric: HOME_TOP_MODELS_SORT_METRIC, labelKey: "leaderboardOverall", active: true }
+];
+
 const LEADERBOARD_ASCENT_MOBILE_LIMIT = 6;
 const LEADERBOARD_ASCENT_DENSE_THRESHOLD = 10;
 // Ridge paths sampled from leaderboard-mnt.png (1024×590); progress 0 = summit, 1 = base.
@@ -482,6 +1861,7 @@ const clearArchivePressedKeys = () => {
 let homeEntryTimer = 0;
 let homeEntryToken = 0;
 let homeIceRuntime = null;
+let homeHeroCarouselRuntime = null;
 let homeScrollRevealObserver = null;
 let archiveCatalog = null;
 let archiveCatalogPromise = null;
@@ -736,12 +2116,196 @@ function isClientRoute(href) {
     path === "/"
     || path.startsWith("/leaderboard")
     || path.startsWith("/arena")
+    || path.startsWith("/community")
     || path.startsWith("/uncertain")
   );
 }
 
 function clientRouteAttribute(href) {
   return isClientRoute(href) ? "data-route" : "";
+}
+
+function ensureCommunityStyles() {
+  if (document.getElementById("community-runtime-styles")) {
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "community-runtime-styles";
+  style.textContent = `
+    .header-community-icon {
+      display: none;
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .home-page .header-utility-button[data-header-community][aria-current="page"] {
+      border-color: rgba(52, 120, 229, 0.3);
+      background: rgba(52, 120, 229, 0.08) !important;
+      color: var(--mv-blue) !important;
+    }
+
+    .community-page .community-main {
+      min-height: auto;
+    }
+
+    .community-placeholder {
+      min-height: calc(100vh - 128px);
+      padding: clamp(156px, 18vh, 210px) 0 clamp(88px, 12vh, 144px);
+      background: #fff;
+    }
+
+    .community-placeholder__inner {
+      width: min(60rem, calc(100% - var(--mv-gutter) * 2));
+      margin: 0 auto;
+    }
+
+    .community-placeholder__head {
+      max-width: 760px;
+    }
+
+    .community-placeholder__head h1 {
+      margin: 0;
+      color: var(--mv-ink);
+      font-family: var(--mv-font);
+      font-size: clamp(3rem, 6.4vw, 5.25rem);
+      font-weight: 650;
+      letter-spacing: -0.055em;
+      line-height: 0.96;
+    }
+
+    .community-placeholder__head p {
+      max-width: 680px;
+      margin: 24px 0 0;
+      color: var(--mv-muted);
+      font-family: var(--mv-font);
+      font-size: clamp(16px, 1.65vw, 20px);
+      font-weight: 420;
+      letter-spacing: -0.012em;
+      line-height: 1.55;
+    }
+
+    .community-channels {
+      margin-top: clamp(52px, 7vw, 76px);
+      border-bottom: 1px solid var(--mv-line);
+    }
+
+    .community-channel {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 18px;
+      min-height: 84px;
+      border-top: 1px solid var(--mv-line);
+    }
+
+    .community-channel__mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(52, 120, 229, 0.09);
+      color: var(--mv-blue);
+      font-family: var(--mv-font);
+      font-size: 13px;
+      font-weight: 760;
+      letter-spacing: -0.02em;
+    }
+
+    .community-channel h2 {
+      margin: 0;
+      color: var(--mv-ink);
+      font-family: var(--mv-font);
+      font-size: clamp(18px, 1.7vw, 22px);
+      font-weight: 610;
+      letter-spacing: -0.025em;
+      line-height: 1.2;
+    }
+
+    .community-channel__status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      border: 1px solid rgba(52, 120, 229, 0.22);
+      border-radius: 999px;
+      padding: 5px 11px;
+      background: rgba(52, 120, 229, 0.06);
+      color: var(--mv-blue);
+      font-family: var(--mv-font);
+      font-size: 11px;
+      font-weight: 680;
+      letter-spacing: 0.045em;
+      line-height: 1;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .community-placeholder__note {
+      margin: 22px 0 0;
+      color: var(--mv-soft);
+      font-family: var(--mv-font);
+      font-size: 12px;
+      font-weight: 500;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 700px) {
+      .home-page .header-utility-button[data-header-community]::before {
+        display: none;
+      }
+
+      .header-community-icon {
+        display: block;
+        color: var(--mv-ink);
+      }
+
+      .home-page .header-utility-button[data-header-community][aria-current="page"] .header-community-icon {
+        color: var(--mv-blue);
+      }
+
+      .community-placeholder {
+        min-height: calc(100vh - 96px);
+        padding: 132px 0 72px;
+      }
+
+      .community-placeholder__inner {
+        width: calc(100% - 40px);
+      }
+
+      .community-placeholder__head h1 {
+        font-size: clamp(2.8rem, 15vw, 4rem);
+      }
+
+      .community-placeholder__head p {
+        margin-top: 18px;
+        font-size: 16px;
+      }
+
+      .community-channels {
+        margin-top: 44px;
+      }
+
+      .community-channel {
+        grid-template-columns: 38px minmax(0, 1fr);
+        gap: 14px;
+        min-height: 78px;
+      }
+
+      .community-channel__status {
+        grid-column: 2;
+        justify-self: start;
+        margin-top: -8px;
+      }
+    }
+  `;
+  document.head.append(style);
 }
 
 function routeTo(path) {
@@ -787,9 +2351,11 @@ document.addEventListener("click", (event) => {
 
 function render() {
   setDocumentLanguage();
+  ensureCommunityStyles();
   clearDocStarlightDocumentShell();
   clearHomeEntryTimer();
   stopHomeIce();
+  stopHomeHeroCarousel();
   stopHomeScrollReveal();
   stopArchiveLoop();
   stopArenaBattleRuntime();
@@ -805,6 +2371,8 @@ function render() {
     renderLeaderboard();
   } else if (path.startsWith("/arena")) {
     renderArenaBattle();
+  } else if (path.startsWith("/community")) {
+    renderCommunity();
   } else if (path.startsWith("/uncertain")) {
     renderArchive();
   } else if (path.startsWith("/docs")) {
@@ -1176,10 +2744,24 @@ function shellHeaderDocsLinkMarkup(href) {
   return `<a class="header-utility-button" href="${escapeAttr(href)}" data-header-docs>${escapeHtml(localizedHomeText("docs"))}</a>`;
 }
 
-function shellHeader({ archive = false, docs = false, arena = false } = {}) {
+function shellHeaderCommunityLinkMarkup(active = false) {
+  return `
+    <a class="header-utility-button" href="/community/" data-route data-header-community ${active ? 'aria-current="page"' : ""}>
+      <svg class="header-community-icon" aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+      <span>${escapeHtml(localizedHomeText("communityMenuLabel"))}</span>
+    </a>
+  `;
+}
+
+function shellHeader({ archive = false, docs = false, arena = false, community = false } = {}) {
   const docsHref = docs ? "/doc/" : arena ? "/doc/benchmark/" : "";
   const docsMarkup = docsHref ? shellHeaderDocsLinkMarkup(docsHref) : "";
-  const centerMarkup = archive || docs || arena
+  const communityMarkup = shellHeaderCommunityLinkMarkup(community);
+  const centerMarkup = archive || docs || arena || community
     ? `<span class="header-center-spacer" aria-hidden="true"></span>`
     : `<button class="global-search-toggle" data-home-search-toggle type="button">${localizedHomeText("search")}</button>`;
 
@@ -1190,6 +2772,7 @@ function shellHeader({ archive = false, docs = false, arena = false } = {}) {
       <div class="header-actions">
         ${docsMarkup}
         ${authHeaderActionsMarkup()}
+        ${communityMarkup}
         ${languageToggleMarkup()}
         <button class="menu-toggle" data-menu-toggle type="button">${localizedHomeText("menu")}</button>
       </div>
@@ -1228,6 +2811,7 @@ function menuMarkup() {
       <p class="menu-search-empty" data-menu-search-empty hidden>${localizedHomeText("noMatches")}</p>
       ${sectionMarkup}
       <ul class="menu-credits">
+        <li data-menu-item><a href="/community/" data-route>${escapeHtml(localizedHomeText("communityMenuLabel"))}</a></li>
         ${footerLinks
           .map((link) => {
             const routeAttribute = clientRouteAttribute(link.href);
@@ -1346,22 +2930,602 @@ function bindMenuSearch() {
   applyFilter();
 }
 
+function localizedComparisonValue(value) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value?.[activeLanguage()] || value?.en || "";
+}
+
+function homeComparisonMarkMarkup(coverage) {
+  const state = coverage?.state || "none";
+  const defaultLabelKey = state === "full"
+    ? "comparisonStateFull"
+    : state === "partial"
+      ? "comparisonStatePartial"
+      : "comparisonStateNone";
+  const label = localizedComparisonValue(coverage?.note) || localizedHomeText(defaultLabelKey);
+  const icon = state === "full"
+    ? '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.25"/><path d="m8.3 12.2 2.35 2.35 5.15-5.15"/></svg>'
+    : state === "partial"
+      ? '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.25"/><path class="home-comparison-mark__half" d="M12 3.75a8.25 8.25 0 0 0 0 16.5Z"/></svg>'
+      : '<svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.25"/><path d="M8.75 12h6.5"/></svg>';
+
+  return `<span class="home-comparison-mark home-comparison-mark--${state}" role="img" aria-label="${escapeAttr(label)}" title="${escapeAttr(label)}">${icon}</span>`;
+}
+
+function homeComparisonRowMarkup(item) {
+  const isExternal = /^https?:\/\//.test(item.href);
+  const targetAttribute = isExternal ? 'target="_blank" rel="noopener noreferrer"' : "";
+  const routeAttribute = isExternal ? "" : clientRouteAttribute(item.href);
+  const sourceLabel = `${localizedHomeText("comparisonSourceAria")} ${item.name}`;
+  const rowClass = item.ours ? "home-comparison-table__row--ours" : "";
+
+  return `
+    <tr class="${rowClass}">
+      <th scope="row" class="home-comparison-table__benchmark">
+        <a href="${escapeAttr(item.href)}" ${routeAttribute} ${targetAttribute} aria-label="${escapeAttr(sourceLabel)}">
+          <span>${escapeHtml(item.name)}</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 16 16 8"/><path d="M9 8h7v7"/></svg>
+        </a>
+        ${item.ours ? `<span class="home-comparison-table__ours-label">${escapeHtml(localizedHomeText("comparisonOurs"))}</span>` : ""}
+      </th>
+      <td class="home-comparison-table__scale">
+        <strong>${escapeHtml(localizedComparisonValue(item.scalePrimary))}</strong>
+      </td>
+      <td class="home-comparison-table__models">${escapeHtml(item.models)}</td>
+      <td>${homeComparisonMarkMarkup(item.coverage.quality)}</td>
+      <td>${homeComparisonMarkMarkup(item.coverage.control)}</td>
+      <td>${homeComparisonMarkMarkup(item.coverage.spatial)}</td>
+      <td>${homeComparisonMarkMarkup(item.coverage.viewpoint)}</td>
+      <td>${homeComparisonMarkMarkup(item.coverage.physics)}</td>
+      <td>${homeComparisonMarkMarkup(item.coverage.longHorizon)}</td>
+      <td>${homeComparisonMarkMarkup(item.coverage.memory)}</td>
+      <td>${homeComparisonMarkMarkup(item.coverage.realtime)}</td>
+    </tr>
+  `;
+}
+
+function homeComparisonMarkup() {
+  const fullMark = homeComparisonMarkMarkup({ state: "full" });
+  const partialMark = homeComparisonMarkMarkup({ state: "partial" });
+  const noneMark = homeComparisonMarkMarkup({ state: "none" });
+  return `
+    <section id="comparison" class="home-comparison" aria-label="${escapeAttr(localizedHomeText("comparisonKicker"))}">
+      <div class="home-comparison__inner">
+        <header class="home-comparison__head home-scroll-reveal">
+          <p class="home-comparison__kicker">${escapeHtml(localizedHomeText("comparisonKicker"))}</p>
+        </header>
+        <div class="home-comparison-table-wrap home-scroll-reveal" style="--reveal-delay: 80ms" tabindex="0">
+          <table class="home-comparison-table" aria-label="${escapeAttr(localizedHomeText("comparisonTableAria"))}">
+            <colgroup>
+              <col class="home-comparison-table__col-benchmark" />
+              <col class="home-comparison-table__col-scale" />
+              <col class="home-comparison-table__col-models" />
+              ${Array.from({ length: 8 }, () => '<col class="home-comparison-table__col-capability" />').join("")}
+            </colgroup>
+            <thead>
+              <tr>
+                <th rowspan="2" scope="col">${escapeHtml(localizedHomeText("comparisonBenchmark"))}</th>
+                <th colspan="2" scope="colgroup" class="home-comparison-table__group home-comparison-table__group--design">${escapeHtml(localizedHomeText("comparisonDesignGroup"))}</th>
+                <th colspan="8" scope="colgroup" class="home-comparison-table__group home-comparison-table__group--coverage">${escapeHtml(localizedHomeText("comparisonCoverageGroup"))}</th>
+              </tr>
+              <tr>
+                <th scope="col">${escapeHtml(localizedHomeText("comparisonScale"))}</th>
+                <th scope="col">${escapeHtml(localizedHomeText("comparisonModels"))}</th>
+                <th scope="col">${escapeHtml(localizedHomeText("comparisonQuality"))}</th>
+                <th scope="col">${escapeHtml(localizedHomeText("comparisonControl"))}</th>
+                <th scope="col">${escapeHtml(localizedHomeText("comparisonSpatial"))}</th>
+                <th scope="col">${escapeHtml(localizedHomeText("comparisonViewpoint"))}</th>
+                <th scope="col">${escapeHtml(localizedHomeText("comparisonPhysics"))}</th>
+                <th scope="col">${escapeHtml(localizedHomeText("comparisonLongHorizon"))}</th>
+                <th scope="col">${escapeHtml(localizedHomeText("comparisonMemory"))}</th>
+                <th scope="col">${escapeHtml(localizedHomeText("comparisonRealtime"))}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${homeBenchmarkComparisons.map(homeComparisonRowMarkup).join("")}
+            </tbody>
+          </table>
+        </div>
+        <div class="home-comparison__legend home-scroll-reveal" style="--reveal-delay: 120ms">
+          <div class="home-comparison__legend-list" aria-label="Legend">
+            <span>${fullMark}${escapeHtml(localizedHomeText("comparisonLegendFull"))}</span>
+            <span>${partialMark}${escapeHtml(localizedHomeText("comparisonLegendPartial"))}</span>
+            <span>${noneMark}${escapeHtml(localizedHomeText("comparisonLegendNone"))}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function localizedMetricComparisonValue(value) {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value?.[activeLanguage()] || value?.en || "";
+}
+
+function homeMetricPlaceholderIconMarkup() {
+  return `
+    <svg aria-hidden="true" viewBox="0 0 48 48">
+      <rect x="7.5" y="10.5" width="33" height="27" rx="4" />
+      <path d="M8 17h32M8 31h32M15 11v6M24 11v6M33 11v6M15 31v6M24 31v6M33 31v6" />
+      <path d="m21 21 7 4-7 4Z" />
+    </svg>
+  `;
+}
+
+function homeMetricPlaceholderCaseMarkup(modifier, label) {
+  const placeholderLabel = localizedHomeText("metricsPlaceholderLabel");
+
+  return `
+    <figure class="home-metrics-comparison__case home-metrics-comparison__case--${escapeAttr(modifier)} is-placeholder">
+      <div class="home-metrics-comparison__case-head">
+        <span>${escapeHtml(label)}</span>
+      </div>
+      <div class="home-metrics-comparison__frame">
+        <div class="home-metrics-comparison__placeholder" role="img" aria-label="${escapeAttr(placeholderLabel)}">
+          <div class="home-metrics-comparison__placeholder-inner">
+            ${homeMetricPlaceholderIconMarkup()}
+            <span>${escapeHtml(placeholderLabel)}</span>
+          </div>
+        </div>
+      </div>
+    </figure>
+  `;
+}
+
+function homeMetricComparisonCases(item) {
+  if (Array.isArray(item.cases) && item.cases.length) {
+    return item.cases.filter((caseItem) => (
+      caseItem?.input && caseItem?.higherVideo && caseItem?.lowerVideo
+    ));
+  }
+
+  if (item.input && item.higherVideo && item.lowerVideo) {
+    return [{
+      caseId: item.caseId,
+      prompt: item.prompt || "",
+      input: item.input,
+      higherVideo: item.higherVideo,
+      higherScore: item.higherScore,
+      lowerVideo: item.lowerVideo,
+      lowerScore: item.lowerScore
+    }];
+  }
+
+  return [];
+}
+
+function homeMetricCaseArrowMarkup(direction) {
+  const path = direction === "previous" ? "m14.5 6-6 6 6 6" : "m9.5 6 6 6-6 6";
+
+  return `
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="${path}" />
+    </svg>
+  `;
+}
+
+function homeMetricCaseNavigationMarkup(caseCount, activeCaseIndex) {
+  if (caseCount <= 1) {
+    return "";
+  }
+
+  const dots = Array.from({ length: caseCount }, (_, index) => {
+    const isActive = index === activeCaseIndex;
+    const label = `${localizedHomeText("metricsShowCase")} ${index + 1}`;
+
+    return `
+      <button
+        class="home-metrics-comparison__case-dot${isActive ? " is-active" : ""}"
+        type="button"
+        data-home-metric-case-index="${index}"
+        aria-label="${escapeAttr(label)}"
+        ${isActive ? 'aria-current="true"' : ""}
+      ></button>
+    `;
+  }).join("");
+
+  return `
+    <div class="home-metrics-comparison__case-nav" role="group" aria-label="${escapeAttr(localizedHomeText("metricsCaseNavigation"))}">
+      <button
+        class="home-metrics-comparison__case-arrow"
+        type="button"
+        data-home-metric-case-step="-1"
+        aria-label="${escapeAttr(localizedHomeText("metricsPreviousCase"))}"
+      >${homeMetricCaseArrowMarkup("previous")}</button>
+      <div class="home-metrics-comparison__case-dots">${dots}</div>
+      <button
+        class="home-metrics-comparison__case-arrow"
+        type="button"
+        data-home-metric-case-step="1"
+        aria-label="${escapeAttr(localizedHomeText("metricsNextCase"))}"
+      >${homeMetricCaseArrowMarkup("next")}</button>
+    </div>
+  `;
+}
+
+function homeMetricComparisonDetailMarkup(item, metricKey, isPanelActive, caseIndex = 0) {
+  const dimensionLabel = localizedMetricComparisonValue(item.label);
+  const metricLabel = formatHomeMetricLabel(metricKey);
+  const demoCases = metricKey === item.key ? homeMetricComparisonCases(item) : [];
+  const requestedCaseIndex = Number.isFinite(Number(caseIndex)) ? Math.trunc(Number(caseIndex)) : 0;
+  const activeCaseIndex = demoCases.length
+    ? ((requestedCaseIndex % demoCases.length) + demoCases.length) % demoCases.length
+    : 0;
+  const activeCase = demoCases[activeCaseIndex];
+  const hasDemo = Boolean(activeCase);
+  const description = hasDemo
+    ? localizedMetricComparisonValue(item.description)
+    : localizedHomeText("metricsPlaceholderDescription");
+  const caseContextMarkup = hasDemo && demoCases.length > 1
+    ? `
+      <div class="home-metrics-comparison__case-context">
+        <strong aria-live="polite">${escapeHtml(localizedHomeText("metricsCase"))} ${activeCaseIndex + 1} / ${demoCases.length}</strong>
+        ${activeCase.prompt ? `<p>${escapeHtml(activeCase.prompt)}</p>` : ""}
+        ${homeMetricCaseNavigationMarkup(demoCases.length, activeCaseIndex)}
+      </div>
+    `
+    : "";
+
+  const mediaMarkup = hasDemo
+    ? `
+      <figure class="home-metrics-comparison__case home-metrics-comparison__case--input">
+        <div class="home-metrics-comparison__case-head">
+          <span>${escapeHtml(localizedHomeText("metricsInput"))}</span>
+          <small>${escapeHtml(activeCase.caseId || "")}</small>
+        </div>
+        <div class="home-metrics-comparison__frame">
+          <img src="${escapeAttr(activeCase.input)}" alt="${escapeAttr(`${metricLabel} · ${activeCase.caseId || ""}`)}" loading="lazy" decoding="async" />
+        </div>
+      </figure>
+      <figure class="home-metrics-comparison__case home-metrics-comparison__case--higher">
+        <div class="home-metrics-comparison__case-head">
+          <span>${escapeHtml(localizedHomeText("metricsHigher"))}</span>
+          <strong>${escapeHtml(activeCase.higherScore || "")}</strong>
+        </div>
+        <div class="home-metrics-comparison__frame">
+          <video
+            src="${escapeAttr(activeCase.higherVideo)}"
+            aria-label="${escapeAttr(`${metricLabel} · ${localizedHomeText("metricsHigher")} · ${activeCase.higherScore || ""}`)}"
+            preload="${isPanelActive ? "metadata" : "none"}"
+            controls
+            muted
+            loop
+            playsinline
+          ></video>
+        </div>
+      </figure>
+      <figure class="home-metrics-comparison__case home-metrics-comparison__case--lower">
+        <div class="home-metrics-comparison__case-head">
+          <span>${escapeHtml(localizedHomeText("metricsLower"))}</span>
+          <strong>${escapeHtml(activeCase.lowerScore || "")}</strong>
+        </div>
+        <div class="home-metrics-comparison__frame">
+          <video
+            src="${escapeAttr(activeCase.lowerVideo)}"
+            aria-label="${escapeAttr(`${metricLabel} · ${localizedHomeText("metricsLower")} · ${activeCase.lowerScore || ""}`)}"
+            preload="${isPanelActive ? "metadata" : "none"}"
+            controls
+            muted
+            loop
+            playsinline
+          ></video>
+        </div>
+      </figure>
+    `
+    : [
+      homeMetricPlaceholderCaseMarkup("input", localizedHomeText("metricsInput")),
+      homeMetricPlaceholderCaseMarkup("higher", localizedHomeText("metricsHigher")),
+      homeMetricPlaceholderCaseMarkup("lower", localizedHomeText("metricsLower"))
+    ].join("");
+
+  return `
+    <div class="home-metrics-comparison__summary">
+      <div class="home-metrics-comparison__identity">
+        <code>${escapeHtml(metricKey)}</code>
+        <span>${escapeHtml(dimensionLabel)} · ${escapeHtml(metricLabel)}</span>
+      </div>
+      <p>${escapeHtml(description)}</p>
+    </div>
+    ${caseContextMarkup}
+    <div class="home-metrics-comparison__media" aria-label="${escapeAttr(metricLabel)}">
+      ${mediaMarkup}
+    </div>
+  `;
+}
+
+function homeMetricComparisonPanelMarkup(item, index) {
+  const isActive = index === 0;
+  const panelId = `home-metrics-panel-${item.id}`;
+  const tabId = `home-metrics-tab-${item.id}`;
+  const metrics = homeMetricDimensionMetrics(item);
+  const selectedMetric = metrics.includes(item.key) ? item.key : metrics[0];
+  const metricButtons = metrics.map((metric) => `
+    <button
+      class="home-metrics-comparison__metric-link${metric === selectedMetric ? " is-active" : ""}"
+      type="button"
+      data-home-metric-key="${escapeAttr(metric)}"
+      aria-pressed="${metric === selectedMetric ? "true" : "false"}"
+    >${escapeHtml(formatHomeMetricLabel(metric))}</button>
+  `).join("");
+
+  return `
+    <article
+      id="${escapeAttr(panelId)}"
+      class="home-metrics-comparison__panel"
+      data-home-metrics-panel="${escapeAttr(item.id)}"
+      role="tabpanel"
+      aria-labelledby="${escapeAttr(tabId)}"
+      ${isActive ? "" : "hidden"}
+    >
+      <div class="home-metrics-comparison__metric-links" role="group" aria-label="${escapeAttr(localizedHomeText("metricsRelatedAria"))}">
+        ${metricButtons}
+      </div>
+      <div class="home-metrics-comparison__detail" data-home-metric-detail>
+        ${homeMetricComparisonDetailMarkup(item, selectedMetric, isActive)}
+      </div>
+    </article>
+  `;
+}
+
+function homeMetricComparisonMarkup() {
+  return `
+    <section id="metrics-comparison" class="home-metrics-comparison" aria-label="${escapeAttr(localizedHomeText("metricsShowcaseAria"))}">
+      <div class="home-metrics-comparison__inner">
+        <header class="home-metrics-comparison__head home-scroll-reveal">
+          <p class="home-metrics-comparison__kicker">${escapeHtml(localizedHomeText("metricsShowcaseKicker"))}</p>
+          <a href="/doc/benchmark/metrics/">
+            ${escapeHtml(localizedHomeText("metricsExploreDocs"))}
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M8 16 16 8"/><path d="M9 8h7v7"/></svg>
+          </a>
+        </header>
+        <div class="home-metrics-comparison__dimension-tabs home-scroll-reveal" data-home-metrics-tabs role="tablist" aria-label="${escapeAttr(localizedHomeText("metricsShowcaseAria"))}" style="--reveal-delay: 60ms">
+          ${homeMetricComparisonDimensions.map((item, index) => {
+            const metricCount = homeMetricDimensionMetrics(item).length;
+
+            return `
+              <button
+                id="home-metrics-tab-${escapeAttr(item.id)}"
+                class="home-metrics-comparison__dimension-tab${index === 0 ? " is-active" : ""}"
+                type="button"
+                role="tab"
+                aria-selected="${index === 0 ? "true" : "false"}"
+                aria-controls="home-metrics-panel-${escapeAttr(item.id)}"
+                data-home-metrics-tab="${escapeAttr(item.id)}"
+                ${index === 0 ? "" : 'tabindex="-1"'}
+              >
+                <span>${String(index + 1).padStart(2, "0")}</span>
+                <strong>${escapeHtml(localizedMetricComparisonValue(item.label))}</strong>
+                <small>${escapeHtml(String(metricCount))} ${escapeHtml(localizedHomeText("metricsCount"))}</small>
+              </button>
+            `;
+          }).join("")}
+        </div>
+        <div class="home-metrics-comparison__panels home-scroll-reveal" style="--reveal-delay: 100ms">
+          ${homeMetricComparisonDimensions.map(homeMetricComparisonPanelMarkup).join("")}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function homeTopModelsRowsMarkup(payload) {
+  const sourceRows = payload?.rows || [];
+  const overallMetrics = leaderboardOverallMetrics(sourceRows);
+  const rows = leaderboardSortedRows(sourceRows, HOME_TOP_MODELS_SORT_METRIC).slice(0, 10);
+
+  if (!rows.length) {
+    return `<p class="home-top-models__status is-error">${escapeHtml(localizedHomeText("homeTopModelsUnavailable"))}</p>`;
+  }
+
+  const columnHeaders = HOME_TOP_MODELS_COLUMNS
+    .map((column) => `<th scope="col" class="${column.active ? "is-active" : ""}">${escapeHtml(localizedHomeText(column.labelKey))}</th>`)
+    .join("");
+  const rowMarkup = rows
+    .map((row, index) => {
+      const metricCells = HOME_TOP_MODELS_COLUMNS
+        .map((column) => {
+          const value = column.metric === "overall"
+            ? leaderboardOverallScore(row, overallMetrics)
+            : row.scores?.[column.metric];
+
+          return `<td class="home-top-models__score${column.active ? " is-active" : ""}">${escapeHtml(formatLeaderboardScore(value))}</td>`;
+        })
+        .join("");
+      const rank = index + 1;
+
+      return `
+        <tr>
+          <th scope="row" class="home-top-models__rank${rank <= 3 ? " is-top-three" : ""}"><span>${escapeHtml(String(rank))}</span></th>
+          <td class="home-top-models__model">${leaderboardModelCellMarkup(row)}</td>
+          ${metricCells}
+        </tr>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="home-top-models__table-scroll" tabindex="0">
+      <table class="home-top-models__table" aria-label="${escapeAttr(localizedHomeText("homeTopModelsAria"))}">
+        <colgroup>
+          <col class="home-top-models__col-rank" />
+          <col class="home-top-models__col-model" />
+          ${HOME_TOP_MODELS_COLUMNS.map(() => '<col class="home-top-models__col-score" />').join("")}
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col"><span class="sr-only">${escapeHtml(localizedHomeText("homeTopModelsRank"))}</span>#</th>
+            <th scope="col">${escapeHtml(localizedHomeText("leaderboardModel"))}</th>
+            ${columnHeaders}
+          </tr>
+        </thead>
+        <tbody>${rowMarkup}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function homeTopModelsMarkup() {
+  return `
+    <section class="home-top-models" aria-labelledby="home-top-models-title">
+      <div class="home-top-models__inner">
+        <header class="home-top-models__head home-scroll-reveal">
+          <div class="home-top-models__heading">
+            <p class="home-top-models__kicker">${escapeHtml(localizedHomeText("homeTopModelsKicker"))}</p>
+            <div class="home-top-models__title-row">
+              <h2 id="home-top-models-title">${escapeHtml(localizedHomeText("homeTopModelsTitle"))}</h2>
+              <span>${escapeHtml(localizedHomeText("homeTopModelsContext"))}</span>
+            </div>
+          </div>
+          <a class="home-top-models__view-all" href="/leaderboard/" data-route>
+            <span>${escapeHtml(localizedHomeText("homeTopModelsViewAll"))}</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7" /></svg>
+          </a>
+        </header>
+        <div class="home-top-models__results home-scroll-reveal" style="--reveal-delay: 80ms" data-home-top-models-results aria-live="polite">
+          <p class="home-top-models__status">${escapeHtml(localizedHomeText("homeTopModelsLoading"))}</p>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+async function loadHomeTopModels() {
+  const results = document.querySelector("[data-home-top-models-results]");
+
+  if (!results) {
+    return;
+  }
+
+  const requestId = homeTopModelsState.requestId + 1;
+  homeTopModelsState.requestId = requestId;
+
+  try {
+    const response = await fetch(`/api/leaderboard?suite=${encodeURIComponent(HOME_TOP_MODELS_SUITE)}`, { cache: "no-store" });
+    const payload = await response.json();
+
+    if (!response.ok || !payload.ok) {
+      throw new Error(payload.error || localizedHomeText("homeTopModelsUnavailable"));
+    }
+
+    if (requestId !== homeTopModelsState.requestId || !document.contains(results)) {
+      return;
+    }
+
+    results.innerHTML = homeTopModelsRowsMarkup(payload);
+  } catch (error) {
+    if (requestId !== homeTopModelsState.requestId || !document.contains(results)) {
+      return;
+    }
+
+    results.innerHTML = `<p class="home-top-models__status is-error">${escapeHtml(localizedHomeText("homeTopModelsUnavailable"))}</p>`;
+  }
+}
+
 function renderHome() {
   document.body.className = "home-page";
   setHomeMicroverseStylesheetEnabled(true);
   document.title = siteTitle;
   const heroVisualsAria = localizedHomeText("heroVisualAria");
   const primaryLinksAria = localizedHomeText("primaryLinksAria");
+  const isChinese = activeLanguage() === "zh";
+  const heroSlides = [
+    {
+      src: "/assets/benchmark_hero_cover.mp4?v=20260809-data-default-v1",
+      poster: "/worldarena_showcase_continuous.mp4_frame_0.jpg?v=20260621-v1"
+    },
+    {
+      src: "/assets/worldatlas_metric_explainer.mp4?v=20260808-metric-explainer-v2",
+      webmSrc: "/assets/worldatlas_metric_explainer.webm?v=20260808-metric-explainer-v2",
+      poster: "/assets/worldatlas_metric_explainer_poster.jpg?v=20260808-metric-explainer-v2",
+      fit: "diagram",
+      holdMs: 56000
+    },
+    {
+      src: "/assets/worldatlas_arena_inference_showcase.mp4?v=20260808-worldatlas-model-swap-v5",
+      webmSrc: "/assets/worldatlas_arena_inference_showcase.webm?v=20260808-browser-compat-v1",
+      poster: "/assets/worldatlas_arena_inference_showcase_poster.jpg?v=20260808-worldatlas-model-swap-v5"
+    },
+    {
+      src: "/assets/demo_bg.mp4?v=20260808-carousel-v1",
+      webmSrc: "/assets/demo_bg.webm?v=20260808-browser-compat-v1",
+      poster: "/worldarena_showcase_continuous.mp4_frame_4.jpg?v=20260621-v1"
+    }
+  ];
+  const previousVideoLabel = isChinese ? "上一个视频" : "Previous video";
+  const nextVideoLabel = isChinese ? "下一个视频" : "Next video";
+  const videoLabel = (index) => isChinese
+    ? `第 ${index + 1} 个视频，共 ${heroSlides.length} 个`
+    : `Video ${index + 1} of ${heroSlides.length}`;
 
   app.innerHTML = `
     ${shellHeader()}
     ${menuMarkup()}
     ${shellSearchMarkup()}
     <main class="home-main">
-      <div class="home-hero-stage" aria-label="${escapeAttr(heroVisualsAria)}">
-        <section class="home-hero" aria-label="${escapeAttr(heroVisualsAria)}">
-          <video class="home-hero-bg-video" src="/assets/benchmark_hero_cover.mp4?v=20260621-v7" poster="/worldarena_showcase_continuous.mp4_frame_0.jpg?v=20260621-v1" autoplay loop muted playsinline></video>
-          <div class="home-hero-scrim" aria-hidden="true"></div>
+      <div class="home-hero-stage">
+        <section class="home-hero-carousel" data-home-hero-carousel aria-roledescription="carousel" aria-label="${escapeAttr(heroVisualsAria)}">
+          <div class="home-hero-carousel-viewport">
+            ${heroSlides.map((slide, index) => `
+              <article
+                id="home-hero-slide-${index}"
+                class="home-hero home-hero-slide${index === 0 ? " is-active" : ""}"
+                data-home-hero-slide
+                data-hero-index="${index}"
+                data-hero-hold-ms="${slide.holdMs || 7600}"
+                data-hero-fit="${slide.fit || "cinematic"}"
+                role="group"
+                aria-roledescription="slide"
+                aria-label="${escapeAttr(videoLabel(index))}"
+                aria-hidden="${index === 0 ? "false" : "true"}"
+              >
+                <video
+                  class="home-hero-bg-video${slide.fit === "diagram" ? " home-hero-bg-video--diagram" : ""}"
+                  data-home-hero-video
+                  ${slide.fit === "diagram" ? 'style="background:#07131f;filter:brightness(1) saturate(1) contrast(1.01)"' : ""}
+                  ${slide.webmSrc ? "" : `src="${escapeAttr(slide.src)}"`}
+                  poster="${escapeAttr(slide.poster)}"
+                  preload="${index === 0 ? "auto" : "metadata"}"
+                  ${index === 0 ? "autoplay" : ""}
+                  loop
+                  muted
+                  playsinline
+                >${slide.webmSrc ? `
+                  <source src="${escapeAttr(slide.webmSrc)}" type="video/webm; codecs=vp9" />
+                  <source src="${escapeAttr(slide.src)}" type="video/mp4" />
+                ` : ""}</video>
+                <div class="home-hero-scrim" aria-hidden="true"${slide.fit === "diagram" ? ' style="background:linear-gradient(180deg,rgba(4,10,17,.015),transparent 72%,rgba(4,10,17,.08))"' : ""}></div>
+              </article>
+            `).join("")}
+          </div>
+          <div class="home-hero-carousel-controls" aria-label="${escapeAttr(isChinese ? "封面视频控制" : "Cover video controls")}">
+            <button class="home-hero-carousel-arrow" type="button" data-home-hero-previous aria-label="${escapeAttr(previousVideoLabel)}">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m14.5 5-7 7 7 7" /></svg>
+            </button>
+            <div class="home-hero-carousel-dots" aria-label="${escapeAttr(isChinese ? "选择封面视频" : "Choose cover video")}">
+              ${heroSlides.map((_, index) => `
+                <button
+                  type="button"
+                  class="home-hero-carousel-dot${index === 0 ? " is-active" : ""}"
+                  data-home-hero-dot
+                  data-hero-index="${index}"
+                  aria-label="${escapeAttr(videoLabel(index))}"
+                  aria-controls="home-hero-slide-${index}"
+                  aria-pressed="${index === 0 ? "true" : "false"}"
+                ></button>
+              `).join("")}
+            </div>
+            <button class="home-hero-carousel-arrow" type="button" data-home-hero-next aria-label="${escapeAttr(nextVideoLabel)}">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9.5 5 7 7-7 7" /></svg>
+            </button>
+          </div>
+          <p class="sr-only" data-home-hero-status aria-live="polite">${escapeHtml(videoLabel(0))}</p>
         </section>
       </div>
       <section id="home-paper" class="home-intro-section home-intro-section--paper" aria-labelledby="home-title">
@@ -1400,8 +3564,186 @@ function renderHome() {
           <span class="sr-only">${escapeHtml(localizedHomeText("explorationSr"))}</span>
         </a>
       </section>
-      <div class="home-entry-loading" aria-hidden="true">${escapeHtml(localizedHomeText("loading"))}</div>
       ${homeNewsMarkup()}
+      ${homeComparisonMarkup()}
+      ${homeMetricComparisonMarkup()}
+      <section class="home-dataset-showcase" aria-label="${escapeAttr(localizedHomeText("datasetShowcaseKicker"))}">
+        <header class="home-dataset-showcase__head home-scroll-reveal">
+          <p class="home-dataset-showcase__kicker">${escapeHtml(localizedHomeText("datasetShowcaseKicker"))}</p>
+          <p class="home-dataset-showcase__tip">
+            <span class="home-dataset-showcase__tip-label">${escapeHtml(localizedHomeText("datasetShowcaseTipLabel"))}</span>
+            <span>${escapeHtml(localizedHomeText("datasetShowcaseTip"))}</span>
+          </p>
+        </header>
+        <div class="home-dataset-showcase__controls home-scroll-reveal" style="--reveal-delay: 80ms">
+          <div class="home-dataset-showcase__tabs" data-home-dataset-tabs role="tablist" aria-label="${escapeAttr(localizedHomeText("datasetAtlasTabsAria"))}">
+            <button
+              id="home-dataset-tab-photorealistic"
+              class="home-dataset-showcase__tab is-active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="home-dataset-panel-photorealistic"
+              data-home-dataset-tab="photorealistic"
+            >${escapeHtml(localizedHomeText("datasetPhotorealistic"))}</button>
+            <button
+              id="home-dataset-tab-stylized"
+              class="home-dataset-showcase__tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="home-dataset-panel-stylized"
+              tabindex="-1"
+              data-home-dataset-tab="stylized"
+            >${escapeHtml(localizedHomeText("datasetStylized"))}</button>
+            <button
+              id="home-dataset-tab-video-static-photorealistic"
+              class="home-dataset-showcase__tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="home-dataset-panel-video-static-photorealistic"
+              tabindex="-1"
+              data-home-dataset-tab="video-static-photorealistic"
+            >${escapeHtml(localizedHomeText("datasetVideoStaticPhotorealistic"))}</button>
+            <button
+              id="home-dataset-tab-video-static-stylized"
+              class="home-dataset-showcase__tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="home-dataset-panel-video-static-stylized"
+              tabindex="-1"
+              data-home-dataset-tab="video-static-stylized"
+            >${escapeHtml(localizedHomeText("datasetVideoStaticStylized"))}</button>
+            <button
+              id="home-dataset-tab-image-dynamic"
+              class="home-dataset-showcase__tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="home-dataset-panel-image-dynamic"
+              tabindex="-1"
+              data-home-dataset-tab="image-dynamic"
+            >${escapeHtml(localizedHomeText("datasetImageDynamic"))}</button>
+            <button
+              id="home-dataset-tab-video-dynamic"
+              class="home-dataset-showcase__tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="home-dataset-panel-video-dynamic"
+              tabindex="-1"
+              data-home-dataset-tab="video-dynamic"
+            >${escapeHtml(localizedHomeText("datasetVideoDynamic"))}</button>
+          </div>
+        </div>
+        <div class="home-dataset-showcase__gallery home-scroll-reveal" style="--reveal-delay: 120ms">
+          <div
+            id="home-dataset-panel-photorealistic"
+            class="home-dataset-board home-dataset-board--photorealistic"
+            role="tabpanel"
+            aria-labelledby="home-dataset-tab-photorealistic"
+            data-home-dataset-panel="photorealistic"
+          >
+            <div class="home-dataset-board__frame">
+              <img
+                src="/assets/dataset-atlas-photorealistic.webp?v=20260808-dataset-v1"
+                alt="${escapeAttr(localizedHomeText("datasetPhotorealisticAlt"))}"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <div
+            id="home-dataset-panel-stylized"
+            class="home-dataset-board home-dataset-board--stylized"
+            role="tabpanel"
+            aria-labelledby="home-dataset-tab-stylized"
+            data-home-dataset-panel="stylized"
+            hidden
+          >
+            <div class="home-dataset-board__frame">
+              <img
+                src="/assets/dataset-atlas-stylized.webp?v=20260808-dataset-v1"
+                alt="${escapeAttr(localizedHomeText("datasetStylizedAlt"))}"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <div
+            id="home-dataset-panel-video-static-photorealistic"
+            class="home-dataset-board home-dataset-board--video-static-photorealistic"
+            role="tabpanel"
+            aria-labelledby="home-dataset-tab-video-static-photorealistic"
+            data-home-dataset-panel="video-static-photorealistic"
+            hidden
+          >
+            <div class="home-dataset-board__frame">
+              <img
+                src="/assets/dataset-atlas-video-static-photorealistic.webp?v=20260808-dataset-video-static-v2"
+                alt="${escapeAttr(localizedHomeText("datasetVideoStaticPhotorealisticAlt"))}"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <div
+            id="home-dataset-panel-video-static-stylized"
+            class="home-dataset-board home-dataset-board--video-static-stylized"
+            role="tabpanel"
+            aria-labelledby="home-dataset-tab-video-static-stylized"
+            data-home-dataset-panel="video-static-stylized"
+            hidden
+          >
+            <div class="home-dataset-board__frame">
+              <img
+                src="/assets/dataset-atlas-video-static-stylized.webp?v=20260808-dataset-video-static-v2"
+                alt="${escapeAttr(localizedHomeText("datasetVideoStaticStylizedAlt"))}"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <div
+            id="home-dataset-panel-image-dynamic"
+            class="home-dataset-board home-dataset-board--image-dynamic"
+            role="tabpanel"
+            aria-labelledby="home-dataset-tab-image-dynamic"
+            data-home-dataset-panel="image-dynamic"
+            hidden
+          >
+            <div class="home-dataset-board__frame">
+              <img
+                src="/assets/dataset-atlas-image-dynamic.webp?v=20260808-dynamic-dataset-v2"
+                alt="${escapeAttr(localizedHomeText("datasetImageDynamicAlt"))}"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
+          <div
+            id="home-dataset-panel-video-dynamic"
+            class="home-dataset-board home-dataset-board--video-dynamic"
+            role="tabpanel"
+            aria-labelledby="home-dataset-tab-video-dynamic"
+            data-home-dataset-panel="video-dynamic"
+            hidden
+          >
+            <div class="home-dataset-board__frame">
+              <img
+                src="/assets/dataset-atlas-video-dynamic.webp?v=20260808-dynamic-dataset-v2"
+                alt="${escapeAttr(localizedHomeText("datasetVideoDynamicAlt"))}"
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+      ${homeTopModelsMarkup()}
+      <div class="home-entry-loading" aria-hidden="true">${escapeHtml(localizedHomeText("loading"))}</div>
       <section class="home-feed home-scroll-reveal" aria-labelledby="home-feed-title">
         <div class="home-feed__inner">
           <header class="home-feed__head">
@@ -1420,10 +3762,465 @@ function renderHome() {
   `;
 
   bindShellEvents();
+  bindHomeHeroCarousel();
   bindHomeIce();
   bindHomeEntry();
+  bindHomeMetricComparison();
+  bindHomeDatasetTabs();
+  loadHomeTopModels();
   bindHomeSearch();
   bindHomeScrollReveal();
+  bindHomePageChrome();
+  window.requestAnimationFrame(scrollToHashTarget);
+}
+
+function bindHomeMetricComparison() {
+  const tabList = document.querySelector("[data-home-metrics-tabs]");
+
+  if (!tabList) {
+    return;
+  }
+
+  const tabs = [...tabList.querySelectorAll("[data-home-metrics-tab]")];
+  const panels = [...document.querySelectorAll("[data-home-metrics-panel]")];
+
+  if (!tabs.length || !panels.length) {
+    return;
+  }
+
+  const activateTab = (nextTab, moveFocus = false) => {
+    const nextDimension = nextTab.dataset.homeMetricsTab;
+
+    tabs.forEach((tab) => {
+      const isActive = tab === nextTab;
+      tab.classList.toggle("is-active", isActive);
+      tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      tab.tabIndex = isActive ? 0 : -1;
+    });
+
+    panels.forEach((panel) => {
+      const isActive = panel.dataset.homeMetricsPanel === nextDimension;
+      panel.hidden = !isActive;
+
+      panel.querySelectorAll("video").forEach((video) => {
+        if (!isActive) {
+          video.pause();
+          return;
+        }
+
+        if (video.preload === "none") {
+          video.preload = "metadata";
+          video.load();
+        }
+      });
+    });
+
+    if (moveFocus) {
+      nextTab.focus();
+    }
+  };
+
+  panels.forEach((panel) => {
+    const item = homeMetricComparisonDimensions.find((dimension) => (
+      dimension.id === panel.dataset.homeMetricsPanel
+    ));
+    const detail = panel.querySelector("[data-home-metric-detail]");
+    const metricButtons = [...panel.querySelectorAll("[data-home-metric-key]")];
+
+    if (!item || !detail || !metricButtons.length) {
+      return;
+    }
+
+    const caseIndexes = new Map([[item.key, 0]]);
+    const hydrateDetailVideos = () => {
+      if (panel.hidden) {
+        return;
+      }
+
+      detail.querySelectorAll("video").forEach((video) => {
+        video.preload = "metadata";
+        video.load();
+      });
+    };
+    const renderDetail = (metricKey, requestedCaseIndex = 0) => {
+      const demoCases = metricKey === item.key ? homeMetricComparisonCases(item) : [];
+      const normalizedCaseIndex = demoCases.length
+        ? ((requestedCaseIndex % demoCases.length) + demoCases.length) % demoCases.length
+        : 0;
+
+      panel.querySelectorAll("video").forEach((video) => video.pause());
+      if (demoCases.length) {
+        caseIndexes.set(metricKey, normalizedCaseIndex);
+      }
+      detail.innerHTML = homeMetricComparisonDetailMarkup(
+        item,
+        metricKey,
+        !panel.hidden,
+        normalizedCaseIndex
+      );
+      hydrateDetailVideos();
+    };
+
+    metricButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const metricKey = button.dataset.homeMetricKey;
+
+        metricButtons.forEach((metricButton) => {
+          const isSelected = metricButton === button;
+          metricButton.classList.toggle("is-active", isSelected);
+          metricButton.setAttribute("aria-pressed", isSelected ? "true" : "false");
+        });
+
+        renderDetail(metricKey, caseIndexes.get(metricKey) || 0);
+      });
+    });
+
+    detail.addEventListener("click", (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const stepButton = target?.closest("[data-home-metric-case-step]");
+      const dotButton = target?.closest("[data-home-metric-case-index]");
+
+      if (!stepButton && !dotButton) {
+        return;
+      }
+
+      const selectedMetricButton = metricButtons.find((button) => (
+        button.getAttribute("aria-pressed") === "true"
+      ));
+      const metricKey = selectedMetricButton?.dataset.homeMetricKey;
+      const demoCases = metricKey === item.key ? homeMetricComparisonCases(item) : [];
+
+      if (!metricKey || demoCases.length <= 1) {
+        return;
+      }
+
+      const currentCaseIndex = caseIndexes.get(metricKey) || 0;
+      const nextCaseIndex = dotButton
+        ? Number(dotButton.dataset.homeMetricCaseIndex)
+        : currentCaseIndex + Number(stepButton.dataset.homeMetricCaseStep);
+
+      renderDetail(metricKey, nextCaseIndex);
+    });
+  });
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => activateTab(tab));
+    tab.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+      const nextIndex = event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? tabs.length - 1
+          : event.key === "ArrowLeft"
+            ? (index - 1 + tabs.length) % tabs.length
+            : (index + 1) % tabs.length;
+
+      activateTab(tabs[nextIndex], true);
+    });
+  });
+}
+
+function bindHomeDatasetTabs() {
+  const tabList = document.querySelector("[data-home-dataset-tabs]");
+
+  if (!tabList) {
+    return;
+  }
+
+  const tabs = [...tabList.querySelectorAll("[data-home-dataset-tab]")];
+  const panels = [...document.querySelectorAll("[data-home-dataset-panel]")];
+
+  if (!tabs.length || !panels.length) {
+    return;
+  }
+
+  const activateTab = (nextTab, moveFocus = false) => {
+    const nextView = nextTab.dataset.homeDatasetTab;
+
+    tabs.forEach((tab) => {
+      const isActive = tab === nextTab;
+      tab.classList.toggle("is-active", isActive);
+      tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      tab.tabIndex = isActive ? 0 : -1;
+    });
+
+    panels.forEach((panel) => {
+      panel.hidden = panel.dataset.homeDatasetPanel !== nextView;
+    });
+
+    if (moveFocus) {
+      nextTab.focus();
+    }
+  };
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => activateTab(tab));
+    tab.addEventListener("keydown", (event) => {
+      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+        return;
+      }
+
+      event.preventDefault();
+      const nextIndex = event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? tabs.length - 1
+          : event.key === "ArrowLeft"
+            ? (index - 1 + tabs.length) % tabs.length
+            : (index + 1) % tabs.length;
+
+      activateTab(tabs[nextIndex], true);
+    });
+  });
+}
+
+function stopHomeHeroCarousel() {
+  if (!homeHeroCarouselRuntime) {
+    return;
+  }
+
+  window.clearTimeout(homeHeroCarouselRuntime.timer);
+  window.cancelAnimationFrame(homeHeroCarouselRuntime.resizeFrame);
+  homeHeroCarouselRuntime.controller.abort();
+  homeHeroCarouselRuntime.videos.forEach((video) => video.pause());
+  homeHeroCarouselRuntime = null;
+}
+
+function bindHomeHeroCarousel() {
+  stopHomeHeroCarousel();
+
+  const root = document.querySelector("[data-home-hero-carousel]");
+
+  if (!root) {
+    return;
+  }
+
+  const slides = [...root.querySelectorAll("[data-home-hero-slide]")];
+  const videos = slides.map((slide) => slide.querySelector("[data-home-hero-video]"));
+  const dots = [...root.querySelectorAll("[data-home-hero-dot]")];
+  const previousButton = root.querySelector("[data-home-hero-previous]");
+  const nextButton = root.querySelector("[data-home-hero-next]");
+  const status = root.querySelector("[data-home-hero-status]");
+
+  if (slides.length < 2 || videos.some((video) => !video)) {
+    return;
+  }
+
+  const controller = new AbortController();
+  const listenerOptions = { signal: controller.signal };
+  const runtime = {
+    root,
+    slides,
+    videos,
+    dots,
+    controller,
+    activeIndex: 0,
+    timer: 0,
+    resizeFrame: 0,
+    isInteracting: false
+  };
+
+  homeHeroCarouselRuntime = runtime;
+
+  const slideLabel = (index) => activeLanguage() === "zh"
+    ? `第 ${index + 1} 个视频，共 ${slides.length} 个`
+    : `Video ${index + 1} of ${slides.length}`;
+
+  const playActiveVideo = () => {
+    videos.forEach((video, index) => {
+      video.muted = true;
+      video.defaultMuted = true;
+      video.playsInline = true;
+
+      if (index === runtime.activeIndex && !document.hidden) {
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+    });
+  };
+
+  const scheduleAdvance = () => {
+    window.clearTimeout(runtime.timer);
+
+    if (prefersReducedMotion || runtime.isInteracting || document.hidden) {
+      return;
+    }
+
+    const requestedHoldMs = Number(slides[runtime.activeIndex]?.dataset.heroHoldMs);
+    const holdMs = Number.isFinite(requestedHoldMs) && requestedHoldMs >= 3000 ? requestedHoldMs : 7600;
+
+    runtime.timer = window.setTimeout(() => {
+      updateCarousel(runtime.activeIndex + 1, false);
+    }, holdMs);
+  };
+
+  const updateSlidePositions = () => {
+    const slideWidth = slides[runtime.activeIndex]?.getBoundingClientRect().width || root.clientWidth;
+    const sideOffset = Math.min(slideWidth * 0.88, window.innerWidth * 0.8);
+    const previousIndex = (runtime.activeIndex - 1 + slides.length) % slides.length;
+    const nextIndex = (runtime.activeIndex + 1) % slides.length;
+
+    slides.forEach((slide, index) => {
+      const role = index === runtime.activeIndex
+        ? "active"
+        : index === previousIndex
+          ? "previous"
+          : index === nextIndex
+            ? "next"
+            : "hidden";
+      const offset = role === "previous" ? -sideOffset : role === "next" ? sideOffset : 0;
+
+      slide.dataset.heroRole = role;
+      slide.style.setProperty("--hero-slide-offset", `${Math.round(offset)}px`);
+      slide.classList.toggle("is-active", role === "active");
+      slide.setAttribute("aria-hidden", role === "active" ? "false" : "true");
+    });
+
+    const isDiagramActive = slides[runtime.activeIndex]?.dataset.heroFit === "diagram";
+    root.classList.toggle("is-diagram-active", isDiagramActive);
+    if (isDiagramActive && window.matchMedia("(max-width: 700px)").matches) {
+      root.style.setProperty("--hero-film-h", `${Math.max(1, (window.innerWidth - 24) * 0.5625)}px`);
+    } else {
+      root.style.removeProperty("--hero-film-h");
+    }
+  };
+
+  const updateCarousel = (index, announce = true) => {
+    const nextIndex = (index + slides.length) % slides.length;
+    const indexChanged = nextIndex !== runtime.activeIndex;
+    runtime.activeIndex = nextIndex;
+
+    updateSlidePositions();
+
+    dots.forEach((dot, dotIndex) => {
+      const isActive = dotIndex === nextIndex;
+      dot.classList.toggle("is-active", isActive);
+      dot.setAttribute("aria-pressed", isActive ? "true" : "false");
+    });
+
+    if (indexChanged) {
+      try {
+        videos[nextIndex].currentTime = 0;
+      } catch {
+        // The first decoded frame is still on its way; playback will start when ready.
+      }
+    }
+
+    if (announce && status) {
+      status.textContent = slideLabel(nextIndex);
+    }
+
+    playActiveVideo();
+    scheduleAdvance();
+  };
+
+  previousButton?.addEventListener("click", () => updateCarousel(runtime.activeIndex - 1), listenerOptions);
+  nextButton?.addEventListener("click", () => updateCarousel(runtime.activeIndex + 1), listenerOptions);
+
+  dots.forEach((dot) => {
+    dot.addEventListener("click", () => updateCarousel(Number(dot.dataset.heroIndex)), listenerOptions);
+  });
+
+  slides.forEach((slide) => {
+    slide.addEventListener("click", () => {
+      if (slide.dataset.heroRole === "previous") {
+        updateCarousel(runtime.activeIndex - 1);
+      } else if (slide.dataset.heroRole === "next") {
+        updateCarousel(runtime.activeIndex + 1);
+      }
+    }, listenerOptions);
+  });
+
+  root.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      updateCarousel(runtime.activeIndex - 1);
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      updateCarousel(runtime.activeIndex + 1);
+    }
+  }, listenerOptions);
+
+  root.addEventListener("pointerenter", () => {
+    runtime.isInteracting = true;
+    scheduleAdvance();
+  }, listenerOptions);
+
+  root.addEventListener("pointerleave", () => {
+    runtime.isInteracting = false;
+    scheduleAdvance();
+  }, listenerOptions);
+
+  root.addEventListener("focusin", () => {
+    runtime.isInteracting = true;
+    scheduleAdvance();
+  }, listenerOptions);
+
+  root.addEventListener("focusout", (event) => {
+    if (!root.contains(event.relatedTarget)) {
+      runtime.isInteracting = false;
+      scheduleAdvance();
+    }
+  }, listenerOptions);
+
+  document.addEventListener("visibilitychange", () => {
+    playActiveVideo();
+    scheduleAdvance();
+  }, listenerOptions);
+
+  window.addEventListener("resize", () => {
+    window.cancelAnimationFrame(runtime.resizeFrame);
+    runtime.resizeFrame = window.requestAnimationFrame(updateSlidePositions);
+  }, listenerOptions);
+
+  updateCarousel(0, false);
+}
+
+function communityChannelMarkup(channel, index) {
+  const shortLabel = channel === "WeChat" ? "W" : channel === "Discord" ? "D" : channel === "Feishu" ? "F" : "Q";
+
+  return `
+    <div class="community-channel" role="listitem" style="--community-index: ${index}">
+      <span class="community-channel__mark" aria-hidden="true">${escapeHtml(shortLabel)}</span>
+      <h2>${escapeHtml(channel)}</h2>
+      <span class="community-channel__status">${escapeHtml(localizedHomeText("communityComingSoon"))}</span>
+    </div>
+  `;
+}
+
+function renderCommunity() {
+  document.body.className = "home-page community-page";
+  setHomeMicroverseStylesheetEnabled(true);
+  document.title = `${localizedHomeText("communityTitle")} · ${siteTitle}`;
+  const channels = ["WeChat", "Discord", "Feishu", "QQ"];
+
+  app.innerHTML = `
+    ${shellHeader({ community: true })}
+    ${menuMarkup()}
+    <main class="home-main community-main">
+      <section class="community-placeholder" aria-labelledby="community-title">
+        <div class="community-placeholder__inner">
+          <header class="community-placeholder__head">
+            <h1 id="community-title">${escapeHtml(localizedHomeText("communityTitle"))}</h1>
+            <p>${escapeHtml(localizedHomeText("communityBody"))}</p>
+          </header>
+          <div class="community-channels" role="list" aria-label="${escapeAttr(localizedHomeText("communityChannelsAria"))}">
+            ${channels.map(communityChannelMarkup).join("")}
+          </div>
+          <p class="community-placeholder__note">${escapeHtml(localizedHomeText("communityPlaceholder"))}</p>
+        </div>
+      </section>
+    </main>
+    ${homeFooterMarkup()}
+    ${homeBackToTopMarkup()}
+  `;
+
+  bindShellEvents();
   bindHomePageChrome();
   window.requestAnimationFrame(scrollToHashTarget);
 }
@@ -2305,11 +5102,13 @@ function getHomeSearchItems() {
     }))
   ]);
   const docPageItems = activeContentPages().map((page) => ({
-    category: page.section || localizedHomeText("docsCategory"),
-    title: page.title,
-    body: page.summary || stripInlineMarkdown(page.content || "").slice(0, 180),
-    href: page.route,
-    keywords: `${page.tags?.join(" ") || ""} ${stripInlineMarkdown(page.content || "")}`
+    category: page.sourcePath === "index.md" ? localizedHomeText("docsCategory") : page.section || localizedHomeText("docsCategory"),
+    title: page.sourcePath === "index.md"
+      ? (activeLanguage() === "zh" ? "文档索引" : "Docs Index")
+      : page.title,
+    body: searchSnippet(page.summary || stripInlineMarkdown(page.content || "")),
+    href: canonicalDocsHref(page.route),
+    keywords: `${page.tags?.join(" ") || ""} ${searchPlainText(page.content || "")}`
   }));
   const signalItems = homeSignals.map((item) => {
     const localizedItem = localizedHomeSignal(item);
@@ -2360,6 +5159,13 @@ function getHomeSearchItems() {
       body: localizedHomeText("heroLede"),
       href: "/",
       keywords: "unified benchmark long-horizon world models"
+    },
+    {
+      category: localizedHomeText("homeCategory"),
+      title: localizedHomeText("comparisonKicker"),
+      body: localizedHomeText("comparisonTableAria"),
+      href: "/#comparison",
+      keywords: `comparison ${homeBenchmarkComparisons.map((item) => item.name).join(" ")}`
     }
   ];
   const deduped = new Map();
@@ -2415,12 +5221,21 @@ function findHomeSearchResults(value) {
 
   const terms = query.split(/\s+/).filter(Boolean);
 
-  return getHomeSearchItems()
+  const rankedEntries = getHomeSearchItems()
     .map((item) => ({ item, score: scoreHomeSearchItem(item, terms, query) }))
     .filter((entry) => entry.score > 0)
-    .sort((left, right) => right.score - left.score || left.item.title.localeCompare(right.item.title))
-    .slice(0, 10)
-    .map((entry) => entry.item);
+    .sort((left, right) => right.score - left.score || left.item.title.localeCompare(right.item.title));
+  const uniqueItems = new Map();
+
+  for (const entry of rankedEntries) {
+    const key = canonicalDocsHref(entry.item.href);
+
+    if (!uniqueItems.has(key)) {
+      uniqueItems.set(key, entry.item);
+    }
+  }
+
+  return [...uniqueItems.values()].slice(0, 10);
 }
 
 function scoreHomeSearchItem(item, terms, query) {
@@ -2500,7 +5315,7 @@ function homeSearchResultMarkup(item) {
     <a class="home-search-result" href="${escapeAttr(item.href)}" ${routeAttribute} ${externalAttribute}>
       <span>${escapeHtml(item.category)}</span>
       <strong>${escapeHtml(item.title)}</strong>
-      <p>${escapeHtml(item.body)}</p>
+      <p>${escapeHtml(searchSnippet(item.body))}</p>
     </a>
   `;
 }
@@ -2609,6 +5424,28 @@ function leaderboardFullModelName(row) {
 
 function filterLeaderboardMetrics(metrics = []) {
   return metrics.filter((metric) => !leaderboardHiddenMetrics.has(metric));
+}
+
+function leaderboardOverallMetrics(rows = []) {
+  const firstRowMetrics = filterLeaderboardMetrics(Object.keys(rows[0]?.scores || {}));
+
+  return firstRowMetrics.filter((metric) => rows.every((row) => Number.isFinite(row.scores?.[metric])));
+}
+
+function leaderboardOverallScore(row, overallMetrics = []) {
+  if (Number.isFinite(row?.overall)) {
+    return row.overall;
+  }
+
+  const values = overallMetrics
+    .map((metric) => row?.scores?.[metric])
+    .filter((value) => Number.isFinite(value));
+
+  if (!values.length || values.length !== overallMetrics.length) {
+    return null;
+  }
+
+  return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
 function formatLeaderboardScore(value) {
@@ -2853,12 +5690,13 @@ function leaderboardAscentRankMedalClass(rank) {
 
 function buildLeaderboardAscentLayout(rows) {
   const activeMetric = leaderboardState.sortMetric || "overall";
+  const overallMetrics = leaderboardOverallMetrics(rows);
   const entries = leaderboardSortedRows(rows, leaderboardState.sortMetric).map((row, index) => ({
       id: row.modelId || `${row.name}-${index}`,
       name: leaderboardDisplayModelName(row),
       fullName: leaderboardFullModelName(row),
       rank: index + 1,
-      score: activeMetric === "overall" ? row.overall : row.scores?.[activeMetric]
+      score: activeMetric === "overall" ? leaderboardOverallScore(row, overallMetrics) : row.scores?.[activeMetric]
     }));
 
   const leftEntries = [];
@@ -3043,8 +5881,9 @@ function leaderboardResultsContentMarkup() {
   }
 
   const activeMetric = leaderboardState.sortMetric || "overall";
+  const overallMetrics = leaderboardOverallMetrics(rows);
   const hasRankableScore = rows.some((row) => {
-    const value = activeMetric === "overall" ? row.overall : row.scores?.[activeMetric];
+    const value = activeMetric === "overall" ? leaderboardOverallScore(row, overallMetrics) : row.scores?.[activeMetric];
     return typeof value === "number" && Number.isFinite(value);
   });
 
@@ -3053,10 +5892,11 @@ function leaderboardResultsContentMarkup() {
 
 function leaderboardSortedRows(rows, sortMetric) {
   const metric = sortMetric || "overall";
+  const overallMetrics = metric === "overall" ? leaderboardOverallMetrics(rows) : [];
 
   return [...rows].sort((left, right) => {
-    const leftValue = metric === "overall" ? left.overall : left.scores?.[metric];
-    const rightValue = metric === "overall" ? right.overall : right.scores?.[metric];
+    const leftValue = metric === "overall" ? leaderboardOverallScore(left, overallMetrics) : left.scores?.[metric];
+    const rightValue = metric === "overall" ? leaderboardOverallScore(right, overallMetrics) : right.scores?.[metric];
 
     if (leftValue === rightValue) {
       return left.name.localeCompare(right.name);
@@ -3159,11 +5999,14 @@ function leaderboardModelCellMarkup(row) {
       (org) => `
         <span class="leaderboard-table__team-icon-slot" title="${escapeAttr(org.name)}">
           <img
-            class="leaderboard-table__team-icon${org.inset ? " is-inset" : ""}"
+            class="leaderboard-table__team-icon${org.inset ? " is-inset" : ""}${org.cropLeft ? " is-crop-left" : ""}"
             src="${escapeAttr(org.logo)}"
             alt=""
-            loading="lazy"
+            width="28"
+            height="28"
+            loading="eager"
             decoding="async"
+            onerror="this.onerror=null;this.src='/assets/leaderboard-orgs/default.svg?v=20260808-model-icons-v5';"
           />
         </span>
       `
@@ -3179,6 +6022,8 @@ function leaderboardModelCellMarkup(row) {
 }
 
 function leaderboardTableRowsMarkup(rows, metrics, activeMetric, { includeSamples = false, includeOverall = false } = {}) {
+  const overallMetrics = includeOverall ? leaderboardOverallMetrics(rows) : [];
+
   return rows
     .map((row, index) => {
       const metricCells = metrics
@@ -3196,7 +6041,7 @@ function leaderboardTableRowsMarkup(rows, metrics, activeMetric, { includeSample
           <td class="leaderboard-table__model">${leaderboardModelCellMarkup(row)}</td>
           ${includeSamples ? `<td class="leaderboard-table__samples">${escapeHtml(String(row.sampleCount))}</td>` : ""}
           ${includeOverall
-            ? `<td class="leaderboard-table__overall${activeMetric === "overall" ? " is-active-metric" : ""}">${Number.isFinite(row.overall) ? escapeHtml(formatLeaderboardScore(row.overall)) : ""}</td>`
+            ? `<td class="leaderboard-table__overall${activeMetric === "overall" ? " is-active-metric" : ""}">${escapeHtml(formatLeaderboardScore(leaderboardOverallScore(row, overallMetrics)))}</td>`
             : ""}
           ${metricCells}
         </tr>
@@ -4099,6 +6944,10 @@ function normalizeRoute(path) {
     return "/doc/";
   }
 
+  if (path === "/docs/" || path.startsWith("/docs/")) {
+    return `/doc/${path.slice("/docs/".length)}`;
+  }
+
   return path.endsWith("/") ? path : `${path}/`;
 }
 
@@ -4860,6 +7709,43 @@ function stripInlineMarkdown(value) {
     .replace(/`([^`]+)`/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/[*_]/g, "");
+}
+
+function searchPlainText(value) {
+  return String(value || "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/(^|\s)#{1,6}\s*/g, "$1")
+    .replace(/[>*_~]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function searchSnippet(value, maxLength = 220) {
+  const text = searchPlainText(value);
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 1).trim()}…`;
+}
+
+function canonicalDocsHref(value) {
+  const href = String(value || "");
+
+  if (href === "/docs" || href === "/docs/") {
+    return "/doc/";
+  }
+
+  if (href.startsWith("/docs/")) {
+    return `/doc/${href.slice("/docs/".length)}`;
+  }
+
+  return href;
 }
 
 function scrollToHashTarget() {

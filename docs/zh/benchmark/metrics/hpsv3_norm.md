@@ -28,6 +28,18 @@ S_{\mathrm{HPS}}
 
 WorldArena 将指标 raw 值存为 $[0, 1]$ 区间内的 $S_{\mathrm{HPS}} / 100$。得分越高表示与人类偏好对齐程度越强。若 HPSv3 backend 或 checkpoint 不可用，指标记为 `not_applicable`。
 
+!!! note "这些 1.0000 / 0.0000 是真实分数吗？"
+
+    这些都是真实评测结果，不是手动填写的占位值。示例区会优先选择归一化分差最大的、已核验同输入视频对。HPSv3-Norm 先对 20 帧的原始奖励取平均，再按公式 (2) 归一化：均值不低于 $p_{99}=8.66$ 时截断为 `1.0000`，不高于 $p_1=5.21$ 时截断为 `0.0000`。
+
+    三组展示案例的原始奖励均值（高分视频 / 低分视频）分别是：
+
+    - 工作区 `0020`：`8.872 / 4.902`
+    - 绿地景观 `0125`：`8.863 / 2.239`
+    - 风格化起居室 `0142`：`8.904 / 2.930`
+
+    因此，不同视频的原始奖励并不相同；只是经过固定分位数归一化和端点截断后，这三组恰好都显示为 `1.0000 / 0.0000`。
+
 ## 参考文献 {#reference}
 
 !!! quote "HPSv3 — Human Preference Score"
@@ -35,9 +47,9 @@ WorldArena 将指标 raw 值存为 $[0, 1]$ 区间内的 $S_{\mathrm{HPS}} / 100
     基于人类偏好监督的视觉-语言奖励模型；WorldArena 对每视频平均原始奖励施加线性分位数归一化。
 
 <!-- metric-examples:start -->
-## 人工精选的同 Case 对比
+## 已核验的同输入案例
 
-下列案例来自 `artifacts/reports` 生成的同-case比较索引。输入图、sample ID 与实际生成 prompt 完全一致；候选先按分位数和分差筛选，再逐帧人工复核。标签只表示该 metric 的相对高低，不代表模型整体优劣；为避免把单一案例误读成排行榜，卡片不展示模型名称。
+每个 metric 最多展示三个 case。每组中的两条视频必须属于同一 benchmark sample，且两侧首帧都通过与该组展示输入的 SIFT + RANSAC 几何匹配；不通过的候选不会发布。标签只表示当前 metric 的相对高低，不代表模型整体优劣。
 
 Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 
@@ -45,35 +57,113 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/d6b1f731ad67__image_static_photorealistic_aquatic_landscape_0001.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0001" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/838324ca602a__image_static_photorealistic_workspaces_0020__input.jpg" alt="输入图像: image_static_photorealistic_workspaces_0020" loading="lazy" decoding="async">
       <figcaption>输入图像</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">人工复核 · 同一 case、输入与 prompt · gap 0.1702</div>
-      <h4><code>image_static_photorealistic_aquatic_landscape_0001</code></h4>
-      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 1.0000</div>
+      <h4><code>image_static_photorealistic_workspaces_0020</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / indoor / workspaces</span></div>
       <div class="metric-case-prompt">
-        <span>实际生成 prompt</span>
-        <p>Camera orbit left. A coastal landscape with ocean waves, distant hills, and sunset sky.</p>
+        <span>基准 prompt target</span>
+        <p>Camera orbit left. A futuristic control room with swivel chairs, digital screens, and control panels.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">较高分结果保持了连贯且细节丰富的日落景观；较低分结果更平、更缺乏偏好一致性。HPSv3 只评价生成帧本身。</p>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card metric-output-card--good">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_aquatic_landscape_0001">
-          <source src="../../../assets/metric_examples/e3f37ff52cf2__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0001.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_workspaces_0020">
+          <source src="../../../assets/metric_examples/curated_20260801/46ef56e3b4ed__image_static_photorealistic_workspaces_0020__high.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 0.1702</div>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 1.0000</div>
       </div>
       <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>hpsv3_norm</span></figcaption>
     </figure>
     <figure class="metric-output-card metric-output-card--bad">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_aquatic_landscape_0001">
-          <source src="../../../assets/metric_examples/curated_20260801/9d372e4f2066__image_static_photorealistic_aquatic_landscape_0001__low.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_workspaces_0020">
+          <source src="../../../assets/metric_examples/curated_20260801/6e4b918a70e4__image_static_photorealistic_workspaces_0020__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>hpsv3_norm</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/12b0daad5e98__image_static_photorealistic_verdant_landscape_0125__input.jpg" alt="输入图像: image_static_photorealistic_verdant_landscape_0125" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 1.0000</div>
+      <h4><code>image_static_photorealistic_verdant_landscape_0125</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / outdoor / verdant_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>基准 prompt target</span>
+        <p>Camera move left. Ancient ruins with side garden, stone bench, and wildflowers.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_verdant_landscape_0125">
+          <source src="../../../assets/metric_examples/curated_20260801/e5a2820cbad6__image_static_photorealistic_verdant_landscape_0125__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 1.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>hpsv3_norm</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_verdant_landscape_0125">
+          <source src="../../../assets/metric_examples/curated_20260801/4d564f9b2bd0__image_static_photorealistic_verdant_landscape_0125__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>hpsv3_norm</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/150de03acfae__image_static_stylized_living_spaces_0142__input.jpg" alt="输入图像: image_static_stylized_living_spaces_0142" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 1.0000</div>
+      <h4><code>image_static_stylized_living_spaces_0142</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: stylized / indoor / living_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>基准 prompt target</span>
+        <p>Camera orbit left. A living room with sofa, coffee table, and bookshelves.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_stylized_living_spaces_0142">
+          <source src="../../../assets/metric_examples/curated_20260801/6a696264f97e__image_static_stylized_living_spaces_0142__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 1.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>hpsv3_norm</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_stylized_living_spaces_0142">
+          <source src="../../../assets/metric_examples/curated_20260801/f8fbb4a0c533__image_static_stylized_living_spaces_0142__low.mp4" type="video/mp4">
         </video>
         <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0000</div>
       </div>

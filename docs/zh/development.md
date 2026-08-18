@@ -15,9 +15,7 @@ pip install -e .
 | --- | --- |
 | `worldarena/` | Benchmark 核心：manifest、指标、报告、模型适配器 |
 | `config/` | Benchmark、数据集与模型 YAML 契约 |
-| `docs/en/`、`docs/zh/` | 文档源文件（Markdown） |
-| `docs/site-nav.yaml` | 文档站侧边栏与 hidden page 契约 |
-| `docs-site/` | Astro v6 + Starlight 构建器；输出到 `site/doc/` |
+| `docs/` | Markdown 源文件、资源、导航以及 Astro v6 + Starlight 构建器；输出到 `site/doc/` |
 | `site/` | 静态站点壳层、Leaderboard 与 `/doc/` 托管 |
 | `thirdparty/` | 链接的上游模型与指标运行时 |
 | `artifacts/` | 预测、报告与生成的数据统计 |
@@ -39,7 +37,7 @@ worldarena build-docs --config config/datasets.yaml
 **安装文档工具链**（Node.js 18+）：
 
 ```bash
-cd docs-site
+cd docs
 npm install
 ```
 
@@ -58,9 +56,9 @@ npm run docs:build
 
 构建流程会自动：
 
-1. 将 `docs/{en,zh}` 同步到 `docs-site/src/content/docs/`（连字符 slug、资源路径改写）。
-2. 重新生成 `docs-site/src/sidebar.generated.mjs`。
-3. 将 `docs/assets/` 中的共享资源链接到 docs public 目录。
+1. 将 `docs/{en,zh}` 同步到 `docs/src/content/docs/`（连字符 slug、资源路径改写）。
+2. 重新生成 `docs/src/sidebar.generated.mjs`。
+3. 将 `docs/assets/` 中的共享资源链接到 `docs/public/`。
 
 **与主站一起预览**（`/doc/` 与 Leaderboard、Arena 同服）：
 
@@ -70,9 +68,9 @@ npm run site
 # 默认 http://localhost:4173/doc/
 ```
 
-旧路径 `/docs/*` 会 301 重定向到 `/doc/*`。编辑带 case 媒体的 metric 页时，需保证 `docs/assets/metric_examples/` 存在；同步步骤会将其链接到 `/assets/worldarena/assets/metric_examples/`。
+旧路径 `/docs/*` 会 301 重定向到 `/doc/*`。编辑带 case 媒体的 metric 页时，需保证 `docs/assets/metric_examples/` 存在；同步步骤会将其链接到 `/doc/assets/worldarena/assets/metric_examples/`。
 
-更多路由映射与样式定制见 `docs-site/README.md`（`docs-site/src/styles/custom.css`）。
+更多路由映射与样式定制见 `docs/README.md`（`docs/src/styles/custom.css`）。
 
 ## 基准评测
 

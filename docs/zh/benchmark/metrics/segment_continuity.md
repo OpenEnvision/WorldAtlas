@@ -35,9 +35,9 @@ S_{\mathrm{seg}}
     [https://arxiv.org/abs/2008.04838](https://arxiv.org/abs/2008.04838)
 
 <!-- metric-examples:start -->
-## 人工精选的同 Case 对比
+## 已核验的同输入案例
 
-下列案例来自 `artifacts/reports` 生成的同-case比较索引。输入图、sample ID 与实际生成 prompt 完全一致；候选先按分位数和分差筛选，再逐帧人工复核。标签只表示该 metric 的相对高低，不代表模型整体优劣；为避免把单一案例误读成排行榜，卡片不展示模型名称。
+每个 metric 最多展示三个 case。每组中的两条视频必须属于同一 benchmark sample，且两侧首帧都通过与该组展示输入的 SIFT + RANSAC 几何匹配；不通过的候选不会发布。标签只表示当前 metric 的相对高低，不代表模型整体优劣。
 
 Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 
@@ -45,26 +45,26 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/curated_20260801/c5ed17f8111b__image_static_photorealistic_aquatic_landscape_0044__input.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0044" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/6419698d992c__image_static_photorealistic_city_0064__input.jpg" alt="输入图像: image_static_photorealistic_city_0064" loading="lazy" decoding="async">
       <figcaption>输入图像</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">人工复核 · 同一 case、输入与 prompt · gap 1.0000</div>
-      <h4><code>image_static_photorealistic_aquatic_landscape_0044</code></h4>
-      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 1.0000</div>
+      <h4><code>image_static_photorealistic_city_0064</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / outdoor / city</span></div>
       <div class="metric-case-prompt">
-        <span>实际生成 prompt</span>
-        <p>Camera pan left. An aquatic landscape with shoreline, seashells, and distant boat. Camera pull out. An aquatic landscape with sand dunes, beach grass, and seagulls. Camera move left. An aquatic landscape with boardwalk, beachgoers, and umbrellas.</p>
+        <span>基准 prompt target</span>
+        <p>Camera pull out. An expanded city view with buildings, distant hills, and extended waterfront.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">较高分海滩结果始终处于同一连续场景；较低分结果从沙滩棚突然硬切到无关的港口场景，并被检测为一次 cut。</p>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card metric-output-card--good">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_aquatic_landscape_0044">
-          <source src="../../../assets/metric_examples/curated_20260801/b0f27193421a__image_static_photorealistic_aquatic_landscape_0044__high.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_city_0064">
+          <source src="../../../assets/metric_examples/curated_20260801/4133494bf815__image_static_photorealistic_city_0064__high.mp4" type="video/mp4">
         </video>
         <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 1.0000</div>
       </div>
@@ -72,8 +72,86 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
     </figure>
     <figure class="metric-output-card metric-output-card--bad">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_aquatic_landscape_0044">
-          <source src="../../../assets/metric_examples/curated_20260801/665ac6c76204__image_static_photorealistic_aquatic_landscape_0044__low.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_city_0064">
+          <source src="../../../assets/metric_examples/curated_20260801/0dffa172da47__image_static_photorealistic_city_0064__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>segment_continuity</span><span>检测到的硬切次数: 1</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/051f91d93080__image_static_photorealistic_aquatic_landscape_0084__input.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0084" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 1.0000</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0084</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>基准 prompt target</span>
+        <p>Camera move left. A lake edge with reeds, autumn trees, and distant mountains.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_aquatic_landscape_0084">
+          <source src="../../../assets/metric_examples/curated_20260801/3ff6bbb0893e__image_static_photorealistic_aquatic_landscape_0084__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 1.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>segment_continuity</span><span>检测到的硬切次数: 0</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_aquatic_landscape_0084">
+          <source src="../../../assets/metric_examples/curated_20260801/fe8753fa0234__image_static_photorealistic_aquatic_landscape_0084__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>segment_continuity</span><span>检测到的硬切次数: 1</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/6e723fd86c7d__image_static_photorealistic_aquatic_landscape_0089__input.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0089" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 1.0000</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0089</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>基准 prompt target</span>
+        <p>Camera pull out. A rocky shoreline with trees and distant hills. Camera move right. A forest edge with dense foliage and sunlight. Camera pan right. A forest edge with forest path, scattered rocks, and tree canopy.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_aquatic_landscape_0089">
+          <source src="../../../assets/metric_examples/curated_20260801/78d59f9021b3__image_static_photorealistic_aquatic_landscape_0089__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 1.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>segment_continuity</span><span>检测到的硬切次数: 0</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_aquatic_landscape_0089">
+          <source src="../../../assets/metric_examples/curated_20260801/0b291d32d947__image_static_photorealistic_aquatic_landscape_0089__low.mp4" type="video/mp4">
         </video>
         <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0000</div>
       </div>

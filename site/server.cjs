@@ -9,11 +9,6 @@ const {
   formatLeaderboardModelLabel,
   leaderboardModelFullName
 } = require("./leaderboard-model-labels.cjs");
-const {
-  atomicLeaderboardSourceSignature,
-  atomicLeaderboardAvailableSuites,
-  buildAtomicLeaderboard
-} = require("./official-atomic-leaderboard.cjs");
 
 const root = __dirname;
 const worldArenaRoot = path.resolve(root, "..");
@@ -42,24 +37,6 @@ function firstExistingDirectory(candidates) {
   return candidates.find(Boolean) || "";
 }
 
-function firstExistingFile(candidates) {
-  for (const candidate of candidates) {
-    if (!candidate) {
-      continue;
-    }
-
-    try {
-      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
-        return candidate;
-      }
-    } catch (error) {
-      // Ignore unreadable paths and continue probing fallbacks.
-    }
-  }
-
-  return candidates.find(Boolean) || "";
-}
-
 const generatedRoot = firstExistingDirectory([
   process.env.WORLDARENA_GENERATED_ROOT,
   path.join(worldArenaRoot, "docs", "generated"),
@@ -75,11 +52,8 @@ const arenaPredictionSpecFileLimit = 4;
 const arenaSampleIndexVersion = "20260702-all-cases-v1";
 const compareIndexVersion = "20260718-v1";
 const compareCacheRoot = process.env.WORLDARENA_COMPARE_CACHE || path.join(root, ".cache", "compare");
-const finalResultsManifestPath = firstExistingFile([
-  process.env.WORLDARENA_FINAL_RESULTS_MANIFEST,
-  path.join(worldArenaRoot, "artifacts", "reports", "FINAL_RESULTS_MANIFEST.json"),
-  path.join(worldArenaRoot, "artifacts", "benchmark", "reports", "FINAL_RESULTS_MANIFEST.json")
-]);
+const leaderboardResultsPath = process.env.WORLDARENA_LEADERBOARD_RESULTS
+  || path.join(root, "leaderboard-results.json");
 const dataRoots = {
   images: process.env.WORLDARENA_IMAGE_DATA || path.join(dataRoot, "image"),
   videos: process.env.WORLDARENA_VIDEO_DATA || path.join(dataRoot, "video"),
@@ -2746,6 +2720,42 @@ function shouldGzipFile(request, filePath) {
   return [".css", ".html", ".js", ".json", ".svg", ".txt"].includes(path.extname(filePath).toLowerCase());
 }
 
+function parseByteRange(value, size) {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(String(value || "").trim());
+  if (!match || (!match[1] && !match[2]) || size <= 0) {
+    return null;
+  }
+
+  if (!match[1]) {
+    const suffixLength = Number(match[2]);
+    if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) {
+      return null;
+    }
+
+    return {
+      start: Math.max(0, size - suffixLength),
+      end: size - 1
+    };
+  }
+
+  const start = Number(match[1]);
+  const requestedEnd = match[2] ? Number(match[2]) : size - 1;
+  if (
+    !Number.isSafeInteger(start) ||
+    !Number.isSafeInteger(requestedEnd) ||
+    start < 0 ||
+    start >= size ||
+    requestedEnd < start
+  ) {
+    return null;
+  }
+
+  return {
+    start,
+    end: Math.min(requestedEnd, size - 1)
+  };
+}
+
 function sendFile(request, response, filePath) {
   const extension = path.extname(filePath).toLowerCase();
   const stat = fs.statSync(filePath);
@@ -2757,28 +2767,31 @@ function sendFile(request, response, filePath) {
   const range = request.headers.range;
 
   if (range) {
-    const match = range.match(/bytes=(\d*)-(\d*)/);
-
-    if (match) {
-      const start = match[1] ? Number(match[1]) : 0;
-      const end = match[2] ? Number(match[2]) : stat.size - 1;
-
-      if (start <= end && end < stat.size) {
-        response.writeHead(206, {
-          ...headers,
-          "Content-Length": end - start + 1,
-          "Content-Range": `bytes ${start}-${end}/${stat.size}`
-        });
-
-        if (request.method === "HEAD") {
-          response.end();
-          return;
-        }
-
-        fs.createReadStream(filePath, { start, end }).pipe(response);
-        return;
-      }
+    const parsedRange = parseByteRange(range, stat.size);
+    if (!parsedRange) {
+      response.writeHead(416, {
+        ...headers,
+        "Content-Length": 0,
+        "Content-Range": `bytes */${stat.size}`
+      });
+      response.end();
+      return;
     }
+
+    const { start, end } = parsedRange;
+    response.writeHead(206, {
+      ...headers,
+      "Content-Length": end - start + 1,
+      "Content-Range": `bytes ${start}-${end}/${stat.size}`
+    });
+
+    if (request.method === "HEAD") {
+      response.end();
+      return;
+    }
+
+    fs.createReadStream(filePath, { start, end }).pipe(response);
+    return;
   }
 
   if (shouldGzipFile(request, filePath)) {
@@ -3112,79 +3125,121 @@ function compareMetaPayload() {
 }
 
 const leaderboardFormalSuites = ["image_static", "image_dynamic", "video_static", "video_dynamic"];
-let atomicLeaderboardCache = null;
+let leaderboardResultsCache = null;
 
-function leaderboardGroupKey(modelEntry) {
-  return modelEntry.configModelId || modelEntry.runId;
-}
-
-function upsertLeaderboardGroup(groups, modelEntry) {
-  const key = leaderboardGroupKey(modelEntry);
-  let group = groups.get(key);
-
-  if (!group) {
-    group = {
-      groupKey: key,
-      modelId: modelEntry.configModelId || modelEntry.runId,
-      name: modelEntry.displayName || modelEntry.runName || modelEntry.runId,
-      runName: modelEntry.runName || "",
-      sampleCount: 0,
-      metricTotals: new Map()
-    };
-    groups.set(key, group);
-  }
-
-  if (modelEntry.displayName && modelEntry.displayName.length >= group.name.length) {
-    group.name = modelEntry.displayName;
-  }
-
-  if (modelEntry.runName) {
-    group.runName = modelEntry.runName;
-  }
-
-  group.sampleCount += 1;
-
-  Object.entries(modelEntry.scores || {}).forEach(([metric, value]) => {
-    if (typeof value !== "number" || !Number.isFinite(value)) {
-      return;
-    }
-
-    const current = group.metricTotals.get(metric) || { sum: 0, count: 0 };
-    current.sum += value;
-    current.count += 1;
-    group.metricTotals.set(metric, current);
-  });
-}
-
-function aggregateLeaderboardForSuite(suite) {
-  try {
-    const sourceSignature = atomicLeaderboardSourceSignature(
-      worldArenaRoot,
-      finalResultsManifestPath
-    );
-
-    if (!atomicLeaderboardCache || atomicLeaderboardCache.sourceSignature !== sourceSignature) {
-      const finalManifest = JSON.parse(fs.readFileSync(finalResultsManifestPath, "utf8"));
-      const modelMetadata = readCompareMeta()?.models || [];
-      atomicLeaderboardCache = {
-        sourceSignature,
-        snapshot: buildAtomicLeaderboard(finalManifest, {
-          projectRoot: worldArenaRoot,
-          finalManifestPath: finalResultsManifestPath,
-          modelMetadata
-        })
-      };
-    }
-    return atomicLeaderboardCache.snapshot?.suites?.[suite] || null;
-  } catch {
+function leaderboardNumericValue(value, label, { nullable = false } = {}) {
+  if (nullable && (value === null || value === undefined || value === "")) {
     return null;
   }
+
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite JSON number${nullable ? " or null" : ""}`);
+  }
+
+  return value;
 }
 
-function leaderboardAvailableSuites() {
-  return atomicLeaderboardCache?.snapshot
-    ? atomicLeaderboardAvailableSuites(atomicLeaderboardCache.snapshot)
-    : leaderboardFormalSuites.map((suite) => ({ id: suite, caseCount: 0, available: false }));
+function normalizeLeaderboardModel(suite, runName, source) {
+  if (!source || typeof source !== "object" || Array.isArray(source)) {
+    throw new Error(`${suite}.${runName} must be an object`);
+  }
+
+  const rawScores = source.scores || {};
+  if (typeof rawScores !== "object" || Array.isArray(rawScores)) {
+    throw new Error(`${suite}.${runName}.scores must be an object`);
+  }
+
+  const scores = {};
+  Object.entries(rawScores).forEach(([metric, value]) => {
+    if (value === null || value === "") {
+      return;
+    }
+    scores[metric] = leaderboardNumericValue(value, `${suite}.${runName}.scores.${metric}`);
+  });
+
+  const modelId = String(source.model_id || runName);
+  const labelInput = {
+    modelId,
+    name: String(source.label || runName),
+    runName,
+    fullName: String(source.full_name || runName)
+  };
+  const sampleCount = source.sample_count === undefined
+    ? 0
+    : leaderboardNumericValue(source.sample_count, `${suite}.${runName}.sample_count`);
+
+  return {
+    modelId,
+    name: source.label ? String(source.label) : formatLeaderboardModelLabel(labelInput),
+    fullName: source.full_name ? String(source.full_name) : leaderboardModelFullName(labelInput),
+    runName,
+    sampleCount,
+    overall: leaderboardNumericValue(source.overall, `${suite}.${runName}.overall`, { nullable: true }),
+    scores
+  };
+}
+
+function normalizeLeaderboardResults(source, modifiedAt) {
+  if (!source || typeof source !== "object" || !source.suites || typeof source.suites !== "object") {
+    throw new Error("leaderboard-results.json must contain a suites object");
+  }
+
+  const suites = {};
+  leaderboardFormalSuites.forEach((suite) => {
+    const rawSuite = source.suites[suite] || {};
+    const rawModels = rawSuite.models || {};
+
+    if (typeof rawModels !== "object" || Array.isArray(rawModels)) {
+      throw new Error(`${suite}.models must be an object`);
+    }
+
+    const rows = Object.entries(rawModels)
+      .map(([runName, model]) => normalizeLeaderboardModel(suite, runName, model))
+      .sort((left, right) => left.name.localeCompare(right.name) || left.runName.localeCompare(right.runName));
+    const metrics = Array.from(new Set(rows.flatMap((row) => Object.keys(row.scores)))).sort();
+
+    suites[suite] = {
+      rows,
+      metrics,
+      modelCount: rows.length,
+      atomicCellCount: rows.reduce((total, row) => total + Object.keys(row.scores).length, 0),
+      defaultMetric: "overall"
+    };
+  });
+
+  return {
+    generatedAt: modifiedAt.toISOString(),
+    sourceGeneratedAt: String(source.source_generated_at || ""),
+    suites
+  };
+}
+
+function loadLeaderboardResults() {
+  const stat = fs.statSync(leaderboardResultsPath);
+  const signature = `${stat.size}:${stat.mtimeMs}`;
+
+  if (leaderboardResultsCache?.signature === signature) {
+    return leaderboardResultsCache.snapshot;
+  }
+
+  const source = JSON.parse(fs.readFileSync(leaderboardResultsPath, "utf8"));
+  const snapshot = normalizeLeaderboardResults(source, stat.mtime);
+  leaderboardResultsCache = { signature, snapshot };
+  return snapshot;
+}
+
+function leaderboardAvailableSuites(snapshot) {
+  return leaderboardFormalSuites.map((suite) => {
+    const payload = snapshot.suites[suite];
+    return {
+      id: suite,
+      caseCount: payload.rows.reduce(
+        (maximum, row) => Math.max(maximum, Number(row.sampleCount) || 0),
+        0
+      ),
+      available: payload.modelCount > 0
+    };
+  });
 }
 
 function leaderboardPayload(query = {}) {
@@ -3194,24 +3249,29 @@ function leaderboardPayload(query = {}) {
     return { ok: false, error: `Unknown suite ${suite}` };
   }
 
-  const aggregate = aggregateLeaderboardForSuite(suite);
+  try {
+    const snapshot = loadLeaderboardResults();
+    const aggregate = snapshot.suites[suite];
 
-  if (!aggregate || !atomicLeaderboardCache?.snapshot) {
-    return { ok: false, error: "Final benchmark results are unavailable." };
+    return {
+      ok: true,
+      suite,
+      rows: aggregate.rows,
+      metrics: aggregate.metrics,
+      modelCount: aggregate.modelCount,
+      atomicCellCount: aggregate.atomicCellCount,
+      defaultMetric: aggregate.defaultMetric,
+      overallPolicy: "manual",
+      generatedAt: snapshot.generatedAt,
+      sourceGeneratedAt: snapshot.sourceGeneratedAt,
+      availableSuites: leaderboardAvailableSuites(snapshot)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Leaderboard results are unavailable."
+    };
   }
-
-  return {
-    ok: true,
-    suite,
-    rows: aggregate.rows || [],
-    metrics: aggregate.metrics || [],
-    modelCount: aggregate.modelCount || 0,
-    atomicCellCount: aggregate.atomicCellCount || 0,
-    defaultMetric: aggregate.defaultMetric || "overall",
-    overallPolicy: "blank",
-    generatedAt: atomicLeaderboardCache.snapshot.generatedAt,
-    availableSuites: leaderboardAvailableSuites()
-  };
 }
 
 const authModule = createAuthModule({

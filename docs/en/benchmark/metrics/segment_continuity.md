@@ -35,9 +35,9 @@ where $n_{\mathrm{cut}}$ counts videos with at least one retained cut. WorldAren
     [https://arxiv.org/abs/2008.04838](https://arxiv.org/abs/2008.04838)
 
 <!-- metric-examples:start -->
-## Human-reviewed Same-Case Example
+## Verified Same-Input Examples
 
-The examples below come from the same-case comparison index generated from `artifacts/reports`. The input image, sample ID, and exact generation prompt are identical within each pair. Candidates were shortlisted by score quantiles and gap, then reviewed frame by frame. Labels describe only this metric—not overall model quality—and model names are intentionally omitted so a single case is not mistaken for a leaderboard.
+Up to three cases are shown per metric. Within each case, both videos must belong to the same benchmark sample, and both first frames must pass SIFT + RANSAC geometric matching against that case's displayed input. Candidates that fail are not published. Labels compare this metric only, not overall model quality.
 
 Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 
@@ -45,26 +45,26 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/curated_20260801/c5ed17f8111b__image_static_photorealistic_aquatic_landscape_0044__input.jpg" alt="Input image: image_static_photorealistic_aquatic_landscape_0044" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/6419698d992c__image_static_photorealistic_city_0064__input.jpg" alt="Input image: image_static_photorealistic_city_0064" loading="lazy" decoding="async">
       <figcaption>Input image</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Human reviewed · same case, input and prompt · gap 1.0000</div>
-      <h4><code>image_static_photorealistic_aquatic_landscape_0044</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 1.0000</div>
+      <h4><code>image_static_photorealistic_city_0064</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / city</span></div>
       <div class="metric-case-prompt">
-        <span>Exact generation prompt</span>
-        <p>Camera pan left. An aquatic landscape with shoreline, seashells, and distant boat. Camera pull out. An aquatic landscape with sand dunes, beach grass, and seagulls. Camera move left. An aquatic landscape with boardwalk, beachgoers, and umbrellas.</p>
+        <span>Benchmark prompt target</span>
+        <p>Camera pull out. An expanded city view with buildings, distant hills, and extended waterfront.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">The higher-scoring beach rollout stays within one continuous scene; the lower-scoring rollout contains a detected hard cut from the beach hut to an unrelated harbor scene.</p>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card metric-output-card--good">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_aquatic_landscape_0044">
-          <source src="../../../assets/metric_examples/curated_20260801/b0f27193421a__image_static_photorealistic_aquatic_landscape_0044__high.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_city_0064">
+          <source src="../../../assets/metric_examples/curated_20260801/4133494bf815__image_static_photorealistic_city_0064__high.mp4" type="video/mp4">
         </video>
         <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 1.0000</div>
       </div>
@@ -72,8 +72,86 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
     </figure>
     <figure class="metric-output-card metric-output-card--bad">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_aquatic_landscape_0044">
-          <source src="../../../assets/metric_examples/curated_20260801/665ac6c76204__image_static_photorealistic_aquatic_landscape_0044__low.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_city_0064">
+          <source src="../../../assets/metric_examples/curated_20260801/0dffa172da47__image_static_photorealistic_city_0064__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>segment_continuity</span><span>Detected hard cuts: 1</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/051f91d93080__image_static_photorealistic_aquatic_landscape_0084__input.jpg" alt="Input image: image_static_photorealistic_aquatic_landscape_0084" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 1.0000</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0084</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera move left. A lake edge with reeds, autumn trees, and distant mountains.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_aquatic_landscape_0084">
+          <source src="../../../assets/metric_examples/curated_20260801/3ff6bbb0893e__image_static_photorealistic_aquatic_landscape_0084__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 1.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>segment_continuity</span><span>Detected hard cuts: 0</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_aquatic_landscape_0084">
+          <source src="../../../assets/metric_examples/curated_20260801/fe8753fa0234__image_static_photorealistic_aquatic_landscape_0084__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>segment_continuity</span><span>Detected hard cuts: 1</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/6e723fd86c7d__image_static_photorealistic_aquatic_landscape_0089__input.jpg" alt="Input image: image_static_photorealistic_aquatic_landscape_0089" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 1.0000</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0089</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera pull out. A rocky shoreline with trees and distant hills. Camera move right. A forest edge with dense foliage and sunlight. Camera pan right. A forest edge with forest path, scattered rocks, and tree canopy.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_aquatic_landscape_0089">
+          <source src="../../../assets/metric_examples/curated_20260801/78d59f9021b3__image_static_photorealistic_aquatic_landscape_0089__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 1.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>segment_continuity</span><span>Detected hard cuts: 0</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_aquatic_landscape_0089">
+          <source src="../../../assets/metric_examples/curated_20260801/0b291d32d947__image_static_photorealistic_aquatic_landscape_0089__low.mp4" type="video/mp4">
         </video>
         <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0000</div>
       </div>

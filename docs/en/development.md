@@ -15,9 +15,7 @@ pip install -e .
 | --- | --- |
 | `worldarena/` | Benchmark core: manifests, metrics, reporting, model adapters |
 | `config/` | Benchmark, dataset, and model YAML contracts |
-| `docs/en/`, `docs/zh/` | Authoritative documentation source (Markdown) |
-| `docs/site-nav.yaml` | Sidebar and hidden-page contract for the docs site |
-| `docs-site/` | Astro v6 + Starlight builder; output goes to `site/doc/` |
+| `docs/` | Markdown sources, assets, navigation, and the Astro v6 + Starlight builder; output goes to `site/doc/` |
 | `site/` | Static site shell, leaderboard, and `/doc/` hosting |
 | `thirdparty/` | Linked upstream model and metric runtimes |
 | `artifacts/` | Predictions, reports, and generated dataset stats |
@@ -39,7 +37,7 @@ Documentation is built with **Astro + Starlight** (not MkDocs). Source lives in 
 **Install docs toolchain** (Node.js 18+):
 
 ```bash
-cd docs-site
+cd docs
 npm install
 ```
 
@@ -58,9 +56,9 @@ npm run docs:build
 
 The build pipeline automatically:
 
-1. Syncs `docs/{en,zh}` into `docs-site/src/content/docs/` (hyphenated slugs, asset path rewrites).
-2. Regenerates `docs-site/src/sidebar.generated.mjs`.
-3. Links shared assets from `docs/assets/` into the docs public tree.
+1. Syncs `docs/{en,zh}` into `docs/src/content/docs/` (hyphenated slugs, asset path rewrites).
+2. Regenerates `docs/src/sidebar.generated.mjs`.
+3. Links shared assets from `docs/assets/` into `docs/public/`.
 
 **Preview with the main site** (serves `/doc/` alongside leaderboard and arena):
 
@@ -70,9 +68,9 @@ npm run site
 # default http://localhost:4173/doc/
 ```
 
-Legacy `/docs/*` URLs redirect to `/doc/*`. When editing metric pages with embedded case media, ensure `docs/assets/metric_examples/` is present; the sync step symlinks it under `/assets/worldarena/assets/metric_examples/`.
+Legacy `/docs/*` URLs redirect to `/doc/*`. When editing metric pages with embedded case media, ensure `docs/assets/metric_examples/` is present; the sync step symlinks it under `/doc/assets/worldarena/assets/metric_examples/`.
 
-See `docs-site/README.md` for route mapping and customization (`docs-site/src/styles/custom.css`).
+See `docs/README.md` for route mapping and customization (`docs/src/styles/custom.css`).
 
 ## Benchmark
 

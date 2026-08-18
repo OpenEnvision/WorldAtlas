@@ -63,7 +63,9 @@ const LABELS_WITHOUT_VERSION = new Set([
   "ltx2.3",
   "longcat-video",
   "longcat",
-  "cosmos-predict2.5"
+  "cosmos-predict2.5",
+  "stable-virtual-camera",
+  "matrix-game-1"
 ]);
 
 function normalizeDisplayBase(name) {
@@ -146,10 +148,6 @@ function extractVersionNotes(runHint) {
 
   if (hint.includes("flashattn")) {
     notes.push("flash-attn");
-  }
-
-  if (hint.includes("plan-missing")) {
-    notes.push("plan missing");
   }
 
   if (hint.includes("rmsnorm-v2")) {

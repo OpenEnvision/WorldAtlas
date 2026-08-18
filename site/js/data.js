@@ -1,5 +1,5 @@
-import { docsNavigation, docsPages } from "./content.js?v=20260718-dimension-overview-v1";
-import { docsNavigationZh, docsPagesZh } from "./content.zh.js?v=20260718-dimension-overview-v1";
+import { docsNavigation, docsPages } from "./content.js?v=20260808-search-v1";
+import { docsNavigationZh, docsPagesZh } from "./content.zh.js?v=20260808-search-v1";
 
 export { docsNavigation, docsNavigationZh, docsPages, docsPagesZh };
 
@@ -614,10 +614,7 @@ const arenaBattleHomePost = {
 };
 
 const selectedHomeEntries = [
-  benchmarkPage,
-  metricsPage,
   arenaBattleHomePost,
-  developmentPage,
   awesomeWorldModelingHomePost,
   worldFoundryHomePost,
   gaiaHomePost

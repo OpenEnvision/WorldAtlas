@@ -41,9 +41,9 @@
 - Recommended use: report it only as a supporting full-reference metric.
 
 <!-- metric-examples:start -->
-## Human-reviewed Same-Case Example
+## Verified Same-Input Examples
 
-The examples below come from the same-case comparison index generated from `artifacts/reports`. The input image, sample ID, and exact generation prompt are identical within each pair. Candidates were shortlisted by score quantiles and gap, then reviewed frame by frame. Labels describe only this metric—not overall model quality—and model names are intentionally omitted so a single case is not mistaken for a leaderboard.
+Up to three cases are shown per metric. Within each case, both videos must belong to the same benchmark sample, and both first frames must pass SIFT + RANSAC geometric matching against that case's displayed input. Candidates that fail are not published. Labels compare this metric only, not overall model quality.
 
 Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 
@@ -51,37 +51,115 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/curated_20260801/205a86ec0eb6__image_static_photorealistic_living_spaces_0069__input.jpg" alt="Input image: image_static_photorealistic_living_spaces_0069" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/c2cb9cbb7479__image_static_photorealistic_passageways_0076__input.jpg" alt="Input image: image_static_photorealistic_passageways_0076" loading="lazy" decoding="async">
       <figcaption>Input image</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Human reviewed · same case, input and prompt · gap 0.8650</div>
-      <h4><code>image_static_photorealistic_living_spaces_0069</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / living_spaces</span></div>
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.7476</div>
+      <h4><code>image_static_photorealistic_passageways_0076</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / passageways</span></div>
       <div class="metric-case-prompt">
-        <span>Exact generation prompt</span>
-        <p>Camera pull out. A living room corner with bookshelf, floor lamp, and small side table. Camera pan right. A living room corner with framed photos, coat rack, and small rug. Camera move right. A dining area with dining table, chairs, and hanging light fixture.</p>
+        <span>Benchmark prompt target</span>
+        <p>Camera move right. A library aisle with bookshelves, books, and reading table.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">The higher-scoring rollout retains the input room's spatial layout and major structures; the lower-scoring rollout drifts to generic, differently arranged interiors. SSIM emphasizes structural fidelity to the reference.</p>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card metric-output-card--good">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_living_spaces_0069">
-          <source src="../../../assets/metric_examples/curated_20260801/b2598580eefe__image_static_photorealistic_living_spaces_0069__high.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_passageways_0076">
+          <source src="../../../assets/metric_examples/curated_20260801/5bc5be0ae204__image_static_photorealistic_passageways_0076__high.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9625</div>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9410</div>
       </div>
       <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>ssim</span></figcaption>
     </figure>
     <figure class="metric-output-card metric-output-card--bad">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_living_spaces_0069">
-          <source src="../../../assets/metric_examples/curated_20260801/a50c49b082e2__image_static_photorealistic_living_spaces_0069__low.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_passageways_0076">
+          <source src="../../../assets/metric_examples/curated_20260801/07118e8eb56d__image_static_photorealistic_passageways_0076__low.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0975</div>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.1934</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>ssim</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/5bb59c6bfb78__image_static_photorealistic_dining_spaces_0032__input.jpg" alt="Input image: image_static_photorealistic_dining_spaces_0032" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.6786</div>
+      <h4><code>image_static_photorealistic_dining_spaces_0032</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / dining_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera orbit left. An eclectic kitchen with martini sign, posters, and fruit bowl.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_dining_spaces_0032">
+          <source src="../../../assets/metric_examples/curated_20260801/c0df8ae0b4fc__image_static_photorealistic_dining_spaces_0032__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9218</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>ssim</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_dining_spaces_0032">
+          <source src="../../../assets/metric_examples/curated_20260801/81c3f89d947c__image_static_photorealistic_dining_spaces_0032__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.2432</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>ssim</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/e31f9eb4b75b__image_static_photorealistic_verdant_landscape_0001__input.jpg" alt="Input image: image_static_photorealistic_verdant_landscape_0001" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.6761</div>
+      <h4><code>image_static_photorealistic_verdant_landscape_0001</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / verdant_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera pull out. An indoor garden with flower beds, statues, and arched windows. Camera pan left. An indoor garden with side path, benches, and flower beds. Camera move left. An indoor garden with exit door, plants, and sunlight.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_verdant_landscape_0001">
+          <source src="../../../assets/metric_examples/curated_20260801/3b4d97b32e5b__image_static_photorealistic_verdant_landscape_0001__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.7518</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>ssim</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_verdant_landscape_0001">
+          <source src="../../../assets/metric_examples/curated_20260801/258b319b48d6__image_static_photorealistic_verdant_landscape_0001__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0757</div>
       </div>
       <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>ssim</span></figcaption>
     </figure>

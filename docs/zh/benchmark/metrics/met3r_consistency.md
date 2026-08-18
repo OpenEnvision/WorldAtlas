@@ -28,41 +28,41 @@
 <article class="metric-case-exhibit">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/5cd19d15663a__image_static_photorealistic_aquatic_landscape_0098.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0098" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/inputs/0a296f3513d2__image_static_stylized_dining_spaces_0115.jpg" alt="输入图像: image_static_stylized_dining_spaces_0115" loading="lazy" decoding="async">
       <figcaption>输入图像</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 1 · 可见畸变对应更低的多视角一致性</div>
-      <h4><code>image_static_photorealistic_aquatic_landscape_0098</code></h4>
-      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-kicker">Case 1 · 可见结构漂移会降低多视角一致性</div>
+      <h4><code>image_static_stylized_dining_spaces_0115</code></h4>
+      <div class="metric-case-meta"><span>image_static</span><span>stylized / indoor / dining_spaces</span></div>
       <div class="metric-case-prompt">
         <span>Benchmark prompt target</span>
-        <p>Camera pan right. An aquatic landscape with pebble beach, calm sea, and blue sky.</p>
+        <p>Camera pan right. A futuristic dining area with dining table, chairs, and digital displays. Camera pull out. A futuristic living room with sofa, digital screens, and neon accents. Camera move right. A futuristic balcony with neon signs, railing, and skyscrapers.</p>
       </div>
-      <p class="metric-case-note">Output A 保持了海滩结构；Output B 出现大幅视角畸变和黑边，有效重叠下降，MEt3R raw distance 随之升高。</p>
+      <p class="metric-case-note">Output A 按目标场景序列推进，在评测 anchor 处仍保持清晰、稳定的结构；Output B 出现半透明重复轮廓与扭曲的房间几何，有效 overlap 下降，MEt3R raw distance 随之升高。</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: ac3d-image-static，水岸 case 0098">
-          <source src="../../../assets/metric_examples/d6290f43f723__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: LongCat-Video，风格化 dining space case 0115">
+          <source src="../../../assets/metric_examples/5842a0b01dda__longcat-video-image-static-8gpu-20260612_133950__image_static_stylized_dining_spaces_0115.mp4" type="video/mp4">
         </video>
       </div>
       <figcaption class="metric-output-caption">
         <strong>Output A</strong>
-        <span>MEt3R：<strong>0.9730</strong> normalized · 0.0540 raw · 0.7044 overlap</span>
+        <span>MEt3R：<strong>0.9823</strong> normalized · 0.0354 raw · 0.9388 overlap</span>
       </figcaption>
     </figure>
     <figure class="metric-output-card">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: LucidDreamer，水岸 case 0098">
-          <source src="../../../assets/metric_examples/20dc16268a49__luciddreamer-image-static-8gpu-20260613_151844__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: AC3D，风格化 dining space case 0115">
+          <source src="../../../assets/metric_examples/d47ca5e1e3f1__ac3d-image-static__image_static_stylized_dining_spaces_0115.mp4" type="video/mp4">
         </video>
       </div>
       <figcaption class="metric-output-caption">
         <strong>Output B</strong>
-        <span>MEt3R：<strong>0.6341</strong> normalized · 0.7317 raw · 0.3180 overlap</span>
+        <span>MEt3R：<strong>0.5737</strong> normalized · 0.8527 raw · 0.4778 overlap</span>
       </figcaption>
     </figure>
   </div>
@@ -71,41 +71,41 @@
 <article class="metric-case-exhibit">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/f6e5fd26f831__image_static_photorealistic_workspaces_0106.jpg" alt="输入图像: image_static_photorealistic_workspaces_0106" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/inputs/6504e40a15dd__image_static_photorealistic_aquatic_landscape_0006.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0006" loading="lazy" decoding="async">
       <figcaption>输入图像</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 2 · 投影重叠为空时记最差值</div>
-      <h4><code>image_static_photorealistic_workspaces_0106</code></h4>
-      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / indoor / workspaces</span></div>
+      <div class="metric-case-kicker">Case 2 · 视角突变导致 anchor overlap 过低</div>
+      <h4><code>image_static_photorealistic_aquatic_landscape_0006</code></h4>
+      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / outdoor / aquatic_landscape</span></div>
       <div class="metric-case-prompt">
         <span>Benchmark prompt target</span>
-        <p>Camera move left. A workspaces scene with bookshelf, indoor plants, and adjacent wall.</p>
+        <p>Camera pull out. A forest edge with rocky shore and trees. Camera pan right. A forest edge with open meadow, grassy field, and distant hills. Camera move right. A hiking trail with path through trees and small clearing.</p>
       </div>
-      <p class="metric-case-note">Output B 没有保留参考 workspace。MEt3R 找不到有效投影重叠，因此按文档中的 worst-value policy 记为 raw 2.0、normalized 0.0。</p>
+      <p class="metric-case-note">Output A 逐步改变视角，同时保留山体、林线和湖岸结构；Output B 更突然地跳向林间小径。在评测 anchor 上，有效投影 overlap 降至 0.0529，MEt3R raw distance 因此升高。</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: ac3d-image-static，workspace case 0106">
-          <source src="../../../assets/metric_examples/c0b5d552bebf__ac3d-image-static__image_static_photorealistic_workspaces_0106.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: AC3D，水域景观 case 0006">
+          <source src="../../../assets/metric_examples/4d5bdc0d37b0__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0006.mp4" type="video/mp4">
         </video>
       </div>
       <figcaption class="metric-output-caption">
         <strong>Output A</strong>
-        <span>MEt3R：<strong>0.9948</strong> normalized · 0.0104 raw · 0.9237 overlap</span>
+        <span>MEt3R：<strong>0.9559</strong> normalized · 0.0883 raw · 0.8652 overlap</span>
       </figcaption>
     </figure>
     <figure class="metric-output-card">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: CameraCtrl，workspace case 0106">
-          <source src="../../../assets/metric_examples/5a90ac712030__cameractrl_image_static__image_static_photorealistic_workspaces_0106.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: LongCat-Video，水域景观 case 0006">
+          <source src="../../../assets/metric_examples/4043d273f2b0__longcat-video-image-static-8gpu-20260612_133950__image_static_photorealistic_aquatic_landscape_0006.mp4" type="video/mp4">
         </video>
       </div>
       <figcaption class="metric-output-caption">
         <strong>Output B</strong>
-        <span>MEt3R：<strong>0.0000</strong> normalized · 2.0000 raw · 0.0000 overlap</span>
+        <span>MEt3R：<strong>0.7167</strong> normalized · 0.5666 raw · 0.0529 overlap</span>
       </figcaption>
     </figure>
   </div>

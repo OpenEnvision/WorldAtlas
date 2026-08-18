@@ -2,18 +2,6 @@
 
 WorldArena 将 **源码**（`thirdparty/` git 子模块）与 **权重和缓存**（`ckpt/` 或 `WORLDARENA_CHECKPOINT_ROOT`）分开管理。本页涵盖环境配置、metric checkpoint 下载、第三方 checkout 与 evaluation 工作流。
 
-WorldArena 是 [OpenEnvision](https://openenvision.github.io/index.html) 研究平台的一部分——面向开放视觉智能与世界建模的产学研联合枢纽。
-
-| 章节 | 内容 |
-|------|------|
-| [环境配置说明](#环境配置说明) | 克隆、`.env`、checkpoint 根目录 |
-| [Evaluation 环境](#evaluation-环境配置) | Conda `worldarena` 环境与 metric runtime 编译 |
-| [下载 Checkpoint](#下载-checkpoint-与资产) | Metric 权重、HF/Torch 缓存、一键脚本 |
-| [第三方源码](#第三方源码配置) | 子模块布局（见 `thirdparty/README.md`） |
-| [模型 adapter 权重](#模型-adapter-权重) | 可选生成模型 checkpoint |
-| [运行 Evaluation](#运行-evaluation) | Manifest → 生成 → 评测 |
-| [Physics Simulator](#physics-simulator-runtime) | 外部 simulator 轨道 |
-
 ## 环境配置说明
 
 #### 1. 克隆仓库

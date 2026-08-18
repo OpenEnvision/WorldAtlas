@@ -25,99 +25,13 @@ S_{\mathrm{flick}}
 $S_{\mathrm{flick}}$ 越高表示闪烁越少。该指标**仅需 prediction**，且至少需要两帧。
 
 <!-- temporal-flickering-representative-cases:start -->
-## Temporal Flickering 代表性对比
+## 已核验的同输入 Temporal Flickering 案例
 
-以下代表性对比从正式 `image_static` Temporal Flickering 结果中筛选，并经过 frame strip 人工复核。每个展示固定一个 benchmark case——相同的输入图像与 eval-plan prompt target——并比较两个 prediction 视频。Temporal Flickering 分数越高越好，mean pairwise pixel MAE 越低越好。
+本页只保留一个案例。两条视频的首帧都已通过与展示输入的几何匹配；分数仅用于解释当前 metric，不代表模型整体排名。
 
-不同 adapter 的实际 conditioning 可能不同，因此这些是 metric 诊断案例，不是受控的模型排名对比。精确路径、哈希、frame-pair 统计及 report 来源见[机器可读 Temporal Flickering 清单](../../../assets/metric_examples/temporal_flickering_representative_manifest.csv)。
+[机器可读审计清单](../../../assets/metric_examples/temporal_flickering_representative_manifest.csv).
 
 <div class="metric-case-stack">
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/5cd19d15663a__image_static_photorealistic_aquatic_landscape_0098.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0098" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 1 · 可见不稳定会增大相邻帧 MAE</div>
-      <h4><code>image_static_photorealistic_aquatic_landscape_0098</code></h4>
-      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / outdoor / aquatic_landscape</span></div>
-      <div class="metric-case-prompt">
-        <span>Benchmark prompt target</span>
-        <p>Camera pan right. An aquatic landscape with pebble beach, calm sea, and blue sky.</p>
-      </div>
-      <p class="metric-case-note">Output A 的变化平滑；Output B 出现大幅视角畸变和移动黑边，因此相邻帧像素差显著增大。</p>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-    <figure class="metric-output-card">
-      <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: ac3d-image-static，水岸 case 0098">
-          <source src="../../../assets/metric_examples/d6290f43f723__ac3d-image-static__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
-        </video>
-      </div>
-      <figcaption class="metric-output-caption">
-        <strong>Output A</strong>
-        <span>Temporal Flickering：<strong>0.9812</strong> · mean pairwise MAE 4.7833</span>
-      </figcaption>
-    </figure>
-    <figure class="metric-output-card">
-      <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: LucidDreamer，水岸 case 0098">
-          <source src="../../../assets/metric_examples/20dc16268a49__luciddreamer-image-static-8gpu-20260613_151844__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
-        </video>
-      </div>
-      <figcaption class="metric-output-caption">
-        <strong>Output B</strong>
-        <span>Temporal Flickering：<strong>0.7074</strong> · mean pairwise MAE 74.6172</span>
-      </figcaption>
-    </figure>
-  </div>
-</article>
-
-<article class="metric-case-exhibit">
-  <div class="metric-case-context">
-    <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/f6e5fd26f831__image_static_photorealistic_workspaces_0106.jpg" alt="输入图像: image_static_photorealistic_workspaces_0106" loading="lazy" decoding="async">
-      <figcaption>输入图像</figcaption>
-    </figure>
-    <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 2 · 近乎静止的输出可以得到很高分</div>
-      <h4><code>image_static_photorealistic_workspaces_0106</code></h4>
-      <div class="metric-case-meta"><span>image_static</span><span>photorealistic / indoor / workspaces</span></div>
-      <div class="metric-case-prompt">
-        <span>Benchmark prompt target</span>
-        <p>Camera move left. A workspaces scene with bookshelf, indoor plants, and adjacent wall.</p>
-      </div>
-      <p class="metric-case-note">Output B 几乎静止，因此得到 0.9940；但它没有保留参考 workspace。Temporal Flickering 只衡量 prediction 侧的像素稳定性，不检查场景正确性或 conditioning fidelity。</p>
-    </div>
-  </div>
-  <div class="metric-output-grid">
-    <figure class="metric-output-card">
-      <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output A: ac3d-image-static，workspace case 0106">
-          <source src="../../../assets/metric_examples/c0b5d552bebf__ac3d-image-static__image_static_photorealistic_workspaces_0106.mp4" type="video/mp4">
-        </video>
-      </div>
-      <figcaption class="metric-output-caption">
-        <strong>Output A</strong>
-        <span>Temporal Flickering：<strong>0.9769</strong> · mean pairwise MAE 5.8888</span>
-      </figcaption>
-    </figure>
-    <figure class="metric-output-card">
-      <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Output B: CameraCtrl，workspace case 0106">
-          <source src="../../../assets/metric_examples/5a90ac712030__cameractrl_image_static__image_static_photorealistic_workspaces_0106.mp4" type="video/mp4">
-        </video>
-      </div>
-      <figcaption class="metric-output-caption">
-        <strong>Output B</strong>
-        <span>Temporal Flickering：<strong>0.9940</strong> · mean pairwise MAE 1.5278</span>
-      </figcaption>
-    </figure>
-  </div>
-</article>
-
 <article class="metric-case-exhibit">
   <div class="metric-case-context">
     <figure class="metric-input-card">
@@ -125,7 +39,7 @@ $S_{\mathrm{flick}}$ 越高表示闪烁越少。该指标**仅需 prediction**�
       <figcaption>输入图像</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Case 3 · 相邻像素 MAE 对正常相机运动敏感</div>
+      <div class="metric-case-kicker">核验案例 · 相邻像素 MAE 对正常相机运动敏感</div>
       <h4><code>image_static_photorealistic_living_spaces_0140</code></h4>
       <div class="metric-case-meta"><span>image_static</span><span>photorealistic / indoor / living_spaces</span></div>
       <div class="metric-case-prompt">
@@ -160,7 +74,6 @@ $S_{\mathrm{flick}}$ 越高表示闪烁越少。该指标**仅需 prediction**�
     </figure>
   </div>
 </article>
-
 </div>
 <!-- temporal-flickering-representative-cases:end -->
 

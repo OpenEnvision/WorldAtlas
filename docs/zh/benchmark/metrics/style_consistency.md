@@ -70,9 +70,9 @@ S_{\mathrm{style}}
 \]
 
 <!-- metric-examples:start -->
-## 人工精选的同 Case 对比
+## 已核验的同输入案例
 
-下列案例来自 `artifacts/reports` 生成的同-case比较索引。输入图、sample ID 与实际生成 prompt 完全一致；候选先按分位数和分差筛选，再逐帧人工复核。标签只表示该 metric 的相对高低，不代表模型整体优劣；为避免把单一案例误读成排行榜，卡片不展示模型名称。
+每个 metric 最多展示三个 case。每组中的两条视频必须属于同一 benchmark sample，且两侧首帧都通过与该组展示输入的 SIFT + RANSAC 几何匹配；不通过的候选不会发布。标签只表示当前 metric 的相对高低，不代表模型整体优劣。
 
 Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 
@@ -80,37 +80,115 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/curated_20260801/f7d43b5c2adb__image_static_photorealistic_passageways_0144__input.jpg" alt="输入图像: image_static_photorealistic_passageways_0144" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/2a97f5440de6__image_static_photorealistic_dining_spaces_0150__input.jpg" alt="输入图像: image_static_photorealistic_dining_spaces_0150" loading="lazy" decoding="async">
       <figcaption>输入图像</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">人工复核 · 同一 case、输入与 prompt · gap 0.0103</div>
-      <h4><code>image_static_photorealistic_passageways_0144</code></h4>
-      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / indoor / passageways</span></div>
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 1.0000</div>
+      <h4><code>image_static_photorealistic_dining_spaces_0150</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / indoor / dining_spaces</span></div>
       <div class="metric-case-prompt">
-        <span>实际生成 prompt</span>
-        <p>Camera pan left. A modern hallway with geometric walls, adjacent corridor, and metallic ceiling lights.</p>
+        <span>基准 prompt target</span>
+        <p>Camera pan left. A living area with fireplace, chairs, and wall sculpture.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">较高分结果保持连贯的写实几何室内风格；较低分结果则切换成无关的反光条纹外观。</p>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card metric-output-card--good">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_passageways_0144">
-          <source src="../../../assets/metric_examples/curated_20260801/e33a33498b58__image_static_photorealistic_passageways_0144__high.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_dining_spaces_0150">
+          <source src="../../../assets/metric_examples/0bcc7d417411__wan22-image-static-8gpu-20260612_160808__image_static_photorealistic_dining_spaces_0150.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 0.9999</div>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 1.0000</div>
       </div>
       <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>style_consistency</span></figcaption>
     </figure>
     <figure class="metric-output-card metric-output-card--bad">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_passageways_0144">
-          <source src="../../../assets/metric_examples/curated_20260801/a5ac53bfecb4__image_static_photorealistic_passageways_0144__low.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_dining_spaces_0150">
+          <source src="../../../assets/metric_examples/6122df6dd5c2__yume-sample5b-image-static-dynamic-5s__image_static_photorealistic_dining_spaces_0150.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.9896</div>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>style_consistency</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/780d02db54a5__image_static_stylized_public_spaces_0146__input.jpg" alt="输入图像: image_static_stylized_public_spaces_0146" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 1.0000</div>
+      <h4><code>image_static_stylized_public_spaces_0146</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: stylized / indoor / public_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>基准 prompt target</span>
+        <p>Camera pan left. A futuristic facility with control panels, holographic displays, and neon lights. Camera move left. A futuristic facility with interactive kiosks, virtual reality stations, and holographic displays. Camera pull out. A futuristic facility with security checkpoint, automated doors, and interactive kiosks.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_stylized_public_spaces_0146">
+          <source src="../../../assets/metric_examples/5142ed71bc6a__lingbot_world__image_static_stylized_public_spaces_0146.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 1.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>style_consistency</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_stylized_public_spaces_0146">
+          <source src="../../../assets/metric_examples/9f3e178a8bf5__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_public_spaces_0146.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>style_consistency</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/6f78b01dec99__image_static_stylized_public_spaces_0059__input.jpg" alt="输入图像: image_static_stylized_public_spaces_0059" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 1.0000</div>
+      <h4><code>image_static_stylized_public_spaces_0059</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: stylized / indoor / public_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>基准 prompt target</span>
+        <p>Camera orbit right. A grand library hall with bookshelves, reading table, and chairs.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_stylized_public_spaces_0059">
+          <source src="../../../assets/metric_examples/f4a431310e49__wan22-ti2v-5b-image-static-plan-missing__image_static_stylized_public_spaces_0059.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 1.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>style_consistency</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_stylized_public_spaces_0059">
+          <source src="../../../assets/metric_examples/2d56c790c720__yume-sample5b-missing-reverse-5s-target__image_static_stylized_public_spaces_0059.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0000</div>
       </div>
       <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>style_consistency</span></figcaption>
     </figure>

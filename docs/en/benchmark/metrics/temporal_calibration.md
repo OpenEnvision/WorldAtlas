@@ -46,9 +46,9 @@ WorldArena maps `physical_fps_error`, `physical_fps_pct_error`, and `physical_fp
     arXiv:2603.14375, 2026.
 
 <!-- metric-examples:start -->
-## Human-reviewed Same-Case Example
+## Verified Same-Input Examples
 
-The examples below come from the same-case comparison index generated from `artifacts/reports`. The input image, sample ID, and exact generation prompt are identical within each pair. Candidates were shortlisted by score quantiles and gap, then reviewed frame by frame. Labels describe only this metric—not overall model quality—and model names are intentionally omitted so a single case is not mistaken for a leaderboard.
+Up to three cases are shown per metric. Within each case, both videos must belong to the same benchmark sample, and both first frames must pass SIFT + RANSAC geometric matching against that case's displayed input. Candidates that fail are not published. Labels compare this metric only, not overall model quality.
 
 Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 
@@ -56,58 +56,214 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/curated_20260801/2eb4a88b4229__image_static_stylized_suburb_0123__input.jpg" alt="Input image: image_static_stylized_suburb_0123" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/b7d0e735d01a__image_static_stylized_verdant_landscape_0159__input.jpg" alt="Input image: image_static_stylized_verdant_landscape_0159" loading="lazy" decoding="async">
       <figcaption>Input image</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Human reviewed · same case, input and prompt · gap 0.9833</div>
-      <h4><code>image_static_stylized_suburb_0123</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / suburb</span></div>
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.9733</div>
+      <h4><code>image_static_stylized_verdant_landscape_0159</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / verdant_landscape</span></div>
       <div class="metric-case-prompt">
-        <span>Exact generation prompt</span>
-        <p>Camera move left. A historic courtyard with garden, pathways, and seating.</p>
+        <span>Benchmark prompt target</span>
+        <p>Camera move right. A stylized courtyard with stone pathway, plants, and adjacent garden.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">Both outputs depict the same courtyard. Judge the playback cadence: the higher-scoring output's estimated physical FPS nearly matches its container FPS, while the lower-scoring output's motion is calibrated far faster than its declared rate.</p>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card metric-output-card--good">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_stylized_suburb_0123">
-          <source src="../../../assets/metric_examples/curated_20260801/7baeb4773bfa__image_static_stylized_suburb_0123__high.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_stylized_verdant_landscape_0159">
+          <source src="../../../assets/metric_examples/curated_20260801/d10703dd2dfa__image_static_stylized_verdant_landscape_0159__high.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9933</div>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9867</div>
       </div>
-      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>physical_fps_error</span><span>Estimated physical FPS 23.8 · declared FPS 24.0 · absolute error 0.2</span></figcaption>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>physical_fps_error</span><span>Estimated physical FPS 15.4 · declared FPS 15.0 · absolute error 0.4</span></figcaption>
     </figure>
     <figure class="metric-output-card metric-output-card--bad">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_stylized_suburb_0123">
-          <source src="../../../assets/metric_examples/curated_20260801/8fca43aff466__image_static_stylized_suburb_0123__low.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_stylized_verdant_landscape_0159">
+          <source src="../../../assets/metric_examples/curated_20260801/641547bfe52f__image_static_stylized_verdant_landscape_0159__low.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0100</div>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0133</div>
       </div>
-      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>physical_fps_error</span><span>Estimated physical FPS 44.7 · declared FPS 15.0 · absolute error 29.7</span></figcaption>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>physical_fps_error</span><span>Estimated physical FPS 45.6 · declared FPS 16.0 · absolute error 29.6</span></figcaption>
     </figure>
   </div>
 </article>
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/curated_20260801/0f505edb11c8__image_static_photorealistic_workspaces_0144__input.jpg" alt="Input image: image_static_photorealistic_workspaces_0144" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/c4d9230ba2a0__image_static_photorealistic_city_0047__input.jpg" alt="Input image: image_static_photorealistic_city_0047" loading="lazy" decoding="async">
       <figcaption>Input image</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Human reviewed · same case, input and prompt · gap 0.7192</div>
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.9700</div>
+      <h4><code>image_static_photorealistic_city_0047</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / outdoor / city</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera pan left. A historic city street with adjacent street, historic buildings, and pedestrians.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_city_0047">
+          <source src="../../../assets/metric_examples/curated_20260801/616843ed9241__image_static_photorealistic_city_0047__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9733</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>physical_fps_error</span><span>Estimated physical FPS 24.8 · declared FPS 24.0 · absolute error 0.8</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_city_0047">
+          <source src="../../../assets/metric_examples/curated_20260801/485cdc128fad__image_static_photorealistic_city_0047__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0033</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>physical_fps_error</span><span>Estimated physical FPS 37.9 · declared FPS 8.0 · absolute error 29.9</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/77047b98a662__image_static_photorealistic_dining_spaces_0061__input.jpg" alt="Input image: image_static_photorealistic_dining_spaces_0061" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.9800</div>
+      <h4><code>image_static_photorealistic_dining_spaces_0061</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / dining_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera pull out. A bar interior with seating area, tables, and patrons.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_dining_spaces_0061">
+          <source src="../../../assets/metric_examples/curated_20260801/77d04c8a566c__image_static_photorealistic_dining_spaces_0061__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9867</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>physical_fps_error</span><span>Estimated physical FPS 60.4 · declared FPS 60.0 · absolute error 0.4</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_dining_spaces_0061">
+          <source src="../../../assets/metric_examples/curated_20260801/d82b8808bafe__image_static_photorealistic_dining_spaces_0061__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0067</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>physical_fps_error</span><span>Estimated physical FPS 44.8 · declared FPS 15.0 · absolute error 29.8</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/9520a96c9ee1__image_static_stylized_city_0137__input.jpg" alt="Input image: image_static_stylized_city_0137" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.6648</div>
+      <h4><code>image_static_stylized_city_0137</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / city</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera pan right. A japanese storefront with adjacent storefront, street vendor, and pedestrians.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_stylized_city_0137">
+          <source src="../../../assets/metric_examples/curated_20260801/acb2c2032abe__image_static_stylized_city_0137__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9840</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>physical_fps_intra_video_cv</span><span>Segment physical FPS 60.1–63.0 · coefficient of variation 0.016</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_stylized_city_0137">
+          <source src="../../../assets/metric_examples/curated_20260801/781bbd8a087a__image_static_stylized_city_0137__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.3192</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>physical_fps_intra_video_cv</span><span>Segment physical FPS 12.8–55.8 · coefficient of variation 0.681</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/c464d64b3556__image_static_stylized_aquatic_landscape_0148__input.jpg" alt="Input image: image_static_stylized_aquatic_landscape_0148" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.6596</div>
+      <h4><code>image_static_stylized_aquatic_landscape_0148</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: stylized / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera pan right. A coastal landscape with rocky outcrop, boats, and extended shoreline.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_stylized_aquatic_landscape_0148">
+          <source src="../../../assets/metric_examples/curated_20260801/de99760ac54c__image_static_stylized_aquatic_landscape_0148__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9788</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>physical_fps_intra_video_cv</span><span>Segment physical FPS 19.3–21.0 · coefficient of variation 0.021</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_stylized_aquatic_landscape_0148">
+          <source src="../../../assets/metric_examples/curated_20260801/4c25fd4af6e3__image_static_stylized_aquatic_landscape_0148__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.3192</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>physical_fps_intra_video_cv</span><span>Segment physical FPS 11.6–47.6 · coefficient of variation 0.681</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/feb41abcc29d__image_static_photorealistic_workspaces_0144__input.jpg" alt="Input image: image_static_photorealistic_workspaces_0144" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.7192</div>
       <h4><code>image_static_photorealistic_workspaces_0144</code></h4>
       <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / workspaces</span></div>
       <div class="metric-case-prompt">
-        <span>Exact generation prompt</span>
+        <span>Benchmark prompt target</span>
         <p>Camera move left. A modern conference room with side wall, whiteboard, and chairs. Camera pull out. A modern conference room with entrance door, coat rack, and chairs. Camera pan left. A modern conference room with hallway and artwork.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">The higher-scoring conference-room move maintains an almost constant physical-FPS cadence; the lower-scoring output drops sharply from a fast opening to a much slower remainder. Appearance quality is not what this metric measures.</p>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
     </div>
   </div>
   <div class="metric-output-grid">
@@ -134,26 +290,65 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/curated_20260801/547f0dde32ed__image_static_photorealistic_dining_spaces_0137__input.jpg" alt="Input image: image_static_photorealistic_dining_spaces_0137" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/08d3e1c44186__image_static_photorealistic_passageways_0139__input.jpg" alt="Input image: image_static_photorealistic_passageways_0139" loading="lazy" decoding="async">
       <figcaption>Input image</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">Human reviewed · same case, input and prompt · gap 0.9983</div>
-      <h4><code>image_static_photorealistic_dining_spaces_0137</code></h4>
-      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / dining_spaces</span></div>
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.9983</div>
+      <h4><code>image_static_photorealistic_passageways_0139</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / passageways</span></div>
       <div class="metric-case-prompt">
-        <span>Exact generation prompt</span>
-        <p>Camera orbit left. A cozy dining area with bar counter, stools, and tables.</p>
+        <span>Benchmark prompt target</span>
+        <p>Camera move left. A walk-in closet with shelves, clothing racks, and clothing.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">The higher-scoring orbit has estimated physical FPS aligned with its declared FPS; the lower-scoring output moves at roughly 60 physical FPS while declaring only 13 FPS, producing a very large relative error.</p>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card metric-output-card--good">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_dining_spaces_0137">
-          <source src="../../../assets/metric_examples/curated_20260801/10332b72a711__image_static_photorealistic_dining_spaces_0137__high.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_passageways_0139">
+          <source src="../../../assets/metric_examples/curated_20260801/564b831d08d3__image_static_photorealistic_passageways_0139__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9983</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>physical_fps_pct_error</span><span>Estimated physical FPS 59.9 · declared FPS 60.0 · relative error 0.17%</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_passageways_0139">
+          <source src="../../../assets/metric_examples/curated_20260801/191ee5f9e93e__image_static_photorealistic_passageways_0139__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>physical_fps_pct_error</span><span>Estimated physical FPS 40.0 · declared FPS 15.0 · relative error 166.67%</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/72f1d4727577__image_static_photorealistic_public_spaces_0167__input.jpg" alt="Input image: image_static_photorealistic_public_spaces_0167" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.9983</div>
+      <h4><code>image_static_photorealistic_public_spaces_0167</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / public_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera push in. A circular room with marble pedestal, intricate floor pattern, and glowing base.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_public_spaces_0167">
+          <source src="../../../assets/metric_examples/curated_20260801/3c85cdec6032__image_static_photorealistic_public_spaces_0167__high.mp4" type="video/mp4">
         </video>
         <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9983</div>
       </div>
@@ -161,12 +356,51 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
     </figure>
     <figure class="metric-output-card metric-output-card--bad">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_dining_spaces_0137">
-          <source src="../../../assets/metric_examples/curated_20260801/41740b9f9a00__image_static_photorealistic_dining_spaces_0137__low.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_public_spaces_0167">
+          <source src="../../../assets/metric_examples/curated_20260801/54a5bf98aaae__image_static_photorealistic_public_spaces_0167__low.mp4" type="video/mp4">
         </video>
         <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0000</div>
       </div>
-      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>physical_fps_pct_error</span><span>Estimated physical FPS 59.8 · declared FPS 13.0 · relative error 360.00%</span></figcaption>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>physical_fps_pct_error</span><span>Estimated physical FPS 50.4 · declared FPS 15.0 · relative error 236.00%</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/3d5e5f5585e3__image_static_photorealistic_passageways_0115__input.jpg" alt="Input image: image_static_photorealistic_passageways_0115" loading="lazy" decoding="async">
+      <figcaption>Input image</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">Input verified · same benchmark case · gap 0.9983</div>
+      <h4><code>image_static_photorealistic_passageways_0115</code></h4>
+      <div class="metric-case-meta"><span>Suite: image_static</span><span>Scene: photorealistic / indoor / passageways</span></div>
+      <div class="metric-case-prompt">
+        <span>Benchmark prompt target</span>
+        <p>Camera orbit right. A dimly lit alleyway with upper landing, doorway, and railing.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">Both first frames passed geometric matching against the displayed input; labels compare this metric only.</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Higher metric score: image_static_photorealistic_passageways_0115">
+          <source src="../../../assets/metric_examples/curated_20260801/48b996e1b9e0__image_static_photorealistic_passageways_0115__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">Higher metric score · Score 0.9983</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Higher metric score</strong><span>physical_fps_pct_error</span><span>Estimated physical FPS 60.1 · declared FPS 60.0 · relative error 0.17%</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="Lower metric score: image_static_photorealistic_passageways_0115">
+          <source src="../../../assets/metric_examples/curated_20260801/f32b8752d3c3__image_static_photorealistic_passageways_0115__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">Lower metric score · Score 0.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>Lower metric score</strong><span>physical_fps_pct_error</span><span>Estimated physical FPS 41.0 · declared FPS 15.0 · relative error 173.33%</span></figcaption>
     </figure>
   </div>
 </article>

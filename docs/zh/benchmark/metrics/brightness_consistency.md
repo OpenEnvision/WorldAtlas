@@ -70,9 +70,9 @@ S_{\mathrm{Brightness}}
 \]
 
 <!-- metric-examples:start -->
-## 人工精选的同 Case 对比
+## 已核验的同输入案例
 
-下列案例来自 `artifacts/reports` 生成的同-case比较索引。输入图、sample ID 与实际生成 prompt 完全一致；候选先按分位数和分差筛选，再逐帧人工复核。标签只表示该 metric 的相对高低，不代表模型整体优劣；为避免把单一案例误读成排行榜，卡片不展示模型名称。
+每个 metric 最多展示三个 case。每组中的两条视频必须属于同一 benchmark sample，且两侧首帧都通过与该组展示输入的 SIFT + RANSAC 几何匹配；不通过的候选不会发布。标签只表示当前 metric 的相对高低，不代表模型整体优劣。
 
 Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 
@@ -80,37 +80,115 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/inputs/38c5df592fc3__image_static_photorealistic_aquatic_landscape_0098.jpg" alt="输入图像: image_static_photorealistic_aquatic_landscape_0098" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/bfa2ac37072c__image_static_photorealistic_terrestrial_landscape_0003__input.jpg" alt="输入图像: image_static_photorealistic_terrestrial_landscape_0003" loading="lazy" decoding="async">
       <figcaption>输入图像</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">人工复核 · 同一 case、输入与 prompt · gap 0.9727</div>
-      <h4><code>image_static_photorealistic_aquatic_landscape_0098</code></h4>
-      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / outdoor / aquatic_landscape</span></div>
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 0.8218</div>
+      <h4><code>image_static_photorealistic_terrestrial_landscape_0003</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / outdoor / terrestrial_landscape</span></div>
       <div class="metric-case-prompt">
-        <span>实际生成 prompt</span>
-        <p>Camera pan right. An aquatic landscape with pebble beach, calm sea, and blue sky.</p>
+        <span>基准 prompt target</span>
+        <p>Camera orbit right. A mountain landscape with mountains, trees, and mist.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">较高分结果持续保持明亮海岸的曝光分布；较低分结果很快转成昏暗、浑浊的亮度分布。</p>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
     </div>
   </div>
   <div class="metric-output-grid">
     <figure class="metric-output-card metric-output-card--good">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_aquatic_landscape_0098">
-          <source src="../../../assets/metric_examples/6dcb1b7c126c__cosmos3-nano-image-static__image_static_photorealistic_aquatic_landscape_0098.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_terrestrial_landscape_0003">
+          <source src="../../../assets/metric_examples/curated_20260801/c7092b92b672__image_static_photorealistic_terrestrial_landscape_0003__high.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 0.9991</div>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 0.9839</div>
       </div>
       <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>brightness_distribution_consistency</span></figcaption>
     </figure>
     <figure class="metric-output-card metric-output-card--bad">
       <div class="metric-output-media-wrap">
-        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_aquatic_landscape_0098">
-          <source src="../../../assets/metric_examples/curated_20260801/f1f662bdef18__image_static_photorealistic_aquatic_landscape_0098__low.mp4" type="video/mp4">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_terrestrial_landscape_0003">
+          <source src="../../../assets/metric_examples/curated_20260801/7a5ad1b24e1b__image_static_photorealistic_terrestrial_landscape_0003__low.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0264</div>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.1621</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>brightness_distribution_consistency</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/d43de2a66deb__image_static_stylized_suburb_0035__input.jpg" alt="输入图像: image_static_stylized_suburb_0035" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 0.9079</div>
+      <h4><code>image_static_stylized_suburb_0035</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: stylized / outdoor / suburb</span></div>
+      <div class="metric-case-prompt">
+        <span>基准 prompt target</span>
+        <p>Camera orbit right. A stylized cityscape with tower, skyscrapers, and trees.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_stylized_suburb_0035">
+          <source src="../../../assets/metric_examples/curated_20260801/83b4220004c5__image_static_stylized_suburb_0035__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 0.9988</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>brightness_distribution_consistency</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_stylized_suburb_0035">
+          <source src="../../../assets/metric_examples/curated_20260801/088f33146a5d__image_static_stylized_suburb_0035__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0909</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>brightness_distribution_consistency</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/a2fd68c1863b__image_static_stylized_passageways_0041__input.jpg" alt="输入图像: image_static_stylized_passageways_0041" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 0.9815</div>
+      <h4><code>image_static_stylized_passageways_0041</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: stylized / indoor / passageways</span></div>
+      <div class="metric-case-prompt">
+        <span>基准 prompt target</span>
+        <p>Camera orbit left. A stylized courtyard with arches, columns, and round table.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_stylized_passageways_0041">
+          <source src="../../../assets/metric_examples/curated_20260801/a1b55065b899__image_static_stylized_passageways_0041__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 1.0000</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>brightness_distribution_consistency</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_stylized_passageways_0041">
+          <source src="../../../assets/metric_examples/5063767b647a__astra__image_static_stylized_passageways_0041.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0185</div>
       </div>
       <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>brightness_distribution_consistency</span></figcaption>
     </figure>

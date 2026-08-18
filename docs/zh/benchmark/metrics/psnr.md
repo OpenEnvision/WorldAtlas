@@ -109,9 +109,9 @@ PSNR 越高，表示预测帧在像素值上越接近参考帧。
     [https://zh.wikipedia.org/wiki/峰值信噪比](https://zh.wikipedia.org/wiki/%E5%B3%B0%E5%80%BC%E4%BF%A1%E5%99%AA%E6%AF%94)
 
 <!-- metric-examples:start -->
-## 人工精选的同 Case 对比
+## 已核验的同输入案例
 
-下列案例来自 `artifacts/reports` 生成的同-case比较索引。输入图、sample ID 与实际生成 prompt 完全一致；候选先按分位数和分差筛选，再逐帧人工复核。标签只表示该 metric 的相对高低，不代表模型整体优劣；为避免把单一案例误读成排行榜，卡片不展示模型名称。
+每个 metric 最多展示三个 case。每组中的两条视频必须属于同一 benchmark sample，且两侧首帧都通过与该组展示输入的 SIFT + RANSAC 几何匹配；不通过的候选不会发布。标签只表示当前 metric 的相对高低，不代表模型整体优劣。
 
 Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 
@@ -119,19 +119,58 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
 <article class="metric-case-exhibit metric-case-exhibit--curated">
   <div class="metric-case-context">
     <figure class="metric-input-card">
-      <img src="../../../assets/metric_examples/curated_20260801/d943a1dd2b07__image_static_photorealistic_workspaces_0024__input.jpg" alt="输入图像: image_static_photorealistic_workspaces_0024" loading="lazy" decoding="async">
+      <img src="../../../assets/metric_examples/curated_20260801/5cab8eaec6e4__image_static_photorealistic_workspaces_0117__input.jpg" alt="输入图像: image_static_photorealistic_workspaces_0117" loading="lazy" decoding="async">
       <figcaption>输入图像</figcaption>
     </figure>
     <div class="metric-case-copy">
-      <div class="metric-case-kicker">人工复核 · 同一 case、输入与 prompt · gap 0.9382</div>
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 0.7359</div>
+      <h4><code>image_static_photorealistic_workspaces_0117</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / indoor / workspaces</span></div>
+      <div class="metric-case-prompt">
+        <span>基准 prompt target</span>
+        <p>Camera pan right. A classroom side wall with chairs, bookshelves, and educational posters.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_workspaces_0117">
+          <source src="../../../assets/metric_examples/curated_20260801/8e571e708f69__image_static_photorealistic_workspaces_0117__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 0.8383</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>psnr</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_workspaces_0117">
+          <source src="../../../assets/metric_examples/curated_20260801/ca683a6eace2__image_static_photorealistic_workspaces_0117__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.1024</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>psnr</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/6360a5343b05__image_static_photorealistic_workspaces_0024__input.jpg" alt="输入图像: image_static_photorealistic_workspaces_0024" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 0.7289</div>
       <h4><code>image_static_photorealistic_workspaces_0024</code></h4>
       <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / indoor / workspaces</span></div>
       <div class="metric-case-prompt">
-        <span>实际生成 prompt</span>
+        <span>基准 prompt target</span>
         <p>Camera pull out. A minimalist workspace with desk, chair, and lamp. Camera pan right. A minimalist workspace with hallway, door, and wall art. Camera move right. A minimalist workspace with hallway, wall art, and small table.</p>
         <small>prompt source: prompt_target</small>
       </div>
-      <p class="metric-case-note">较高分结果在镜头移动中保留了输入工作区的结构与外观；较低分结果则切换成无关的局部特写。PSNR 衡量参考保真度，不等同于独立审美质量。</p>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
     </div>
   </div>
   <div class="metric-output-grid">
@@ -147,9 +186,48 @@ Audit manifest: `docs/assets/metric_examples/curated_same_case_manifest.json`.
     <figure class="metric-output-card metric-output-card--bad">
       <div class="metric-output-media-wrap">
         <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_workspaces_0024">
-          <source src="../../../assets/metric_examples/curated_20260801/4b869c9aa35b__image_static_photorealistic_workspaces_0024__low.mp4" type="video/mp4">
+          <source src="../../../assets/metric_examples/curated_20260801/b031dec5f0c9__image_static_photorealistic_workspaces_0024__low.mp4" type="video/mp4">
         </video>
-        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0067</div>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.2160</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>psnr</span></figcaption>
+    </figure>
+  </div>
+</article>
+<article class="metric-case-exhibit metric-case-exhibit--curated">
+  <div class="metric-case-context">
+    <figure class="metric-input-card">
+      <img src="../../../assets/metric_examples/curated_20260801/fba24fe7ae82__image_static_photorealistic_living_spaces_0047__input.jpg" alt="输入图像: image_static_photorealistic_living_spaces_0047" loading="lazy" decoding="async">
+      <figcaption>输入图像</figcaption>
+    </figure>
+    <div class="metric-case-copy">
+      <div class="metric-case-kicker">输入已核验 · 同一 benchmark case · gap 0.7216</div>
+      <h4><code>image_static_photorealistic_living_spaces_0047</code></h4>
+      <div class="metric-case-meta"><span>套件: image_static</span><span>场景: photorealistic / indoor / living_spaces</span></div>
+      <div class="metric-case-prompt">
+        <span>基准 prompt target</span>
+        <p>Camera pan left. A modern living room with sofa, coffee table, and floor lamp.</p>
+        <small>prompt source: prompt_target</small>
+      </div>
+      <p class="metric-case-note">两条视频的首帧都已通过与展示输入的几何匹配核验；高低标签只比较当前 metric。</p>
+    </div>
+  </div>
+  <div class="metric-output-grid">
+    <figure class="metric-output-card metric-output-card--good">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较高指标分: image_static_photorealistic_living_spaces_0047">
+          <source src="../../../assets/metric_examples/curated_20260801/f5b7ed37cba9__image_static_photorealistic_living_spaces_0047__high.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--good">较高指标分 · 分数 0.7422</div>
+      </div>
+      <figcaption class="metric-output-caption"><strong>较高指标分</strong><span>psnr</span></figcaption>
+    </figure>
+    <figure class="metric-output-card metric-output-card--bad">
+      <div class="metric-output-media-wrap">
+        <video class="metric-output-video" controls muted loop playsinline preload="metadata" aria-label="较低指标分: image_static_photorealistic_living_spaces_0047">
+          <source src="../../../assets/metric_examples/curated_20260801/35aa0edbbbfb__image_static_photorealistic_living_spaces_0047__low.mp4" type="video/mp4">
+        </video>
+        <div class="metric-score-pill metric-score-pill--bad">较低指标分 · 分数 0.0206</div>
       </div>
       <figcaption class="metric-output-caption"><strong>较低指标分</strong><span>psnr</span></figcaption>
     </figure>

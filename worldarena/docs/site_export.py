@@ -13,16 +13,16 @@ import yaml
 
 def _source_to_route(source_path: str) -> str:
     if source_path == "index.md":
-        return "/docs/"
+        return "/doc/"
 
     stem = source_path[:-3] if source_path.endswith(".md") else source_path
     if stem.endswith("/index"):
         stem = stem[: -len("/index")]
     elif stem == "index":
-        return "/docs/"
+        return "/doc/"
 
     segments = [part.replace("_", "-") for part in stem.split("/") if part]
-    return f"/docs/{'/'.join(segments)}/"
+    return f"/doc/{'/'.join(segments)}/"
 
 
 def _extract_title(content: str, fallback: str) -> str:
@@ -34,15 +34,18 @@ def _extract_title(content: str, fallback: str) -> str:
 
 def _strip_markdown(value: str) -> str:
     text = re.sub(r"```[\s\S]*?```", " ", value)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"!\[([^\]]*)\]\([^)]+\)", r"\1", text)
     text = re.sub(r"`([^`]+)`", r"\1", text)
     text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
-    text = re.sub(r"[*_>#]", " ", text)
+    text = re.sub(r"(^|\s)#{1,6}\s*", r"\1", text)
+    text = re.sub(r"[*_>#~]", " ", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
 
 def _extract_summary(content: str) -> str:
-    return _extract_hero_markdown(content)
+    return _strip_markdown(_extract_hero_markdown(content))
 
 
 def _extract_hero_markdown(content: str) -> str:
