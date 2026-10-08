@@ -1,0 +1,8 @@
+# Display-only mapping from audited raw FVMD distances.
+# Retain legacy scores >= 5/100; smoothly extend the low-score tail.
+# s = 1 - raw / 10000; score = s if s >= p else p*p / (2*p - s).
+# At s=p, both value and derivative match the linear branch.
+lower: 0.0
+upper: 10000.0
+higher_is_better: false
+soft_tail: 0.05

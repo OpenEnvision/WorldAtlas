@@ -1,0 +1,56 @@
+model:
+  name: echo-wm-base
+  family: echo_wm
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, actions, camera_pose]
+  roles: [candidate]
+  repo_root: thirdparty/JoyAI-Echo
+  python_bin: python
+  checkpoint_dir: ckpt/Echo-WM
+  entrypoint: echo_wm/inference_wm.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    # Cache checkpoint state dicts in worker RAM after their first use. Upstream
+    # GPU component swapping remains enabled, but the 47GB checkpoint is not
+    # reread from storage for every sample.
+    checkpoint_cache: cpu_state_dict
+    ffmpeg_bin: ffmpeg
+    nproc_per_node: 1
+    checkpoint_file: echo-wm-base.safetensors
+    gemma_dir: gemma-3
+    num_frames: 241
+    fps: 24
+    width: 1280
+    height: 704
+    steps: 30
+    seed: 42
+    video_cfg: 4.0
+    audio_cfg: 2.0
+    stg_scale: 1.0
+    stg_blocks: [29]
+    fov_deg: 70.0
+    translation_speed: 0.05
+    rotation_speed_deg: 0.5
+    pitch_limit_deg: 60.0
+    no_audio: false
+  env:
+    PYTHONNOUSERSITE: "1"
+    TOKENIZERS_PARALLELISM: "false"
+  metadata:
+    variant: Echo-WM Base (LTX-2.3, audio-video)
+    official_repo: https://github.com/jd-opensource/JoyAI-Echo/tree/main/echo_wm
+    checkpoint_repo: Echo-Team/Echo-WM
+    notes: >
+      WorldAtlas prompts are wrapped in Echo-WM's documented six-field format.
+      Camera tokens are mapped to the public WASD/IJKL Action DSL, and audio is
+      retained in the generated MP4. Each resident worker caches checkpoint state
+      dicts in CPU RAM and reuses them across its shard; GPU components still swap
+      stage-by-stage to fit one H100/H800. The unpublished long-horizon Flash model
+      is intentionally not claimed by this configuration.

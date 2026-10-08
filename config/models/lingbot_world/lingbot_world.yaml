@@ -1,0 +1,44 @@
+model:
+  name: lingbot-world
+  family: lingbot_world
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, trajectory]
+  roles: [candidate]
+  # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
+  python_bin: python
+  repo_root: thirdparty/lingbot-world
+  # thirdparty/lingbot-world/lingbot-world-base-cam
+  # currently points to this canonical ckpt location.
+  checkpoint_dir: ckpt/lingbot-world-base-cam
+  entrypoint: generate.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    # The adapter forwards the common upstream CLI controls directly from this block,
+    # including sample_steps/sample_shift/sample_guide_scale, ulysses_size, t5_cpu,
+    # t5_fsdp, dit_fsdp, use_prompt_extend, prompt_extend_*, and action_string_by_suite.
+    task: i2v-A14B
+    size: 480*832
+    frame_num: 81
+    base_seed: 42
+    sample_solver: unipc
+    sample_steps: 70
+    sample_shift: 10.0
+    launcher: torchrun
+    nproc_per_node: 8
+    master_port: 29541
+    ulysses_size: 8
+    t5_fsdp: true
+    dit_fsdp: true
+    offload_model: false
+    vis_ui: false
+  metadata:
+    variant: base_cam
+    upstream_model_id: robbyant/lingbot-world-base-cam

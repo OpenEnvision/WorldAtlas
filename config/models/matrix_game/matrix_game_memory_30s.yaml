@@ -1,0 +1,68 @@
+model:
+  name: matrix-game-memory-30s
+  family: matrix_game_3
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - actions
+  roles:
+  - candidate
+  repo_root: thirdparty/Matrix-Game/Matrix-Game-3
+  python_bin: python
+  checkpoint_dir: ckpt/Matrix-Game-3.0
+  entrypoint: generate.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    size: 704*1280
+    fps: 17
+    seed: 42
+    num_inference_steps: 3
+    sample_guide_scale: 5.0
+    vae_type: mg_lightvae_v2
+    compile_vae: true
+    use_int8: true
+    visualize_ops: false
+    action_plan:
+      default:
+      - forward
+      - camera_r
+      - forward_right
+      - camera_l
+      - forward
+      by_suite:
+        image_static:
+        - forward
+        - camera_r
+        - forward
+        - camera_l
+        image_dynamic:
+        - forward
+        - camera_r
+        - forward_right
+        - camera_l
+        - forward
+      frames_per_action: 12
+      first_clip_frames: 57
+      clip_overlap_frames: 16
+      num_iterations: 2
+    target_duration_seconds: 30
+    action_source: worldatlas_camera_path
+  metadata:
+    track: memory_loop
+    memory_roster_key: matrix_game_3
+    derived_from: matrix_game.yaml
+    memory_notes: plan_rollout grows num_iterations from the first-clip / overlap geometry. action_source
+      reads camera_path so the closed itinerary is executed instead of the static plan in the base config.
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: matrix_game_memory.yaml

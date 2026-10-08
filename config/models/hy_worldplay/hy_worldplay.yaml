@@ -1,0 +1,56 @@
+model:
+  name: hy-worldplay
+  family: hy_worldplay
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, trajectory, camera_pose]
+  roles: [candidate]
+  # HY-WorldPlay's published inference stack targets Python 3.10 with a dedicated CUDA environment.
+  # Place the upstream repo under thirdparty/ after preparing the environment externally.
+  repo_root: thirdparty/HY-WorldPlay
+  python_bin: python
+  # Action adapters live under ckpt/HY-WorldPlay. The HunyuanVideo-1.5 backbone
+  # (transformer/vae/text encoder) is passed separately as generation.model_path.
+  checkpoint_dir: ckpt/HY-WorldPlay
+  entrypoint: hyvideo/generate.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    # Upstream --model_path: HunyuanVideo-1.5 tree that contains transformer/480p_i2v.
+    model_path: ckpt/HunyuanVideo-1.5
+    # Distilled AR checkpoint from the HY-WorldPlay release.
+    action_ckpt: ckpt/HY-WorldPlay/ar_distilled_action_model/model.safetensors
+    require_persistent_batch: true
+    launcher: python
+    nproc_per_node: 1
+    gpu_index: 0
+    resolution: 480p
+    aspect_ratio: 16:9
+    video_length: 125
+    width: 832
+    height: 480
+    seed: 1
+    num_inference_steps: 4
+    model_type: ar
+    few_step: true
+    sr: false
+    save_pre_sr_video: false
+    rewrite: false
+    offloading: true
+    group_offloading: null
+    dtype: bf16
+    enable_torch_compile: false
+    with_ui: false
+    use_sageattn: false
+    sage_blocks_range: 0-53
+    use_vae_parallel: false
+    use_fp8_gemm: false
+    quant_type: fp8-per-block
+    include_patterns: double_blocks
+    transformer_resident_ar_rollout: true
+    trajectory_focal_scale: 0.5050505

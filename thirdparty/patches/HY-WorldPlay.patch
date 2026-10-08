@@ -1,0 +1,62 @@
+diff --git a/hyvideo/commons/__init__.py b/hyvideo/commons/__init__.py
+index b55a2a1..9572cd3 100644
+--- a/hyvideo/commons/__init__.py
++++ b/hyvideo/commons/__init__.py
+@@ -237,17 +237,21 @@ def maybe_fallback_attn_mode(attn_mode, infer_state=None, block_idx=None):
+ def auto_offload_model(models, device, enabled=True):
+     from diffusers.hooks.group_offloading import _is_group_offload_enabled
+ 
++    loaded = []
+     if enabled:
+         if isinstance(models, nn.Module):
+             models = [models]
+         for model in models:
+-            if model is not None:
++            if model is not None and not _is_group_offload_enabled(model):
+                 model.to(device)
+-    yield
+-    if enabled:
+-        for model in models:
+-            if model is not None:
+-                model.to(torch.device("cpu"))
++                loaded.append(model)
++    try:
++        yield
++    finally:
++        # Group-offloaded modules are moved by their block hooks. Moving the
++        # whole transformer here defeats those hooks and restores the OOM peak.
++        for model in loaded:
++            model.to(torch.device("cpu"))
+ 
+ 
+ def get_gpu_memory(device=None):
+diff --git a/hyvideo/pipelines/worldplay_video_pipeline.py b/hyvideo/pipelines/worldplay_video_pipeline.py
+index 89a8ee9..81d5556 100644
+--- a/hyvideo/pipelines/worldplay_video_pipeline.py
++++ b/hyvideo/pipelines/worldplay_video_pipeline.py
+@@ -1158,6 +1158,13 @@ class HunyuanVideo_1_5_Pipeline(DiffusionPipeline):
+                     device=device,
+                     dtype=timesteps.dtype,
+                 )
++                # Both vision caches are recomputed from the selected history.
++                # cache_vision=True only reads text KV; retaining the old vision
++                # tensors until the new 54-layer cache returns doubles peak VRAM.
++                for cache in (self._kv_cache, self._kv_cache_neg):
++                    for layer in cache:
++                        layer['k_vision'] = None
++                        layer['v_vision'] = None
+                 # compute kv cache
+                 with (
+                     torch.autocast(
+@@ -1883,6 +1890,11 @@ class HunyuanVideo_1_5_Pipeline(DiffusionPipeline):
+                 device=device,
+             )
+ 
++        # History KV is no longer consumed once rollout has returned.
++        if model_type == 'ar':
++            self._kv_cache = []
++            self._kv_cache_neg = []
++
+         if enable_sr:
+             assert hasattr(self, "sr_pipeline")
+             sr_out = self.sr_pipeline(

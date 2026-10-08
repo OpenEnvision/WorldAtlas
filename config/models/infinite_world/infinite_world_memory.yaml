@@ -1,0 +1,75 @@
+# Edit the base config or worldatlas/benchmark/memory_track_models.py and rerun.
+model:
+  name: infinite-world-memory
+  family: infinite_world
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - actions
+  roles:
+  - candidate
+  repo_root: thirdparty/Infinite-World
+  python_bin: python
+  checkpoint_dir: ckpt/MeiGen-AI--Infinite-World
+  entrypoint: scripts/infworld_inference.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    config_path: configs/infworld_config.yaml
+    bucket_config_name: ASPECT_RATIO_627_F64
+    fps: 30
+    seed: 42
+    batch_size: 1
+    num_chunks: 23
+    num_sampling_steps: 30
+    sample_shift: 7.0
+    sample_guide_scale: 5.0
+    quality: 8
+    target_duration_sec: 60
+    validation_num_frames: 81
+    chunk_stride: 80
+    action_source: camera_path
+    action_plan:
+      default:
+      - forward
+      - camera_right
+      - forward
+      - camera_left
+      - forward
+      by_suite:
+        image_static:
+        - forward
+        - camera_right
+        - forward
+        - camera_left
+        - forward
+        image_dynamic:
+        - forward
+        - forward_right
+        - camera_right
+        - forward
+        - camera_left
+      frames_per_action: 16
+  env:
+    WORLDATLAS_CHECKPOINT_ROOT: ckpt
+    HF_HOME: ckpt/huggingface
+    HUGGINGFACE_HUB_CACHE: ckpt/huggingface/hub
+    TORCH_HOME: ckpt/torch
+    XDG_CACHE_HOME: ckpt/xdg-cache
+    TOKENIZERS_PARALLELISM: 'false'
+  metadata:
+    track: memory_loop
+    memory_roster_key: infinite_world
+    derived_from: infinite_world.yaml
+    memory_notes: target_duration_sec only trims the decoded buffer, so num_chunks is what actually buys
+      the duration.

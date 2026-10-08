@@ -1,0 +1,72 @@
+model:
+  name: astronex-world-1.0-causal-memory-30s
+  family: astronex_world
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - camera_pose
+  roles:
+  - candidate
+  python_bin: python
+  repo_root: thirdparty/Astronex-World
+  checkpoint_dir: ckpt/Astronex-World
+  entrypoint: inference/generate.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTHONNOUSERSITE: '1'
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  generation:
+    mode: causal
+    require_persistent_batch: true
+    nproc_per_node: 1
+    num_frames: 125
+    height: 480
+    width: 832
+    fps: 24
+    sampling_steps: 8
+    guidance_scale: 3.0
+    translation_per_latent: 0.08
+    rotation_degrees_per_latent: 3.0
+    intrinsic:
+    - 0.5050505
+    - 0.89786756
+    - 0.5
+    - 0.5
+    free_cache_before_decode: true
+    offload_denoiser_for_decode: true
+    seed: 1234
+    offline: true
+    continue_on_error: true
+    target_duration_seconds: 30
+    camera_path_mode: closed_loop
+    translation_per_token: 0.8
+    rotation_degrees_per_token: 30.0
+  metadata:
+    variant: Astronex-World 1.0 5B causal (8-step, 20-latent window, 4-latent sink)
+    upstream_model_id: Astronex-Lab/Astronex-World
+    upstream_repository: https://github.com/Astronex-Robotics/Astronex-World
+    upstream_revision: 27584bf1a89da01ef35a03b48d83bc818d2adf2b
+    upstream_weights_revision: f06ea330f2ce5cabef5fbf175287fe323ec1218c
+    project_page: https://world.astronex.com.cn/
+    technical_report: https://world.astronex.com.cn/assets/paper/astronex-world-technical-report.pdf
+    license: Apache-2.0 (code; see released weights and Wan2.2 terms for weights)
+    track: memory_loop
+    memory_roster_key: astronex_world
+    derived_from: astronex_world.yaml
+    memory_notes: 'One continuous causal rollout: 368 latents produce 1469 frames at 24 FPS (61.21 seconds).
+      Resample fixed 30-degree token endpoints over the latent timeline so retraces, square corners and
+      the full yaw loop remain closed. The denoiser is offloaded only for final VAE decode and restored
+      afterwards.'
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: astronex_world_memory.yaml

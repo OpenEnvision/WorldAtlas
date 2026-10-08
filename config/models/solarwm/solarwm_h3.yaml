@@ -1,0 +1,47 @@
+# Official SolarWM H3 Stage2 EMA step 3900, source-length SP8 inference.
+# Separate checkout/runtime from SolarWM Wan and native MiniMax-H3.
+model:
+  name: solarwm-h3-33b-stage2-fix
+  family: solarwm_h3
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, trajectory, camera_pose]
+  roles: [candidate]
+  repo_root: thirdparty/SolarWM-H3
+  python_bin: python
+  checkpoint_dir: ckpt/SolarWM-H3
+  entrypoint: "-m solarwm infer"
+  output_ext: .mp4
+  supported_suites: [image_static, image_dynamic, memory_loop]
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    nproc_per_node: 8
+    config_path: configs/examples/minimax_h3/infer-stage2-source-length-sp8.yaml
+    base_model_dir: SolarWM-h3-33B-base
+    stage2_checkpoint_dir: SolarWM-h3-33B-sgf-stage2-158f-fix
+    silence_latents_path: support/h3_silence_153_158_170.safetensors
+    fps: 24
+    duration_seconds: 5
+    memory_duration_seconds: 60
+    seed: 42
+    expected_step: 3900
+    stream_decode: true
+    synthetic_focal_scale: 0.6
+  env:
+    PYTHONNOUSERSITE: "1"
+    TOKENIZERS_PARALLELISM: "false"
+  metadata:
+    variant: SolarWM-H3-33B Stage2 SGF Fix
+    official_repo: https://github.com/Junchao-cs/SolarWM
+    source_revision: 208141bc6824af116b5f6d7799b73bd0cdf1831f
+    checkpoint_repo: junchaoh-cs/SolarWM-H3-33B
+    checkpoint_revision: 711d516329b9eaa395888c6ca724e0567bd3bdcb
+    checkpoint_issue: https://github.com/Junchao-cs/SolarWM/issues/13
+    notes: >
+      Official first-image plus full camera trajectory route, single-node SP8,
+      NFE4 and W6. Image suites use 120 source frames; memory uses 1440 with
+      streaming decode. The dedicated runtime, silence artifact, and eight-GPU
+      node are required for inference.

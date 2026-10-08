@@ -1,0 +1,32 @@
+
+model:
+  name: ltx-2.3-22b-distilled-i2v
+  family: ltx2.3
+  backend_type: local_repo
+  task_families: [video_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  python_bin: python
+  repo_root: thirdparty/ltx2.3
+  checkpoint_dir: ckpt/Lightricks--LTX-2.3
+  entrypoint: packages/ltx-pipelines/src/ltx_pipelines/distilled.py
+  output_ext: .mp4
+  supported_suites: [image_static, image_dynamic]
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    pipeline: distilled
+    distilled_checkpoint_path: ltx-2.3-22b-distilled-1.1.safetensors
+    spatial_upsampler_path: ltx-2.3-spatial-upscaler-x2-1.1.safetensors
+    gemma_root: ../gemma-3-12b-it-qat-q4_0-unquantized
+    height: 512
+    width: 768
+    num_frames: 121
+    frame_rate: 24
+    min_seconds: 5.0
+    seed: 10
+    image_conditioning_strength: 1.0
+    image_crf: 33
+    offload: none
+    enhance_prompt: false

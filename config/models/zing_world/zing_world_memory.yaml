@@ -1,0 +1,58 @@
+# Edit the base config or worldatlas/benchmark/memory_track_models.py and rerun.
+model:
+  name: zing-0.5-memory
+  family: zing_world
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - actions
+  roles:
+  - candidate
+  python_bin: python
+  repo_root: thirdparty/zing-world-model
+  checkpoint_dir: ckpt/Zing-0.5
+  entrypoint: src/zing_v0_5/main.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    nproc_per_node: 1
+    require_persistent_batch: true
+    num_frames: 121
+    fps: 24
+    width: 832
+    height: 480
+    seed: 42
+    local_attn_size: 97
+    sink_size: 9
+    target_duration_seconds: 60
+  env:
+    PYTHONNOUSERSITE: '1'
+    TOKENIZERS_PARALLELISM: 'false'
+    PYTORCH_ALLOC_CONF: expandable_segments:True
+  metadata:
+    variant: Zing-0.5 (official four-step DMD)
+    official_repo: https://github.com/seedleap/zing-world-model
+    upstream_revision: 11212da06f63290f4d354cdc0324241ba6eac356
+    checkpoint_repo: seedleap/zing-0.5
+    checkpoint_revision: b9ca1ed1de750bf19a0e6562c6cd71fa7ef35648
+    notes: 'Native image/text/keyboard conditioning, one resident pipeline per GPU. num_frames includes
+      the reference image; Zing output.frames excludes it. Orbit uses strafe plus counter-yaw; pedestal
+      uses pitch and is approximate. Roll actions are rejected because the public keyboard interface has
+      no roll.
+
+      '
+    track: memory_loop
+    memory_roster_key: zing_world
+    derived_from: zing_world.yaml
+    memory_notes: Native causal rollout with one continuous KV cache and the official 97/9 sliding window.
+      The complete keyboard itinerary spans 1440 intervals; the recorded video includes the reference
+      image for 1441 frames at 24 FPS. No short-clip stitching or repeated-frame padding.

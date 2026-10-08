@@ -1,0 +1,58 @@
+model:
+  name: abot-world-0-5b-lf-memory-30s
+  family: abot_world
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - actions
+  roles:
+  - candidate
+  repo_root: thirdparty/ABot-World
+  python_bin: python
+  checkpoint_dir: ckpt/ABot-World-0-5B-LF
+  entrypoint: web_client/pipeline_loader.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  generation:
+    require_persistent_batch: true
+    blocks: 30
+    height: 704
+    width: 1280
+    fps: 12
+    seed: 42
+    increment_seed: true
+    action_source: worldatlas_camera_path
+    vae_type: taew2_2
+    use_fp8_gemm: false
+    quant_type: none
+    encoder_device: cuda
+    low_memory_threshold_gb: 40
+    continue_on_error: true
+    codec: libx264
+    crf: 18
+    preset: fast
+    memory_reference_blocks: 60
+  metadata:
+    variant: ABot-World-0-5B-LF
+    upstream_model_id: acvlab/ABot-World-0-5B-LF
+    upstream_repository: https://github.com/amap-cvlab/ABot-World
+    tested_upstream_revision: 39f55b9e665f31470fae40ea5622195b51063d96
+    runtime_variant: a100_bf16_flash_attn_2
+    track: memory_loop
+    memory_roster_key: abot_world
+    derived_from: abot_world.yaml
+    memory_notes: Streaming blocks; the adapter has no target-duration knob, only blocks.
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: abot_world_memory.yaml

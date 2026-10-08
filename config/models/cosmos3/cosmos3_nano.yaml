@@ -1,0 +1,55 @@
+# Cosmos3-Nano via the pinned WorldFoundry runtime.
+# GPU parity with historical leaderboard runs requires separate validation.
+model:
+  name: cosmos3-nano
+  family: cosmos3
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  roles:
+  - candidate
+  python_bin: python
+  repo_root: thirdparty/WorldFoundry
+  checkpoint_dir: ckpt/Cosmos3-Nano
+  entrypoint: worldfoundry/pipelines/cosmos/pipeline_cosmos3.py
+  output_ext: .mp4
+  supported_suites:
+  - image_static
+  - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    nproc_per_node: 8
+    offload_mode: none
+    device_map: balanced
+    vae_tiling: true
+    variant_id: cosmos3-nano
+    num_frames: 189
+    height: 720
+    width: 1280
+    fps: 24
+    num_inference_steps: 35
+    guidance_scale: 6.0
+    seed: 0
+    increment_seed: true
+    continue_on_error: true
+    enable_sound: false
+  env:
+    WORLDATLAS_CHECKPOINT_ROOT: ckpt/
+    WORLDFOUNDRY_CKPT_DIR: ckpt
+    HF_HUB_OFFLINE: '1'
+    TRANSFORMERS_OFFLINE: '1'
+  metadata:
+    upstream_model_id: nvidia/Cosmos3-Nano
+    revision: 411f42a8fdfb8c5b2583cb8786e0938f49796eaa
+    ported_in: worldfoundry
+    pipeline_target: worldfoundry.pipelines.cosmos.pipeline_cosmos3:Cosmos3Pipeline
+    params: 16B
+    historical_leaderboard_parity: not_validated_for_native_worldfoundry_runtime

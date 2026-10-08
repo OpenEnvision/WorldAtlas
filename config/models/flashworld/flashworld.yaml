@@ -1,0 +1,34 @@
+model:
+  name: flashworld
+  family: flashworld
+  backend_type: local_repo
+  task_families: [video_generation, scene_3d_generation]
+  artifact_types: [video, gaussian_splat, point_cloud]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  # FlashWorld's released inference stack targets a newer CUDA/PyTorch environment than the repo default.
+  # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
+  repo_root: thirdparty/FlashWorld
+  python_bin: python
+  # Keep FlashWorld's model.ckpt under the unified ckpt root.
+  checkpoint_dir: ckpt/imlixinyang--FlashWorld
+  entrypoint: cli.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+  prompt_mode: prompt_current
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    num_frames: 24
+    image_height: 480
+    image_width: 704
+    image_index: 0
+    video_fps: 15
+    offload_t5: false
+    offload_vae: false
+    offload_transformer_during_vae: false
+    export_ply: false
+    export_spz: false
+  env:
+    FLASHWORLD_WAN_DIFFUSERS_MODEL_ID: ckpt/Wan2.2-TI2V-5B-Diffusers

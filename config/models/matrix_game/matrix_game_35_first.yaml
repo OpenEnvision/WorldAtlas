@@ -1,0 +1,50 @@
+model:
+  name: matrix-game-3.5-first
+  family: matrix_game_35
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  # The batch runner subprocess (and the infer.py it spawns via sys.executable)
+  # must run in the Matrix-Game 3.5 env; linked from envs/ by prepare_basic_metric.sh.
+  python_bin: python
+  repo_root: thirdparty/Matrix-Game-3.5
+  checkpoint_dir: ckpt/Matrix-Game-3.5
+  entrypoint: infer.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    TOKENIZERS_PARALLELISM: "false"
+    DIFFSYNTH_SKIP_DOWNLOAD: "true"
+  generation:
+    person: first
+    # Pin the anchor image to the pipeline's generation resolution (1280x704,
+    # width*height) via cover+center-crop before infer.py. Dataset originals
+    # reach 20-40 MP; their full-res DA3 depth map overflows torch.quantile's
+    # 2**24-element cap in frustum _edge_aware_smooth (verified: 5616x3744 ->
+    # 21M elements crashed). configs/infer_first_person.yaml generates at
+    # height:704/width:1280, so 704 keeps the anchor, intrinsics, and final
+    # output at one resolution (README: intrinsics are in anchor-image pixels).
+    conditioning_resize: 1280*704
+    num_blocks: 1
+    steps: 25
+    cfg_scale: 5.0
+    seed: 3407
+    horizontal_fov_degrees: 75.0
+    synthetic_camera_forward_step: 1.0
+    synthetic_camera_lateral_step: 0.5
+    synthetic_camera_rotation_degrees: 30.0
+    synthetic_camera_orbit_radius: 1.0
+  metadata:
+    upstream_repo: https://github.com/Riemann-Dynamics/Matrix-Game-3.5.git
+    upstream_revision: 6c94dd787659aa19fac22581cd8bea54e65d813f
+    checkpoint_repo: RiemannDynamics/Matrix-Game-3.5-Base
+    base_model_repo: Wan-AI/Wan2.2-TI2V-5B
+    depth_model_repo: depth-anything/DA3NESTED-GIANT-LARGE-1.1
+    camera_contract: worldatlas_symbolic_path_to_c2w_npz

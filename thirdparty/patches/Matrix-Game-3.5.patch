@@ -1,0 +1,18 @@
+diff --git a/examples/wanvideo/pipeline/mosaic/validation.py b/examples/wanvideo/pipeline/mosaic/validation.py
+index c3d3577..df4a24e 100644
+--- a/examples/wanvideo/pipeline/mosaic/validation.py
++++ b/examples/wanvideo/pipeline/mosaic/validation.py
+@@ -2193,9 +2193,12 @@ def _run_mosaic_validation_impl(
+             validation_dir,
+             f"epoch_{epoch_id:04d}_{batch_idx:03d}_{proc_tag}_{clean_name}_history.mp4",
+         )
++        # This *_history.mp4 is the user-facing result (infer.py collect_outputs
++        # renames it to result.mp4). Write the raw decoded frames without the
++        # top-left frame-index overlay so the delivered video is clean.
+         _write_video(
+             history_path,
+-            _annotate_frames_with_index(list(history_frames), start_index=0),
++            list(history_frames),
+         )
+         # GT video for the comparison strip.
+         # DA3 video flow: read the source mp4 directly and resize/crop with

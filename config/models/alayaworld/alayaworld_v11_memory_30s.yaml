@@ -1,0 +1,73 @@
+model:
+  name: alayaworld-v1.1-dmd-memory-30s
+  family: alayaworld_v11
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - camera_pose
+  roles:
+  - candidate
+  python_bin: python
+  repo_root: thirdparty/AlayaWorld-v1.1
+  checkpoint_dir: ckpt/AlayaWorld-v1.1
+  entrypoint: alaya/train.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTHONNOUSERSITE: '1'
+    ALAYA_USE_FA3: '0'
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  generation:
+    variant: dmd
+    require_persistent_batch: true
+    nproc_per_node: 1
+    rounds: 23
+    height: 544
+    width: 960
+    fps: 24
+    temporal_stride: 8
+    chunk_latent_frames: 4
+    history_latent_frames: 4
+    sink_latent_frames: 1
+    action_source: worldatlas_camera_path
+    forward_distance_per_chunk: 0.1568
+    lateral_distance_per_chunk: 0.1568
+    vertical_distance_per_chunk: 0.1568
+    rotation_degrees_per_chunk: 30.0
+    tilt_degrees_per_chunk: 4.8
+    roll_degrees_per_chunk: 4.8
+    orbit_radius: 2.0
+    attention_type: flash_attention_2
+    seed: 1234
+    increment_seed: true
+    offline: true
+    continue_on_error: true
+    memory_reference_rounds: 48
+  metadata:
+    variant: AlayaWorld v1.1 stage3 DMD student (4-step, CFG 1.0, ViGeo)
+    upstream_model_id: AlayaLab/AlayaWorld-v1.1-stage3
+    upstream_repository: https://github.com/AlayaLab/AlayaWorld
+    upstream_revision: ea03cfbb2e4c4e9102ed8ea8562e0b5370ca9b79
+    upstream_weights_revision: 75fef054c5c0f86fd1450d50f70ef2f0a93fff2b
+    base_weights: AlayaLab/AlayaWorld-v1.1-stage2b
+    base_weights_revision: 17f2f8a4939d85920b8a6c5191ce88dec7f862d1
+    technical_report: https://arxiv.org/abs/2608.13492
+    license: LTX-2 Community License Agreement (academic/non-commercial)
+    track: memory_loop
+    memory_roster_key: alayaworld_v11
+    derived_from: alayaworld_v11.yaml
+    memory_notes: AlayaWorld 1.1 DMD with ViGeo, one continuous 48-round rollout, 1537 frames at 24 FPS
+      (64.04 seconds). Repeat whole 8/12/16/24-token laps; 30-degree yaw per round preserves square corners
+      and full turns. Four history latents and the official bounded ViGeo cache; no v1 DA3 runtime.
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: alayaworld_v11_memory.yaml

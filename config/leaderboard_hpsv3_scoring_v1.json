@@ -1,0 +1,11 @@
+{
+  "revision": "hpsv3_raw_mean_then_display_v1",
+  "metric": "hpsv3_norm",
+  "raw_scale": "official_percentile_0_1",
+  "official_percentiles": [5.21, 8.66],
+  "aggregation": "mean_raw_then_display",
+  "display_lower": -0.20,
+  "display_upper": 0.55,
+  "storage_decimals": 4,
+  "historical_policy": "Retain verified mean-first scores and their recorded intermediate rounding; archived means do not imply per-sample verification."
+}

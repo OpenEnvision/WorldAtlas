@@ -1,84 +1,115 @@
 # Third-party dependencies
 
-WorldArena vendors upstream model and metric code as **git submodules** under `thirdparty/`.
-Paths in `config/models/*.yaml` use `repo_root: thirdparty/<Name>` relative to the repository root.
-
-## Clone everything
-
-```bash
-git clone --recurse-submodules <worldarena-remote> WorldArena
-cd WorldArena
-```
-
-If you already cloned without submodules:
+WorldAtlas uses pinned upstream repositories under `thirdparty/`. The authoritative
+source list is [`sources.lock.json`](sources.lock.json), including full commit IDs
+and SHA-256 checksums for runtime patches.
 
 ```bash
-git submodule update --init --recursive
+python scripts/checkout_dependencies.py --list
+python scripts/checkout_dependencies.py lingbot-world
+python scripts/checkout_dependencies.py lingbot-world --check
 ```
 
-`stable-virtual-camera` and some metric repos may pull nested submodules; keep `--recursive`.
+The installer initializes nested submodules and applies recorded patches. It
+refuses to reset existing checkouts at another revision. Use `--all` only if you
+need every model and metric source.
 
-## World models
+`.gitmodules` registers the 16 dependencies stored as Git submodules. Additional
+sources are installed explicitly by the same helper. Recursive cloning alone
+does not prepare every model. The tables below describe their roles; the lock
+file, including additional model variants, controls the actual revisions.
 
-| Submodule | Upstream | Model config(s) |
-|-----------|----------|-----------------|
-| `ABot-World` | [amap-cvlab/ABot-World](https://github.com/amap-cvlab/ABot-World) | `abot_world.yaml` |
-| `AlayaWorld` | [AlayaLab/AlayaWorld](https://github.com/AlayaLab/AlayaWorld) | `alayaworld.yaml` |
-| `CamI2V` | [ZGCTroy/CamI2V](https://github.com/ZGCTroy/CamI2V) | `cami2v.yaml` |
-| `cosmos-predict2.5` | [nvidia-cosmos/cosmos-predict2.5](https://github.com/nvidia-cosmos/cosmos-predict2.5) | `cosmos_predict25_*.yaml` |
-| `FlashWorld` | [imlixinyang/FlashWorld](https://github.com/imlixinyang/FlashWorld) | `flashworld*.yaml` |
-| `GEN3C` | [nv-tlabs/Gen3C](https://github.com/nv-tlabs/Gen3C) | `gen3c.yaml` |
-| `HY-WorldPlay` | [Tencent-Hunyuan/HY-WorldPlay](https://github.com/Tencent-Hunyuan/HY-WorldPlay) | `hy_worldplay.yaml` |
-| `Hunyuan-GameCraft-1.0` | [Tencent-Hunyuan/Hunyuan-GameCraft-1.0](https://github.com/Tencent-Hunyuan/Hunyuan-GameCraft-1.0) | `hunyuan_gamecraft.yaml` |
-| `HunyuanWorld-1.0` | [Tencent-Hunyuan/HunyuanWorld-1.0](https://github.com/Tencent-Hunyuan/HunyuanWorld-1.0) | `hunyuanworld.yaml` |
-| `Infinite-World` | [MeiGen-AI/Infinite-World](https://github.com/MeiGen-AI/Infinite-World) | `infinite_world.yaml` |
-| `inspatio-world` | [inspatio/inspatio-world](https://github.com/inspatio/inspatio-world) | `inspatio_world.yaml` |
-| `lingbot-video` | [Robbyant/lingbot-video](https://github.com/Robbyant/lingbot-video) | `lingbot_video_*.yaml` |
-| `lingbot-world` | [Robbyant/lingbot-world](https://github.com/Robbyant/lingbot-world) | `lingbot_world*.yaml` |
-| `LucidDreamer` | [luciddreamer-cvlab/LucidDreamer](https://github.com/luciddreamer-cvlab/LucidDreamer) | `luciddreamer.yaml` |
-| `Lyra-1`, `Lyra-2` | [nv-tlabs/lyra](https://github.com/nv-tlabs/lyra) | `lyra1.yaml`, `lyra2.yaml` |
-| `Matrix-Game` | [SkyworkAI/Matrix-Game](https://github.com/SkyworkAI/Matrix-Game) | `matrix_game.yaml` → `Matrix-Game/Matrix-Game-3`; `matrix_game_1.yaml` → `Matrix-Game/Matrix-Game-1`; `matrix_game_2.yaml` → `Matrix-Game/Matrix-Game-2` |
-| `Matrix-Game-3.5` | [Riemann-Dynamics/Matrix-Game-3.5](https://github.com/Riemann-Dynamics/Matrix-Game-3.5) | `matrix_game_35_*.yaml` |
-| `NeoVerse` | [IamCreateAI/NeoVerse](https://github.com/IamCreateAI/NeoVerse) | `neoverse.yaml` |
-| `open-dreamer` | [next-state/open-dreamer](https://github.com/next-state/open-dreamer) | `open_dreamer.yaml` |
-| `RealCam-I2V` | [ZGCTroy/RealCam-I2V](https://github.com/ZGCTroy/RealCam-I2V) | `realcam_i2v.yaml` |
-| `stable-virtual-camera` | [Stability-AI/stable-virtual-camera](https://github.com/Stability-AI/stable-virtual-camera) | `stable_virtual_camera.yaml` |
-| `WonderJourney` | [KovenYu/WonderJourney](https://github.com/KovenYu/WonderJourney) | `wonderjourney.yaml` |
-| `WonderWorld` | [KovenYu/WonderWorld](https://github.com/KovenYu/WonderWorld) | `wonderworld.yaml` |
-| `WorldCam` | [cvlab-kaist/WorldCam](https://github.com/cvlab-kaist/WorldCam) | `worldcam.yaml` |
-| `worldfm` | [inspatio/worldfm](https://github.com/inspatio/worldfm) | `worldfm.yaml` |
-| `YUME` | [stdstu12/YUME](https://github.com/stdstu12/YUME) | `yume.yaml` |
+## Model sources
 
-Shared dependency used by several adapters:
+Only dependencies of retained leaderboard integrations are listed below.
 
-| Submodule | Used by |
-|-----------|---------|
-| `Depth-Anything-3` | `inspatio_world.yaml`, `alayaworld.yaml`, Matrix-Game 3.5 setup |
+| Source | Upstream | Configurations |
+| --- | --- | --- |
+| `ABot-World` | [amap-cvlab/ABot-World](https://github.com/amap-cvlab/ABot-World.git) | [abot_world/](../config/models/abot_world/) |
+| `AlayaWorld` | [AlayaLab/AlayaWorld](https://github.com/AlayaLab/AlayaWorld.git) | [alayaworld/](../config/models/alayaworld/) |
+| `AlayaWorld-v1.1` | [AlayaLab/AlayaWorld](https://github.com/AlayaLab/AlayaWorld.git) | [alayaworld/](../config/models/alayaworld/) |
+| `Astronex-World` | [Astronex-Robotics/Astronex-World](https://github.com/Astronex-Robotics/Astronex-World.git) | [astronex_world/](../config/models/astronex_world/) |
+| `DreamX-World` | [AMAP-ML/DreamX-World](https://github.com/AMAP-ML/DreamX-World.git) | [dreamx_world/](../config/models/dreamx_world/) |
+| `Evoke` | [AlayaLab/Evoke](https://github.com/AlayaLab/Evoke.git) | [evoke/](../config/models/evoke/) |
+| `FlashWorld` | [imlixinyang/FlashWorld](https://github.com/imlixinyang/FlashWorld.git) | [flashworld/](../config/models/flashworld/) |
+| `GEN3C` | [nv-tlabs/Gen3C](https://github.com/nv-tlabs/Gen3C.git) | [gen3c/](../config/models/gen3c/) |
+| `HY-WorldPlay` | [Tencent-Hunyuan/HY-WorldPlay](https://github.com/Tencent-Hunyuan/HY-WorldPlay.git) | [hy_worldplay/](../config/models/hy_worldplay/) |
+| `Helios` | [PKU-YuanGroup/Helios](https://github.com/PKU-YuanGroup/Helios.git) | [helios/](../config/models/helios/) |
+| `Infinite-World` | [MeiGen-AI/Infinite-World](https://github.com/MeiGen-AI/Infinite-World.git) | [infinite_world/](../config/models/infinite_world/) |
+| `JoyAI-Echo` | [jd-opensource/JoyAI-Echo](https://github.com/jd-opensource/JoyAI-Echo.git) | [echo_wm/](../config/models/echo_wm/) |
+| `LTX-2.5` | [Lightricks/LTX-2](https://github.com/Lightricks/LTX-2.git) | [ltx25/](../config/models/ltx25/) |
+| `LongCat-Video` | [meituan-longcat/LongCat-Video](https://github.com/meituan-longcat/LongCat-Video.git) | [longcat_video/](../config/models/longcat_video/) |
+| `LucidDreamer` | [luciddreamer-cvlab/LucidDreamer](https://github.com/luciddreamer-cvlab/LucidDreamer.git) | [luciddreamer/](../config/models/luciddreamer/) |
+| `Lyra-2` | [nv-tlabs/lyra](https://github.com/nv-tlabs/lyra.git) | [lyra2/](../config/models/lyra2/) |
+| `Matrix-Game` | [SkyworkAI/Matrix-Game](https://github.com/SkyworkAI/Matrix-Game.git) | [matrix_game/](../config/models/matrix_game/) |
+| `Matrix-Game-3.5` | [Riemann-Dynamics/Matrix-Game-3.5](https://github.com/Riemann-Dynamics/Matrix-Game-3.5.git) | [matrix_game/](../config/models/matrix_game/) |
+| `RealCam-I2V` | [ZGCTroy/RealCam-I2V](https://github.com/ZGCTroy/RealCam-I2V.git) | [realcam_i2v/](../config/models/realcam_i2v/) |
+| `Sana` | [NVlabs/Sana](https://github.com/NVlabs/Sana.git) | [sana_wm/](../config/models/sana_wm/) |
+| `SolarWM` | [Junchao-cs/SolarWM](https://github.com/Junchao-cs/SolarWM.git) | [solarwm/](../config/models/solarwm/) |
+| `SolarWM-H3` | [Junchao-cs/SolarWM](https://github.com/Junchao-cs/SolarWM.git) | [solarwm/](../config/models/solarwm/) |
+| `Wan2.2` | [Wan-Video/Wan2.2](https://github.com/Wan-Video/Wan2.2.git) | [wan22/](../config/models/wan22/) |
+| `Warp-as-History` | [yyfz/Warp-as-History](https://github.com/yyfz/Warp-as-History.git) | [warp_as_history/](../config/models/warp_as_history/) |
+| `WorldCrafter` | [TencentARC/WorldCrafter](https://github.com/TencentARC/WorldCrafter.git) | [worldcrafter/](../config/models/worldcrafter/) |
+| `WorldFoundry` | [OpenEnvision/WorldFoundry](https://github.com/OpenEnvision/WorldFoundry) | [cosmos3/](../config/models/cosmos3/), [minimax_h3/](../config/models/minimax_h3/) |
+| `YUME` | [stdstu12/YUME](https://github.com/stdstu12/YUME.git) | [yume/](../config/models/yume/) |
+| `lingbot-video` | [Robbyant/lingbot-video](https://github.com/Robbyant/lingbot-video.git) | [lingbot_video/](../config/models/lingbot_video/) |
+| `lingbot-world` | [Robbyant/lingbot-world](https://github.com/Robbyant/lingbot-world.git) | [lingbot_world/](../config/models/lingbot_world/) |
+| `lingbot-world-v2` | [Robbyant/lingbot-world-v2](https://github.com/Robbyant/lingbot-world-v2.git) | [lingbot_world/](../config/models/lingbot_world/) |
+| `ltx2.3` | [Lightricks/LTX-2](https://github.com/Lightricks/LTX-2.git) | [ltx23/](../config/models/ltx23/) |
+| `stable-virtual-camera` | [Stability-AI/stable-virtual-camera](https://github.com/Stability-AI/stable-virtual-camera.git) | [stable_virtual_camera/](../config/models/stable_virtual_camera/) |
+| `zing-world-model` | [seedleap/zing-world-model](https://github.com/seedleap/zing-world-model.git) | [zing_world/](../config/models/zing_world/) |
 
-## Benchmark / metric dependencies
+## Metric and shared runtime sources
 
-| Submodule | Upstream | Role |
-|-----------|----------|------|
-| `AMT` | [MCG-NKU/AMT](https://github.com/MCG-NKU/AMT) | motion magnitude |
-| `DROID-SLAM` | [princeton-vl/DROID-SLAM](https://github.com/princeton-vl/DROID-SLAM) | camera metrics |
-| `flash-attention` | [Dao-AILab/flash-attention](https://github.com/Dao-AILab/flash-attention) | optional kernels |
-| `Grounded-Segment-Anything` | [IDEA-Research/Grounded-Segment-Anything](https://github.com/IDEA-Research/Grounded-Segment-Anything) | segmentation metrics |
-| `GroundingDINO` | [IDEA-Research/GroundingDINO](https://github.com/IDEA-Research/GroundingDINO) | detection metrics |
-| `met3r` | [mohammadasim98/met3r](https://github.com/mohammadasim98/met3r) | 3D consistency |
-| `Pulse-of-Motion` | [taco-group/Pulse-of-Motion](https://github.com/taco-group/Pulse-of-Motion) | motion quality |
-| `RAFT` | [princeton-vl/RAFT](https://github.com/princeton-vl/RAFT) | optical flow |
-| `sam2` | [haoyi-duan/sam2](https://github.com/haoyi-duan/sam2) | segmentation |
-| `SEA-RAFT` | [princeton-vl/SEA-RAFT](https://github.com/princeton-vl/SEA-RAFT) | motion magnitude |
-| `VFIMamba` | [MCG-NJU/VFIMamba](https://github.com/MCG-NJU/VFIMamba) | motion smoothness |
+These sources support evaluation or are shared by the retained adapters.
+
+| Source | Upstream |
+| --- | --- |
+| `AMT` | [MCG-NKU/AMT](https://github.com/MCG-NKU/AMT.git) |
+| `DROID-SLAM` | [princeton-vl/DROID-SLAM](https://github.com/princeton-vl/DROID-SLAM.git) |
+| `Depth-Anything-3` | [ByteDance-Seed/Depth-Anything-3](https://github.com/ByteDance-Seed/Depth-Anything-3.git) |
+| `FVMD-frechet-video-motion-distance` | [DSL-Lab/FVMD-frechet-video-motion-distance](https://github.com/DSL-Lab/FVMD-frechet-video-motion-distance) |
+| `Grounded-Segment-Anything` | [IDEA-Research/Grounded-Segment-Anything](https://github.com/IDEA-Research/Grounded-Segment-Anything.git) |
+| `GroundingDINO` | [IDEA-Research/GroundingDINO](https://github.com/IDEA-Research/GroundingDINO.git) |
+| `JEDi` | [oooolga/JEDi](https://github.com/oooolga/JEDi) |
+| `Prior-Depth-Anything` | [SpatialVision/Prior-Depth-Anything](https://github.com/SpatialVision/Prior-Depth-Anything.git) |
+| `Pulse-of-Motion` | [taco-group/Pulse-of-Motion](https://github.com/taco-group/Pulse-of-Motion.git) |
+| `RAFT` | [princeton-vl/RAFT](https://github.com/princeton-vl/RAFT.git) |
+| `SEA-RAFT` | [princeton-vl/SEA-RAFT](https://github.com/princeton-vl/SEA-RAFT.git) |
+| `UniDepth` | [lpiccinelli-eth/UniDepth](https://github.com/lpiccinelli-eth/UniDepth.git) |
+| `VFIMamba` | [MCG-NJU/VFIMamba](https://github.com/MCG-NJU/VFIMamba.git) |
+| `Video-Depth-Anything` | [DepthAnything/Video-Depth-Anything](https://github.com/DepthAnything/Video-Depth-Anything.git) |
+| `flash-attention` | [Dao-AILab/flash-attention](https://github.com/Dao-AILab/flash-attention.git) |
+| `met3r` | [mohammadasim98/met3r](https://github.com/mohammadasim98/met3r.git) |
+| `sam2` | [haoyi-duan/sam2](https://github.com/haoyi-duan/sam2.git) |
+| `tapnet` | [google-deepmind/tapnet](https://github.com/google-deepmind/tapnet) |
+| `vipe` | [nv-tlabs/vipe](https://github.com/nv-tlabs/vipe.git) |
+
+Memory-track ViPE sidecars run official NVIDIA ViPE from `thirdparty/vipe`.
+UniDepth / Video-Depth-Anything / Prior-Depth-Anything load only from these
+WorldAtlas checkouts for offline evaluation:
+
+```bash
+git submodule update --init \
+  thirdparty/vipe \
+  thirdparty/UniDepth \
+  thirdparty/Video-Depth-Anything \
+  thirdparty/Prior-Depth-Anything
+```
+
+Weights stay under `ckpt/` (HF snapshot `1d0d3c52`,
+`Video-Depth-Anything-Small/video_depth_anything_vits.pth`,
+`Prior-Depth-Anything/{depth_anything_v2_vitb.pth,prior_depth_anything_vitb.pth}`,
+plus `ckpt/vipe/{droid.pth,geocalib-pinhole.tar}`).
 
 ## Per-model checkout
 
 ```bash
 # Example: only LingBot-World
-git submodule update --init thirdparty/lingbot-world
+python scripts/checkout_dependencies.py lingbot-world
 
 # Example: Matrix-Game 1/2/3 from one upstream repo
-git submodule update --init thirdparty/Matrix-Game
+python scripts/checkout_dependencies.py Matrix-Game
 ```
 
-Each model still needs its **own Python environment** and weights under `ckpt/`. Follow the upstream README in each `thirdparty/<Name>/` checkout. See also [`docs/en/thirdparty.md`](../docs/en/thirdparty.md).
+Each model still needs its **own Python environment** and weights under `ckpt/`. Follow the upstream README in each `thirdparty/<Name>/` checkout. See [Getting Started](https://worldatlas.worldatlas-site.workers.dev/doc/getting-started/) for setup and validation scope.

@@ -1,0 +1,56 @@
+model:
+  name: lingbot-world-fast-memory-30s
+  family: lingbot_world
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - trajectory
+  roles:
+  - candidate
+  python_bin: python
+  repo_root: thirdparty/lingbot-world
+  checkpoint_dir: ckpt/lingbot-world-base-cam
+  entrypoint: generate_fast.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    task: i2v-A14B
+    size: 832*480
+    frame_num: 81
+    base_seed: 42
+    sample_shift: 10.0
+    launcher: torchrun
+    nproc_per_node: 8
+    master_port: 29561
+    ulysses_size: 8
+    t5_fsdp: true
+    dit_fsdp: true
+    offload_model: false
+    fast_checkpoint_dir: ckpt/lingbot-world-fast
+    fast_checkpoint_name: lingbot_world_fast
+    target_duration_seconds: 30
+    output_fps: 16
+    chunk_size: 3
+    local_attn_size: 18
+    sink_size: 6
+  metadata:
+    variant: fast
+    upstream_model_id: robbyant/lingbot-world-fast
+    base_checkpoint_id: robbyant/lingbot-world-base-cam
+    track: memory_loop
+    memory_roster_key: lingbot_world_fast
+    derived_from: lingbot_world_fast.yaml
+    memory_notes: Bounded-window fast path on the v1 base-cam checkpoint.
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: lingbot_world_fast_memory.yaml

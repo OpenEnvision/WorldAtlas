@@ -1,0 +1,68 @@
+model:
+  name: hy-worldplay-memory-30s
+  family: hy_worldplay
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - trajectory
+  - camera_pose
+  roles:
+  - candidate
+  repo_root: thirdparty/HY-WorldPlay
+  python_bin: python
+  checkpoint_dir: ckpt/HY-WorldPlay
+  entrypoint: hyvideo/generate.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    model_path: ckpt/HunyuanVideo-1.5
+    action_ckpt: ckpt/HY-WorldPlay/ar_distilled_action_model/model.safetensors
+    require_persistent_batch: true
+    launcher: python
+    nproc_per_node: 1
+    gpu_index: 0
+    resolution: 480p
+    aspect_ratio: 969
+    video_length: 125
+    width: 832
+    height: 480
+    seed: 1
+    num_inference_steps: 4
+    model_type: ar
+    few_step: true
+    sr: false
+    save_pre_sr_video: false
+    rewrite: false
+    offloading: true
+    group_offloading: null
+    dtype: bf16
+    enable_torch_compile: false
+    with_ui: false
+    use_sageattn: false
+    sage_blocks_range: 0-53
+    use_vae_parallel: false
+    use_fp8_gemm: false
+    quant_type: fp8-per-block
+    include_patterns: double_blocks
+    transformer_resident_ar_rollout: true
+    trajectory_focal_scale: 0.5050505
+    target_duration_seconds: 30
+    output_fps: 24
+  metadata:
+    track: memory_loop
+    memory_roster_key: hy_worldplay
+    derived_from: hy_worldplay.yaml
+    memory_notes: Resamples the full token path onto the final pose count. The 16m+13 frame lattice resolves
+      to video_length 1453, which is 60.54 s at 24 fps.
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: hy_worldplay_memory.yaml

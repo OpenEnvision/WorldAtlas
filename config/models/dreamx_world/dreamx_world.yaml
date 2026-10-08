@@ -1,0 +1,49 @@
+model:
+  name: dreamx-world-5b-cam
+  family: dreamx_world
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  python_bin: python
+  repo_root: thirdparty/DreamX-World
+  checkpoint_dir: ckpt/GD-ML--DreamX-World-5B-Cam
+  entrypoint: inference_dreamx5b.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    config_path: configs/wan2.2/wan_ti2v_5b.yaml
+    model_name: ckpt/Wan-AI--Wan2.2-TI2V-5B
+    transformer_path: ckpt/GD-ML--DreamX-World-5B-Cam
+    nproc_per_node: 8
+    ulysses_degree: 8
+    ring_degree: 1
+    master_addr: 127.0.0.1
+    master_port: 29627
+    cam_method: prope
+    add_control_adapter: true
+    sample_height: 704
+    sample_width: 1280
+    video_length: 121
+    fps: 24
+    guidance_scale: 3.0
+    num_inference_steps: 50
+    seed: 42
+    weight_dtype: bfloat16
+    action_speed: 4
+    rotation_speed: 6
+    # The short-clip path collapses a long itinerary into a few keystrokes. Memory
+    # samples override this so the closed loop keeps every leg.
+    max_action_segments: 3
+  metadata:
+    variant: DreamX-World 5B camera-controlled, full-sequence short clip
+    long_rollout_entrypoint: inference_ar_forcing.py
+    notes: >
+      This config drives the full-sequence entrypoint, which tops out near five
+      seconds. The 60-second memory variant switches to the chunk-wise causal
+      AR-forcing entrypoint and needs base_checkpoint_path.

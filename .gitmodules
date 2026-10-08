@@ -1,117 +1,63 @@
 [submodule "thirdparty/DROID-SLAM"]
-	path = thirdparty/DROID-SLAM
-	url = https://github.com/princeton-vl/DROID-SLAM.git
+path = thirdparty/DROID-SLAM
+url = https://github.com/princeton-vl/DROID-SLAM.git
+
 [submodule "thirdparty/GroundingDINO"]
-	path = thirdparty/GroundingDINO
-	url = https://github.com/IDEA-Research/GroundingDINO.git
+path = thirdparty/GroundingDINO
+url = https://github.com/IDEA-Research/GroundingDINO.git
+
 [submodule "thirdparty/sam2"]
-	path = thirdparty/sam2
-	url = https://github.com/haoyi-duan/sam2.git
+path = thirdparty/sam2
+url = https://github.com/haoyi-duan/sam2.git
+
 [submodule "thirdparty/flash-attention"]
-	path = thirdparty/flash-attention
-	url = https://github.com/Dao-AILab/flash-attention.git
+path = thirdparty/flash-attention
+url = https://github.com/Dao-AILab/flash-attention.git
+
 [submodule "thirdparty/Grounded-Segment-Anything"]
-	path = thirdparty/Grounded-Segment-Anything
-	url = https://github.com/IDEA-Research/Grounded-Segment-Anything.git
+path = thirdparty/Grounded-Segment-Anything
+url = https://github.com/IDEA-Research/Grounded-Segment-Anything.git
+
 [submodule "thirdparty/SEA-RAFT"]
-	path = thirdparty/SEA-RAFT
-	url = https://github.com/princeton-vl/SEA-RAFT.git
-[submodule "thirdparty/lingbot-world"]
-	path = thirdparty/lingbot-world
-	url = https://github.com/Robbyant/lingbot-world.git
-[submodule "thirdparty/inspatio-world"]
-	path = thirdparty/inspatio-world
-	url = https://github.com/inspatio/inspatio-world.git
-[submodule "thirdparty/Depth-Anything-3"]
-	path = thirdparty/Depth-Anything-3
-	url = https://github.com/ByteDance-Seed/Depth-Anything-3.git
-[submodule "thirdparty/Infinite-World"]
-	path = thirdparty/Infinite-World
-	url = https://github.com/MeiGen-AI/Infinite-World.git
-[submodule "thirdparty/NeoVerse"]
-	path = thirdparty/NeoVerse
-	url = https://github.com/IamCreateAI/NeoVerse.git
-[submodule "thirdparty/Lyra-1"]
-	path = thirdparty/Lyra-1
-	url = https://github.com/nv-tlabs/lyra.git
-[submodule "thirdparty/Lyra-2"]
-	path = thirdparty/Lyra-2
-	url = https://github.com/nv-tlabs/lyra.git
-[submodule "thirdparty/GEN3C"]
-	path = thirdparty/GEN3C
-	url = https://github.com/nv-tlabs/Gen3C.git
-[submodule "thirdparty/FlashWorld"]
-	path = thirdparty/FlashWorld
-	url = https://github.com/imlixinyang/FlashWorld.git
-[submodule "thirdparty/WorldCam"]
-	path = thirdparty/WorldCam
-	url = https://github.com/cvlab-kaist/WorldCam.git
-[submodule "thirdparty/HunyuanWorld-1.0"]
-	path = thirdparty/HunyuanWorld-1.0
-	url = https://github.com/Tencent-Hunyuan/HunyuanWorld-1.0.git
-[submodule "thirdparty/YUME"]
-	path = thirdparty/YUME
-	url = https://github.com/stdstu12/YUME.git
-[submodule "thirdparty/worldfm"]
-	path = thirdparty/worldfm
-	url = https://github.com/inspatio/worldfm.git
-[submodule "thirdparty/met3r"]
-	path = thirdparty/met3r
-	url = https://github.com/mohammadasim98/met3r.git
-[submodule "thirdparty/Pulse-of-Motion"]
-	path = thirdparty/Pulse-of-Motion
-	url = https://github.com/taco-group/Pulse-of-Motion.git
-[submodule "thirdparty/AMT"]
-	path = thirdparty/AMT
-	url = https://github.com/MCG-NKU/AMT.git
-[submodule "thirdparty/RAFT"]
-	path = thirdparty/RAFT
-	url = https://github.com/princeton-vl/RAFT.git
-[submodule "thirdparty/ABot-World"]
-	path = thirdparty/ABot-World
-	url = https://github.com/amap-cvlab/ABot-World.git
-[submodule "thirdparty/AlayaWorld"]
-	path = thirdparty/AlayaWorld
-	url = https://github.com/AlayaLab/AlayaWorld.git
-[submodule "thirdparty/CamI2V"]
-	path = thirdparty/CamI2V
-	url = https://github.com/ZGCTroy/CamI2V.git
-[submodule "thirdparty/cosmos-predict2.5"]
-	path = thirdparty/cosmos-predict2.5
-	url = https://github.com/nvidia-cosmos/cosmos-predict2.5.git
-[submodule "thirdparty/HY-WorldPlay"]
-	path = thirdparty/HY-WorldPlay
-	url = https://github.com/Tencent-Hunyuan/HY-WorldPlay.git
-[submodule "thirdparty/Hunyuan-GameCraft-1.0"]
-	path = thirdparty/Hunyuan-GameCraft-1.0
-	url = https://github.com/Tencent-Hunyuan/Hunyuan-GameCraft-1.0.git
-[submodule "thirdparty/lingbot-video"]
-	path = thirdparty/lingbot-video
-	url = https://github.com/Robbyant/lingbot-video.git
-[submodule "thirdparty/LucidDreamer"]
-	path = thirdparty/LucidDreamer
-	url = https://github.com/luciddreamer-cvlab/LucidDreamer.git
-[submodule "thirdparty/Matrix-Game"]
-	path = thirdparty/Matrix-Game
-	url = https://github.com/SkyworkAI/Matrix-Game.git
-[submodule "thirdparty/Matrix-Game-3.5"]
-	path = thirdparty/Matrix-Game-3.5
-	url = https://github.com/Riemann-Dynamics/Matrix-Game-3.5.git
-[submodule "thirdparty/RealCam-I2V"]
-	path = thirdparty/RealCam-I2V
-	url = https://github.com/ZGCTroy/RealCam-I2V.git
-[submodule "thirdparty/stable-virtual-camera"]
-	path = thirdparty/stable-virtual-camera
-	url = https://github.com/Stability-AI/stable-virtual-camera.git
-[submodule "thirdparty/WonderJourney"]
-	path = thirdparty/WonderJourney
-	url = https://github.com/KovenYu/WonderJourney.git
-[submodule "thirdparty/WonderWorld"]
-	path = thirdparty/WonderWorld
-	url = https://github.com/KovenYu/WonderWorld.git
+path = thirdparty/SEA-RAFT
+url = https://github.com/princeton-vl/SEA-RAFT.git
+
 [submodule "thirdparty/VFIMamba"]
-	path = thirdparty/VFIMamba
-	url = https://github.com/MCG-NJU/VFIMamba.git
-[submodule "thirdparty/open-dreamer"]
-	path = thirdparty/open-dreamer
-	url = https://github.com/next-state/open-dreamer.git
+path = thirdparty/VFIMamba
+url = https://github.com/MCG-NJU/VFIMamba.git
+
+[submodule "thirdparty/Evoke"]
+path = thirdparty/Evoke
+url = https://github.com/AlayaLab/Evoke.git
+
+[submodule "thirdparty/WorldCrafter"]
+path = thirdparty/WorldCrafter
+url = https://github.com/TencentARC/WorldCrafter.git
+
+[submodule "thirdparty/SolarWM"]
+path = thirdparty/SolarWM
+url = https://github.com/Junchao-cs/SolarWM.git
+
+[submodule "thirdparty/SolarWM-H3"]
+path = thirdparty/SolarWM-H3
+url = https://github.com/Junchao-cs/SolarWM.git
+
+[submodule "thirdparty/JoyAI-Echo"]
+path = thirdparty/JoyAI-Echo
+url = https://github.com/jd-opensource/JoyAI-Echo.git
+
+[submodule "thirdparty/vipe"]
+path = thirdparty/vipe
+url = https://github.com/nv-tlabs/vipe.git
+
+[submodule "thirdparty/UniDepth"]
+path = thirdparty/UniDepth
+url = https://github.com/lpiccinelli-eth/UniDepth.git
+
+[submodule "thirdparty/Video-Depth-Anything"]
+path = thirdparty/Video-Depth-Anything
+url = https://github.com/DepthAnything/Video-Depth-Anything.git
+
+[submodule "thirdparty/Prior-Depth-Anything"]
+path = thirdparty/Prior-Depth-Anything
+url = https://github.com/SpatialVision/Prior-Depth-Anything.git

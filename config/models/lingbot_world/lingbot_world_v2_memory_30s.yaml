@@ -1,0 +1,60 @@
+model:
+  name: lingbot-world-v2-memory-30s
+  family: lingbot_world_v2
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - trajectory
+  roles:
+  - candidate
+  python_bin: python
+  repo_root: thirdparty/lingbot-world-v2
+  checkpoint_dir: ckpt/lingbot-world-v2-14b-causal-fast
+  entrypoint: generate.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  generation:
+    require_persistent_batch: true
+    task: i2v-A14B
+    size: 480*832
+    conditioning_resize: 832*480
+    frame_num: 81
+    base_seed: 42
+    sample_shift: 10.0
+    infer_mode: causal_fast
+    local_attn_size: 18
+    sink_size: 6
+    chunk_size: 3
+    launcher: torchrun
+    nproc_per_node: 8
+    master_port: 29553
+    ulysses_size: 8
+    t5_fsdp: true
+    dit_fsdp: true
+    offload_model: false
+    target_duration_seconds: 30
+    output_fps: 16
+    continue_on_error: true
+  metadata:
+    variant: v2-14b-causal-fast
+    upstream_model_id: robbyant/lingbot-world-v2-14b-causal-fast
+    track: memory_loop
+    memory_roster_key: lingbot_world_v2
+    derived_from: lingbot_world_v2.yaml
+    memory_notes: Chunked causal AR with a bounded KV window (local_attn_size 18) plus a 6-latent sink
+      that keeps the anchor view resident. 961 planned frames snap to 957 after chunk alignment, which
+      is 59.81 s and inside preflight tolerance.
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: lingbot_world_v2_memory.yaml

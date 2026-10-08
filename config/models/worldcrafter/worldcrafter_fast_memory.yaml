@@ -1,0 +1,54 @@
+# Edit the base config or worldatlas/benchmark/memory_track_models.py and rerun.
+model:
+  name: worldcrafter-fast-memory
+  family: worldcrafter
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - trajectory
+  - camera_pose
+  roles:
+  - candidate
+  repo_root: thirdparty/WorldCrafter
+  python_bin: python
+  checkpoint_dir: ckpt/WorldCrafter-Fast
+  entrypoint: inference.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    model_type: fast
+    fps: 16
+    target_duration_seconds: 60
+    num_inference_steps: 6
+    guidance_scale: 1.0
+    seed: 42
+    device: cuda:0
+    attention_backend: native
+    enable_compile: false
+  env:
+    PYTHONNOUSERSITE: '1'
+    TOKENIZERS_PARALLELISM: 'false'
+  metadata:
+    variant: WorldCrafter-Fast
+    official_repo: https://github.com/TencentARC/WorldCrafter
+    source_revision: 17373d6625fe09355a7b2379749489ba63680f03
+    checkpoint_repo: TencentARC/WorldCrafter-Fast
+    notes: 'Official I2V camera route. Generates whole 33-frame chunks at 16 fps; the five-second image
+      suites quantize to three chunks (6.1875 seconds).
+
+      '
+    track: memory_loop
+    memory_roster_key: worldcrafter_fast
+    derived_from: worldcrafter_fast.yaml
+    memory_notes: 'Official camera-queryable memory consumes the full closed camera itinerary in 33-frame
+      chunks at 16 fps: fifteen chunks for 30 seconds or thirty chunks for 60 seconds.'

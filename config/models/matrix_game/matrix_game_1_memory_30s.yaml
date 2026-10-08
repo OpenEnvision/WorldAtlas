@@ -1,0 +1,76 @@
+model:
+  name: matrix-game-1-memory-30s
+  family: matrix_game_1
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - image
+  - actions
+  roles:
+  - candidate
+  repo_root: thirdparty/Matrix-Game/Matrix-Game-1
+  python_bin: python
+  checkpoint_dir: ckpt/Matrix-Game-1.0
+  entrypoint: inference_bench.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: none
+  reference_mode: first_frame
+  env:
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  generation:
+    video_length: 481
+    guidance_scale: 6.0
+    inference_steps: 20
+    shift: 15.0
+    num_pre_frames: 5
+    num_steps: 20
+    rel_l1_thresh: 0.15
+    resolution:
+    - 1280
+    - 720
+    fps: 16
+    seed: 42
+    bfloat16: true
+    attack_period_frames: 8
+    action_plan:
+      default:
+      - forward
+      - camera_r
+      - forward_right
+      - camera_l
+      - forward
+      by_suite:
+        image_static:
+        - forward
+        - camera_r
+        - forward
+        - camera_l
+        image_dynamic:
+        - forward
+        - jump
+        - camera_r
+        - forward_right
+        - camera_l
+    chunk_video_length: 65
+    action_source: worldatlas_camera_path
+    prefer_flash_attn3: true
+  metadata:
+    track: memory_loop
+    memory_roster_key: matrix_game_1
+    derived_from: matrix_game_1.yaml
+    memory_notes: The payload builder now receives the sample, so the itinerary comes from camera_path
+      instead of the static plan in the config. Actions are held for a uniform number of frames, which
+      keeps inverse pairs balanced. The runner initializes a 1-rank process group (ActionModule reads
+      world_size), tiles 65-frame official clips with a 5-frame overlap, expands the Hunyuan I2V ``<image>``
+      token, routes attention through FlashAttention-3 when present, and writes per-window npy so a preempted
+      shard can resume. inference_steps/num_steps are 20 and TeaCache is 0.15 so 16 windows are tractable;
+      short-clip image_static keeps the official 50 / 0.075.
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: matrix_game_1_memory.yaml

@@ -1,0 +1,60 @@
+# Edit the base config or worldatlas/benchmark/memory_track_models.py and rerun.
+model:
+  name: sana-wm-memory
+  family: sana_wm
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - camera_pose
+  roles:
+  - candidate
+  python_bin: python
+  repo_root: thirdparty/Sana
+  checkpoint_dir: ckpt/Efficient-Large-Model--SANA-WM_bidirectional
+  entrypoint: inference_video_scripts/wm/inference_sana_wm.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    num_frames: 961
+    fps: 16
+    step: 60
+    cfg_scale: 5.0
+    flow_shift: 8.0
+    seed: 42
+    sampling_algo: flow_euler_ltx
+    no_refiner: false
+    no_action_overlay: true
+    synthetic_focal_scale: 0.6
+    config: ckpt/Efficient-Large-Model--SANA-WM_bidirectional/config.yaml
+    model_path: ckpt/Efficient-Large-Model--SANA-WM_bidirectional/dit/sana_wm_1600m_720p.safetensors
+    refiner_root: ckpt/Efficient-Large-Model--SANA-WM_bidirectional/refiner
+    refiner_gemma_root: ckpt/Efficient-Large-Model--SANA-WM_bidirectional/refiner/text_encoder
+    text_encoder_path: ckpt/Efficient-Large-Model--gemma-2-2b-it
+    chunk_num_frames: 161
+  metadata:
+    variant: SANA-WM bidirectional 1600M 720p
+    recovered_from_commit: 4540faa^
+    notes: 'Camera control goes through camera_annotation_for_conditioning_image, which resamples the
+      whole token path onto num_frames, so a closed itinerary stays closed. num_frames is a free parameter
+      snapped to a stride of 8. Weights live in arena/ckpts (not WorldAtlas/ckpt). The batch runner pins
+      the VAE and the stage-1 Gemma text encoder to those local trees so inference stays offline.
+
+      '
+    track: memory_loop
+    memory_roster_key: sana_wm
+    derived_from: sana_wm.yaml
+    memory_notes: Adapter and runner recovered from commit 4540faa^. Camera control resamples the whole
+      token path onto num_frames, so closure holds. The bidirectional 720p checkpoint cannot attend 961
+      frames in one shot; the runner tiles the official 161-frame clip and stitches on the last-frame
+      condition. Weights, the Sana checkout, and the stage-1 Gemma encoder stay on local arena/ckpts.
+      DISABLE_XFORMERS=1 is set before importing Sana so caption masks use SDPA.

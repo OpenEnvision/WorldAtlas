@@ -1,0 +1,353 @@
+{
+  "schema_version": 1,
+  "sources": {
+    "ABot-World": {
+      "path": "thirdparty/ABot-World",
+      "url": "https://github.com/amap-cvlab/ABot-World.git",
+      "revision": "e260168d3faa9407d741fa37c11f3eb335a4228f",
+      "provenance": "local_checkout"
+    },
+    "AMT": {
+      "path": "thirdparty/AMT",
+      "url": "https://github.com/MCG-NKU/AMT.git",
+      "revision": "70f988fbfc0d3d458beba1ee49caf876e57968fe",
+      "provenance": "local_checkout"
+    },
+    "AlayaWorld": {
+      "path": "thirdparty/AlayaWorld",
+      "url": "https://github.com/AlayaLab/AlayaWorld.git",
+      "revision": "e12411bae3f24fe160288cc290da41ad14e23021",
+      "provenance": "local_checkout"
+    },
+    "AlayaWorld-v1.1": {
+      "path": "thirdparty/AlayaWorld-v1.1",
+      "url": "https://github.com/AlayaLab/AlayaWorld.git",
+      "revision": "ea03cfbb2e4c4e9102ed8ea8562e0b5370ca9b79",
+      "provenance": "local_checkout"
+    },
+    "Astronex-World": {
+      "path": "thirdparty/Astronex-World",
+      "url": "https://github.com/Astronex-Robotics/Astronex-World.git",
+      "revision": "27584bf1a89da01ef35a03b48d83bc818d2adf2b",
+      "provenance": "local_checkout"
+    },
+    "DROID-SLAM": {
+      "path": "thirdparty/DROID-SLAM",
+      "url": "https://github.com/princeton-vl/DROID-SLAM.git",
+      "revision": "2dfd39f0dcad44012ca7bbb8aa70b55edbfa9c99",
+      "provenance": "gitlink",
+      "patches": [
+        {
+          "file": "thirdparty/patches/DROID-SLAM.patch",
+          "sha256": "bba6e17471e3f7b51e9d6d1b185ec96667d8c5e09a95c559161a59df8164aa6a"
+        }
+      ]
+    },
+    "Depth-Anything-3": {
+      "path": "thirdparty/Depth-Anything-3",
+      "url": "https://github.com/ByteDance-Seed/Depth-Anything-3.git",
+      "revision": "3fe327a6abe2e5db95b54444ea95463dbfef5610",
+      "provenance": "local_checkout"
+    },
+    "DreamX-World": {
+      "path": "thirdparty/DreamX-World",
+      "url": "https://github.com/AMAP-ML/DreamX-World.git",
+      "revision": "cc52f319848de29b11b994d7057b9aca0c553f0f",
+      "provenance": "local_checkout"
+    },
+    "Evoke": {
+      "path": "thirdparty/Evoke",
+      "url": "https://github.com/AlayaLab/Evoke.git",
+      "revision": "74d268516d95c8fceadd2378f91a73f9f187042b",
+      "provenance": "gitlink"
+    },
+    "FVMD-frechet-video-motion-distance": {
+      "path": "thirdparty/FVMD-frechet-video-motion-distance",
+      "url": "https://github.com/DSL-Lab/FVMD-frechet-video-motion-distance",
+      "revision": "875a86a92239e5f5751fda52c30d18a062fcfebc",
+      "provenance": "local_checkout",
+      "patches": [
+        {
+          "file": "thirdparty/patches/FVMD-frechet-video-motion-distance.patch",
+          "sha256": "5f0db0866ea2060c2d10c399f765ca7f8f80a4e3c011b21f27cb18058bdeea7b"
+        }
+      ]
+    },
+    "FlashWorld": {
+      "path": "thirdparty/FlashWorld",
+      "url": "https://github.com/imlixinyang/FlashWorld.git",
+      "revision": "424db4487de308a39e5137afbe85e7568a96193f",
+      "provenance": "local_checkout",
+      "patches": [
+        {
+          "file": "thirdparty/patches/FlashWorld.patch",
+          "sha256": "24e5f1a1c7921ca142a70e48f808412b15282aef1b27a627dd6d77b7f7edbb42"
+        }
+      ]
+    },
+    "GEN3C": {
+      "path": "thirdparty/GEN3C",
+      "url": "https://github.com/nv-tlabs/Gen3C.git",
+      "revision": "db2ffe12ced12ddafcec5e0422ee46ce8520746b",
+      "provenance": "local_checkout"
+    },
+    "Grounded-Segment-Anything": {
+      "path": "thirdparty/Grounded-Segment-Anything",
+      "url": "https://github.com/IDEA-Research/Grounded-Segment-Anything.git",
+      "revision": "126abe633ffe333e16e4a0a4e946bc1003caf757",
+      "provenance": "gitlink"
+    },
+    "GroundingDINO": {
+      "path": "thirdparty/GroundingDINO",
+      "url": "https://github.com/IDEA-Research/GroundingDINO.git",
+      "revision": "856dde20aee659246248e20734ef9ba5214f5e44",
+      "provenance": "gitlink"
+    },
+    "HY-WorldPlay": {
+      "path": "thirdparty/HY-WorldPlay",
+      "url": "https://github.com/Tencent-Hunyuan/HY-WorldPlay.git",
+      "revision": "1588e1336e842b03b0a7860c654ebd7c46bb065e",
+      "provenance": "local_checkout",
+      "patches": [
+        {
+          "file": "thirdparty/patches/HY-WorldPlay.patch",
+          "sha256": "417710d6a701e04884027610feb3c204d6761d8a203b9f15d01832ba6d14d7ec"
+        }
+      ]
+    },
+    "Helios": {
+      "path": "thirdparty/Helios",
+      "url": "https://github.com/PKU-YuanGroup/Helios.git",
+      "revision": "babed9811266e4b5b111c9c1e0977a07899066ab",
+      "provenance": "local_checkout"
+    },
+    "Infinite-World": {
+      "path": "thirdparty/Infinite-World",
+      "url": "https://github.com/MeiGen-AI/Infinite-World.git",
+      "revision": "1e8fc49ba7dc0f928c966c49c31fda9394c045d3",
+      "provenance": "local_checkout"
+    },
+    "JEDi": {
+      "path": "thirdparty/JEDi",
+      "url": "https://github.com/oooolga/JEDi",
+      "revision": "e64f3fe8572b89ea904d161def44b419024e31a0",
+      "provenance": "local_checkout"
+    },
+    "JoyAI-Echo": {
+      "path": "thirdparty/JoyAI-Echo",
+      "url": "https://github.com/jd-opensource/JoyAI-Echo.git",
+      "revision": "a08f1274573d7cd6ec66719f204951f4227a5173",
+      "provenance": "gitlink"
+    },
+    "LTX-2.5": {
+      "path": "thirdparty/LTX-2.5",
+      "url": "https://github.com/Lightricks/LTX-2.git",
+      "revision": "70ee118e0d0541056dc0e69e2e7c4baf9828326d",
+      "provenance": "local_checkout"
+    },
+    "LongCat-Video": {
+      "path": "thirdparty/LongCat-Video",
+      "url": "https://github.com/meituan-longcat/LongCat-Video.git",
+      "revision": "6b3f4b8582a8bc3f20f795735f5383716c4ba794",
+      "provenance": "upstream_snapshot_not_inference_validated"
+    },
+    "LucidDreamer": {
+      "path": "thirdparty/LucidDreamer",
+      "url": "https://github.com/luciddreamer-cvlab/LucidDreamer.git",
+      "revision": "4ddf48563140c4254c8ce566955d12531b46829c",
+      "provenance": "local_checkout"
+    },
+    "Lyra-2": {
+      "path": "thirdparty/Lyra-2",
+      "url": "https://github.com/nv-tlabs/lyra.git",
+      "revision": "9fffc9adc37004091ecf26ef03abfb3abdf4d59a",
+      "provenance": "local_checkout"
+    },
+    "Matrix-Game": {
+      "path": "thirdparty/Matrix-Game",
+      "url": "https://github.com/SkyworkAI/Matrix-Game.git",
+      "revision": "71c3cd7f741311f8100f6cf9cde942b6c1378d11",
+      "provenance": "local_checkout"
+    },
+    "Matrix-Game-3.5": {
+      "path": "thirdparty/Matrix-Game-3.5",
+      "url": "https://github.com/Riemann-Dynamics/Matrix-Game-3.5.git",
+      "revision": "6c94dd787659aa19fac22581cd8bea54e65d813f",
+      "provenance": "local_checkout",
+      "patches": [
+        {
+          "file": "thirdparty/patches/Matrix-Game-3.5.patch",
+          "sha256": "14cf1c39b223d422a05b669a2af0cefe73ee30108d33a02edb8b60a619152f22"
+        }
+      ]
+    },
+    "Prior-Depth-Anything": {
+      "path": "thirdparty/Prior-Depth-Anything",
+      "url": "https://github.com/SpatialVision/Prior-Depth-Anything.git",
+      "revision": "8c029cbca669443fe0bbf8dcefb5f91ad531084d",
+      "provenance": "gitlink"
+    },
+    "Pulse-of-Motion": {
+      "path": "thirdparty/Pulse-of-Motion",
+      "url": "https://github.com/taco-group/Pulse-of-Motion.git",
+      "revision": "0dc1fd68641f476f18e76c9d1d0931278c02a386",
+      "provenance": "local_checkout"
+    },
+    "RAFT": {
+      "path": "thirdparty/RAFT",
+      "url": "https://github.com/princeton-vl/RAFT.git",
+      "revision": "2888e15a51fa41140771d3f498ed8023cff098d1",
+      "provenance": "local_checkout"
+    },
+    "RealCam-I2V": {
+      "path": "thirdparty/RealCam-I2V",
+      "url": "https://github.com/ZGCTroy/RealCam-I2V.git",
+      "revision": "715c2c52abb394fc9b9fe10a4f33faf598579b45",
+      "provenance": "local_checkout"
+    },
+    "SEA-RAFT": {
+      "path": "thirdparty/SEA-RAFT",
+      "url": "https://github.com/princeton-vl/SEA-RAFT.git",
+      "revision": "9137517ba24e628442aec097d3afe71d03503b75",
+      "provenance": "gitlink"
+    },
+    "Sana": {
+      "path": "thirdparty/Sana",
+      "url": "https://github.com/NVlabs/Sana.git",
+      "revision": "6298508fcb511762a11c42cff45b2fc9fd930325",
+      "provenance": "local_checkout"
+    },
+    "SolarWM": {
+      "path": "thirdparty/SolarWM",
+      "url": "https://github.com/Junchao-cs/SolarWM.git",
+      "revision": "a3a3fac16466102a2b97df867f7703df7172cb2a",
+      "provenance": "gitlink"
+    },
+    "SolarWM-H3": {
+      "path": "thirdparty/SolarWM-H3",
+      "url": "https://github.com/Junchao-cs/SolarWM.git",
+      "revision": "208141bc6824af116b5f6d7799b73bd0cdf1831f",
+      "provenance": "gitlink",
+      "patches": [
+        {
+          "file": "thirdparty/patches/SolarWM-H3.patch",
+          "sha256": "db8af1cc8ba6e24d131722d0c450af961e212620fc8586ac505f3c24a8de3120"
+        }
+      ]
+    },
+    "UniDepth": {
+      "path": "thirdparty/UniDepth",
+      "url": "https://github.com/lpiccinelli-eth/UniDepth.git",
+      "revision": "8d8cfe4c7ee15297099983607febf0d4f32eb3d6",
+      "provenance": "gitlink"
+    },
+    "VFIMamba": {
+      "path": "thirdparty/VFIMamba",
+      "url": "https://github.com/MCG-NJU/VFIMamba.git",
+      "revision": "8df805eb054cd423e188d509210731cffe9438af",
+      "provenance": "gitlink"
+    },
+    "Video-Depth-Anything": {
+      "path": "thirdparty/Video-Depth-Anything",
+      "url": "https://github.com/DepthAnything/Video-Depth-Anything.git",
+      "revision": "4f5ae23172ba60fd7bc11ef671cca678842c7072",
+      "provenance": "gitlink"
+    },
+    "Wan2.2": {
+      "path": "thirdparty/Wan2.2",
+      "url": "https://github.com/Wan-Video/Wan2.2.git",
+      "revision": "42bf4cfaa384bc21833865abc2f9e6c0e67233dc",
+      "provenance": "local_checkout"
+    },
+    "Warp-as-History": {
+      "path": "thirdparty/Warp-as-History",
+      "url": "https://github.com/yyfz/Warp-as-History.git",
+      "revision": "09aa6461355b298bfced51007bd709a251d6033a",
+      "provenance": "local_checkout"
+    },
+    "WorldCrafter": {
+      "path": "thirdparty/WorldCrafter",
+      "url": "https://github.com/TencentARC/WorldCrafter.git",
+      "revision": "17373d6625fe09355a7b2379749489ba63680f03",
+      "provenance": "gitlink"
+    },
+    "WorldFoundry": {
+      "path": "thirdparty/WorldFoundry",
+      "url": "https://github.com/OpenEnvision/WorldFoundry",
+      "revision": "83cf8eb20561c2200558231f6ae7c21e35d16b5e",
+      "provenance": "local_checkout"
+    },
+    "YUME": {
+      "path": "thirdparty/YUME",
+      "url": "https://github.com/stdstu12/YUME.git",
+      "revision": "111c3fab7fb020d1e261a68be6ec78a3fecc8d5b",
+      "provenance": "local_checkout"
+    },
+    "flash-attention": {
+      "path": "thirdparty/flash-attention",
+      "url": "https://github.com/Dao-AILab/flash-attention.git",
+      "revision": "3a7694c04748e3ba1cd954eb5dfdfd4b6646a234",
+      "provenance": "gitlink"
+    },
+    "lingbot-video": {
+      "path": "thirdparty/lingbot-video",
+      "url": "https://github.com/Robbyant/lingbot-video.git",
+      "revision": "a638721cf2271804d02738b69f2ad788c4a559fc",
+      "provenance": "local_checkout"
+    },
+    "lingbot-world": {
+      "path": "thirdparty/lingbot-world",
+      "url": "https://github.com/Robbyant/lingbot-world.git",
+      "revision": "a43bec7f8091c83e9b30b16b912f6fc906236fa6",
+      "provenance": "local_checkout"
+    },
+    "lingbot-world-v2": {
+      "path": "thirdparty/lingbot-world-v2",
+      "url": "https://github.com/Robbyant/lingbot-world-v2.git",
+      "revision": "2648877f763a06cc743bcd919936da4d25f12e7b",
+      "provenance": "local_checkout"
+    },
+    "ltx2.3": {
+      "path": "thirdparty/ltx2.3",
+      "url": "https://github.com/Lightricks/LTX-2.git",
+      "revision": "9ec55f9f22798a3198d9c923856824821bc3317e",
+      "provenance": "upstream_snapshot_not_inference_validated"
+    },
+    "met3r": {
+      "path": "thirdparty/met3r",
+      "url": "https://github.com/mohammadasim98/met3r.git",
+      "revision": "ee0e1752898559e1a3e85e2e151d3edeb9b55f73",
+      "provenance": "local_checkout"
+    },
+    "sam2": {
+      "path": "thirdparty/sam2",
+      "url": "https://github.com/haoyi-duan/sam2.git",
+      "revision": "da85b4376f9100cecdad8ea4aaa8f63d2deaafee",
+      "provenance": "gitlink"
+    },
+    "stable-virtual-camera": {
+      "path": "thirdparty/stable-virtual-camera",
+      "url": "https://github.com/Stability-AI/stable-virtual-camera.git",
+      "revision": "fe19948e9b7bea261ab2db780a59656131404a83",
+      "provenance": "local_checkout"
+    },
+    "tapnet": {
+      "path": "thirdparty/tapnet",
+      "url": "https://github.com/google-deepmind/tapnet",
+      "revision": "c2cbab81cc06092b5f05bfe2da7bfec54e2079c9",
+      "provenance": "local_checkout"
+    },
+    "vipe": {
+      "path": "thirdparty/vipe",
+      "url": "https://github.com/nv-tlabs/vipe.git",
+      "revision": "95a8816947602ddc26fcb7a80bea4f9313059578",
+      "provenance": "gitlink"
+    },
+    "zing-world-model": {
+      "path": "thirdparty/zing-world-model",
+      "url": "https://github.com/seedleap/zing-world-model.git",
+      "revision": "11212da06f63290f4d354cdc0324241ba6eac356",
+      "provenance": "local_checkout"
+    }
+  }
+}

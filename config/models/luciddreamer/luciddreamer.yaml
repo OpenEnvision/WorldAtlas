@@ -1,0 +1,38 @@
+model:
+  name: luciddreamer
+  family: luciddreamer
+  backend_type: local_repo
+  task_families: [video_generation, scene_3d_generation]
+  artifact_types: [video, gaussian_splat]
+  control_signals: [text, image]
+  roles: [candidate]
+  # LucidDreamer targets Python 3.9 plus compiled Gaussian rasterization extensions.
+  # WorldAtlas itself should be launched from a Python 3.10+ environment; this
+  # interpreter is used only for the persistent LucidDreamer runner.
+  repo_root: thirdparty/LucidDreamer
+  entrypoint: run.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    campath_gen: lookdown
+    campath_render: llff
+    seed: 1
+    diff_steps: 50
+    input_size: 512
+    use_camera_path_render: true
+    # Render the complete WorldAtlas path in the reconstructed Gaussian scene.
+    # LucidDreamer's renderer writes 60 fps, so 300 frames gives 5 seconds.
+    camera_path_frames: 300
+    camera_path_translation_scale: 1.0
+    negative_prompt: ""
+    model_name: ckpt/stabilityai--stable-diffusion-2-inpainting
+    min_seconds: 5.0
+    prompt_prefix: ""
+    prompt_suffix: ""
+    keep_work_dir: false
+  env:
+    WORLDATLAS_CHECKPOINT_ROOT: ckpt

@@ -1,14 +1,28 @@
+from pathlib import Path
+
 from setuptools import find_namespace_packages, setup
 
 
 setup(
-    name="worldatlas-arena",
+    name="worldatlas",
     version="1.0.0",
-    long_description=open("README.md").read(),
+    description="WorldAtlas benchmark and model adapters for world generation",
+    long_description=Path(__file__).with_name("README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
-    author="stanford",
-    packages=find_namespace_packages(include=["worldarena*"]),
-    python_requires=">=3.8",
+    author="OpenEnvision",
+    url="https://github.com/OpenEnvision/WorldAtlas",
+    license="MIT",
+    packages=["worldatlas"] + [
+        f"worldatlas.{name}"
+        for name in find_namespace_packages(
+            where="worldatlas",
+            exclude=[
+                "docs", "docs.*", "datasets", "datasets.*",
+                "tests", "tests.*", "*.tests", "*.tests.*", "*.__pycache__", "*.backup*",
+            ],
+        )
+    ],
+    python_requires=">=3.10",
     install_requires=[
         "av",
         "python-dotenv",
@@ -29,11 +43,9 @@ setup(
         "requests",
     ],
     include_package_data=True,
-    package_data={"worldarena.benchmark.official_backends": ["LICENSE", "UPSTREAM.md"]},
     entry_points={
         "console_scripts": [
-            "worldatlas-arena=worldarena.cli:main",
-            "worldarena=worldarena.cli:main",
+            "worldatlas=worldatlas.cli:main",
         ],
     },
 )

@@ -1,0 +1,52 @@
+model:
+  name: matrix-game
+  family: matrix_game_3
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, actions]
+  roles: [candidate]
+  # Place the upstream repo under thirdparty/ after preparing the conda environment externally.
+  repo_root: thirdparty/Matrix-Game/Matrix-Game-3
+  python_bin: python
+  checkpoint_dir: ckpt/Matrix-Game-3.0
+  entrypoint: generate.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    size: 704*1280
+    fps: 17
+    seed: 42
+    num_inference_steps: 3
+    sample_guide_scale: 5.0
+    vae_type: mg_lightvae_v2
+    compile_vae: true
+    use_int8: true
+    visualize_ops: false
+    action_plan:
+      default:
+        - forward
+        - camera_r
+        - forward_right
+        - camera_l
+        - forward
+      by_suite:
+        image_static:
+          - forward
+          - camera_r
+          - forward
+          - camera_l
+        image_dynamic:
+          - forward
+          - camera_r
+          - forward_right
+          - camera_l
+          - forward
+      frames_per_action: 12
+      first_clip_frames: 57
+      clip_overlap_frames: 16
+      num_iterations: 2

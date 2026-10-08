@@ -1,0 +1,45 @@
+SolarWM
+Copyright 2026 SolarWM Contributors
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+--------------------------------------------------------------------------------
+Third-party source included in this repository
+--------------------------------------------------------------------------------
+
+  Wan 2.2 (Alibaba Wan Team), Apache-2.0
+    Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
+    Vendored under src/solarwm/backends/wan22/runtime/modeling/:
+      model.py, vae.py, t5.py, attention.py, tokenizers.py
+    causal_model.py is a MODIFIED derivative of the above, extending the Wan
+    architecture with causal attention and camera conditioning.
+    The Chinese negative prompts in the Wan example configs are Wan defaults.
+
+  PRoPE: Projective Positional Encoding for Multiview Transformers, MIT
+    Copyright (c) the PRoPE authors.
+    Vendored as src/solarwm/backends/wan22/runtime/modeling/camera_prope.py
+    (dual-licensed Apache-2.0 AND MIT) and adapted in the LTX and H3 backends
+    as torch_prope.py.
+
+Each vendored file keeps its upstream copyright header. Files modified by this
+project state so in their header.
+
+--------------------------------------------------------------------------------
+Backbones and weights
+--------------------------------------------------------------------------------
+
+Model weights and backbone packages are NOT distributed here and carry their own
+terms, several of which are not Apache-2.0. Obtain each from its publisher and
+check its licence before redistributing anything you produce:
+
+  Wan 2.2 TI2V-5B / I2V-A14B          LTX-2.5 (incl. the ltx-core packages)
+  MiniMax-H3                          the text encoders each backbone requires
+
+--------------------------------------------------------------------------------
+Data
+--------------------------------------------------------------------------------
+
+The corpus is produced by the SolarWM Data Engine and annotates public source
+datasets that are not redistributed here; each keeps its own terms, several of
+which are non-commercial. See the licence and citation registry distributed
+with SolarWM-Data.

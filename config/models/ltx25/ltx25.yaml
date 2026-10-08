@@ -1,0 +1,48 @@
+model:
+  name: ltx-2.5-22b-distilled-i2v
+  family: ltx25
+  backend_type: local_repo
+  task_families: [video_generation]
+  artifact_types: [video]
+  control_signals: [text, image]
+  roles: [candidate]
+  python_bin: python
+  repo_root: thirdparty/LTX-2.5
+  checkpoint_dir: ckpt/Lightricks--LTX-2.5
+  entrypoint: packages/ltx-pipelines/src/ltx_pipelines/distilled.py
+  output_ext: .mp4
+  supported_suites: [image_static, image_dynamic]
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTHONNOUSERSITE: '1'
+    HF_HUB_OFFLINE: '1'
+    TRANSFORMERS_OFFLINE: '1'
+    TOKENIZERS_PARALLELISM: 'false'
+  generation:
+    pipeline: distilled
+    require_persistent_batch: true
+    nproc_per_node: 1
+    transformer_path: diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors
+    text_encoder_path: text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors
+    video_vae_path: vae/ltx-2.5-video-vae-bf16.safetensors
+    audio_vae_path: vae/ltx-2.5-audio-vae-bf16.safetensors
+    spatial_upsampler_path: latent_upscale_models/ltx-2.5-latent-spatial-upscaler-x2-bf16-1.0.safetensors
+    height: 512
+    width: 768
+    num_frames: 121
+    frame_rate: 24
+    min_seconds: 5.0
+    seed: 10
+    image_conditioning_strength: 1.0
+    # The official pipeline resolves this from the 2.5 checkpoint (not the 2.3 default).
+    image_crf: null
+    offload: none
+    enhance_prompt: false
+  metadata:
+    upstream_repository: https://github.com/Lightricks/LTX-2
+    upstream_revision: 70ee118e0d0541056dc0e69e2e7c4baf9828326d
+    upstream_model_id: Lightricks/LTX-2.5
+    upstream_weights_revision: bf86adedf518142442575d1ce2e767b7d01c8c76
+    protocol: official two-stage distilled BF16, model-detected ancestral sampling, joint audio/video
+    duration: 121 frames at 24 fps (5.041667 seconds; native 8n+1 lattice)

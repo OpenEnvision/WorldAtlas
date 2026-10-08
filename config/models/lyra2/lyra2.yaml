@@ -1,0 +1,41 @@
+model:
+  name: lyra-2
+  family: lyra2
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  # Lyra-2 reuses the GEN3C CUDA env plus flash-attn / vipe / DA3 extensions.
+  python_bin: python
+  repo_root: thirdparty/Lyra-2/Lyra-2
+  # Store the Lyra-2 weights under ckpt/Lyra-2.0 and keep companion checkpoints under ckpt/.
+  checkpoint_dir: ckpt/Lyra-2.0
+  entrypoint: lyra_2/_src/inference/lyra2_custom_traj_inference.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    experiment: lyra2
+    height: 480
+    width: 832
+    num_frames: 81
+    guidance: 5.0
+    shift: 5.0
+    num_sampling_step: 35
+    seed: 1
+    fps: 16
+    pose_scale: 1.0
+    context_parallel_size: 1
+    use_moge_scale: true
+    da3_model_name: ckpt/DA3-GIANT
+    da3_model_path_custom: null
+    da3_frame_interval: 8
+    da3_max_history_frames: 10
+    synthetic_focal_scale: 0.6
+    offload: false
+  env:
+    WORLDATLAS_LYRA2_ATTENTION_BACKEND: sdpa

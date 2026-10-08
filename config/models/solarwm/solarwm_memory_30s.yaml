@@ -1,0 +1,60 @@
+model:
+  name: solarwm-5b-stage2-memory-30s
+  family: solarwm
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - trajectory
+  - camera_pose
+  roles:
+  - candidate
+  repo_root: thirdparty/SolarWM
+  python_bin: python
+  checkpoint_dir: ckpt/SolarWM
+  entrypoint: -m solarwm infer
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    nproc_per_node: 1
+    config_path: configs/examples/wan22_ti2v_5b/infer_stage2_sgf_camera_length.yaml
+    base_model_dir: SolarWM-5B-base
+    stage2_checkpoint_dir: SolarWM-5B-sgf-stage2-81f
+    num_frames: 81
+    fps: 16
+    width: 864
+    height: 480
+    seed: 42
+    selection_seed: 42
+    synthetic_focal_scale: 0.6
+    ffmpeg_bin: ffmpeg
+    target_duration_seconds: 30
+  env:
+    PYTHONNOUSERSITE: '1'
+    TOKENIZERS_PARALLELISM: 'false'
+  metadata:
+    variant: SolarWM-5B Stage2 SGF (Wan2.2-TI2V-5B)
+    official_repo: https://github.com/Junchao-cs/SolarWM
+    checkpoint_repo: junchaoh-cs/SolarWM
+    notes: 'The adapter bridges WorldAtlas samples into SolarWM''s canonical raw-WebDataset contract and
+      invokes the official one-GPU camera-length Stage2 inference route.
+
+      '
+    track: memory_loop
+    memory_roster_key: solarwm
+    derived_from: solarwm.yaml
+    memory_notes: The released Stage2 SGF route uses bounded-window autoregressive generation. A 960-frame
+      camera source yields 957 model frames and SolarWM's official camera publication pads the final frame
+      to preserve the full 60-second trajectory.
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: solarwm_memory.yaml

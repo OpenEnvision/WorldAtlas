@@ -1,0 +1,481 @@
+diff --git a/src/solarwm/backends/minimax_h3/full_inference.py b/src/solarwm/backends/minimax_h3/full_inference.py
+index 43b83a8..89786ac 100644
+--- a/src/solarwm/backends/minimax_h3/full_inference.py
++++ b/src/solarwm/backends/minimax_h3/full_inference.py
+@@ -8,7 +8,9 @@ from __future__ import annotations
+ 
+ import gc
+ import json
++import math
+ import os
++import shutil
+ import subprocess
+ import time
+ from dataclasses import asdict
+@@ -275,6 +277,61 @@ def decode_write(vae, generated, geometry, output, fps, device, *, streaming=Fal
+     return dict(sampled_frames=story_indices, mean_pixel_value=luminance)
+ 
+ 
++def _rollout_paths(dest, key):
++    return dest / f".{key}.rollout.safetensors", dest / f".{key}.rollout.json"
++
++
++def _staged_rollout(dest, key, identity, geometry):
++    """Return a verified rollout receipt, or require a fresh rollout."""
++    from safetensors import safe_open
++
++    latent_path, receipt_path = _rollout_paths(dest, key)
++    if not receipt_path.is_file():
++        return None
++    receipt = json.loads(receipt_path.read_text())
++    if receipt.get("schema") != "solarwm.h3-source-rollout.v1":
++        raise ValueError(f"Staged H3 rollout has an unknown receipt: {receipt_path}")
++    if receipt.get("result_identity") != identity:
++        raise ValueError(f"Staged H3 rollout belongs to another input: {receipt_path}")
++    if not latent_path.is_file() or sha(latent_path) != receipt.get("latents_sha256"):
++        raise ValueError(f"Staged H3 rollout differs from its receipt: {latent_path}")
++    with safe_open(str(latent_path), framework="pt", device="cpu") as handle:
++        if handle.keys() != ["generated_latents"] or tuple(
++            handle.get_slice("generated_latents").get_shape()
++        ) != (1, 24, geometry.decode_latents, 48, 84):
++            raise ValueError(f"Staged H3 rollout has invalid shape: {latent_path}")
++    return receipt
++
++
++def _save_rollout(dest, key, identity, geometry, latents, generation_seconds):
++    from safetensors.torch import save_file
++    import torch
++
++    started = time.perf_counter()
++    latent_path, receipt_path = _rollout_paths(dest, key)
++    part = latent_path.with_name(f".{latent_path.name}.{os.getpid()}.tmp")
++    value = latents[:, :, : geometry.decode_latents].float().cpu().contiguous()
++    if tuple(value.shape) != (1, 24, geometry.decode_latents, 48, 84):
++        raise ValueError(f"Unexpected H3 rollout shape for {key}: {tuple(value.shape)}")
++    if not bool(torch.isfinite(value).all()):
++        raise FloatingPointError(f"Non-finite H3 rollout for {key}")
++    try:
++        save_file({"generated_latents": value}, str(part))
++        part.replace(latent_path)
++    finally:
++        part.unlink(missing_ok=True)
++    atomic_json(
++        receipt_path,
++        dict(
++            schema="solarwm.h3-source-rollout.v1",
++            result_identity=identity,
++            latents_sha256=sha(latent_path),
++            generation_seconds=generation_seconds,
++            staging_seconds=time.perf_counter() - started,
++        ),
++    )
++
++
+ def generate(args):
+     import torch
+     import torch.distributed as dist
+@@ -312,15 +369,6 @@ def generate(args):
+     silence = (
+         silence.to(device).float().unsqueeze(0).permute(0, 1, 3, 2).reshape(1, -1, 32).contiguous()
+     )
+-    vae = (
+-        load_conditioners(
+-            cfg["model"], device=device, qwen=False, audio_vae=False, schedulers=False
+-        ).video_vae
+-        if rank == 0
+-        else None
+-    )
+-    if vae is not None:
+-        vae.set_attention_backend("native")
+     print(
+         f"MODEL_READY rank={rank} weight_source={args.weight_source} step={step} sp=8"
+         f" memory_gib={torch.cuda.memory_allocated() / 2**30:.2f}",
+@@ -338,7 +386,6 @@ def generate(args):
+             noise_seed = int(
+                 row.get("validation_noise_seed", row.get("validation_seed", args.noise_seed))
+             )
+-            started = time.perf_counter()
+             case = Path(args.work_dir) / "cases" / row["key"]
+             condition_receipt = prepared_case_receipt(case, row, args)
+             identity = result_identity(
+@@ -355,6 +402,11 @@ def generate(args):
+                     save_latents=bool(cfg["inference"].get("save_latents", False)),
+                 )
+                 continue
++            geometry = full_length_geometry(int(row["num_frames"]))
++            if _staged_rollout(dest, row["key"], identity, geometry) is not None:
++                if rank == 0:
++                    print(f"ROLLOUT_REUSED key={row['key']}", flush=True)
++                continue
+             values = load_file(str(case / "condition.safetensors"), device="cpu")
+             from types import SimpleNamespace
+ 
+@@ -382,7 +434,6 @@ def generate(args):
+             condition = SimpleNamespace(
+                 prompt_embeds=prompt, text_token_tags=tags, anchor_latents=anchor
+             )
+-            geometry = full_length_geometry(int(row["num_frames"]))
+             rng = torch.Generator(device=device).manual_seed(noise_seed)
+ 
+             def random_like(value, *, rng=rng):
+@@ -444,169 +495,203 @@ def generate(args):
+             torch.cuda.synchronize()
+             dist.barrier()
+             generation_seconds = time.perf_counter() - generation_start
+-            streaming = bool(cfg["inference"].get("stream_decode", False))
+-
+-            def decode_progress(_count):
+-                heartbeat = torch.ones((), device=device, dtype=torch.int32)
+-                dist.broadcast(heartbeat, src=0)
+-
+-            if rank != 0 and streaming:
+-                # Hour-long VAE/encoding can exceed the process-group timeout.
+-                # Participate in each bounded temporal chunk's progress event.
+-                while True:
+-                    event = torch.empty((), device=device, dtype=torch.int32)
+-                    dist.broadcast(event, src=0)
+-                    if int(event) == 0:
+-                        break
+-                    if int(event) < 0:
+-                        raise RuntimeError("Rank zero failed during streaming video publication")
+             if rank == 0:
+-                try:
+-                    if cfg["inference"].get("save_latents", False):
+-                        from safetensors.torch import save_file
+-
+-                        save_file(
+-                            {
+-                                "generated_latents": rollout.cache_target[
+-                                    :, :, : geometry.decode_latents
+-                                ]
+-                                .float()
+-                                .cpu()
+-                                .contiguous()
+-                            },
+-                            str(dest / (row["key"] + ".latents.safetensors")),
+-                        )
+-                    fps = exported_fps(float(row["fps"]), args.fps_policy)
+-                    output = dest / (row["key"] + ".mp4")
+-                    decode_start = time.perf_counter()
+-                    visual = decode_write(
+-                        vae,
+-                        rollout.cache_target,
+-                        geometry,
+-                        output,
+-                        fps,
+-                        device,
+-                        streaming=streaming,
+-                        progress=decode_progress if streaming else None,
+-                    )
+-                    decode_seconds = time.perf_counter() - decode_start
+-                    import imageio_ffmpeg
+-
+-                    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+-                    compare = output.with_name(output.stem + ".compare.mp4")
+-                    part = compare.with_name("." + compare.stem + ".tmp.mp4")
+-                    if row.get("input_kind") != "demo":
+-                        subprocess.run(
+-                            [
+-                                ffmpeg,
+-                                "-nostdin",
+-                                "-v",
+-                                "error",
+-                                "-y",
+-                                "-i",
+-                                str(case / "source.mp4"),
+-                                "-i",
+-                                str(output),
+-                                "-filter_complex",
+-                                f"[0:v]setpts=N/({fps}*TB),scale=1344:768:flags=lanczos,setsar=1[a];[1:v]setsar=1[b];[a][b]hstack",
+-                                "-frames:v",
+-                                str(geometry.source_frames),
+-                                "-r",
+-                                str(fps),
+-                                "-an",
+-                                "-c:v",
+-                                "libx264",
+-                                "-crf",
+-                                "20",
+-                                "-preset",
+-                                "fast",
+-                                "-threads",
+-                                "2",
+-                                str(part),
+-                            ],
+-                            check=True,
+-                        )
+-                        part.replace(compare)
+-                    from decord import VideoReader, cpu
+-
+-                    for path in (output,) if row.get("input_kind") == "demo" else (output, compare):
+-                        actual = VideoReader(str(path), ctx=cpu(), num_threads=2)
+-                        if (
+-                            len(actual) != geometry.source_frames
+-                            or abs(actual.get_avg_fps() - fps) > 0.02
+-                        ):
+-                            raise ValueError("Written output frame count or FPS differs")
+-                        actual[len(actual) - 1]
+-                        del actual
+-                    elapsed = time.perf_counter() - started
+-                    atomic_json(
+-                        manifest,
+-                        dict(
+-                            schema="solarwm.h3-full-test-result.v1",
+-                            source_row=row,
+-                            result_identity=identity,
+-                            step=step,
+-                            weights_id=weights_id,
+-                            noise_seed=noise_seed,
+-                            checkpoint_receipt_sha256=checkpoint_receipt_sha256,
+-                            condition_sha256=condition_receipt["condition_sha256"],
+-                            weights_source=args.weight_source,
+-                            sp_size=8,
+-                            world_size=8,
+-                            geometry=asdict(geometry),
+-                            fps=fps,
+-                            model_fps=24,
+-                            fps_policy=args.fps_policy,
+-                            generation_seconds=generation_seconds,
+-                            generation_fps=geometry.source_frames / generation_seconds,
+-                            decode_write_seconds=decode_seconds,
+-                            inference_end_to_end_seconds=elapsed,
+-                            preparation_seconds=condition_receipt["preparation_seconds"],
+-                            end_to_end_seconds=elapsed + condition_receipt["preparation_seconds"],
+-                            end_to_end_fps=geometry.source_frames
+-                            / (elapsed + condition_receipt["preparation_seconds"]),
+-                            timing_excludes="model loading",
+-                            nfe=4,
+-                            forwards_per_chunk=5,
+-                            window_chunks=6,
+-                            chunk_latents=5,
+-                            context_noise=0,
+-                            camera_translation_transform="logd4",
+-                            camera_intrinsics_mode="wan_fixed",
+-                            student_rope_mode="sliding_local",
+-                            kv_cache="raw_before_rope_and_prope",
+-                            audio_condition_policy="fixed_noised_encoded_158f_silence_per_rollout",
+-                            tail_camera_policy="repeat_last_available_latent_only_for_codec_tail",
+-                            output_sha256=sha(output),
+-                            compare_sha256=sha(compare)
+-                            if row.get("input_kind") != "demo"
+-                            else None,
+-                            stream_decode=bool(cfg["inference"].get("stream_decode", False)),
+-                            storyboard_sha256=sha(output.with_suffix(".storyboard.jpg")),
+-                            latents_sha256=(
+-                                sha(dest / (row["key"] + ".latents.safetensors"))
+-                                if cfg["inference"].get("save_latents", False)
+-                                else None
+-                            ),
+-                            visual_samples=visual,
+-                            gpu_peak_memory_gib=torch.cuda.max_memory_allocated() / 2**30,
+-                        ),
+-                    )
+-                    print("RESULT " + json.dumps(json.loads(manifest.read_text())), flush=True)
+-                finally:
+-                    if streaming:
+-                        import sys
+-
+-                        event = torch.tensor(
+-                            0 if sys.exc_info()[0] is None else -1, device=device, dtype=torch.int32
+-                        )
+-                        dist.broadcast(event, src=0)
++                _save_rollout(
++                    dest, row["key"], identity, geometry, rollout.cache_target, generation_seconds
++                )
++                print(f"ROLLOUT_STAGED key={row['key']} seconds={generation_seconds:.3f}", flush=True)
+             dist.barrier()
+-            del rollout, inputs, noise, values, anchor, audio, condition
++            del rollout, inputs, noise, values, anchor, audio, condition, views, intrinsics
+             gc.collect()
+             torch.cuda.empty_cache()
++        # All eight ranks finish SP8 rollouts before rank zero loads the FP32 VAE.
++        dist.barrier()
++        del model, lora, modules, silence
++        gc.collect()
++        torch.cuda.empty_cache()
++        print(f"ROLLOUT_PHASE_DONE rank={rank} memory_gib={torch.cuda.memory_allocated() / 2**30:.2f}", flush=True)
+     finally:
+         dist.destroy_process_group()
++    if rank != 0:
++        return
++    vae = load_conditioners(
++        cfg["model"], device=device, qwen=False, audio_vae=False, schedulers=False
++    ).video_vae
++    vae.set_attention_backend("native")
++    print(f"DECODER_READY rank=0 memory_gib={torch.cuda.memory_allocated() / 2**30:.2f}", flush=True)
++    for row in selected_rows(args):
++        dest = root / row["dataset"]
++        manifest = dest / (row["key"] + ".json")
++        case = Path(args.work_dir) / "cases" / row["key"]
++        condition_receipt = prepared_case_receipt(case, row, args)
++        noise_seed = int(
++            row.get("validation_noise_seed", row.get("validation_seed", args.noise_seed))
++        )
++        identity = result_identity(
++            args,
++            condition_receipt,
++            checkpoint_sha256=checkpoint_receipt_sha256,
++            silence_sha256=silence_sha256,
++            seed=noise_seed,
++        )
++        if manifest.is_file():
++            verify_completed_result(
++                manifest,
++                expected_identity=identity,
++                save_latents=bool(cfg["inference"].get("save_latents", False)),
++            )
++            continue
++        geometry = full_length_geometry(int(row["num_frames"]))
++        started = time.perf_counter()
++        receipt = _staged_rollout(dest, row["key"], identity, geometry)
++        if receipt is None:
++            raise FileNotFoundError(f"Missing staged H3 rollout for {row['key']}")
++        generation_seconds = float(receipt["generation_seconds"])
++        if not math.isfinite(generation_seconds) or generation_seconds <= 0:
++            raise ValueError(f"Invalid H3 generation time for {row['key']}")
++        staging_seconds = float(receipt["staging_seconds"])
++        if not math.isfinite(staging_seconds) or staging_seconds < 0:
++            raise ValueError(f"Invalid H3 staging time for {row['key']}")
++        latent_path, receipt_path = _rollout_paths(dest, row["key"])
++        generated = load_file(str(latent_path), device="cpu")["generated_latents"]
++        if not bool(torch.isfinite(generated).all()):
++            raise FloatingPointError(f"Non-finite staged H3 rollout for {row['key']}")
++        if cfg["inference"].get("save_latents", False):
++            published = dest / (row["key"] + ".latents.safetensors")
++            part = published.with_name(f".{published.name}.{os.getpid()}.tmp")
++            try:
++                shutil.copyfile(latent_path, part)
++                part.replace(published)
++            finally:
++                part.unlink(missing_ok=True)
++        streaming = bool(cfg["inference"].get("stream_decode", False))
++
++        def decode_progress(count):
++            print(f"DECODE_PROGRESS key={row['key']} frames={count}", flush=True)
++
++        fps = exported_fps(float(row["fps"]), args.fps_policy)
++        output = dest / (row["key"] + ".mp4")
++        decode_start = time.perf_counter()
++        visual = decode_write(
++            vae,
++            generated,
++            geometry,
++            output,
++            fps,
++            device,
++            streaming=streaming,
++            progress=decode_progress if streaming else None,
++        )
++        decode_seconds = time.perf_counter() - decode_start
++        import imageio_ffmpeg
++
++        ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
++        compare = output.with_name(output.stem + ".compare.mp4")
++        part = compare.with_name("." + compare.stem + ".tmp.mp4")
++        if row.get("input_kind") != "demo":
++            subprocess.run(
++                [
++                    ffmpeg,
++                    "-nostdin",
++                    "-v",
++                    "error",
++                    "-y",
++                    "-i",
++                    str(case / "source.mp4"),
++                    "-i",
++                    str(output),
++                    "-filter_complex",
++                    f"[0:v]setpts=N/({fps}*TB),scale=1344:768:flags=lanczos,setsar=1[a];[1:v]setsar=1[b];[a][b]hstack",
++                    "-frames:v",
++                    str(geometry.source_frames),
++                    "-r",
++                    str(fps),
++                    "-an",
++                    "-c:v",
++                    "libx264",
++                    "-crf",
++                    "20",
++                    "-preset",
++                    "fast",
++                    "-threads",
++                    "2",
++                    str(part),
++                ],
++                check=True,
++            )
++            part.replace(compare)
++        from decord import VideoReader, cpu
++
++        for path in (output,) if row.get("input_kind") == "demo" else (output, compare):
++            actual = VideoReader(str(path), ctx=cpu(), num_threads=2)
++            if (
++                len(actual) != geometry.source_frames
++                or abs(actual.get_avg_fps() - fps) > 0.02
++            ):
++                raise ValueError("Written output frame count or FPS differs")
++            actual[len(actual) - 1]
++            del actual
++        elapsed = generation_seconds + staging_seconds + time.perf_counter() - started
++        atomic_json(
++            manifest,
++            dict(
++                schema="solarwm.h3-full-test-result.v1",
++                source_row=row,
++                result_identity=identity,
++                step=step,
++                weights_id=weights_id,
++                noise_seed=noise_seed,
++                checkpoint_receipt_sha256=checkpoint_receipt_sha256,
++                condition_sha256=condition_receipt["condition_sha256"],
++                weights_source=args.weight_source,
++                sp_size=8,
++                world_size=8,
++                geometry=asdict(geometry),
++                fps=fps,
++                model_fps=24,
++                fps_policy=args.fps_policy,
++                generation_seconds=generation_seconds,
++                staging_seconds=staging_seconds,
++                generation_fps=geometry.source_frames / generation_seconds,
++                decode_write_seconds=decode_seconds,
++                inference_end_to_end_seconds=elapsed,
++                preparation_seconds=condition_receipt["preparation_seconds"],
++                end_to_end_seconds=elapsed + condition_receipt["preparation_seconds"],
++                end_to_end_fps=geometry.source_frames
++                / (elapsed + condition_receipt["preparation_seconds"]),
++                timing_excludes="model loading",
++                nfe=4,
++                forwards_per_chunk=5,
++                window_chunks=6,
++                chunk_latents=5,
++                context_noise=0,
++                camera_translation_transform="logd4",
++                camera_intrinsics_mode="wan_fixed",
++                student_rope_mode="sliding_local",
++                kv_cache="raw_before_rope_and_prope",
++                audio_condition_policy="fixed_noised_encoded_158f_silence_per_rollout",
++                tail_camera_policy="repeat_last_available_latent_only_for_codec_tail",
++                output_sha256=sha(output),
++                compare_sha256=sha(compare)
++                if row.get("input_kind") != "demo"
++                else None,
++                stream_decode=bool(cfg["inference"].get("stream_decode", False)),
++                storyboard_sha256=sha(output.with_suffix(".storyboard.jpg")),
++                latents_sha256=(
++                    sha(dest / (row["key"] + ".latents.safetensors"))
++                    if cfg["inference"].get("save_latents", False)
++                    else None
++                ),
++                visual_samples=visual,
++                gpu_peak_memory_gib=torch.cuda.max_memory_allocated() / 2**30,
++            ),
++        )
++        print("RESULT " + json.dumps(json.loads(manifest.read_text())), flush=True)
++        latent_path.unlink()
++        receipt_path.unlink()
++        del generated
++        gc.collect()
++        torch.cuda.empty_cache()
+ 
+ 
+ def run_source_length_inference(config):

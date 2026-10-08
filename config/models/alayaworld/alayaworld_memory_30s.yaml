@@ -1,0 +1,88 @@
+model:
+  name: alayaworld-15b-memory-30s
+  family: alayaworld
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - camera_pose
+  roles:
+  - candidate
+  python_bin: python
+  repo_root: thirdparty/AlayaWorld
+  checkpoint_dir: ckpt/AlayaWorld
+  entrypoint: inference/run.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  generation:
+    require_persistent_batch: true
+    rounds: 23
+    chunk_latent_frames: 4
+    temporal_stride: 8
+    sink_latent_frames: 1
+    history_latent_frames: 16
+    height: 544
+    width: 960
+    fps: 24
+    seed: 1234
+    increment_seed: true
+    action_source: worldatlas_camera_path
+    camera_prefix_mode: extend_first_action
+    forward_distance_per_chunk: 2.54
+    lateral_distance_per_chunk: 0.5348
+    vertical_distance_per_chunk: 1.1076
+    rotation_degrees_per_chunk: 12.5
+    tilt_degrees_per_chunk: 10.0
+    roll_degrees_per_chunk: 8.0
+    orbit_radius: 2.0
+    intrinsic_fx: 0.4482019544
+    intrinsic_fy: 0.7965529561
+    pose_orig_width: 1280
+    pose_orig_height: 720
+    gemma_dir: ckpt/gemma-3-12b-it-qat-q4_0-unquantized
+    da3_repo: thirdparty/Depth-Anything-3
+    da3_model: depth-anything/DA3NESTED-GIANT-LARGE-1.1
+    da3_cache: ckpt/huggingface
+    attention_type: flash_attention_3
+    sampling_steps: 4
+    persistent: true
+    compile: none
+    flex_attn: false
+    nproc_per_node: 1
+    joystick: false
+    ttc: false
+    video_crf: 28
+    enable_prompt_switching: true
+    skill_seconds: 1.3333333333
+    skill_keep_wrap: false
+    offline: true
+    continue_on_error: true
+    memory_reference_rounds: 48
+  metadata:
+    variant: AlayaWorld distilled autoregressive 15B
+    upstream_model_id: AlayaLab/AlayaWorld
+    upstream_repository: https://github.com/AlayaLab/AlayaWorld
+    project_page: https://alaya-lab.github.io/AlayaWorld/
+    technical_report: https://arxiv.org/abs/2607.06291
+    tested_upstream_revision: e12411bae3f24fe160288cc290da41ad14e23021
+    runtime_variant: a100_bf16_xformers_eager
+    license: LTX-2 Community License Agreement (academic/non-commercial)
+    track: memory_loop
+    memory_roster_key: alayaworld
+    derived_from: alayaworld.yaml
+    memory_notes: History and KV cache grow with the round count; upstream documents that a 45-round rollout
+      needs more than one 80 GB device, so this entry is the most likely to need a smaller resolution
+      or to fail the pilot on memory.
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: alayaworld_memory.yaml

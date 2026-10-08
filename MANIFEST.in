@@ -1,0 +1,25 @@
+include README.md LICENSE
+include .gitmodules
+recursive-include config *.yaml *.example *.json *.md
+recursive-include requirements *.txt
+include scripts/README.md
+include scripts/check_installation.py scripts/checkout_dependencies.py
+include scripts/download_metric_checkpoints.sh
+include scripts/run_eval_shards.py
+include thirdparty/README.md thirdparty/sources.lock.json
+recursive-include thirdparty/patches *.patch *.md
+recursive-include thirdparty/patches/licenses *
+prune tests
+prune tools
+prune hope_jobs
+prune site
+prune docs
+prune artifacts
+prune assets
+prune config/backup
+prune worldatlas/docs
+prune worldatlas/datasets
+prune worldatlas/models/backup
+prune worldatlas/models/adapters/backup
+global-exclude __pycache__ *.py[cod] *.log *.tmp *.mp3
+global-exclude *_local.yaml *_juanxi*.yaml *_debug*.yaml *.cpfs.yaml

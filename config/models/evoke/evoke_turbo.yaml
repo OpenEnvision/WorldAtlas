@@ -1,0 +1,90 @@
+# AlayaLab/Evoke-Turbo independent transformer.
+model:
+  name: alaya-evoke-turbo
+  family: evoke
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - camera_pose
+  roles:
+  - candidate
+  python_bin: python
+  repo_root: thirdparty/Evoke
+  checkpoint_dir: ckpt/Evoke
+  entrypoint: scripts/inference/infer_batch.py
+  output_ext: .mp4
+  supported_suites:
+  - image_static
+  - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  generation:
+    require_persistent_batch: true
+    num_chunks: 7
+    height: 384
+    width: 640
+    fps: 24
+    seed: 44
+    increment_seed: true
+    sample_type: i2v
+    action_source: worldatlas_camera_path
+    warp: auto
+    enable_prompt_switching: true
+    forward_distance_per_chunk: 1.2
+    lateral_distance_per_chunk: 0.4
+    vertical_distance_per_chunk: 0.35
+    rotation_degrees_per_chunk: 8.0
+    tilt_degrees_per_chunk: 6.0
+    roll_degrees_per_chunk: 5.0
+    orbit_radius: 2.0
+    intrinsic_focal_scale: 0.7
+    transformer_relpath: evoke-turbo
+    base_ckpt_relpath: evoke-base
+    vigeo_relpath: ViGeo1.1
+    depth_backend: vigeo
+    vigeo_depth_median_target: 5
+    guidance_scale: 1.0
+    num_inference_steps: 3
+    is_stage2: true
+    stage2_num_stages: 3
+    stage2_steps:
+    - 1
+    - 1
+    - 1
+    vae_decode_type: persistent
+    restrict_self_attn: false
+    geo_warp_stage0_only: true
+    warp_sigma_max: 0.135
+    noise_center: false
+    render_mode: backward_zbuf
+    bw_fill_iters: 12
+    zbuf_despeckle: false
+    warp_mode: fixed_mem
+    joystick_hud: 'off'
+    dump_geo: false
+    save_segments: false
+    in_process_batch: true
+    persistent: true
+    offline: true
+    continue_on_error: true
+  metadata:
+    variant: Alaya-EVOKE-Turbo (3-step, CFG-free)
+    upstream_model_id: AlayaLab/Evoke-Turbo
+    upstream_repository: https://github.com/AlayaLab/Evoke
+    project_page: https://evoke-world.github.io/Evoke/
+    technical_report: https://arxiv.org/abs/2608.13546
+    runtime_variant: h800_bf16_turbo_3step_cfg_free
+    license: Apache-2.0 (ViGeo / DA3 weights are CC-BY-NC-4.0)
+    notes: Turbo is the independent controllability-optimized transformer. It reuses
+      the EVOKE base components and ViGeo1.1 depth backend and follows the official
+      post-distillation I2V workflow.
+    checkpoint_revision: fe5afb975e08bff47f5b23087e8f6f90316aee4d
+    source_revision: 74d268516d95c8fceadd2378f91a73f9f187042b

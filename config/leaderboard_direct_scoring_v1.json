@@ -1,0 +1,16 @@
+{
+  "revision": "direct_metric_mean_v1",
+  "aggregation": "score_each_video_then_mean",
+  "metrics": {
+    "camera_error": {
+      "kind": "camera",
+      "native_intended": "details.native_intent_accuracy",
+      "direct_pose_components": ["rotation_error", "translation_error"],
+      "rotation_upper": 15.0,
+      "translation_upper": 0.5
+    },
+    "met3r_consistency": {"kind": "linear", "lower": 0.0, "upper": 2.0, "higher": false},
+    "optical_flow_aepe": {"kind": "linear", "lower": 0.0, "upper": 1.192, "higher": false},
+    "style_consistency": {"kind": "linear", "lower": 0.0, "upper": 0.007, "higher": false}
+  }
+}

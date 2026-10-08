@@ -1,0 +1,13 @@
+diff --git a/app.py b/app.py
+index 1c95642..943e113 100644
+--- a/app.py
++++ b/app.py
+@@ -147,7 +147,7 @@ class GenerationSystem(nn.Module):
+ 
+         self.denoising_steps = [0, 250, 500, 750]
+ 
+-        model_id = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
++        model_id = os.environ.get("FLASHWORLD_WAN_DIFFUSERS_MODEL_ID", "Wan-AI/Wan2.2-TI2V-5B-Diffusers")
+ 
+         self.vae = AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", torch_dtype=torch.float).eval()
+ 

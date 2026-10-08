@@ -1,0 +1,46 @@
+model:
+  name: sana-wm
+  family: sana_wm
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  python_bin: python
+  repo_root: thirdparty/Sana
+  checkpoint_dir: ckpt/Efficient-Large-Model--SANA-WM_bidirectional
+  entrypoint: inference_video_scripts/wm/inference_sana_wm.py
+  output_ext: .mp4
+  supported_suites:
+    - image_static
+    - image_dynamic
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    require_persistent_batch: true
+    # Historical production values, recovered from the retained batch spec under
+    # Arena_Result/predictions/sana_wm_image_static/_batch_specs.
+    num_frames: 161
+    fps: 16
+    step: 60
+    cfg_scale: 5.0
+    flow_shift: 8.0
+    seed: 42
+    sampling_algo: flow_euler_ltx
+    no_refiner: false
+    no_action_overlay: true
+    synthetic_focal_scale: 0.6
+    config: ckpt/Efficient-Large-Model--SANA-WM_bidirectional/config.yaml
+    model_path: ckpt/Efficient-Large-Model--SANA-WM_bidirectional/dit/sana_wm_1600m_720p.safetensors
+    refiner_root: ckpt/Efficient-Large-Model--SANA-WM_bidirectional/refiner
+    refiner_gemma_root: ckpt/Efficient-Large-Model--SANA-WM_bidirectional/refiner/text_encoder
+    text_encoder_path: ckpt/Efficient-Large-Model--gemma-2-2b-it
+  metadata:
+    variant: SANA-WM bidirectional 1600M 720p
+    recovered_from_commit: 4540faa^
+    notes: >
+      Camera control goes through camera_annotation_for_conditioning_image, which
+      resamples the whole token path onto num_frames, so a closed itinerary stays
+      closed. num_frames is a free parameter snapped to a stride of 8. Weights live
+      in arena/ckpts (not WorldAtlas/ckpt). The batch runner pins the VAE and the
+      stage-1 Gemma text encoder to those local trees so inference stays offline.

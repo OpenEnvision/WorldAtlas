@@ -1,0 +1,8 @@
+/tests export-ignore
+/hope_jobs export-ignore
+/artifacts export-ignore
+/docs export-ignore
+/site export-ignore
+/package.json export-ignore
+/.github/workflows/cloudflare.yml export-ignore
+/assets/*.mp3 export-ignore

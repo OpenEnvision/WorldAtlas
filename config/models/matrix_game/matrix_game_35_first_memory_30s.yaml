@@ -1,0 +1,55 @@
+model:
+  name: matrix-game-3.5-first-memory-30s
+  family: matrix_game_35
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - text
+  - image
+  - camera_pose
+  roles:
+  - candidate
+  python_bin: python
+  repo_root: thirdparty/Matrix-Game-3.5
+  checkpoint_dir: ckpt/Matrix-Game-3.5
+  entrypoint: infer.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+    TOKENIZERS_PARALLELISM: 'false'
+    DIFFSYNTH_SKIP_DOWNLOAD: 'true'
+  generation:
+    person: first
+    conditioning_resize: 1280*704
+    num_blocks: 1
+    steps: 25
+    cfg_scale: 5.0
+    seed: 3407
+    horizontal_fov_degrees: 75.0
+    synthetic_camera_forward_step: 1.0
+    synthetic_camera_lateral_step: 0.5
+    synthetic_camera_rotation_degrees: 30.0
+    synthetic_camera_orbit_radius: 1.0
+    target_duration_seconds: 30
+  metadata:
+    upstream_repo: https://github.com/Riemann-Dynamics/Matrix-Game-3.5.git
+    upstream_revision: 6c94dd787659aa19fac22581cd8bea54e65d813f
+    checkpoint_repo: RiemannDynamics/Matrix-Game-3.5-Base
+    base_model_repo: Wan-AI/Wan2.2-TI2V-5B
+    depth_model_repo: depth-anything/DA3NESTED-GIANT-LARGE-1.1
+    camera_contract: worldatlas_symbolic_path_to_c2w_npz
+    track: memory_loop
+    memory_roster_key: matrix_game_35_first
+    derived_from: matrix_game_35_first.yaml
+    memory_notes: resolve_num_blocks turns 60 s at 16 fps into 12 blocks of 84 poses.
+    memory_duration_seconds: 30
+    memory_reference_duration_seconds: 60
+    memory_reference_config: matrix_game_35_first_memory.yaml

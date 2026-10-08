@@ -1,0 +1,28 @@
+
+model:
+  name: warp-as-history
+  family: warp_as_history
+  backend_type: local_repo
+  task_families: [world_model, video_generation]
+  artifact_types: [video]
+  control_signals: [text, image, camera_pose]
+  roles: [candidate]
+  python_bin: python
+  repo_root: thirdparty/Warp-as-History
+  checkpoint_dir: ckpt/warp-as-history
+  entrypoint: scripts/infer_warp_as_history.py
+  output_ext: .mp4
+  supported_suites: [image_static, image_dynamic]
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  generation:
+    # Both paths are relative to model.checkpoint_dir.
+    model_path: helios-distilled
+    lora_path: warp-as-history/visible_lora_state_step1000.safetensors
+    height: 384
+    width: 640
+    num_frames: 81
+    fps: 16
+    seed: 42
+    dtype: auto
+    synthetic_focal_scale: 0.6

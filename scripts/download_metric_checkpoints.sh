@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Download benchmark metric checkpoints into WORLDARENA_CHECKPOINT_ROOT (default: ckpt/).
+# Download benchmark metric checkpoints into WORLDATLAS_CHECKPOINT_ROOT (default: ckpt/).
 #
 # Usage:
 #   bash scripts/download_metric_checkpoints.sh            # core metric weights
 #   bash scripts/download_metric_checkpoints.sh --hf-cache # also preload HF/Torch caches
-#   bash scripts/download_metric_checkpoints.sh --all      # core + HF cache + HPSv3/JEDi/TransNet extras
+#   bash scripts/download_metric_checkpoints.sh --all      # core + HF cache + distribution/dynamic extras
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CKPT="${WORLDARENA_CHECKPOINT_ROOT:-$ROOT/ckpt}"
+CKPT="${WORLDATLAS_CHECKPOINT_ROOT:-$ROOT/ckpt}"
 export CKPT
 DOWNLOAD_HF_CACHE=0
 DOWNLOAD_ALL=0
@@ -18,10 +18,10 @@ usage() {
 Usage: bash scripts/download_metric_checkpoints.sh [--hf-cache] [--all]
 
   --hf-cache   Preload Hugging Face / Torch caches used by CLIP, DINOv2, depth, MEt3R, etc.
-  --all        Download everything (core weights, official runtime, HPSv3, JEDi, TransNet helpers, HF cache)
+  --all        Download everything (core, FVMD, JEDi, TRAJAN, HPSv3, TransNet, HF cache)
 
 Environment:
-  WORLDARENA_CHECKPOINT_ROOT   Checkpoint root (default: \$REPO/ckpt)
+  WORLDATLAS_CHECKPOINT_ROOT   Checkpoint root (default: \$REPO/ckpt)
 EOF
 }
 
@@ -34,7 +34,7 @@ for arg in "$@"; do
   esac
 done
 
-mkdir -p "$CKPT"/{Video-Depth-Anything,amt_model,raft_model/models,Pulse-of-Motion,musiq,official_metrics/models,HPSv3,JEDi,TransNetV2,huggingface/hub,torch}
+mkdir -p "$CKPT"/{Video-Depth-Anything,amt_model,raft_model/models,Pulse-of-Motion,musiq,official_metrics/models,HPSv3,JEDi,TRAJAN,TransNetV2,huggingface/hub,torch/hub/checkpoints}
 
 echo "[1/6] Core bundled-metric weights (depth / flow / long-sequence / pulse / MUSIQ)..."
 
@@ -127,6 +127,22 @@ if [[ "$DOWNLOAD_ALL" == "1" ]]; then
 
   wget -q -O "$CKPT/HPSv3/HPSv3.safetensors" \
     https://huggingface.co/MizzenAI/HPSv3/resolve/main/HPSv3.safetensors
+  python - <<'PY'
+from pathlib import Path
+import json, os, struct
+path = Path(os.environ["CKPT"]) / "HPSv3" / "HPSv3.safetensors"
+size = path.stat().st_size
+with path.open("rb") as handle:
+    header_len = struct.unpack("<Q", handle.read(8))[0]
+    metadata = json.loads(handle.read(header_len))
+max_end = max(int(value["data_offsets"][1]) for value in metadata.values() if "data_offsets" in value)
+covered = 8 + header_len + max_end
+if size < covered:
+    raise SystemExit(f"HPSv3 checkpoint truncated: {path} has {size} bytes, metadata covers {covered}")
+if size > covered:
+    print(f"truncating extra {size - covered} trailing bytes from {path}")
+    os.truncate(path, covered)
+PY
 
   if [[ ! -f "$CKPT/HPSv3/HPSv3_7B_local.yaml" ]]; then
     wget -q -O "$CKPT/HPSv3/HPSv3_7B_local.yaml" \
@@ -148,11 +164,29 @@ snapshot_download(
 PY
   fi
 
-  echo "[4/6] JEDi V-JEPA weights (video suite distribution metric)..."
+  echo "[4/6] FVMD, JEDi, and TRAJAN official metric runtimes..."
+  if [[ ! -d "$ROOT/thirdparty/FVMD-frechet-video-motion-distance/fvmd" ]]; then
+    git clone --depth 1 \
+      https://github.com/DSL-Lab/FVMD-frechet-video-motion-distance \
+      "$ROOT/thirdparty/FVMD-frechet-video-motion-distance"
+  fi
+  if [[ ! -d "$ROOT/thirdparty/JEDi/videojedi" ]]; then
+    git clone --depth 1 https://github.com/oooolga/JEDi "$ROOT/thirdparty/JEDi"
+  fi
+  if [[ ! -d "$ROOT/thirdparty/tapnet/tapnet/trajan" ]]; then
+    git clone --depth 1 https://github.com/google-deepmind/tapnet "$ROOT/thirdparty/tapnet"
+  fi
+
+  wget -q -O "$CKPT/torch/hub/checkpoints/pips2_weights.pth" \
+    https://github.com/ljh0v0/FVMD-frechet-video-motion-distance/releases/download/pips2_weights/pips2_weights.pth
   wget -q -O "$CKPT/JEDi/vith16.pth.tar" \
     https://dl.fbaipublicfiles.com/jepa/vith16/vith16.pth.tar
   wget -q -O "$CKPT/JEDi/ssv2-probe.pth.tar" \
     https://dl.fbaipublicfiles.com/jepa/vith16/ssv2-probe.pth.tar
+  wget -q -O "$CKPT/TRAJAN/bootstapir_checkpoint_v2.npy" \
+    https://storage.googleapis.com/dm-tapnet/bootstap/bootstapir_checkpoint_v2.npy
+  wget -q -O "$CKPT/TRAJAN/track_autoencoder_ckpt.npz" \
+    https://storage.googleapis.com/dm-tapnet/trajan/track_autoencoder_ckpt.npz
 
   echo "[5/6] TransNetV2 PyTorch weights (segment_continuity)..."
   if [[ ! -f "$CKPT/TransNetV2/transnetv2-pytorch-weights.pth" ]]; then

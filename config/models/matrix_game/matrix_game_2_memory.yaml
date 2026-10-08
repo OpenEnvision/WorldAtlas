@@ -1,0 +1,63 @@
+# Edit the base config or worldatlas/benchmark/memory_track_models.py and rerun.
+model:
+  name: matrix-game-2-memory
+  family: matrix_game_2
+  backend_type: local_repo
+  task_families:
+  - world_model
+  - video_generation
+  artifact_types:
+  - video
+  control_signals:
+  - image
+  - actions
+  roles:
+  - candidate
+  repo_root: thirdparty/Matrix-Game/Matrix-Game-2
+  python_bin: python
+  checkpoint_dir: ckpt/Skywork--Matrix-Game-2.0
+  entrypoint: inference.py
+  output_ext: .mp4
+  supported_suites:
+  - memory_loop
+  prompt_mode: prompt_target
+  reference_mode: first_frame
+  env:
+    PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+  generation:
+    mode: universal
+    config_path: configs/inference_yaml/inference_universal.yaml
+    checkpoint_filename: base_distilled_model/base_distill.safetensors
+    num_output_frames: 150
+    output_fps: 12
+    seed: 42
+    compile_vae: false
+    action_source: worldatlas_camera_path
+    action_plan:
+      default:
+      - forward
+      - camera_r
+      - forward_right
+      - camera_l
+      - forward
+      by_suite:
+        image_static:
+        - forward
+        - camera_r
+        - forward
+        - camera_l
+        image_dynamic:
+        - forward
+        - left
+        - camera_r
+        - forward_right
+        - camera_l
+      frames_per_action: 12
+    target_duration_seconds: 60
+  metadata:
+    track: memory_loop
+    memory_roster_key: matrix_game_2
+    derived_from: matrix_game_2.yaml
+    memory_notes: plan_rollout yields 181 latents; snapped to 183 so noise T is a multiple of num_frame_per_block=3.
+      That is 729 pixel frames at 12 fps (60.75 s). compile_vae is off so the first sample does not sit
+      in inductor AUTOTUNE.

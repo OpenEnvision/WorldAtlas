@@ -1,0 +1,317 @@
+{
+  "revision": "per_sample_scored_mean_v1",
+  "aggregation": "per_sample_then_mean",
+  "strata_weighting": "fixed_benchmark_case_weights",
+  "notes": [
+    "Normalize each observation before aggregation. No inverse of aggregate scores.",
+    "This repair keeps equal weight per benchmark case and records stratum means/counts; it does not introduce new macro weights.",
+    "Suite distribution metrics are calculated once on the fixed corpus.",
+    "Motion component precision is limited to the raw values retained by the report."
+  ],
+  "metrics": {
+    "background_consistency": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "brightness_distribution_consistency": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "camera_error": {
+      "kind": "camera",
+      "native_intended": "details.native_intent_accuracy",
+      "direct_pose_components": [
+        "rotation_error",
+        "translation_error"
+      ],
+      "rotation_upper": 15.0,
+      "translation_upper": 0.5
+    },
+    "color_temperature_constraint": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "epipolar_error": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 5.0,
+      "higher": false
+    },
+    "epipolar_inlier_rate": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "feature_match_coverage": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "fvmd": {
+      "kind": "soft_tail",
+      "lower": 0.0,
+      "upper": 10000.0,
+      "soft_tail": 0.05,
+      "higher": false,
+      "tail_formula": "p*p/(2*p-linear_score)"
+    },
+    "geometric_consistency": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "hpsv3_norm": {
+      "kind": "linear",
+      "lower": -0.2,
+      "upper": 0.55,
+      "higher": true
+    },
+    "image_quality": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "jedi": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 100.0,
+      "higher": false
+    },
+    "keystroke_nater": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": false
+    },
+    "keystroke_natet": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": false
+    },
+    "keystroke_partial_action_accuracy": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "keystroke_strict_action_accuracy": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "long_sequence_aesthetic_quality": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "long_sequence_dynamic_degree": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "long_sequence_imaging_quality": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "long_sequence_motion_smoothness": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "memory_geometric_closure": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "memory_half_life": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "memory_rendering_recovery": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "memory_return_gate": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "memory_revisit_fidelity": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "memory_scene_f1": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "met3r_consistency": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 2.0,
+      "higher": false
+    },
+    "motion_accuracy": {
+      "kind": "zscore",
+      "avg": -0.1965,
+      "std": 2.3687,
+      "z_max": 1.518,
+      "z_min": -1.6147,
+      "range": [
+        0.25,
+        0.75
+      ]
+    },
+    "motion_magnitude": {
+      "kind": "zscore",
+      "avg": 3.2425,
+      "std": 3.4505,
+      "z_max": 2.7498,
+      "z_min": -0.8638,
+      "range": [
+        0.25,
+        0.75
+      ]
+    },
+    "motion_smoothness": {
+      "kind": "components",
+      "components": [
+        [
+          "mse",
+          0.0,
+          82.4014,
+          false
+        ],
+        [
+          "ssim",
+          0.9224,
+          1.0,
+          true
+        ],
+        [
+          "lpips",
+          0.0,
+          0.0228,
+          false
+        ]
+      ],
+      "reducer": "arithmetic_mean"
+    },
+    "optical_flow_aepe": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.192,
+      "higher": false
+    },
+    "perceptual_quality": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "photometric_consistency": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "physical_fps_error": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 30.0,
+      "higher": false
+    },
+    "physical_fps_intra_video_cv": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": false
+    },
+    "physical_fps_pct_error": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": false
+    },
+    "prompt_alignment": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "reprojection_error": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0719,
+      "higher": false
+    },
+    "rollout_aesthetic_drift": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": false
+    },
+    "rollout_imaging_drift": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": false
+    },
+    "segment_continuity": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "sharpness_retention": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "style_consistency": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 0.007,
+      "higher": false
+    },
+    "temporal_flickering": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    },
+    "trajan": {
+      "kind": "linear",
+      "lower": 0.0,
+      "upper": 1.0,
+      "higher": true
+    }
+  }
+}

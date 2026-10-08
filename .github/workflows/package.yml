@@ -1,0 +1,28 @@
+name: Validate public package
+
+on:
+  push:
+    paths: ["worldatlas/**", "config/**", "requirements/**", "scripts/**", "thirdparty/sources.lock.json", "thirdparty/patches/**", "setup.py", "pyproject.toml", "MANIFEST.in", ".github/workflows/package.yml"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -c requirements/core-py310.txt -e . build
+      - run: python -m pip check
+      - run: worldatlas --help
+      - run: python scripts/check_installation.py
+      - run: python -m compileall -q worldatlas
+      - run: python -m build
