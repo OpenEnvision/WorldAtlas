@@ -12,6 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/OpenEnvision/WorldAtlas"><img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"/></a>
+  <a href="https://github.com/OpenEnvision/WorldAtlas/stargazers"><img src="https://img.shields.io/github/stars/OpenEnvision/WorldAtlas?style=for-the-badge&logo=github&logoColor=white&label=Stars&color=gold" alt="GitHub Stars"/></a>
   <a href="https://worldatlas.worldatlas-site.workers.dev/"><img src="https://img.shields.io/badge/Homepage-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Homepage"/></a>
   <a href="https://worldatlas.worldatlas-site.workers.dev/doc/benchmark/"><img src="https://img.shields.io/badge/Docs-4B8BBE?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Docs"/></a>
   <a href="https://worldatlas.worldatlas-site.workers.dev/doc/zh/"><img src="https://img.shields.io/badge/中文文档-07C160?style=for-the-badge" alt="中文文档"/></a>
