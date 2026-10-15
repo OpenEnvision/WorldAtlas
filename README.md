@@ -16,7 +16,6 @@
   <a href="https://worldatlas.worldatlas-site.workers.dev/doc/benchmark/"><img src="https://img.shields.io/badge/Docs-4B8BBE?style=for-the-badge&logo=readthedocs&logoColor=white" alt="Docs"/></a>
   <a href="https://worldatlas.worldatlas-site.workers.dev/doc/zh/"><img src="https://img.shields.io/badge/中文文档-07C160?style=for-the-badge" alt="中文文档"/></a>
   <a href="https://worldatlas.worldatlas-site.workers.dev/leaderboard/"><img src="https://img.shields.io/badge/Leaderboard-32CD32?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Leaderboard"/></a>
-  <a href="#"><img src="https://img.shields.io/badge/arXiv-placeholder-b31b1b?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv"/></a>
   <a href="https://huggingface.co/datasets/OpenEnvisionLab/WorldAtlas"><img src="https://img.shields.io/badge/Dataset-Hugging%20Face-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black" alt="Dataset"/></a>
   <a href="https://modelscope.cn/datasets/OpenEnvision/WorldAtlas"><img src="https://img.shields.io/badge/Dataset-ModelScope-624AFF?style=for-the-badge&logoColor=white" alt="ModelScope Dataset"/></a>
   <a href="https://worldatlas.worldatlas-site.workers.dev/uncertain/"><img src="https://img.shields.io/badge/Dataset%20Gallery-8A2BE2?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Dataset Gallery"/></a>
