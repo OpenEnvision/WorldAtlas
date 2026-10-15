@@ -36,9 +36,9 @@
 
 ## ✨ Contributions
 
-- **Unified Evaluation Protocol for World Generation.** WorldAtlas formulates video, 3D, 4D, and interactive world generation as next-state generation, mapping one world specification onto each system's native interface so models are compared on task semantics rather than a shared representation.
-- **Large-scale Diagnostic Suite for World Generation.** We curate 10,000 image and video instances across scenes, viewpoint changes, temporal dynamics, physical interactions, and action-conditioned transitions, to diagnose whether a system can render a world, preserve its state, simulate plausible dynamics, and respond to interventions.
-- **Unified Evaluation of World Generation Paradigms.** Representative video, 3D, 4D, and interactive systems, evaluated under one capability framework, show a tradeoff between scalable visual synthesis and persistent world state: visual fidelity alone does not yield a coherent, controllable world.
+- **Unified Evaluation Protocol for World Generation.** We introduce WorldAtlas, the largest unified benchmark to date for video, 3D, 4D, and interactive world generation, which formulates the task as next-state generation and maps a single world specification onto each system's native interface, comparing heterogeneous models on task semantics rather than on a shared representation. 
+- **Large-scale Diagnostic Suite for World Generation.** We curate 10,000 image and video evaluation instances spanning diverse scenes, viewpoint transformations, temporal dynamics, physical interactions, and action-conditioned transitions. The suite assesses whether a system can faithfully render a world, preserve its state across viewpoints and time, simulate plausible dynamics, and make targeted changes in response to interventions, enabling capability-specific diagnosis beyond aggregate perceptual scores.
+- **Unified Evaluation of World Generation Paradigms.** We evaluate representative video, 3D, 4D, and interactive systems under a common capability framework, revealing a tradeoff between scalable visual synthesis and persistent world state. Visual fidelity does not establish a coherent, controllable world: state must persist across views and time, evolve plausibly, and change selectively in response to interventions.
 
 ## 🏆 Leaderboard
 
