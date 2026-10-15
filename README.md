@@ -32,7 +32,7 @@
 
 ## 📢 News
 
-- **[2026/10/09]** 🚀 Released the dataset, evaluation code, model weights, leaderboard, and dataset gallery. 🌐
+- **[2026/10/15]** 🚀 WorldAtlas is now open-sourcing as a preview! Released the dataset, evaluation code, model weights, leaderboard, and dataset gallery. 🌐
 
 ## ✨ Contributions
 
