@@ -92,7 +92,12 @@ def main() -> None:
                 result.update(generation_payload)
                 result["status"] = "generated"
                 result["error"] = None
-                print_status(sample.sample_id, "generated", output_path=str(output_path), label="LingBot-World")
+                print_status(
+                    sample.sample_id,
+                    "generated",
+                    output_path=str(output_path),
+                    label="LingBot-World",
+                )
             except Exception as exc:
                 result["status"] = "failed"
                 result["error"] = str(exc)

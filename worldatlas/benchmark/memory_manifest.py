@@ -9,7 +9,7 @@ revisit scoring possible without any ground-truth long video.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable, Sequence
+from collections.abc import Iterable, Sequence
 
 from worldatlas.benchmark.loop_trajectories import (
     SUPPORTED_LOOP_IDS,
@@ -18,7 +18,6 @@ from worldatlas.benchmark.loop_trajectories import (
 )
 from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.benchmark.taxonomy import MEMORY_SUITE
-
 
 # Ordered by how hard the revisit is: in-place rotation first, then out-and-back
 # translation, then circuits that never retrace, then repeated revisits.
@@ -193,9 +192,7 @@ def build_memory_manifest(
     trajectory comparisons stay valid.
     """
     sources = [
-        sample
-        for sample in manifest
-        if sample.suite == source_suite and sample.modality == "image"
+        sample for sample in manifest if sample.suite == source_suite and sample.modality == "image"
     ]
     selected = select_memory_sources(sources, limit=limit_per_loop)
 

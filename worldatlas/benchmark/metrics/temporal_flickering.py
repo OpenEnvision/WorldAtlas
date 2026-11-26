@@ -8,7 +8,12 @@ import cv2
 import numpy as np
 
 from worldatlas.benchmark.media import LoadedMedia
-from worldatlas.benchmark.metrics.base import Metric, clamp01, normalize_score, resolve_metric_backend
+from worldatlas.benchmark.metrics.base import (
+    Metric,
+    clamp01,
+    normalize_score,
+    resolve_metric_backend,
+)
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 
 TEMPORAL_FLICKERING_BACKENDS = {"pixel_mae"}
@@ -38,10 +43,7 @@ def compute_temporal_flickering_score(frames: list[np.ndarray]) -> dict[str, Any
     if len(frames) < 2:
         raise ValueError("not enough frames for temporal flickering metric")
 
-    pair_mae = [
-        _pairwise_frame_mae(left, right)
-        for left, right in zip(frames[:-1], frames[1:])
-    ]
+    pair_mae = [_pairwise_frame_mae(left, right) for left, right in zip(frames[:-1], frames[1:])]
     mean_mae = float(np.mean(pair_mae))
     raw = clamp01((PIXEL_RANGE - mean_mae) / PIXEL_RANGE)
     return {

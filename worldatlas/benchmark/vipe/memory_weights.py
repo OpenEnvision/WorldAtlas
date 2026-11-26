@@ -5,11 +5,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from worldatlas.benchmark.metric_errors import MetricLoadError
-from worldatlas.common.checkpoints import checkpoint_root
 from worldatlas.benchmark.local_checkpoints import (
     UNIDEPTH_HF_REPO,
-    UNIDEPTH_REVISION,
+    UNIDEPTH_REVISION,  # noqa: F401 - re-exported as the legacy MegaSAM revision
     _usable_file,
     exclusive_file_lock,
     local_cache_candidates,
@@ -18,6 +16,8 @@ from worldatlas.benchmark.local_checkpoints import (
     unidepth_hub_dir,
     unidepth_weight_path,
 )
+from worldatlas.benchmark.metric_errors import MetricLoadError
+from worldatlas.common.checkpoints import checkpoint_root
 
 # NVIDIA ViPE 1.2's vendored UniDepthV2 matches the Feb 2025 Hub upload, not
 # the June 2024 slim snapshot MegaSAM still pins as UNIDEPTH_REVISION.
@@ -59,7 +59,9 @@ def _hf_home_candidates() -> list[Path]:
 
 def unidepth_snapshot_dir() -> Path:
     for hf_home in _hf_home_candidates():
-        official = unidepth_hub_dir(hf_home) / "snapshots" / VIPE_UNIDEPTH_REVISION / "model.safetensors"
+        official = (
+            unidepth_hub_dir(hf_home) / "snapshots" / VIPE_UNIDEPTH_REVISION / "model.safetensors"
+        )
         if _usable_min(official, UNIDEPTH_MIN_BYTES):
             return official.parent
         legacy = unidepth_weight_path(hf_home)
@@ -115,7 +117,9 @@ def priorda_dir() -> Path:
     for root in roots:
         dav2 = root / PRIORDA_DAV2_FILENAME
         model = root / PRIORDA_MODEL_FILENAME
-        if _usable_min(dav2, PRIORDA_DAV2_MIN_BYTES) and _usable_min(model, PRIORDA_MODEL_MIN_BYTES):
+        if _usable_min(dav2, PRIORDA_DAV2_MIN_BYTES) and _usable_min(
+            model, PRIORDA_MODEL_MIN_BYTES
+        ):
             return root
     raise MetricLoadError(
         "Prior-Depth-Anything weights missing offline. Need "

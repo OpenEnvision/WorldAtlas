@@ -673,7 +673,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--context_parallel_size", default=1, type=int)
     parser.add_argument("--prompt_suffix", default="", type=str)
     parser.add_argument("--use_moge_scale", action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument("--da3_model_name", default="depth-anything/DA3NESTED-GIANT-LARGE-1.1", type=str)
+    parser.add_argument(
+        "--da3_model_name", default="depth-anything/DA3NESTED-GIANT-LARGE-1.1", type=str
+    )
     parser.add_argument("--da3_model_path_custom", default=None, type=str)
     parser.add_argument("--da3_frame_interval", default=8, type=int)
     parser.add_argument("--da3_max_history_frames", default=10, type=int)
@@ -720,7 +722,9 @@ def _trajectory_payload(
 
     intrinsics = load_intrinsics_sequence(annotation_path, target_frames=len(camera_c2w))
     if intrinsics is None:
-        raise FileNotFoundError(f"intrinsics.npy not found under annotation path: {annotation_path}")
+        raise FileNotFoundError(
+            f"intrinsics.npy not found under annotation path: {annotation_path}"
+        )
 
     camera_w2c = np.linalg.inv(camera_c2w.astype(np.float64)).astype(np.float32)
     intrinsics_33 = np.stack(
@@ -831,8 +835,7 @@ def _complete_local_hf_dir(
                 return source_path
             errors.append(f"{repo_id}: {detail}")
     raise FileNotFoundError(
-        "Unable to find a complete local Hugging Face dependency. Tried: "
-        + " | ".join(errors)
+        "Unable to find a complete local Hugging Face dependency. Tried: " + " | ".join(errors)
     )
 
 
@@ -978,16 +981,19 @@ def _prepare_transformer_engine_shim(workspace_root: Path) -> None:
         TRANSFORMER_ENGINE_DISTRIBUTED_SHIM,
         encoding="utf-8",
     )
-    (pytorch_root / "float8_tensor.py").write_text(TRANSFORMER_ENGINE_FLOAT8_TENSOR_SHIM, encoding="utf-8")
+    (pytorch_root / "float8_tensor.py").write_text(
+        TRANSFORMER_ENGINE_FLOAT8_TENSOR_SHIM, encoding="utf-8"
+    )
     (pytorch_root / "jit.py").write_text(TRANSFORMER_ENGINE_JIT_SHIM, encoding="utf-8")
     (module_root / "__init__.py").write_text(TRANSFORMER_ENGINE_MODULE_INIT_SHIM, encoding="utf-8")
     (module_root / "base.py").write_text(TRANSFORMER_ENGINE_MODULE_BASE_SHIM, encoding="utf-8")
     (module_root / "linear.py").write_text(TRANSFORMER_ENGINE_MODULE_LINEAR_SHIM, encoding="utf-8")
-    (module_root / "rmsnorm.py").write_text(TRANSFORMER_ENGINE_MODULE_RMSNORM_SHIM, encoding="utf-8")
+    (module_root / "rmsnorm.py").write_text(
+        TRANSFORMER_ENGINE_MODULE_RMSNORM_SHIM, encoding="utf-8"
+    )
 
 
 def _use_transformer_engine_shim() -> bool:
-    """Use transformer engine shim -> bool."""
     backend = os.environ.get("WORLDATLAS_LYRA2_ATTENTION_BACKEND", "native").strip().lower()
     return backend in {"shim", "pytorch", "torch", "sdpa"}
 

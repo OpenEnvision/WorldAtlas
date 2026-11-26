@@ -7,7 +7,6 @@ from worldatlas.models.adapters.base import PreparedGenerationRequest
 from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 from worldatlas.models.adapters.lingbot_world.common import _camera_path_for_sample
 
-
 DREAMX_ACTION_BY_CAMERA_TOKEN = {
     "fixed": "w",
     "push_in": "w",
@@ -59,7 +58,9 @@ def _dreamx_actions_for_request(
     explicit_actions = _suite_override(generation, "action_seq", request.sample.suite)
     explicit_speeds = _suite_override(generation, "action_speed_list", request.sample.suite)
     if explicit_actions:
-        actions = [str(item).strip().lower() for item in _as_list(explicit_actions) if str(item).strip()]
+        actions = [
+            str(item).strip().lower() for item in _as_list(explicit_actions) if str(item).strip()
+        ]
         speeds = [int(item) for item in _as_list(explicit_speeds)]
         if not speeds:
             speeds = [int(generation.get("action_speed", 4))] * len(actions)
@@ -67,7 +68,9 @@ def _dreamx_actions_for_request(
             speeds.append(speeds[-1])
         return actions, speeds[: len(actions)]
 
-    configured_map = generation.get("action_map") if isinstance(generation.get("action_map"), dict) else {}
+    configured_map = (
+        generation.get("action_map") if isinstance(generation.get("action_map"), dict) else {}
+    )
     camera_path = _camera_path_for_sample(request.sample) or ["push_in"]
     # Truncating a closed itinerary would drop the legs that bring the camera home,
     # and the return gate would read that as a model which forgot the scene. Memory
@@ -78,16 +81,22 @@ def _dreamx_actions_for_request(
         max_segments = len(camera_path)
     actions: list[str] = []
     speeds: list[int] = []
-    for camera_token in camera_path[:max(max_segments, 1)]:
+    for camera_token in camera_path[: max(max_segments, 1)]:
         token = str(camera_token).strip().lower()
-        action = str(configured_map.get(token, DREAMX_ACTION_BY_CAMERA_TOKEN.get(token, "w"))).strip().lower()
+        action = (
+            str(configured_map.get(token, DREAMX_ACTION_BY_CAMERA_TOKEN.get(token, "w")))
+            .strip()
+            .lower()
+        )
         if not action:
             continue
         actions.append(action)
         speeds.append(
             int(
                 generation.get(
-                    "rotation_speed" if any(key in action for key in ("j", "l", "i", "k")) else "action_speed",
+                    "rotation_speed"
+                    if any(key in action for key in ("j", "l", "i", "k"))
+                    else "action_speed",
                     DREAMX_ACTION_SPEED_BY_ACTION.get(action, 4),
                 )
             )

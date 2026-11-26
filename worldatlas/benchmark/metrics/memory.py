@@ -6,15 +6,20 @@ import math
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import cv2
+import numpy as np
 
 from worldatlas.benchmark.consistency_backends import dinov2_image_features
 from worldatlas.benchmark.media import LoadedMedia
-from worldatlas.benchmark.metrics.base import Metric, clamp01, cosine_similarity, normalize_score, resolve_metric_backend
+from worldatlas.benchmark.metrics.base import (
+    Metric,
+    clamp01,
+    cosine_similarity,
+    normalize_score,
+    resolve_metric_backend,
+)
 from worldatlas.benchmark.metrics.legacy import _resize_like, _ssim_rgb
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
-
 
 MEMORY_REVISIT_BACKENDS = {"dinov2"}
 MEMORY_SYMMETRY_BACKENDS = {"mse_symmetry"}
@@ -87,10 +92,9 @@ def compute_revisit_return_gate(
     tail_count = max(1, int(math.ceil(len(poses) * clamp01(float(tail_fraction)))))
     tail_start = max(1, len(poses) - tail_count)
     translation_ratio = translation / max(max_translation, 1e-8)
-    combined_error = (
-        translation_ratio / max(float(max_return_translation_ratio), 1e-8)
-        + rotation / max(float(max_return_rotation_degrees), 1e-8)
-    )
+    combined_error = translation_ratio / max(
+        float(max_return_translation_ratio), 1e-8
+    ) + rotation / max(float(max_return_rotation_degrees), 1e-8)
     revisit_index = int(tail_start + np.argmin(combined_error[tail_start:]))
     revisit_translation = float(translation[revisit_index])
     revisit_translation_ratio = float(translation_ratio[revisit_index])
@@ -325,16 +329,11 @@ class MemoryRevisitConsistencyMetric(Metric):
             mse_weight = float(closure_weights.get("mse", 0.20))
             weight_sum = max(dino_weight + ssim_weight + mse_weight, 1e-6)
             closure_score = (
-                dino_weight * dino_revisit
-                + ssim_weight * ssim_revisit
-                + mse_weight * mse_revisit
+                dino_weight * dino_revisit + ssim_weight * ssim_revisit + mse_weight * mse_revisit
             ) / weight_sum
 
             quarter_indices = sorted(
-                {
-                    int(round((len(frames) - 1) * fraction))
-                    for fraction in (0.25, 0.5, 0.75)
-                }
+                {int(round((len(frames) - 1) * fraction)) for fraction in (0.25, 0.5, 0.75)}
             )
             quarter_similarities = [
                 _feature_similarity(features[0], features[index])
@@ -350,11 +349,15 @@ class MemoryRevisitConsistencyMetric(Metric):
             upper = float(self.runtime.get("progress_upper", 0.18))
             progress_score = clamp01((mean_quarter_displacement - lower) / max(upper - lower, 1e-6))
             progress_gate_weight = clamp01(float(self.runtime.get("progress_gate_weight", 0.35)))
-            raw = closure_score * ((1.0 - progress_gate_weight) + progress_gate_weight * progress_score)
+            raw = closure_score * (
+                (1.0 - progress_gate_weight) + progress_gate_weight * progress_score
+            )
 
             return_gate: dict[str, Any] | None = None
             if bool(self.runtime.get("require_return_gate", False)):
-                poses, pose_source = resolve_revisit_pose_sidecar(Path(prediction.path), self.runtime)
+                poses, pose_source = resolve_revisit_pose_sidecar(
+                    Path(prediction.path), self.runtime
+                )
                 return_gate = compute_revisit_return_gate(
                     poses,
                     tail_fraction=float(self.runtime.get("return_tail_fraction", 0.15)),
@@ -384,7 +387,9 @@ class MemoryRevisitConsistencyMetric(Metric):
                     "mse_revisit": round(mse_revisit, 4),
                     "closure_score": round(float(closure_score), 4),
                     "quarter_indices": quarter_indices,
-                    "quarter_dino_similarities": [round(value, 4) for value in quarter_similarities],
+                    "quarter_dino_similarities": [
+                        round(value, 4) for value in quarter_similarities
+                    ],
                     "mean_quarter_displacement": round(mean_quarter_displacement, 4),
                     "progress_score": round(progress_score, 4),
                     "progress_gate_weight": progress_gate_weight,
@@ -395,7 +400,9 @@ class MemoryRevisitConsistencyMetric(Metric):
             )
             return MetricOutput(
                 raw=float(raw),
-                normalized=normalize_score(float(raw), self.normalization) if self.normalization else float(raw),
+                normalized=normalize_score(float(raw), self.normalization)
+                if self.normalization
+                else float(raw),
                 backend=backend,
                 details=details,
                 eligibility_status="diagnostic",
@@ -548,9 +555,7 @@ class EntityReappearanceConsistencyMetric(Metric):
         backend = "masked_dinov2" if self.backend == "auto" else self.backend
         details = _protocol_details(prediction)
         try:
-            payload, source = _load_entity_revisit_sidecar(
-                Path(prediction.path), self.runtime
-            )
+            payload, source = _load_entity_revisit_sidecar(Path(prediction.path), self.runtime)
             poses, pose_source = resolve_revisit_pose_sidecar(Path(prediction.path), self.runtime)
             gate = compute_revisit_return_gate(
                 poses,

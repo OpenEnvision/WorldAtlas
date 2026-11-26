@@ -15,7 +15,6 @@ from typing import Any
 
 import cv2
 import numpy as np
-from worldatlas.benchmark.runtime_health import is_cuda_failure, raise_if_cuda_failure
 
 from worldatlas.benchmark.consistency_backends import dinov2_image_features
 from worldatlas.benchmark.media import LoadedMedia
@@ -35,7 +34,12 @@ from worldatlas.benchmark.memory_pairing import (
     resolve_pose_track,
     select_diverse_pairs,
 )
-from worldatlas.benchmark.metrics.base import Metric, clamp01, normalize_score, resolve_metric_backend
+from worldatlas.benchmark.metrics.base import (
+    Metric,
+    clamp01,
+    normalize_score,
+    resolve_metric_backend,
+)
 from worldatlas.benchmark.metrics.legacy import _resize_like, _ssim_rgb
 from worldatlas.benchmark.metrics.long_horizon_diagnostics import (
     _frame_depth_points,
@@ -44,9 +48,9 @@ from worldatlas.benchmark.metrics.long_horizon_diagnostics import (
     score_point_cloud_memory,
 )
 from worldatlas.benchmark.metrics.style import _gram_distance
+from worldatlas.benchmark.runtime_health import is_cuda_failure, raise_if_cuda_failure
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 from worldatlas.common.video_io import probe_video_fps, read_video_frames_at
-
 
 MEMORY_LOOP_METRICS = (
     "memory_return_gate",
@@ -84,8 +88,13 @@ def _skip(metric_name: str, backend: str, reason: str, details: dict[str, Any]) 
     """Build a not-applicable output for a rollout that cannot be scored."""
     del metric_name
     if is_cuda_failure(reason):
-        return MetricOutput(raw=None, normalized=None, backend=backend,
-                            details={**details, "measurement_status": "backend_error"}, error=reason)
+        return MetricOutput(
+            raw=None,
+            normalized=None,
+            backend=backend,
+            details={**details, "measurement_status": "backend_error"},
+            error=reason,
+        )
     return MetricOutput(
         raw=None,
         normalized=None,
@@ -122,7 +131,12 @@ def _sift_correspondences(
     gray_b = cv2.cvtColor(frame_b, cv2.COLOR_RGB2GRAY)
     keypoints_a, descriptors_a = detector.detectAndCompute(gray_a, None)
     keypoints_b, descriptors_b = detector.detectAndCompute(gray_b, None)
-    if descriptors_a is None or descriptors_b is None or len(keypoints_a) < 2 or len(keypoints_b) < 2:
+    if (
+        descriptors_a is None
+        or descriptors_b is None
+        or len(keypoints_a) < 2
+        or len(keypoints_b) < 2
+    ):
         return np.empty((0, 2), dtype=np.float64), np.empty((0, 2), dtype=np.float64)
 
     matcher = cv2.BFMatcher(cv2.NORM_L2)
@@ -165,9 +179,15 @@ def geometric_closure_for_pair(
     if len(points_a) < int(min_matches):
         return None
 
-    if not np.isfinite([epipolar_tau, reprojection_tau]).all() or min(epipolar_tau, reprojection_tau) <= 0:
+    if (
+        not np.isfinite([epipolar_tau, reprojection_tau]).all()
+        or min(epipolar_tau, reprojection_tau) <= 0
+    ):
         raise ValueError("geometry pixel scales must be finite and positive")
-    if not all(np.isfinite(value).all() for value in (points_a, points_b, pose_a, pose_b, intrinsics_a, intrinsics_b)):
+    if not all(
+        np.isfinite(value).all()
+        for value in (points_a, points_b, pose_a, pose_b, intrinsics_a, intrinsics_b)
+    ):
         return None
     try:
         inverse_a = np.linalg.inv(intrinsics_a)
@@ -193,10 +213,12 @@ def geometric_closure_for_pair(
         if int(np.count_nonzero(valid)) < int(min_matches):
             return None
         errors_a = np.linalg.norm(
-            predicted_a[valid, :2] / predicted_a[valid, 2:3] - points_a[valid], axis=1,
+            predicted_a[valid, :2] / predicted_a[valid, 2:3] - points_a[valid],
+            axis=1,
         )
         errors_b = np.linalg.norm(
-            predicted_b[valid, :2] / predicted_b[valid, 2:3] - points_b[valid], axis=1,
+            predicted_b[valid, :2] / predicted_b[valid, 2:3] - points_b[valid],
+            axis=1,
         )
         transfer_error = float(np.median(0.5 * (errors_a + errors_b)))
         if not math.isfinite(transfer_error):
@@ -241,7 +263,10 @@ def geometric_closure_for_pair(
             points_3d = (points_4d[:3, valid] / depths[valid]).T
             errors: list[float] = []
             positive = np.ones(len(points_3d), dtype=bool)
-            for projection, observed in ((projection_a, points_a[valid]), (projection_b, points_b[valid])):
+            for projection, observed in (
+                (projection_a, points_a[valid]),
+                (projection_b, points_b[valid]),
+            ):
                 projected = np.hstack([points_3d, np.ones((len(points_3d), 1))]) @ projection.T
                 positive &= np.isfinite(projected).all(axis=1) & (projected[:, 2] > 1e-9)
                 behind = np.abs(projected[:, 2]) <= 1e-9
@@ -261,7 +286,9 @@ def geometric_closure_for_pair(
         score = 0.5 * (epipolar_score + reprojection_score)
     # A perfect reprojection behind the cameras is not physically valid closure.
     score *= positive_depth_fraction
-    if not math.isfinite(score) or (reprojection_error is not None and not math.isfinite(reprojection_error)):
+    if not math.isfinite(score) or (
+        reprojection_error is not None and not math.isfinite(reprojection_error)
+    ):
         return None
     return {
         "score": clamp01(score),
@@ -320,7 +347,9 @@ def rendering_recovery_for_pair(
     return result
 
 
-def _fidelity_scores(frames_a: list[np.ndarray], frames_b: list[np.ndarray]) -> list[dict[str, float]]:
+def _fidelity_scores(
+    frames_a: list[np.ndarray], frames_b: list[np.ndarray]
+) -> list[dict[str, float]]:
     """Blend DINOv2 cosine similarity with SSIM over every revisit pair."""
     aligned_b = [_resize_like(right, left) for left, right in zip(frames_a, frames_b)]
     features = dinov2_image_features([*frames_a, *aligned_b])
@@ -391,9 +420,7 @@ def scene_memory_for_rollout(
     depth_path = track.sidecar_dir / "depth_metric.npy"
     mask_path = track.sidecar_dir / "depth_valid_mask.npz"
     if not depth_path.exists() or not mask_path.exists():
-        raise FileNotFoundError(
-            f"scene memory needs ViPE depth exports under {track.sidecar_dir}"
-        )
+        raise FileNotFoundError(f"scene memory needs ViPE depth exports under {track.sidecar_dir}")
     if track.intrinsics is None:
         raise FileNotFoundError(f"scene memory needs intrinsics under {track.sidecar_dir}")
 
@@ -504,7 +531,11 @@ def analyze_memory_rollout(
         return cached
 
     track: PoseTrack = resolve_pose_track(prediction_path, runtime)
-    fps = float(runtime["fps"]) if "fps" in runtime else probe_video_fps(prediction_path, default=float("nan"))
+    fps = (
+        float(runtime["fps"])
+        if "fps" in runtime
+        else probe_video_fps(prediction_path, default=float("nan"))
+    )
     structure: RevisitStructure = find_revisit_pairs(
         track.poses_c2w,
         fps=fps,
@@ -512,8 +543,12 @@ def analyze_memory_rollout(
         max_pair_distance=float(runtime.get("max_pair_distance", DEFAULT_MAX_PAIR_DISTANCE)),
         min_gap_seconds=float(runtime.get("min_gap_seconds", DEFAULT_MIN_GAP_SECONDS)),
         rotation_weight=float(runtime.get("rotation_weight", DEFAULT_ROTATION_WEIGHT)),
-        min_departure_factor=float(runtime.get("min_departure_factor", DEFAULT_MIN_DEPARTURE_FACTOR)),
-        min_excursion_factor=float(runtime.get("min_excursion_factor", DEFAULT_MIN_EXCURSION_FACTOR)),
+        min_departure_factor=float(
+            runtime.get("min_departure_factor", DEFAULT_MIN_DEPARTURE_FACTOR)
+        ),
+        min_excursion_factor=float(
+            runtime.get("min_excursion_factor", DEFAULT_MIN_EXCURSION_FACTOR)
+        ),
     )
 
     result: dict[str, Any] = {
@@ -715,7 +750,8 @@ class _MemoryLoopMetric(Metric):
     def _base_details(self, prediction: LoadedMedia) -> dict[str, Any]:
         return {
             "implementation_revision": (
-                MEMORY_SAFETY_REVISION if self.name == "memory_return_gate"
+                MEMORY_SAFETY_REVISION
+                if self.name == "memory_return_gate"
                 else MEMORY_LOOP_SCORING_REVISION
             ),
             "prediction_path": str(prediction.path),
@@ -726,7 +762,13 @@ class _MemoryLoopMetric(Metric):
     def _emit(self, raw: float, backend: str, details: dict[str, Any]) -> MetricOutput:
         if not math.isfinite(float(raw)):
             details["measurement_status"] = "invalid_component_score"
-            return MetricOutput(raw=None, normalized=None, backend=backend, details=details, error="non-finite memory component score")
+            return MetricOutput(
+                raw=None,
+                normalized=None,
+                backend=backend,
+                details=details,
+                error="non-finite memory component score",
+            )
         return MetricOutput(
             raw=float(raw),
             normalized=normalize_score(float(raw), self.normalization)
@@ -768,14 +810,18 @@ class _MemoryLoopMetric(Metric):
         details["measurement_status"] = "observed_pose_track"
         return self._score(analysis, backend=backend, details=details)
 
-    def _score(self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]) -> MetricOutput:
+    def _score(
+        self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]
+    ) -> MetricOutput:
         raise NotImplementedError
 
 
 class MemoryReturnGateMetric(_MemoryLoopMetric):
     """Diagnose departure and return without blocking other memory metrics."""
 
-    def __init__(self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(
             metric_name="memory_return_gate",
             backend=backend,
@@ -783,7 +829,9 @@ class MemoryReturnGateMetric(_MemoryLoopMetric):
             runtime=runtime,
         )
 
-    def _score(self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]) -> MetricOutput:
+    def _score(
+        self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]
+    ) -> MetricOutput:
         structure: RevisitStructure = analysis["structure"]
         details["gate_passed"] = bool(analysis["gate_passed"])
         return MetricOutput(
@@ -801,7 +849,9 @@ class MemoryReturnGateMetric(_MemoryLoopMetric):
 class MemorySceneF1Metric(_MemoryLoopMetric):
     """Score retained versus hallucinated 3D geometry across the return leg."""
 
-    def __init__(self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(
             metric_name="memory_scene_f1",
             backend=backend,
@@ -818,7 +868,9 @@ class MemorySceneF1Metric(_MemoryLoopMetric):
             "scene_calculation_revision": MEMORY_SCENE_CALCULATION_REVISION,
         }
 
-    def _score(self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]) -> MetricOutput:
+    def _score(
+        self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]
+    ) -> MetricOutput:
         if analysis["scene"] is None:
             return _skip(
                 self.name,
@@ -849,7 +901,9 @@ class MemorySceneF1Metric(_MemoryLoopMetric):
 class MemoryRevisitFidelityMetric(_MemoryLoopMetric):
     """Score how faithfully a revisited viewpoint reproduces its first appearance."""
 
-    def __init__(self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(
             metric_name="memory_revisit_fidelity",
             backend=backend,
@@ -857,7 +911,9 @@ class MemoryRevisitFidelityMetric(_MemoryLoopMetric):
             runtime=runtime,
         )
 
-    def _score(self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]) -> MetricOutput:
+    def _score(
+        self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]
+    ) -> MetricOutput:
         if analysis["fidelity"] is None:
             return _skip(self.name, backend, _component_reason(analysis, "fidelity"), details)
         fidelity = analysis["fidelity"]
@@ -876,7 +932,9 @@ class MemoryRevisitFidelityMetric(_MemoryLoopMetric):
 class MemoryGeometricClosureMetric(_MemoryLoopMetric):
     """Score whether revisited frames obey the geometry their poses imply."""
 
-    def __init__(self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(
             metric_name="memory_geometric_closure",
             backend=backend,
@@ -884,7 +942,9 @@ class MemoryGeometricClosureMetric(_MemoryLoopMetric):
             runtime=runtime,
         )
 
-    def _score(self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]) -> MetricOutput:
+    def _score(
+        self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]
+    ) -> MetricOutput:
         if analysis["geometric"] is None:
             return _skip(self.name, backend, _component_reason(analysis, "geometric"), details)
         geometric = analysis["geometric"]
@@ -910,7 +970,9 @@ class MemoryGeometricClosureMetric(_MemoryLoopMetric):
 class MemoryRenderingRecoveryMetric(_MemoryLoopMetric):
     """Score whether lighting, chroma, and texture recover on revisit."""
 
-    def __init__(self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(
             metric_name="memory_rendering_recovery",
             backend=backend,
@@ -918,7 +980,9 @@ class MemoryRenderingRecoveryMetric(_MemoryLoopMetric):
             runtime=runtime,
         )
 
-    def _score(self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]) -> MetricOutput:
+    def _score(
+        self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]
+    ) -> MetricOutput:
         if analysis["rendering"] is None:
             return _skip(self.name, backend, _component_reason(analysis, "rendering"), details)
         rendering = analysis["rendering"]
@@ -941,7 +1005,9 @@ class MemoryHalfLifeMetric(_MemoryLoopMetric):
     Report their time support and retain only finite reliable fits diagnostically.
     """
 
-    def __init__(self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self, backend: str, normalization: dict[str, Any], runtime: dict[str, Any] | None = None
+    ) -> None:
         super().__init__(
             metric_name="memory_half_life",
             backend=backend,
@@ -949,7 +1015,9 @@ class MemoryHalfLifeMetric(_MemoryLoopMetric):
             runtime=runtime,
         )
 
-    def _score(self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]) -> MetricOutput:
+    def _score(
+        self, analysis: dict[str, Any], *, backend: str, details: dict[str, Any]
+    ) -> MetricOutput:
         details["metric_interpretation"] = "exploratory_decay_fit_not_validated_memory_lifetime"
         details["event_independence_verified"] = False
         details["gap_support"] = analysis.get("gap_support")
@@ -966,7 +1034,8 @@ class MemoryHalfLifeMetric(_MemoryLoopMetric):
             not np.isfinite([fit["tau_seconds"], fit["half_life_seconds"], fit["r_squared"]]).all()
             or fit["tau_seconds"] <= 0.0
             or fit["half_life_seconds"] <= 0.0
-            or not math.isfinite(quality_floor) or not 0 <= quality_floor <= 1
+            or not math.isfinite(quality_floor)
+            or not 0 <= quality_floor <= 1
             or not quality_floor <= fit["r_squared"] <= 1
         ):
             return _skip(self.name, backend, "half-life fit is non-finite or unreliable", details)
@@ -974,7 +1043,12 @@ class MemoryHalfLifeMetric(_MemoryLoopMetric):
             self.runtime.get("half_life_reference_seconds", DEFAULT_HALF_LIFE_REFERENCE_SECONDS)
         )
         if not math.isfinite(reference_seconds) or reference_seconds <= 0.0:
-            return _skip(self.name, backend, "half-life reference window must be finite and positive", details)
+            return _skip(
+                self.name,
+                backend,
+                "half-life reference window must be finite and positive",
+                details,
+            )
         details.update(
             {
                 "half_life_seconds": round(float(fit["half_life_seconds"]), 4),
@@ -997,9 +1071,7 @@ def _gate_reason(analysis: dict[str, Any]) -> str:
     """Explain a diagnostic gate failure without controlling metric eligibility."""
     structure: RevisitStructure = analysis["structure"]
     if not structure.departed:
-        return (
-            "camera never departed its anchor viewpoint, so returning to it does not test memory"
-        )
+        return "camera never departed its anchor viewpoint, so returning to it does not test memory"
     if not structure.returned:
         return "rollout never revisited an earlier viewpoint"
     return str(analysis.get("pair_error") or "no scorable revisit pair")
@@ -1007,7 +1079,11 @@ def _gate_reason(analysis: dict[str, Any]) -> str:
 
 def _component_reason(analysis: dict[str, Any], component: str) -> str:
     """Report the actual scoring prerequisite or backend failure, independently of the gate."""
-    return str(analysis.get(f"{component}_error") or analysis.get("pair_error") or f"{component} could not be scored")
+    return str(
+        analysis.get(f"{component}_error")
+        or analysis.get("pair_error")
+        or f"{component} could not be scored"
+    )
 
 
 def build_memory_loop_metric(

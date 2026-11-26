@@ -16,7 +16,6 @@ from worldatlas.benchmark.taxonomy import MEMORY_SUITE
 from worldatlas.models.adapters.base import PreparedGenerationRequest
 from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 
-
 _CAMERA_TOKEN_ALIASES = {
     "dolly_in": "push_in",
     "dolly_out": "pull_out",
@@ -143,9 +142,7 @@ def _build_control_payload(
     sample: BenchmarkSample,
     generation: dict[str, Any],
 ) -> dict[str, Any]:
-    action_source = str(
-        generation.get("action_source", "worldatlas_camera_path")
-    ).strip().lower()
+    action_source = str(generation.get("action_source", "worldatlas_camera_path")).strip().lower()
     if action_source in {
         "worldatlas",
         "worldatlas_camera",
@@ -172,14 +169,18 @@ def _build_control_payload(
         raise ValueError(f"unsupported memory_action_policy: {memory_policy!r}")
     if sample.suite == MEMORY_SUITE and memory_policy == "single_sequence":
         from worldatlas.benchmark.memory_duration import sample_action_timeline
+
         # The native chunk budget controls time, not how often the task repeats.
         # Pose runners interpolate this original itinerary over the full budget.
         trajectory_actions = list(camera_tokens)
         round_actions = sample_action_timeline(trajectory_actions, requested_rounds)
     elif sample.suite == MEMORY_SUITE and generation.get("memory_reference_rounds") is not None:
         from worldatlas.benchmark.memory_duration import sample_action_timeline
+
         trajectory_actions = _expand_round_actions(
-            camera_tokens, int(generation["memory_reference_rounds"]), closed_loop=True,
+            camera_tokens,
+            int(generation["memory_reference_rounds"]),
+            closed_loop=True,
         )
         # The pose runner samples the full 60s path over the shorter frame budget;
         # do not round 23 requested rounds back up to 32/48 whole action laps.
@@ -192,7 +193,9 @@ def _build_control_payload(
     frames_per_chunk = temporal_stride * chunk_latent_frames
     generated_frames = len(round_actions) * frames_per_chunk
     prefix_latent_frames = sink_latent_frames + history_latent_frames
-    trajectory_frames = (prefix_latent_frames + len(round_actions) * chunk_latent_frames) * temporal_stride + 1
+    trajectory_frames = (
+        prefix_latent_frames + len(round_actions) * chunk_latent_frames
+    ) * temporal_stride + 1
 
     return {
         "action_source": action_source,
@@ -223,9 +226,7 @@ class AlayaWorldAdapter(ExternalBatchAdapter):
         payload = super().batch_spec_payload(request)
         payload.update(_build_control_payload(request.sample, dict(self.config.generation)))
         prompt_sequence = [
-            str(value).strip()
-            for value in request.sample.prompt_sequence
-            if str(value).strip()
+            str(value).strip() for value in request.sample.prompt_sequence if str(value).strip()
         ]
         payload.update(
             {

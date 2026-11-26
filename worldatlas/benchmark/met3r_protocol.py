@@ -5,6 +5,7 @@ consecutive generated views, not input-image/anchor comparisons. Decode the
 entire supplied prediction; the paper's dataset-specific 48/80-view limits are
 not a license to truncate a different benchmark's videos silently.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -28,24 +29,28 @@ def verify_upstream(root: Path) -> None:
     for relative, expected in UPSTREAM_FILES.items():
         path = root / relative
         if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
-            raise ValueError(f"MEt3R official source differs from reviewed commit {UPSTREAM_COMMIT}: {path}")
+            raise ValueError(
+                f"MEt3R official source differs from reviewed commit {UPSTREAM_COMMIT}: {path}"
+            )
 
 
 def paper_input_shape(height: int, width: int) -> tuple[int, int]:
     """Approximately 256^2 pixels, preserving aspect up to the patch grid.
 
-The paper specifies area/aspect, not integer rounding. Round ideal height to
-32 pixels and width to 16 pixels (ties upward). Official FeatUp's DINO
-PatchEmbed crops a row AND column when the patch-grid height is odd, without
-updating its positional encoding. An even patch-grid height avoids that path;
-width need not be even. Previously compatible height/width choices are kept.
-This is an input-adapter convention, not the author's unpublished resizer.
-"""
+    The paper specifies area/aspect, not integer rounding. Round ideal height to
+    32 pixels and width to 16 pixels (ties upward). Official FeatUp's DINO
+    PatchEmbed crops a row AND column when the patch-grid height is odd, without
+    updating its positional encoding. An even patch-grid height avoids that path;
+    width need not be even. Previously compatible height/width choices are kept.
+    This is an input-adapter convention, not the author's unpublished resizer.
+    """
     if height <= 0 or width <= 0:
         raise ValueError("MEt3R requires positive frame dimensions")
     scale = 256.0 / math.sqrt(height * width)
-    return tuple(max(grid, grid * math.floor(side * scale / grid + .5))
-                 for side, grid in ((height, 32), (width, 16)))
+    return tuple(
+        max(grid, grid * math.floor(side * scale / grid + 0.5))
+        for side, grid in ((height, 32), (width, 16))
+    )
 
 
 def native_video_pair_batches(path: Path, batch_size: int, metadata: dict):
@@ -59,7 +64,9 @@ def native_video_pair_batches(path: Path, batch_size: int, metadata: dict):
         expected = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = float(capture.get(cv2.CAP_PROP_FPS))
         if expected < 2 or not math.isfinite(fps) or fps <= 0:
-            raise ValueError("MEt3R needs a video with at least two frames and valid frame metadata")
+            raise ValueError(
+                "MEt3R needs a video with at least two frames and valid frame metadata"
+            )
         previous, shape, count, batch = None, None, 0, []
         while True:
             ok, frame = capture.read()
@@ -83,15 +90,22 @@ def native_video_pair_batches(path: Path, batch_size: int, metadata: dict):
             raise ValueError(f"Incomplete MEt3R video decode: {count}/{expected} frames: {path}")
         if batch:
             yield batch
-        metadata.update(native_frame_count=count, frame_count=count,
-                        declared_frame_count=expected,
-                        frame_count_corrected=declared_frame_count_off_by_one(expected, count),
-                        native_fps=fps, expected_pair_count=count - 1,
-                        native_size=[shape[1], shape[0]],
-                        metric_input_size=list(reversed(paper_input_shape(*shape[:2]))),
-                        resize_policy=RESIZE_POLICY,
-                        frame_scope="entire_prediction_video", frame_stride=1,
-                        first_frame_index=0, last_frame_index=count - 1,
-                        input_image_used=False, temporal_resampling=False)
+        metadata.update(
+            native_frame_count=count,
+            frame_count=count,
+            declared_frame_count=expected,
+            frame_count_corrected=declared_frame_count_off_by_one(expected, count),
+            native_fps=fps,
+            expected_pair_count=count - 1,
+            native_size=[shape[1], shape[0]],
+            metric_input_size=list(reversed(paper_input_shape(*shape[:2]))),
+            resize_policy=RESIZE_POLICY,
+            frame_scope="entire_prediction_video",
+            frame_stride=1,
+            first_frame_index=0,
+            last_frame_index=count - 1,
+            input_image_used=False,
+            temporal_resampling=False,
+        )
     finally:
         capture.release()

@@ -14,10 +14,20 @@ from typing import Any
 from uuid import uuid4
 
 from worldatlas.models.adapters.batch_runner_common import (
-    add_common_batch_args, begin_sample, load_batch_spec, load_json, log_pipeline, print_status,
+    add_common_batch_args,
+    begin_sample,
+    load_batch_spec,
+    load_json,
+    log_pipeline,
+    print_status,
 )
 from .zing_world import (
-    ACTION_ORDER, UPSTREAM_REVISION, build_message, keyboard_actions, runtime_options, sample_seed,
+    ACTION_ORDER,
+    UPSTREAM_REVISION,
+    build_message,
+    keyboard_actions,
+    runtime_options,
+    sample_seed,
 )
 
 
@@ -27,8 +37,10 @@ def resolve_runtime_paths(repo_root: Path, checkpoint_root: Path) -> tuple[Path,
     pretrained = checkpoint_root / "pretrained"
     checkpoint = checkpoint_root / "generator/model.pt"
     required = [
-        config_path, repo_root / "src/zing_v0_5/pipeline.py",
-        repo_root / "src/zing_v0_5/processor.py", checkpoint,
+        config_path,
+        repo_root / "src/zing_v0_5/pipeline.py",
+        repo_root / "src/zing_v0_5/processor.py",
+        checkpoint,
         pretrained / "text_encoder/config.json",
         pretrained / "text_encoder/model.safetensors.index.json",
         pretrained / "tokenizer/tokenizer_config.json",
@@ -52,12 +64,14 @@ def resolve_runtime_paths(repo_root: Path, checkpoint_root: Path) -> tuple[Path,
 
 def validate_revision(repo_root: Path) -> str:
     revision = subprocess.check_output(
-        ["git", "-C", str(repo_root), "rev-parse", "HEAD"], text=True,
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        text=True,
     ).strip()
     if revision != UPSTREAM_REVISION:
         raise ValueError(f"Zing checkout must be pinned to {UPSTREAM_REVISION}, got {revision}")
     changed = subprocess.check_output(
-        ["git", "-C", str(repo_root), "status", "--porcelain", "--untracked-files=no"], text=True,
+        ["git", "-C", str(repo_root), "status", "--porcelain", "--untracked-files=no"],
+        text=True,
     ).strip()
     if changed:
         raise ValueError("Zing upstream checkout has tracked modifications")
@@ -78,7 +92,9 @@ def load_runtime(repo_root: Path, paths: tuple[Path, Path, Path], options: dict[
         raise RuntimeError("Zing inference requires a CUDA GPU")
     torch.cuda.set_device(0)
     config_path, pretrained, checkpoint = paths
-    config = with_cache_window(load_config(config_path), options["local_attn_size"], options["sink_size"])
+    config = with_cache_window(
+        load_config(config_path), options["local_attn_size"], options["sink_size"]
+    )
     if config.inference.output_fps != options["fps"]:
         raise ValueError("Zing upstream output FPS does not match the WorldAtlas frame plan")
     pipeline = InferencePipeline(config, pretrained, checkpoint)
@@ -131,16 +147,23 @@ def write_video(frames, destination: Path, options: dict[str, Any]) -> None:
                 container.mux(packet)
         with av.open(str(temporary)) as container:
             stream = container.streams.video[0]
-            if (stream.frames != options["num_frames"] or stream.average_rate != options["fps"]
-                    or stream.width != options["width"] or stream.height != options["height"]):
-                raise RuntimeError("Encoded Zing video has incorrect frame count, FPS, or dimensions")
+            if (
+                stream.frames != options["num_frames"]
+                or stream.average_rate != options["fps"]
+                or stream.width != options["width"]
+                or stream.height != options["height"]
+            ):
+                raise RuntimeError(
+                    "Encoded Zing video has incorrect frame count, FPS, or dimensions"
+                )
         temporary.replace(destination)
     finally:
         temporary.unlink(missing_ok=True)
 
 
-def run_batch(repo_root: Path, checkpoint_root: Path, rows: list[dict[str, Any]],
-              generation: dict[str, Any]) -> int:
+def run_batch(
+    repo_root: Path, checkpoint_root: Path, rows: list[dict[str, Any]], generation: dict[str, Any]
+) -> int:
     options = runtime_options(generation)
     ids = [str(row["sample_id"]).strip() for row in rows]
     outputs = [Path(row["output_path"]).expanduser().resolve() for row in rows]
@@ -169,10 +192,14 @@ def run_batch(repo_root: Path, checkpoint_root: Path, rows: list[dict[str, Any]]
             del frames
             _, approximations = keyboard_actions(row.get("camera_path", []), options["num_frames"])
             metadata = {
-                "sample_id": sample_id, "upstream_revision": revision,
-                "checkpoint_dir": str(checkpoint_root), **options,
-                "seed": seed, "base_seed": options["seed"],
-                "camera_path": row.get("camera_path", []), "action_order": ACTION_ORDER,
+                "sample_id": sample_id,
+                "upstream_revision": revision,
+                "checkpoint_dir": str(checkpoint_root),
+                **options,
+                "seed": seed,
+                "base_seed": options["seed"],
+                "camera_path": row.get("camera_path", []),
+                "action_order": ACTION_ORDER,
                 "action_approximations": approximations,
                 "generated_frames": options["num_frames"] - 1,
                 "duration_seconds": options["num_frames"] / options["fps"],
@@ -186,8 +213,15 @@ def run_batch(repo_root: Path, checkpoint_root: Path, rows: list[dict[str, Any]]
                 temporary.replace(sidecar)
             finally:
                 temporary.unlink(missing_ok=True)
-            print_status(sample_id, "generated", output_path=str(output), seed=seed,
-                         num_frames=options["num_frames"], fps=options["fps"], provenance=str(sidecar))
+            print_status(
+                sample_id,
+                "generated",
+                output_path=str(output),
+                seed=seed,
+                num_frames=options["num_frames"],
+                fps=options["fps"],
+                provenance=str(sidecar),
+            )
             consecutive_failures = 0
         except Exception as exc:
             failures += 1
@@ -206,8 +240,10 @@ def main() -> int:
     if not args.checkpoint_dir:
         parser.error("--checkpoint_dir is required")
     return run_batch(
-        Path(args.repo_root).expanduser().resolve(), Path(args.checkpoint_dir).expanduser().resolve(),
-        load_batch_spec(Path(args.batch_spec_path)), load_json(Path(args.generation_config_path)),
+        Path(args.repo_root).expanduser().resolve(),
+        Path(args.checkpoint_dir).expanduser().resolve(),
+        load_batch_spec(Path(args.batch_spec_path)),
+        load_json(Path(args.generation_config_path)),
     )
 
 

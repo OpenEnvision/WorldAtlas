@@ -3,27 +3,32 @@
 from __future__ import annotations
 
 import fcntl
-import importlib.util
-from contextlib import contextmanager
-from functools import lru_cache
 import gc
 import hashlib
+import importlib.util
 import os
-from pathlib import Path
 import shutil
 import sys
 import tempfile
 import time
 import types
-from typing import Any, Sequence
 import uuid
+from collections.abc import Sequence
+from contextlib import contextmanager
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
 
 os.environ.setdefault("SETUPTOOLS_USE_DISTUTILS", "stdlib")
 
 import numpy as np
 from PIL import Image
 
-from worldatlas.common.progress import ProgressHeartbeat, log_exception, log_progress
+from worldatlas.benchmark.pkg_resources_compat import (
+    ensure_openai_clip_cache_compat,
+    ensure_pkg_resources_compat,
+    resolve_openai_clip_cache_dir,
+)
 from worldatlas.common.checkpoints import (
     checkpoint_env,
     checkpoint_path,
@@ -31,12 +36,7 @@ from worldatlas.common.checkpoints import (
     resolve_checkpoint_path,
     resolve_project_path,
 )
-from worldatlas.benchmark.pkg_resources_compat import (
-    ensure_openai_clip_cache_compat,
-    ensure_pkg_resources_compat,
-    resolve_openai_clip_cache_dir,
-)
-
+from worldatlas.common.progress import ProgressHeartbeat, log_exception, log_progress
 
 QUALITY_COMPONENT_SPECS = {
     "clip_iqa": ("clipiqa_plus", "clipiqa+", 1.0),
@@ -50,6 +50,7 @@ HPSV3_DEFAULT_P99 = 8.66
 
 def clamp01(value: float) -> float:
     from worldatlas.benchmark.metrics.base import clamp01 as finite_clamp01
+
     return finite_clamp01(value)
 
 
@@ -64,14 +65,12 @@ def _round(values: Sequence[float]) -> list[float]:
 
 
 def _quality_cache_dir() -> Path:
-    """Quality cache dir -> Path."""
     base = checkpoint_path("quality")
     base.mkdir(parents=True, exist_ok=True)
     return base
 
 
 def _quality_device() -> str:
-    """Quality device -> str."""
     override = os.environ.get("WORLDATLAS_QUALITY_DEVICE")
     if override in {"cpu", "cuda"}:
         return override
@@ -107,8 +106,8 @@ def _ensure_numpy_compat_for_imgaug() -> None:
 def _ensure_timm_compat_for_pyiqa() -> None:
     """Ensure timm compat for pyiqa."""
     try:
-        from timm.models.helpers import build_model_with_cfg
         import timm.models.layers as timm_layers
+        from timm.models.helpers import build_model_with_cfg
     except Exception:
         return
 
@@ -118,6 +117,7 @@ def _ensure_timm_compat_for_pyiqa() -> None:
         sys.modules["timm.models._builder"] = builder_module
 
     if not hasattr(timm_layers, "_assert"):
+
         def _assert(condition: bool, message: str = "") -> None:
             assert condition, message
 
@@ -327,8 +327,7 @@ def compute_quality_component_scores(
             chunk_scores = _to_float_list(metric(batch))
             if len(chunk_scores) != len(chunk):
                 chunk_scores = [
-                    _to_float(metric(_frame_to_float_tensor(frame, device)))
-                    for frame in chunk
+                    _to_float(metric(_frame_to_float_tensor(frame, device))) for frame in chunk
                 ]
             for native_score in chunk_scores:
                 normalized_score = clamp01(native_score / scale)
@@ -448,13 +447,11 @@ def compute_musiq_scores(
             chunk_scores = _to_float_list(metric(image_batch.to(device)))
             if len(chunk_scores) != len(image_batch):
                 chunk_scores = [
-                    _to_float(metric(image.unsqueeze(0).to(device)))
-                    for image in image_batch
+                    _to_float(metric(image.unsqueeze(0).to(device))) for image in image_batch
                 ]
             native_scores.extend(chunk_scores)
     normalized_scores = [
-        clamp01(native_score / MUSIQ_NATIVE_SCORE_SCALE)
-        for native_score in native_scores
+        clamp01(native_score / MUSIQ_NATIVE_SCORE_SCALE) for native_score in native_scores
     ]
     return {
         "backend": backend_name,
@@ -528,7 +525,9 @@ def _hpsv3_local_cache_root() -> Path:
     override = os.environ.get("WORLDATLAS_HPSV3_LOCAL_CACHE", "").strip()
     if override:
         return Path(override).expanduser()
-    return Path(os.environ.get("TMPDIR") or tempfile.gettempdir()) / f"worldatlas-hpsv3-{os.getuid()}"
+    return (
+        Path(os.environ.get("TMPDIR") or tempfile.gettempdir()) / f"worldatlas-hpsv3-{os.getuid()}"
+    )
 
 
 def _hpsv3_local_cache_candidates() -> list[Path]:
@@ -697,7 +696,11 @@ def _checkpoint_prefix_sha256(path: Path, size: int) -> str:
             digest.update(chunk)
             remaining -= len(chunk)
     after = path.stat()
-    if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (after.st_size, after.st_mtime_ns, after.st_ctime_ns):
+    if (before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
+    ):
         raise OSError(f"Checkpoint changed while hashing: {path}")
     return digest.hexdigest()
 
@@ -730,10 +733,13 @@ def _materialize_local_hpsv3_checkpoint(src: Path) -> Path:
     for candidate in _hpsv3_local_cache_candidates():
         addressed_dir = candidate / content_sha256
         copies = [addressed_dir / src.name, candidate / src.name]
-        copies.extend(sorted(addressed_dir.glob(f'{src.stem}.repair-*{src.suffix}')))
+        copies.extend(sorted(addressed_dir.glob(f"{src.stem}.repair-*{src.suffix}")))
         for existing in copies:
-            if (existing.is_file() and existing.stat().st_size == needed
-                    and _checkpoint_prefix_sha256(existing, needed) == content_sha256):
+            if (
+                existing.is_file()
+                and existing.stat().st_size == needed
+                and _checkpoint_prefix_sha256(existing, needed) == content_sha256
+            ):
                 return existing
     cache_dir = _choose_hpsv3_local_cache_dir(needed + 2 * 1024**3)
     if cache_dir is None:
@@ -757,7 +763,10 @@ def _materialize_local_hpsv3_checkpoint(src: Path) -> Path:
     lock_path = cache_dir / f"{src.name}.lock"
     with _exclusive_file_lock(lock_path):
         if dest.is_file():
-            if dest.stat().st_size == needed and _checkpoint_prefix_sha256(dest, needed) == content_sha256:
+            if (
+                dest.stat().st_size == needed
+                and _checkpoint_prefix_sha256(dest, needed) == content_sha256
+            ):
                 return dest
             # Preserve a corrupted cache for diagnosis and any live readers.
             dest = cache_dir / f"{src.stem}.repair-{uuid.uuid4().hex}{src.suffix}"
@@ -846,8 +855,8 @@ def _log_hpsv3_cuda_memory(device_name: str) -> None:
 
         if not torch.cuda.is_available():
             return
-        allocated = torch.cuda.memory_allocated() / (1024 ** 3)
-        reserved = torch.cuda.memory_reserved() / (1024 ** 3)
+        allocated = torch.cuda.memory_allocated() / (1024**3)
+        reserved = torch.cuda.memory_reserved() / (1024**3)
         log_progress(
             "metric_load",
             metric="hpsv3_norm",
@@ -898,6 +907,7 @@ def _load_hpsv3_backend_cached(
         checkpoint=str(checkpoint_path_resolved),
         note="Qwen2-VL loads on CPU; CUDA alloc starts at model.to()",
     )
+
     def _build_inferencer() -> Any:
         return HPSv3RewardInferencer(
             config_path=str(config_path_resolved),
@@ -909,7 +919,9 @@ def _load_hpsv3_backend_cached(
         inferencer = _build_inferencer()
     else:
         # Last-resort serialization when the 16GB file is still on dolphinfs.
-        lock_path = _hpsv3_local_cache_root() / f"{Path(checkpoint_path_resolved).name}.nfs-load.lock"
+        lock_path = (
+            _hpsv3_local_cache_root() / f"{Path(checkpoint_path_resolved).name}.nfs-load.lock"
+        )
         log_progress(
             "metric_load",
             metric="hpsv3_norm",
@@ -1074,7 +1086,9 @@ def compute_hpsv3_norm_scores(
                         # Official HPSv3 emits [reward mean, sigma]. Only the
                         # mean is scored; a scalar backend is also supported.
                         if components.size not in (1, 2) or not np.isfinite(components).all():
-                            raise ValueError("HPSv3 returned an invalid scalar or mean/variance reward")
+                            raise ValueError(
+                                "HPSv3 returned an invalid scalar or mean/variance reward"
+                            )
                         raw_rewards.append(float(components[0]))
             break
         except torch.cuda.OutOfMemoryError:

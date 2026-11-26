@@ -14,7 +14,6 @@ from typing import Any
 from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.models.config import ModelRuntimeConfig
 
-
 DEFAULT_ROLLOUT_DURATION_SECONDS = 60.0
 
 

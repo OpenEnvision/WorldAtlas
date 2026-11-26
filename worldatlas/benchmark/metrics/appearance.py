@@ -2,14 +2,21 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import lru_cache
-from typing import Any, Sequence
+from typing import Any
 
 import cv2
 import numpy as np
 
 from worldatlas.benchmark.media import LoadedMedia, protocol_frame_details
-from worldatlas.benchmark.metrics.base import Metric, clamp01, cosine_similarity, normalize_score, resolve_metric_backend
+from worldatlas.benchmark.metrics.base import (
+    Metric,
+    clamp01,
+    cosine_similarity,
+    normalize_score,
+    resolve_metric_backend,
+)
 from worldatlas.benchmark.quality_backends import (
     _configure_pyiqa_cache,
     _frame_to_float_tensor,
@@ -18,7 +25,6 @@ from worldatlas.benchmark.quality_backends import (
     _to_float,
 )
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
-
 
 BRIGHTNESS_BACKENDS = {"luminance_temporal"}
 COLOR_TEMPERATURE_BACKENDS = {"hsv_hue_drift"}
@@ -74,7 +80,9 @@ def _luminance(frame: np.ndarray) -> float:
     return float(np.mean(y))
 
 
-def _brightness_distribution_vector(frame: np.ndarray, dark_threshold: int, bright_threshold: int) -> np.ndarray:
+def _brightness_distribution_vector(
+    frame: np.ndarray, dark_threshold: int, bright_threshold: int
+) -> np.ndarray:
     """Encode dark, mid, and bright pixel fractions as a three-bin histogram."""
     gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
     total = float(gray.size)
@@ -101,7 +109,9 @@ def _tenengrad_vector(frame: np.ndarray) -> np.ndarray:
     gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY).astype(np.float32) / 255.0
     grad_x = cv2.Sobel(gray, cv2.CV_32F, 1, 0, ksize=3)
     grad_y = cv2.Sobel(gray, cv2.CV_32F, 0, 1, ksize=3)
-    return np.asarray([float(np.sum(np.abs(grad_x))), float(np.sum(np.abs(grad_y)))], dtype=np.float32)
+    return np.asarray(
+        [float(np.sum(np.abs(grad_x))), float(np.sum(np.abs(grad_y)))], dtype=np.float32
+    )
 
 
 def compute_brightness_consistency(
@@ -117,8 +127,7 @@ def compute_brightness_consistency(
 
     luminance = [_luminance(frame) for frame in frames]
     absolute_deltas = [
-        abs(luminance[index + 1] - luminance[index])
-        for index in range(len(luminance) - 1)
+        abs(luminance[index + 1] - luminance[index]) for index in range(len(luminance) - 1)
     ]
     relative_deltas = [
         absolute_deltas[index]
@@ -158,8 +167,7 @@ def compute_brightness_distribution_consistency(
         raise ValueError("brightness_distribution_consistency requires at least two frames")
 
     vectors = [
-        _brightness_distribution_vector(frame, dark_threshold, bright_threshold)
-        for frame in frames
+        _brightness_distribution_vector(frame, dark_threshold, bright_threshold) for frame in frames
     ]
     similarities = [clamp01(cosine_similarity(vector, vectors[0])) for vector in vectors[1:]]
     transformed = [_softmax_transform(value, softmax_lambda) for value in similarities]
@@ -168,7 +176,9 @@ def compute_brightness_distribution_consistency(
     return {
         "raw": raw,
         "details": {
-            "brightness_vectors": [[round(float(item), 6) for item in vector] for vector in vectors],
+            "brightness_vectors": [
+                [round(float(item), 6) for item in vector] for vector in vectors
+            ],
             "first_frame_similarities": [round(value, 6) for value in similarities],
             "transformed_similarities": [round(value, 6) for value in transformed],
             "temporal_weights": [round(float(value), 6) for value in weights],
@@ -231,9 +241,7 @@ def compute_color_temperature_consistency(
             pair_weights.append(pair_weight)
 
     if not pair_distances:
-        raise ValueError(
-            "color_temperature_consistency has no sufficiently saturated frame pairs"
-        )
+        raise ValueError("color_temperature_consistency has no sufficiently saturated frame pairs")
 
     mean_hue_distance = float(np.average(pair_distances, weights=pair_weights))
     raw = _exp_similarity(mean_hue_distance, hue_tau)
@@ -347,10 +355,7 @@ def compute_sharpness_retention(
             "sharpness_retention baseline texture is below the configured texture floor"
         )
 
-    retention_scores = [
-        clamp01(score / baseline)
-        for score in tenengrad_scores[baseline_count:]
-    ]
+    retention_scores = [clamp01(score / baseline) for score in tenengrad_scores[baseline_count:]]
     tenengrad_retention = float(np.mean(retention_scores)) if retention_scores else 1.0
     brisque_scores: list[float] = []
     brisque_zero_variance_frame_indices: list[int] = []
@@ -373,7 +378,10 @@ def compute_sharpness_retention(
         if not all(np.isfinite(score) for score in brisque_scores):
             raise ValueError("BRISQUE gate received non-finite scores")
         mean_brisque = float(np.mean(brisque_scores))
-        brisque_gate = clamp01((float(brisque_bad) - mean_brisque) / max(float(brisque_bad) - float(brisque_good), 1e-8))
+        brisque_gate = clamp01(
+            (float(brisque_bad) - mean_brisque)
+            / max(float(brisque_bad) - float(brisque_good), 1e-8)
+        )
     raw = clamp01(tenengrad_retention * brisque_gate)
     return {
         "raw": raw,

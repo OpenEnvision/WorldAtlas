@@ -68,7 +68,9 @@ def _resolve_task(row: dict[str, Any], generation: dict[str, Any]) -> str:
     else:
         task = _SUITE_DEFAULT_TASK.get(str(row.get("suite", "")), "t2va")
     if task not in _VALID_TASKS:
-        raise ValueError(f"unsupported MiniMax H3 task {task!r}; expected one of {sorted(_VALID_TASKS)}")
+        raise ValueError(
+            f"unsupported MiniMax H3 task {task!r}; expected one of {sorted(_VALID_TASKS)}"
+        )
     return task
 
 
@@ -238,7 +240,9 @@ def _encode_prompt(pipeline: Any, prompt: str) -> Any:
     input_ids = tokens["input_ids"]
     if input_ids.ndim == 2:
         if int(input_ids.shape[0]) != 1:
-            raise ValueError(f"MiniMax H3 expects one prompt, got input_ids shape {list(input_ids.shape)}")
+            raise ValueError(
+                f"MiniMax H3 expects one prompt, got input_ids shape {list(input_ids.shape)}"
+            )
         input_ids = input_ids[0]
     return pipeline.text_encoder.encode_ids(input_ids)
 
@@ -337,7 +341,11 @@ def _run_batch(
                     generate_kwargs["keyframe_frame_indices"] = (0,)
                 else:  # ref2va: single reference image block
                     generate_kwargs["ref_blocks"] = [
-                        {"kind": "image", "latent_h": plan["latent_h"], "latent_w": plan["latent_w"]}
+                        {
+                            "kind": "image",
+                            "latent_h": plan["latent_h"],
+                            "latent_w": plan["latent_w"],
+                        }
                     ]
                 result = pipeline.generate(
                     prompt_embeds=prompt_embeds,

@@ -99,13 +99,24 @@ def write_camera_receipt(row, generation, *, model_path, seed, windows, video_sh
         if file_sha(annotation / name) != digest:
             raise ValueError(f"Sana camera changed during inference: {annotation / name}")
     output = Path(row["output_path"]).resolve()
-    receipt = dict(sample_id=row["sample_id"], output_path=str(output), output_sha256=file_sha(output),
-        prompt=row["prompt"], model_path=str(Path(model_path).resolve()), generation=generation,
-        seed=seed, window_seeds=[seed + i for i in range(len(windows))], windows=windows,
-        output_shape=list(video_shape), fps=int(generation.get("fps", 16)),
-        annotation_path=str(annotation), camera_sha256=camera_hashes,
-        camera_control_recipe=row.get("camera_control_recipe"), pose_source=row["pose_source"],
-        output_pose_offset=0 if generation.get("no_refiner", False) else 1)
+    receipt = dict(
+        sample_id=row["sample_id"],
+        output_path=str(output),
+        output_sha256=file_sha(output),
+        prompt=row["prompt"],
+        model_path=str(Path(model_path).resolve()),
+        generation=generation,
+        seed=seed,
+        window_seeds=[seed + i for i in range(len(windows))],
+        windows=windows,
+        output_shape=list(video_shape),
+        fps=int(generation.get("fps", 16)),
+        annotation_path=str(annotation),
+        camera_sha256=camera_hashes,
+        camera_control_recipe=row.get("camera_control_recipe"),
+        pose_source=row["pose_source"],
+        output_pose_offset=0 if generation.get("no_refiner", False) else 1,
+    )
     destination = output.with_suffix(".sana_wm.json")
     temporary = destination.with_name(destination.name + "." + uuid.uuid4().hex)
     temporary.write_text(json.dumps(receipt, indent=2) + "\n")
@@ -128,6 +139,7 @@ def main() -> int:
 
     disable_sana_xformers()
     import inference_sana_wm as sana_wm
+
     force_disable_loaded_sana_xformers()
     import pyrallis
     import torch
@@ -162,7 +174,9 @@ def main() -> int:
     pin_hf_from_pretrained(AutoModelForCausalLM, SANA_STAGE1_TEXT_ENCODER_REPO, text_encoder_path)
 
     logger = get_root_logger()
-    device = torch.device(str(generation.get("device", "cuda" if torch.cuda.is_available() else "cpu")))
+    device = torch.device(
+        str(generation.get("device", "cuda" if torch.cuda.is_available() else "cpu"))
+    )
     config = pyrallis.parse(
         config_class=sana_wm.InferenceConfig,
         config_path=str(config_path),
@@ -200,13 +214,20 @@ def main() -> int:
         sample_id = str(row.get("sample_id", row_index))
         try:
             annotation_path = Path(str(row["annotation_path"])).expanduser().resolve()
-            record_camera = bool(row.get("camera_control_recipe") or row.get("record_camera_receipt"))
-            camera_hashes = ({name: file_sha(annotation_path / name) for name in ("poses.npy", "intrinsics.npy")}
-                             if record_camera else {})
+            record_camera = bool(
+                row.get("camera_control_recipe") or row.get("record_camera_receipt")
+            )
+            camera_hashes = (
+                {name: file_sha(annotation_path / name) for name in ("poses.npy", "intrinsics.npy")}
+                if record_camera
+                else {}
+            )
             sample_seed = int(row.get("seed", int(generation.get("seed", 42)) + row_index))
             c2w_full = np.load(annotation_path / "poses.npy").astype(np.float32)
             num_frames = min(requested_frames, int(c2w_full.shape[0]))
-            num_frames = sana_wm._snap_num_frames(num_frames, stride=8, upper_bound=int(c2w_full.shape[0]))
+            num_frames = sana_wm._snap_num_frames(
+                num_frames, stride=8, upper_bound=int(c2w_full.shape[0])
+            )
             windows = plan_sana_wm_windows(num_frames, chunk_frames=chunk_num_frames)
             image = Image.open(str(row["conditioning_image"])).convert("RGB")
             condition_image = image.convert("RGB")
@@ -266,12 +287,23 @@ def main() -> int:
                     target_frames=int(video_hwc.shape[0]),
                 )
                 video_hwc = sana_wm.apply_overlay(video_hwc, video_c2w)
-            temp_dir = Path(str(row["output_path"])).expanduser().resolve().parent / "_sana_wm_outputs"
-            temp_path = sana_wm.write_video(temp_dir, str(row["prediction_stem"]), video_hwc, fps, logger)
+            temp_dir = (
+                Path(str(row["output_path"])).expanduser().resolve().parent / "_sana_wm_outputs"
+            )
+            temp_path = sana_wm.write_video(
+                temp_dir, str(row["prediction_stem"]), video_hwc, fps, logger
+            )
             copy_output(temp_path, Path(str(row["output_path"])))
             if record_camera:
-                write_camera_receipt(row, generation, model_path=model_path, seed=sample_seed,
-                    windows=windows, video_shape=video_hwc.shape, camera_hashes=camera_hashes)
+                write_camera_receipt(
+                    row,
+                    generation,
+                    model_path=model_path,
+                    seed=sample_seed,
+                    windows=windows,
+                    video_shape=video_hwc.shape,
+                    camera_hashes=camera_hashes,
+                )
             print_status(
                 sample_id,
                 "generated",

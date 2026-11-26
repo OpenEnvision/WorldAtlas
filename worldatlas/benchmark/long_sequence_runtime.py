@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import uuid
-from typing import Any, Sequence
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
 
+from worldatlas.benchmark.long_sequence_assets import inspect_long_sequence_layout
 from worldatlas.common.checkpoints import apply_checkpoint_env, filter_checkpoint_env_overrides
 from worldatlas.common.progress import run_progress_subprocess
-from worldatlas.benchmark.long_sequence_assets import inspect_long_sequence_layout
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LONG_SEQUENCE_RUNTIME_WORKER_ENV = "WORLDATLAS_LONG_SEQUENCE_RUNTIME_WORKER"
@@ -32,7 +32,6 @@ def _runtime_cache_dir(name: str) -> Path:
 
 
 def resolve_long_sequence_root() -> Path:
-    """Resolve long sequence root -> Path."""
     return Path(inspect_long_sequence_layout()["module_root"]).resolve()
 
 
@@ -64,7 +63,6 @@ def _coerce_runtime_bool(value: Any, default: bool = False) -> bool:
 
 
 def _default_device() -> str:
-    """Default device -> str."""
     try:
         import torch
     except ModuleNotFoundError:
@@ -117,7 +115,9 @@ def _metric_runtime_kwargs(runtime: dict[str, Any] | None) -> dict[str, Any]:
     return {
         "device": str(payload.get("device") or _default_device()),
         "read_frame": _coerce_runtime_bool(payload.get("read_frame"), default=False),
-        "load_ckpt_from_local": _coerce_runtime_bool(payload.get("load_ckpt_from_local"), default=False),
+        "load_ckpt_from_local": _coerce_runtime_bool(
+            payload.get("load_ckpt_from_local"), default=False
+        ),
         "use_semantic_splitting": _coerce_runtime_bool(
             payload.get("use_semantic_splitting"),
             default=False,
@@ -210,6 +210,7 @@ def _run_local_long_sequence(
     run_name = f"worldatlas_{token}"
     try:
         import torch
+
         from worldatlas.benchmark.long_sequence_dispatch import evaluate_long_sequence_dimensions
 
         result_payload = evaluate_long_sequence_dimensions(
@@ -297,14 +298,14 @@ def _maybe_run_in_subprocess(
         stdout = (exc.stdout or "").strip()
         raise RuntimeError(
             " | ".join(
-                part
-                for part in ("Long-sequence runtime subprocess failed", stderr, stdout)
-                if part
+                part for part in ("Long-sequence runtime subprocess failed", stderr, stdout) if part
             )
         ) from exc
     if not response_path.exists():
         logs = " | ".join(
-            part for part in ((completed.stderr or "").strip(), (completed.stdout or "").strip()) if part
+            part
+            for part in ((completed.stderr or "").strip(), (completed.stdout or "").strip())
+            if part
         )
         raise RuntimeError(f"Long-sequence runtime subprocess did not write a response: {logs}")
     response = json.loads(response_path.read_text(encoding="utf-8"))
@@ -316,7 +317,9 @@ def _maybe_run_in_subprocess(
         traceback_text = str(response.get("traceback") or "").strip()
         stderr = str(response.get("stderr") or "").strip()
         stdout = str(response.get("stdout") or "").strip()
-        raise RuntimeError(" | ".join(part for part in (error, traceback_text, stderr, stdout) if part))
+        raise RuntimeError(
+            " | ".join(part for part in (error, traceback_text, stderr, stdout) if part)
+        )
     return dict(response["result"])
 
 

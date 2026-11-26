@@ -14,10 +14,10 @@ dimensions and the ranking score.
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass, replace
 import json
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Sequence
 
 from worldatlas.benchmark.memory_manifest import DEFAULT_MEMORY_LOOPS, build_memory_sample
 from worldatlas.benchmark.schemas import BenchmarkSample
@@ -80,7 +80,9 @@ def _selection_sizes(pool_dir: Path) -> dict[str, tuple[int | None, int | None]]
     return sizes
 
 
-def load_memory_pool(image_root: Path, *, duration_seconds: int | None = None) -> list[MemoryPoolImage]:
+def load_memory_pool(
+    image_root: Path, *, duration_seconds: int | None = None
+) -> list[MemoryPoolImage]:
     """Read the curated pool, ordered by its selection rank.
 
     Paths are resolved because generation runs from job working directories that do
@@ -208,10 +210,15 @@ def build_memory_pool_manifest(
             # Retain every published 60s identity; new images get a disjoint namespace.
             if duration_seconds == 30:
                 source = replace(
-                    source, sample_id=f"memory_pool_30s_{image.stem}",
+                    source,
+                    sample_id=f"memory_pool_30s_{image.stem}",
                     source_group_id=f"memory/30s/{image.style}/{image.environment}/{image.scene}::{image.stem}",
                 )
-            source = replace(source, duration_seconds=float(duration_seconds), duration_bucket=f"{duration_seconds}s")
+            source = replace(
+                source,
+                duration_seconds=float(duration_seconds),
+                duration_bucket=f"{duration_seconds}s",
+            )
         samples.append(build_memory_sample(source, loop_id))
     samples.sort(key=lambda item: item.sample_id)
     return samples

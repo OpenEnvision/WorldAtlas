@@ -173,7 +173,9 @@ def _coerce_action_item(item: Any, *, key_order: list[str] | None = None) -> str
 
 
 def _payload_key_order(payload: dict[str, Any]) -> list[str] | None:
-    raw = [_sanitize_token(item) for item in _as_list(payload.get("key_order")) if str(item).strip()]
+    raw = [
+        _sanitize_token(item) for item in _as_list(payload.get("key_order")) if str(item).strip()
+    ]
     return raw or None
 
 
@@ -240,6 +242,7 @@ def _action_payload_for_prediction(
     prediction_path: Path,
 ) -> tuple[dict[str, Any] | None, str | None]:
     from worldatlas.benchmark.camera_video_identity import POLICY as CAMERA_POLICY, validate_intent
+
     if sample.sample_id_policy == CAMERA_POLICY:
         validate_intent(sample)
         # This route scores the pinned camera_path, not mutable sibling actions.
@@ -278,11 +281,16 @@ def _extract_action_values(payload: dict[str, Any]) -> tuple[list[str], str | No
     return [], None
 
 
-def _is_continuous_action_vector(payload: dict[str, Any], key: str | None, actions: list[str]) -> bool:
+def _is_continuous_action_vector(
+    payload: dict[str, Any], key: str | None, actions: list[str]
+) -> bool:
     if key not in {"actions", "action_seq"} or len(actions) != 3:
         return False
     action_space = _sanitize_token(
-        payload.get("native_action_space") or payload.get("variant") or payload.get("mode") or payload.get("control_source")
+        payload.get("native_action_space")
+        or payload.get("variant")
+        or payload.get("mode")
+        or payload.get("control_source")
     )
     # NOTE: this used to also trigger on `key == "action_seq"` alone, on the
     # assumption that an "action_seq" key always means "one frame's
@@ -516,7 +524,9 @@ def _intent_from_action(action: str) -> NativeMotionIntent | None:
         # Unrecognized tokens (stringified junk, "official_bench", ...)
         # must not become idle -- that silently zeros a moving camera.
         return None
-    return NativeMotionIntent(label=action, translation=translation, rotation=rotation, source="native_action")
+    return NativeMotionIntent(
+        label=action, translation=translation, rotation=rotation, source="native_action"
+    )
 
 
 def _rot_x(angle_degrees: float) -> np.ndarray:
@@ -623,11 +633,17 @@ def _reference_trajectory(
         if index >= frame_count - 1:
             continue
         if pitch_dir:
-            current_pose[:3, :3] = current_pose[:3, :3] @ _rot_x(pitch_dir * rotation_angle_degrees / n)
+            current_pose[:3, :3] = current_pose[:3, :3] @ _rot_x(
+                pitch_dir * rotation_angle_degrees / n
+            )
         if yaw_dir:
-            current_pose[:3, :3] = current_pose[:3, :3] @ _rot_y(yaw_dir * rotation_angle_degrees / n)
+            current_pose[:3, :3] = current_pose[:3, :3] @ _rot_y(
+                yaw_dir * rotation_angle_degrees / n
+            )
         if intent.translation is not None:
-            current_pose[:3, 3] += (current_pose[:3, :3].astype(np.float64) @ translation_step).astype(np.float32)
+            current_pose[:3, 3] += (
+                current_pose[:3, :3].astype(np.float64) @ translation_step
+            ).astype(np.float32)
     return np.asarray(poses, dtype=np.float32)
 
 
@@ -674,12 +690,18 @@ def _build_adaptive_gt_segment(
     rotation_align = pred_turn[0, :3, :3] @ reference[0, :3, :3].T
     ref_pos = reference[:, :3, 3] - reference[0, :3, 3]
     ref_range = float(np.linalg.norm(ref_pos, axis=1).mean())
-    scale = pred_range / (ref_range + 1e-12) if pred_range > min_disp_threshold and ref_range > 1e-12 else 1.0
+    scale = (
+        pred_range / (ref_range + 1e-12)
+        if pred_range > min_disp_threshold and ref_range > 1e-12
+        else 1.0
+    )
     start_pos = pred_turn[0, :3, 3]
     gt = np.zeros_like(reference, dtype=np.float32)
     for index in range(len(reference)):
         gt[index, :3, :3] = (rotation_align @ reference[index, :3, :3]).astype(np.float32)
-        gt[index, :3, 3] = (start_pos + scale * (rotation_align @ ref_pos[index])).astype(np.float32)
+        gt[index, :3, 3] = (start_pos + scale * (rotation_align @ ref_pos[index])).astype(
+            np.float32
+        )
         gt[index, 3, 3] = 1.0
     return gt, gt[-1, :3, :3].copy()
 
@@ -800,7 +822,9 @@ def _score_segment(
         local_dir = _unit_vector(np.asarray(intent.translation, dtype=np.float64))
         actual_disp = (pred_turn[-1, :3, 3] - pred_turn[0, :3, 3]).astype(np.float64)
         pred_disp = float(np.linalg.norm(actual_disp))
-        world_dir = segment_start_rotation.astype(np.float64) @ local_dir if local_dir is not None else None
+        world_dir = (
+            segment_start_rotation.astype(np.float64) @ local_dir if local_dir is not None else None
+        )
         cos_sim = _direction_cosine(actual_disp, world_dir)
         confidence = _smoothstep(TRANSLATION_NOISE_FLOOR, TRANSLATION_CONFIDENT, pred_disp)
         score = confidence * _direction_component(cos_sim) + (1.0 - confidence) * 0.5
@@ -815,7 +839,9 @@ def _score_segment(
         )
 
     if intent.rotation is not None:
-        local_axis = _unit_vector(np.asarray([intent.rotation[2], intent.rotation[0], 0.0], dtype=np.float64))
+        local_axis = _unit_vector(
+            np.asarray([intent.rotation[2], intent.rotation[0], 0.0], dtype=np.float64)
+        )
         relative_rotation = (pred_turn[0, :3, :3].T @ pred_turn[-1, :3, :3]).astype(np.float64)
         angle_deg = _rot_angle_deg(relative_rotation)
         axis = _rotation_axis(relative_rotation, angle_deg)
@@ -837,7 +863,9 @@ def _score_segment(
         # compliance failure, scored by how much the camera moved relative to
         # typical monocular pose-estimation noise -- no assumed reference
         # magnitude applies here since none was intended.
-        disp = float(np.linalg.norm((pred_turn[-1, :3, 3] - pred_turn[0, :3, 3]).astype(np.float64)))
+        disp = float(
+            np.linalg.norm((pred_turn[-1, :3, 3] - pred_turn[0, :3, 3]).astype(np.float64))
+        )
         relative_rotation = (pred_turn[0, :3, :3].T @ pred_turn[-1, :3, :3]).astype(np.float64)
         rot_deg = _rot_angle_deg(relative_rotation)
         drift = max(
@@ -901,7 +929,9 @@ def _native_intents_for_sample(
                 "native_camera_target_policy": "native_intended",
                 "native_camera_target_type": "discrete_action",
                 "native_camera_source_path": source_path,
-                "native_action_space": payload.get("native_action_space") or payload.get("variant") or payload.get("mode"),
+                "native_action_space": payload.get("native_action_space")
+                or payload.get("variant")
+                or payload.get("mode"),
                 "native_actions": actions,
                 "native_source_actions": source_actions if source_actions != actions else None,
                 "native_action_source_key": action_key,
@@ -909,7 +939,9 @@ def _native_intents_for_sample(
                 "native_action_source": payload.get("action_source"),
                 "native_action_frame_counts": frame_counts,
                 "native_action_speeds": payload.get("action_speed_list"),
-                "native_condition_frame_count": sum(frame_counts) if frame_counts is not None else None,
+                "native_condition_frame_count": sum(frame_counts)
+                if frame_counts is not None
+                else None,
                 "native_camera_tokens": payload.get("camera_tokens"),
                 "native_camera_path": payload.get("camera_path"),
                 "native_approximations": payload.get("approximations"),
@@ -1054,7 +1086,9 @@ def score_native_intended_cameras(
         {
             "native_intent_count": len(intents),
             "native_intent_segments": segment_details,
-            "native_intent_boundary_policy": "action_frame_counts" if boundaries is not None else "equal_intervals",
+            "native_intent_boundary_policy": "action_frame_counts"
+            if boundaries is not None
+            else "equal_intervals",
             "native_intent_gt_frame_count": int(len(gt)),
             "native_intent_pred_frame_count": int(len(pred)),
             "native_intent_path_length": float(path_length),

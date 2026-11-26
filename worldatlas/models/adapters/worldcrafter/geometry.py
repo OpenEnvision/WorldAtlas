@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 from typing import Any
 
-
 FRAMES_PER_CHUNK = 33
 BASE_VAE_TEMPORAL_SCALE = 4
 

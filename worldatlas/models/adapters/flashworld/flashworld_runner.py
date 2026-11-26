@@ -16,7 +16,11 @@ import numpy as np
 from PIL import Image
 
 from worldatlas.benchmark.annotations import load_camera_matrices, load_intrinsics_sequence
-from worldatlas.common.checkpoints import apply_checkpoint_env, hf_local_dir, resolve_checkpoint_path
+from worldatlas.common.checkpoints import (
+    apply_checkpoint_env,
+    hf_local_dir,
+    resolve_checkpoint_path,
+)
 
 FLASHWORLD_WAN_DIFFUSERS_ENV = "FLASHWORLD_WAN_DIFFUSERS_MODEL_ID"
 FLASHWORLD_WAN_DIFFUSERS_DEFAULT = "ckpt/Wan2.2-TI2V-5B-Diffusers"
@@ -29,11 +33,11 @@ def flashworld_runtime_env(env: dict[str, str]) -> dict[str, str]:
     result = dict(env)
     # The evaluation parent can export "stdlib", but Python 3.12 removed
     # distutils. gsplat imports cpp_extension/setuptools lazily at rendering.
-    result['SETUPTOOLS_USE_DISTUTILS'] = 'local'
+    result["SETUPTOOLS_USE_DISTUTILS"] = "local"
     # The Hope launcher prepends the evaluation conda env (including its older
     # nvcc) to PATH. Prefer the container toolkit unless explicitly configured.
-    if not result.get('CUDA_HOME') and Path('/usr/local/cuda/bin/nvcc').is_file():
-        result['CUDA_HOME'] = '/usr/local/cuda'
+    if not result.get("CUDA_HOME") and Path("/usr/local/cuda/bin/nvcc").is_file():
+        result["CUDA_HOME"] = "/usr/local/cuda"
     return result
 
 
@@ -222,12 +226,13 @@ def _target_source_indices(*, source_frame_count: int, target_frame_count: int) 
         raise ValueError(f"target_frame_count must be positive, got {target_frame_count}")
     positions = np.linspace(0, source_frame_count - 1, num=target_frame_count)
     return [
-        min(max(int(round(float(position))), 0), source_frame_count - 1)
-        for position in positions
+        min(max(int(round(float(position))), 0), source_frame_count - 1) for position in positions
     ]
 
 
-def _decode_needed_frames(video_path: Path, target_indices: list[int]) -> tuple[dict[int, np.ndarray], int]:
+def _decode_needed_frames(
+    video_path: Path, target_indices: list[int]
+) -> tuple[dict[int, np.ndarray], int]:
     capture = cv2.VideoCapture(str(video_path))
     if not capture.isOpened():
         raise RuntimeError(f"failed to open reference video: {video_path}")
@@ -388,7 +393,9 @@ def _intrinsics_are_normalized(intrinsic: np.ndarray) -> bool:
     return 0.0 < abs(fx) <= 4.0 and 0.0 < abs(fy) <= 4.0 and 0.0 <= cx <= 2.0 and 0.0 <= cy <= 2.0
 
 
-def _flashworld_source_intrinsics(intrinsic: np.ndarray, *, image_width: int, image_height: int) -> np.ndarray:
+def _flashworld_source_intrinsics(
+    intrinsic: np.ndarray, *, image_width: int, image_height: int
+) -> np.ndarray:
     values = np.asarray(intrinsic, dtype=np.float32)
     if values.shape != (4,):
         raise ValueError(f"expected intrinsics vector with shape (4,), got {values.shape}")
@@ -423,7 +430,9 @@ def _build_request_payload(
 
     intrinsics = load_intrinsics_sequence(annotation_path, target_frames=num_frames)
     if intrinsics is None:
-        raise FileNotFoundError(f"intrinsics.npy not found under annotation path: {annotation_path}")
+        raise FileNotFoundError(
+            f"intrinsics.npy not found under annotation path: {annotation_path}"
+        )
 
     source_width, source_height = _image_size(conditioning_image)
     cameras: list[dict[str, object]] = []
@@ -510,7 +519,7 @@ def main() -> None:
 
         command = [
             sys.executable,
-            str(Path(__file__).with_name('cli_bootstrap.py')),
+            str(Path(__file__).with_name("cli_bootstrap.py")),
             str(cli_path),
             "--input_dir",
             str(input_dir),

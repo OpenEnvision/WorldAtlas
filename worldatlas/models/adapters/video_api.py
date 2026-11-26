@@ -15,7 +15,6 @@ from worldatlas.models.adapters.base import PreparedGenerationRequest
 from worldatlas.models.adapters.common import image_path_to_data_url
 from worldatlas.models.providers import ApiProvider, HttpPollingProvider
 
-
 DEFAULT_FIELD_MAP = {
     "prompt": "prompt",
     "negative_prompt": "negative_prompt",
@@ -35,7 +34,6 @@ class VideoApiAdapter(ApiModelAdapter):
     """Generate videos through a configurable HTTP polling provider."""
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return True
 
     def generate_batch(
@@ -45,7 +43,6 @@ class VideoApiAdapter(ApiModelAdapter):
         return super().generate_batch(requests)
 
     def build_provider(self) -> ApiProvider:
-        """Build provider -> ApiProvider."""
         submit_mode = str(self.config.api.get("submit_mode", "http_polling")).strip().lower()
         provider_name = str(self.config.api.get("provider", self.config.name))
         if submit_mode == "http_polling":
@@ -54,9 +51,11 @@ class VideoApiAdapter(ApiModelAdapter):
 
     def _task_type(self, sample: BenchmarkSample, conditioning_image: Path) -> str:
         """Infer t2v vs i2v from config, control signals, and conditioning media."""
-        explicit = str(
-            self.config.generation.get("task_type", self.config.api.get("task_type", "auto"))
-        ).strip().lower()
+        explicit = (
+            str(self.config.generation.get("task_type", self.config.api.get("task_type", "auto")))
+            .strip()
+            .lower()
+        )
         if explicit in {"t2v", "text2video"}:
             return "t2v"
         if explicit in {"i2v", "image2video"}:
@@ -72,7 +71,6 @@ class VideoApiAdapter(ApiModelAdapter):
         return "t2v"
 
     def _field_map(self) -> dict[str, str]:
-        """Field map -> dict[str, str]."""
         field_map = dict(DEFAULT_FIELD_MAP)
         field_map.update(
             {
@@ -117,8 +115,7 @@ class VideoApiAdapter(ApiModelAdapter):
         task_type = self._task_type(sample, conditioning_image)
         field_map = self._field_map()
         request_body = {
-            str(key): value
-            for key, value in dict(self.config.api.get("static_body", {})).items()
+            str(key): value for key, value in dict(self.config.api.get("static_body", {})).items()
         }
         request_body[field_map["prompt"]] = prompt
 
@@ -131,10 +128,7 @@ class VideoApiAdapter(ApiModelAdapter):
             request_body[target_key] = value
 
         request_body.update(
-            {
-                str(key): value
-                for key, value in dict(generation.get("extra_body", {})).items()
-            }
+            {str(key): value for key, value in dict(generation.get("extra_body", {})).items()}
         )
 
         if task_type == "i2v":

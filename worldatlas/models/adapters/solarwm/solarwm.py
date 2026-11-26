@@ -15,7 +15,6 @@ from worldatlas.models.adapters.base import PreparedGenerationRequest
 from worldatlas.models.adapters.camera_runtime import camera_annotation_for_conditioning_image
 from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 
-
 SOLARWM_DEFAULT_FPS = 16.0
 SOLARWM_DEFAULT_FRAMES = 81
 
@@ -33,8 +32,7 @@ def resolve_source_frame_count(generation: dict[str, Any]) -> int:
         seconds = float(target_seconds)
         if not math.isfinite(seconds) or seconds <= 0:
             raise ValueError(
-                "SolarWM target_duration_seconds must be positive and finite, "
-                f"got {seconds!r}"
+                f"SolarWM target_duration_seconds must be positive and finite, got {seconds!r}"
             )
         frame_count = int(math.ceil(seconds * fps))
 

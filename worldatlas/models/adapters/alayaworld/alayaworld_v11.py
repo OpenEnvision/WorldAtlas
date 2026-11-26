@@ -7,6 +7,7 @@ from typing import Any
 
 from worldatlas.models.adapters.base import PreparedGenerationRequest
 from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
+
 from .alayaworld import _build_control_payload
 
 UPSTREAM_REVISION = "ea03cfbb2e4c4e9102ed8ea8562e0b5370ca9b79"
@@ -14,19 +15,33 @@ UPSTREAM_REVISION = "ea03cfbb2e4c4e9102ed8ea8562e0b5370ca9b79"
 
 def runtime_options(generation: dict[str, Any]) -> dict[str, Any]:
     options = {
-        "variant": "dmd", "rounds": 4, "height": 544, "width": 960,
-        "fps": 24, "temporal_stride": 8, "chunk_latent_frames": 4,
-        "history_latent_frames": 4, "sink_latent_frames": 1,
-        "nproc_per_node": 1, "attention_type": "flash_attention_2",
-        "seed": 1234, "increment_seed": True, "offline": True,
+        "variant": "dmd",
+        "rounds": 4,
+        "height": 544,
+        "width": 960,
+        "fps": 24,
+        "temporal_stride": 8,
+        "chunk_latent_frames": 4,
+        "history_latent_frames": 4,
+        "sink_latent_frames": 1,
+        "nproc_per_node": 1,
+        "attention_type": "flash_attention_2",
+        "seed": 1234,
+        "increment_seed": True,
+        "offline": True,
         "continue_on_error": True,
     }
     options.update(generation)
     if options["variant"] not in {"ar", "dmd"}:
         raise ValueError("AlayaWorld v1.1 variant must be ar or dmd")
-    for key, expected in (("fps", 24), ("temporal_stride", 8),
-                          ("chunk_latent_frames", 4), ("history_latent_frames", 4),
-                          ("sink_latent_frames", 1), ("nproc_per_node", 1)):
+    for key, expected in (
+        ("fps", 24),
+        ("temporal_stride", 8),
+        ("chunk_latent_frames", 4),
+        ("history_latent_frames", 4),
+        ("sink_latent_frames", 1),
+        ("nproc_per_node", 1),
+    ):
         if float(options[key]) != expected:
             raise ValueError(f"AlayaWorld v1.1 requires {key}={expected}")
         options[key] = expected
@@ -78,8 +93,7 @@ class AlayaWorldV11Adapter(ExternalBatchAdapter):
         if sequence:
             base, extra = divmod(rounds, len(sequence))
             payload["prompt_schedule"] = [
-                prompt for i, prompt in enumerate(sequence)
-                for _ in range(base + (i < extra))
+                prompt for i, prompt in enumerate(sequence) for _ in range(base + (i < extra))
             ]
         else:
             payload["prompt_schedule"] = []

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
-from types import ModuleType
 import uuid
+from functools import lru_cache
+from pathlib import Path
+from types import ModuleType
 from typing import Any
 
 import cv2
@@ -25,14 +25,12 @@ from worldatlas.common.checkpoints import (
 )
 from worldatlas.common.progress import run_progress_subprocess
 
-
 PULSE_RUNTIME_WORKER_ENV = "WORLDATLAS_PULSE_RUNTIME_WORKER"
 PULSE_OF_MOTION_CHECKPOINT = "vc_common_10_60fps.ckpt"
 PULSE_RESULT_CACHE_SCHEMA = 2
 
 
 def _project_root() -> Path:
-    """Project root -> Path."""
     return Path(__file__).resolve().parents[2]
 
 
@@ -49,7 +47,6 @@ DEFAULT_PULSE_RUNTIME_PYTHONPATHS = (
 
 
 def resolve_pulse_of_motion_root() -> Path:
-    """Resolve pulse of motion root -> Path."""
     return (_project_root() / "thirdparty" / "Pulse-of-Motion").resolve()
 
 
@@ -236,7 +233,9 @@ def _maybe_run_in_subprocess(
         raise RuntimeError(f"pulse runtime subprocess failed: {details}") from exc
     if not response_path.exists():
         logs = " | ".join(
-            part for part in ((completed.stderr or "").strip(), (completed.stdout or "").strip()) if part
+            part
+            for part in ((completed.stderr or "").strip(), (completed.stdout or "").strip())
+            if part
         )
         raise RuntimeError(f"pulse runtime subprocess did not write a response: {logs}")
     response = json.loads(response_path.read_text(encoding="utf-8"))
@@ -247,7 +246,9 @@ def _maybe_run_in_subprocess(
         traceback_text = str(response.get("traceback") or "").strip()
         stdout = str(response.get("stdout") or "").strip()
         stderr = str(response.get("stderr") or "").strip()
-        raise RuntimeError(" | ".join(part for part in (error, traceback_text, stderr, stdout) if part))
+        raise RuntimeError(
+            " | ".join(part for part in (error, traceback_text, stderr, stdout) if part)
+        )
     return dict(response["result"])
 
 
@@ -318,7 +319,6 @@ def _load_predict_module(root: str) -> ModuleType:
 
 
 def _default_device() -> str:
-    """Default device -> str."""
     try:
         import torch
     except ModuleNotFoundError:
@@ -476,21 +476,29 @@ def _decode_analysis_frames(
         lower = np.floor(positions).astype(np.int64)
         upper = np.minimum(lower + 1, source_count - 1)
         alpha = (positions - lower).astype(np.float32)[:, None, None, None]
-        frames = np.rint(
-            source[lower].astype(np.float32) * (1.0 - alpha)
-            + source[upper].astype(np.float32) * alpha
-        ).clip(0, 255).astype(np.uint8)
+        frames = (
+            np.rint(
+                source[lower].astype(np.float32) * (1.0 - alpha)
+                + source[upper].astype(np.float32) * alpha
+            )
+            .clip(0, 255)
+            .astype(np.uint8)
+        )
         resampled = True
     else:
         frames = np.stack(decoded, axis=0)
 
-    return frames, container_fps, {
-        "total_frames": source_count,
-        "analysis_total_frames": int(frames.shape[0]),
-        "short_video_policy": short_video_policy,
-        "short_video_resampled": resampled,
-        "temporal_resample_factor": temporal_scale,
-    }
+    return (
+        frames,
+        container_fps,
+        {
+            "total_frames": source_count,
+            "analysis_total_frames": int(frames.shape[0]),
+            "short_video_policy": short_video_policy,
+            "short_video_resampled": resampled,
+            "temporal_resample_factor": temporal_scale,
+        },
+    )
 
 
 def _predict_phyfps_batched(
@@ -506,9 +514,7 @@ def _predict_phyfps_batched(
 
     starts = list(range(0, int(frames.shape[0]) - clip_length + 1, stride))
     if not starts:
-        raise RuntimeError(
-            f"Video too short ({int(frames.shape[0])} frames < {clip_length})"
-        )
+        raise RuntimeError(f"Video too short ({int(frames.shape[0])} frames < {clip_length})")
     predicted: list[float] = []
     with torch.inference_mode():
         for offset in range(0, len(starts), batch_size):

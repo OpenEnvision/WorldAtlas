@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import importlib
 import fcntl
-from contextlib import contextmanager
+import importlib
 import json
 import os
 import shutil
 import sys
 import uuid
+from collections.abc import Sequence
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -21,17 +22,16 @@ from worldatlas.benchmark.distribution_clips import (
     atomic_write_text,
     build_clip_array,
     clip_set_signature,
-    distribution_cache_ready,
     distribution_cache_metadata,
+    distribution_cache_ready,
+    reference_runtime,
     require_complete_clip_report,
     validate_distribution_features,
-    reference_runtime,
 )
 from worldatlas.benchmark.jedi_reference import prepare_reference_selection
 from worldatlas.benchmark.metrics.base import normalize_score
 from worldatlas.common.checkpoints import checkpoint_env, filter_checkpoint_env_overrides
 from worldatlas.common.progress import log_progress
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_JEDI_REPO_CANDIDATES = (PROJECT_ROOT / "thirdparty" / "JEDi",)
@@ -114,6 +114,7 @@ def _require_configured_path(path: str | None, *, label: str, kind: str) -> None
 def _dependency_tokens(*, model_dir: str, config_path: str | None) -> list[str]:
     """Checkpoint identity, so a weight change invalidates cached features."""
     from worldatlas.benchmark.integrity import path_content
+
     tokens: list[str] = []
     candidates = [Path(model_dir) / "vith16.pth.tar", Path(model_dir) / "ssv2-probe.pth.tar"]
     if config_path is not None:
@@ -125,6 +126,7 @@ def _dependency_tokens(*, model_dir: str, config_path: str | None) -> list[str]:
 
 def _collate_clips(batch: Any) -> Any:
     from torch.utils.data import default_collate
+
     clips, labels = default_collate(batch)
     return clips.float() / 255.0, labels
 
@@ -137,8 +139,12 @@ def _make_loader(clips: np.ndarray, batch_size: int) -> Any:
     # batch, with identical ordering and normalization to the eager loader.
     tensor = torch.from_numpy(clips).permute(0, 1, 4, 2, 3)
     labels = torch.zeros((tensor.shape[0],), dtype=torch.long)
-    return DataLoader(TensorDataset(tensor, labels), batch_size=batch_size,
-                      shuffle=False, collate_fn=_collate_clips)
+    return DataLoader(
+        TensorDataset(tensor, labels),
+        batch_size=batch_size,
+        shuffle=False,
+        collate_fn=_collate_clips,
+    )
 
 
 def _materialize(source: Path, destination: Path) -> None:
@@ -175,7 +181,7 @@ def _reference_cache_guard(features: Path):
         yield
         return
     features.parent.mkdir(parents=True, exist_ok=True)
-    with features.with_suffix('.lock').open('a') as handle:
+    with features.with_suffix(".lock").open("a") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
         held = not _reference_cache_ready(features)
         if not held:
@@ -243,7 +249,7 @@ def _contiguous_partitions(items: Sequence[Any], parts: int) -> list[Sequence[An
     start = 0
     for index in range(actual):
         size = base + (1 if index < extra else 0)
-        partitions.append(items[start:start + size])
+        partitions.append(items[start : start + size])
         start += size
     return partitions
 
@@ -277,7 +283,9 @@ def _merge_described_reports(
             merged.used_ids_preview.extend(list(report.get("used_ids_preview") or [])[:space])
         space = 20 - len(merged.skipped_videos_preview)
         if space > 0:
-            merged.skipped_videos_preview.extend(list(report.get("skipped_videos_preview") or [])[:space])
+            merged.skipped_videos_preview.extend(
+                list(report.get("skipped_videos_preview") or [])[:space]
+            )
     merged.source_fps_observed.extend(source_fps)
     return merged
 
@@ -334,7 +342,10 @@ def _extract_shard_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 def _inprocess_shards() -> bool:
     return os.environ.get("WORLDATLAS_JEDI_INPROCESS_SHARDS", "").strip().lower() in {
-        "1", "true", "yes", "on",
+        "1",
+        "true",
+        "yes",
+        "on",
     }
 
 
@@ -342,6 +353,7 @@ def _map_feature_shards(payloads: list[dict[str, Any]]) -> list[dict[str, Any]]:
     if len(payloads) == 1 or _inprocess_shards():
         return [_extract_shard_payload(item) for item in payloads]
     import multiprocessing as mp
+
     with mp.get_context("spawn").Pool(len(payloads)) as pool:
         return pool.map(_extract_shard_payload, payloads)
 
@@ -385,7 +397,11 @@ def _extract_jedi_side(
                 "verified_counts": (
                     None
                     if verified_counts is None
-                    else {str(path): verified_counts[str(path)] for path, _ in part if str(path) in verified_counts}
+                    else {
+                        str(path): verified_counts[str(path)]
+                        for path, _ in part
+                        if str(path) in verified_counts
+                    }
                 ),
             }
         )
@@ -424,10 +440,15 @@ def compute_jedi_distance(
 
     cache_dir = reference_cache_dir or (output_dir / "reference_cache")
     reference_entries, verified_counts, selection = prepare_reference_selection(
-        reference_entries, reference_spec, cache_dir,
+        reference_entries,
+        reference_spec,
+        cache_dir,
         workers=runtime.get("reference_preflight_workers", 8),
     )
-    atomic_write_text(output_dir / "reference_selection.json", json.dumps(selection, indent=2, sort_keys=True) + "\n")
+    atomic_write_text(
+        output_dir / "reference_selection.json",
+        json.dumps(selection, indent=2, sort_keys=True) + "\n",
+    )
     reference_floor = max(reference_spec.min_clip_count, int(runtime.get("min_reference_clips", 0)))
     if selection["selection"]["clip_count"] < reference_floor:
         raise ValueError(
@@ -446,10 +467,16 @@ def compute_jedi_distance(
 
     dependency_tokens = _dependency_tokens(model_dir=model_dir, config_path=config_path)
     from worldatlas.benchmark.integrity import path_content
+
     dependency_tokens.append(json.dumps(path_content(Path(__file__)), sort_keys=True))
-    dependency_tokens.append(json.dumps(path_content(Path(__file__).with_name('jedi_reference.py')), sort_keys=True))
+    dependency_tokens.append(
+        json.dumps(path_content(Path(__file__).with_name("jedi_reference.py")), sort_keys=True)
+    )
     if repo_root is not None:
-        dependency_tokens.extend(json.dumps(path_content(p), sort_keys=True) for p in sorted((repo_root / 'videojedi').rglob('*.py')))
+        dependency_tokens.extend(
+            json.dumps(path_content(p), sort_keys=True)
+            for p in sorted((repo_root / "videojedi").rglob("*.py"))
+        )
     reference_signature = clip_set_signature(
         reference_entries, reference_spec, extra=[*dependency_tokens, selection["sha256"]]
     )
@@ -462,13 +489,16 @@ def compute_jedi_distance(
 
     # Upstream trusts train.npy/test.npy by name alone. Predictions are private
     # to this invocation; only verified shared reference features may be reused.
-    feature_dir = output_dir / "features" / f"{reference_signature}__{prediction_signature}" / uuid.uuid4().hex
+    feature_dir = (
+        output_dir
+        / "features"
+        / f"{reference_signature}__{prediction_signature}"
+        / uuid.uuid4().hex
+    )
     feature_dir.mkdir(parents=True, exist_ok=True)
 
     device_ids = _resolve_device_ids(runtime)
-    use_shards = len(device_ids) > 1 and (
-        len(prediction_entries) > 1 or len(reference_entries) > 1
-    )
+    use_shards = len(device_ids) > 1 and (len(prediction_entries) > 1 or len(reference_entries) > 1)
     details: dict[str, Any] = {
         "reference_signature": reference_signature,
         "prediction_signature": prediction_signature,
@@ -476,8 +506,15 @@ def compute_jedi_distance(
         "reference_clip_spec": reference_spec.describe(),
         "feature_device_ids": list(device_ids),
         "reference_selection_sha256": selection["sha256"],
-        "reference_population": {key: selection["selection"][key] for key in
-                                 ("candidate_video_count", "eligible_video_count", "excluded_video_count", "clip_count")},
+        "reference_population": {
+            key: selection["selection"][key]
+            for key in (
+                "candidate_video_count",
+                "eligible_video_count",
+                "excluded_video_count",
+                "clip_count",
+            )
+        },
     }
 
     prediction_array: np.ndarray | None = None
@@ -498,13 +535,13 @@ def compute_jedi_distance(
         )
         details["prediction_feature_extraction"] = "per_video"
     details["prediction"] = prediction_report.describe()
-    require_complete_clip_report(details["prediction"], len(prediction_entries), label='prediction')
+    require_complete_clip_report(details["prediction"], len(prediction_entries), label="prediction")
 
     # Predictions decode concurrently across models before any cache wait.
     # Recheck the shared cache afterwards: another model may have completed it.
     with _reference_cache_guard(cached_features):
         reference_cache_hit = _reference_cache_ready(cached_features)
-        details['reference_cache_hit'] = reference_cache_hit
+        details["reference_cache_hit"] = reference_cache_hit
         reference_array: np.ndarray | None = None
         reference_features: np.ndarray | None = None
         if reference_cache_hit:
@@ -516,7 +553,9 @@ def compute_jedi_distance(
             details["reference_feature_extraction"] = "cache"
         else:
             if cached_features.exists():
-                raise ValueError(f"Incomplete reference feature cache requires review: {cached_features}")
+                raise ValueError(
+                    f"Incomplete reference feature cache requires review: {cached_features}"
+                )
             if use_shards:
                 reference_features, reference_report, reference_mode = _extract_jedi_side(
                     reference_entries,
@@ -537,7 +576,9 @@ def compute_jedi_distance(
                 )
                 details["reference_feature_extraction"] = "per_video"
             details["reference"] = reference_report.describe()
-        require_complete_clip_report(details["reference"], len(reference_entries), label='reference')
+        require_complete_clip_report(
+            details["reference"], len(reference_entries), label="reference"
+        )
         if details["reference"].get("clip_count") != selection["selection"]["clip_count"]:
             raise ValueError("JEDi reference clip count changed after preparation")
 
@@ -588,8 +629,12 @@ def compute_jedi_distance(
                 test_loader=_make_loader(prediction_array, batch_size),
                 num_samples=num_samples,
             )
-        validate_distribution_features(getattr(metric, 'train_features', None), reference_clip_count, label='JEDi reference')
-        validate_distribution_features(getattr(metric, 'test_features', None), prediction_clip_count, label='JEDi prediction')
+        validate_distribution_features(
+            getattr(metric, "train_features", None), reference_clip_count, label="JEDi reference"
+        )
+        validate_distribution_features(
+            getattr(metric, "test_features", None), prediction_clip_count, label="JEDi prediction"
+        )
         raw = float(metric.compute_metric())
         if not np.isfinite(raw):
             raise ValueError(f"JEDi returned a non-finite score: {raw}")

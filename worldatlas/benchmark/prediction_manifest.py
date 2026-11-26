@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from dataclasses import replace
-import json
 from pathlib import Path
 
 from worldatlas.benchmark.integrity import digest_json
@@ -45,31 +45,48 @@ def write_prediction_manifest(
                 resolve_bound_prediction(sample, root)
             else:
                 source_hash = validate_source_identity(sample)
-                if (record.get("sample_id_policy") != SOURCE_FILENAME_POLICY
-                        or record.get("source_sha256") != source_hash
-                        or Path(record.get("source_path", "")).resolve() != Path(sample.path).resolve()):
-                    raise ValueError(f"Generation record does not identify the source image: {sample_id}")
+                if (
+                    record.get("sample_id_policy") != SOURCE_FILENAME_POLICY
+                    or record.get("source_sha256") != source_hash
+                    or Path(record.get("source_path", "")).resolve() != Path(sample.path).resolve()
+                ):
+                    raise ValueError(
+                        f"Generation record does not identify the source image: {sample_id}"
+                    )
                 prediction = Path(record["prediction_path"]).resolve()
-                if not prediction.is_relative_to(root) or not prediction.is_file() or not prediction.stat().st_size:
-                    raise ValueError(f"Generated video is missing or outside the output directory: {sample_id}")
+                if (
+                    not prediction.is_relative_to(root)
+                    or not prediction.is_file()
+                    or not prediction.stat().st_size
+                ):
+                    raise ValueError(
+                        f"Generated video is missing or outside the output directory: {sample_id}"
+                    )
                 if file_sha256(prediction) != record.get("prediction_sha256"):
                     raise ValueError(f"Generated video changed: {sample_id}")
                 receipt = deepcopy(record)
-                sample = replace(sample, source_sha256=source_hash, prediction_binding={
-                    "sample_id": sample_id,
-                    "source_sha256": source_hash,
-                    "predictions_root": str(root),
-                    "path": str(prediction.relative_to(root)),
-                    "prediction_sha256": record["prediction_sha256"],
-                    "evidence": "worldatlas_generation_receipt_v1",
-                    "generation_record": receipt,
-                    "generation_record_sha256": digest_json(receipt),
-                })
+                sample = replace(
+                    sample,
+                    source_sha256=source_hash,
+                    prediction_binding={
+                        "sample_id": sample_id,
+                        "source_sha256": source_hash,
+                        "predictions_root": str(root),
+                        "path": str(prediction.relative_to(root)),
+                        "prediction_sha256": record["prediction_sha256"],
+                        "evidence": "worldatlas_generation_receipt_v1",
+                        "generation_record": receipt,
+                        "generation_record_sha256": digest_json(receipt),
+                    },
+                )
                 resolve_bound_prediction(sample, root)
         bound.append(sample)
     suffix = f".shard{shard_index}" if num_shards > 1 else ""
     path = root / f"evaluation_manifest{suffix}.jsonl"
     temporary = path.with_suffix(".jsonl.tmp")
-    temporary.write_text("".join(json.dumps(sample.to_dict(), ensure_ascii=False) + "\n" for sample in bound), encoding="utf-8")
+    temporary.write_text(
+        "".join(json.dumps(sample.to_dict(), ensure_ascii=False) + "\n" for sample in bound),
+        encoding="utf-8",
+    )
     temporary.replace(path)
     return path

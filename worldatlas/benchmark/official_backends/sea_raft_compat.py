@@ -70,16 +70,19 @@ def load_sea_raft_eval_args() -> Any:
     import os
     from pathlib import Path
 
-    from worldatlas.benchmark.official_backends.base import official_checkpoint_path, thirdparty_path
+    from worldatlas.benchmark.official_backends.base import (
+        official_checkpoint_path,
+        thirdparty_path,
+    )
     from worldatlas.benchmark.local_checkpoints import materialize_local_file
 
     config_path = thirdparty_path("SEA-RAFT", "config", "eval", "spring-M.json")
     with open(config_path, encoding="utf-8") as handle:
         args = argparse.Namespace(**json.load(handle))
     args.cfg = config_path
-    checkpoint = os.environ.get("WORLDATLAS_SEA_RAFT_CHECKPOINT", "").strip() or official_checkpoint_path(
-        "Tartan-C-T-TSKH-spring540x960-M.pth"
-    )
+    checkpoint = os.environ.get(
+        "WORLDATLAS_SEA_RAFT_CHECKPOINT", ""
+    ).strip() or official_checkpoint_path("Tartan-C-T-TSKH-spring540x960-M.pth")
     args.path = str(materialize_local_file(Path(checkpoint), kind="sea_raft"))
     return args
 

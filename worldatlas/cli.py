@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from worldatlas.benchmark import (
     build_inventory,
@@ -91,7 +91,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Only for --memory-source pool: cap how many pool images are used.",
     )
     build_manifest_benchmark.add_argument(
-        "--memory-duration-seconds", type=int, choices=(30, 60), default=None,
+        "--memory-duration-seconds",
+        type=int,
+        choices=(30, 60),
+        default=None,
         help="Read memory/30s or memory/60s; omitted preserves the legacy pool.",
     )
 
@@ -161,7 +164,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-
 def _resolve_memory_loops(value: str | None) -> tuple[str, ...]:
     """Interpret the ``--memory-loops`` selector into concrete loop identifiers."""
     token = str(value or "default").strip().lower()
@@ -189,7 +191,6 @@ def _ensure_manifest(config, manifest_arg: str | None) -> Path:
         output_dir=config.paths.manifest_dir,
         snapshot_name=config.snapshot_name,
     )
-
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -307,14 +308,24 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "evaluate":
         config = load_config(Path(args.config))
-        model_config = load_model_config(Path(args.model_config)) if getattr(args, "model_config", None) else None
+        model_config = (
+            load_model_config(Path(args.model_config))
+            if getattr(args, "model_config", None)
+            else None
+        )
         config = apply_model_metric_overrides(config, model_config)
         manifest = load_manifest(_ensure_manifest(config, args.manifest))
         predictions_root = Path(args.predictions_root).resolve()
         output_dir = (
             Path(args.output_dir).resolve()
             if args.output_dir
-            else (config.paths.reports_dir / (args.model_name or (model_config.name if model_config else predictions_root.name))).resolve()
+            else (
+                config.paths.reports_dir
+                / (
+                    args.model_name
+                    or (model_config.name if model_config else predictions_root.name)
+                )
+            ).resolve()
         )
         suites = {item.strip() for item in args.suites.split(",")} if args.suites else None
         result = run_benchmark(
@@ -322,7 +333,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             manifest=manifest,
             predictions_root=predictions_root,
             output_dir=output_dir,
-            model_name=args.model_name or (model_config.name if model_config else predictions_root.name),
+            model_name=args.model_name
+            or (model_config.name if model_config else predictions_root.name),
             suites=suites,
             limit=args.limit,
         )
@@ -351,10 +363,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             fail_fast=args.fail_fast,
         )
         if generation_result["manifest"]["failed"]:
-            print(json.dumps({"generation": generation_result["manifest"],
-                              "evaluation": "not run because generation failed"}, indent=2))
+            print(
+                json.dumps(
+                    {
+                        "generation": generation_result["manifest"],
+                        "evaluation": "not run because generation failed",
+                    },
+                    indent=2,
+                )
+            )
             return 1
-        evaluation_manifest = load_manifest(Path(generation_result["manifest"]["evaluation_manifest"]))
+        evaluation_manifest = load_manifest(
+            Path(generation_result["manifest"]["evaluation_manifest"])
+        )
         if not evaluation_manifest:
             raise ValueError("No samples were generated for the selected suites/shard")
         eval_config = apply_model_metric_overrides(config, model_config)

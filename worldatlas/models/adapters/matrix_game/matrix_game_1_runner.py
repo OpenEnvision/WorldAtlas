@@ -60,7 +60,9 @@ def _pad_rows(rows: list[list[int]], pad_value: int = 0) -> list[list[int]]:
     return [row + [pad_value] * (width - len(row)) for row in rows]
 
 
-def expand_image_token_tensors(input_ids, attention_mask, image_token_id: int, num_features: int = _LLAVA_IMAGE_FEATURES):
+def expand_image_token_tensors(
+    input_ids, attention_mask, image_token_id: int, num_features: int = _LLAVA_IMAGE_FEATURES
+):
     """Tensor wrapper around :func:`expand_image_token_rows`."""
     import torch
 
@@ -150,7 +152,9 @@ def adapt_flash_attn3_varlen(fn):
     tensors and the max-seqlen scalars. ``None`` means "use cu_seqlens".
     """
 
-    def call_fa3(q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv, *args, **kwargs):
+    def call_fa3(
+        q, k, v, cu_seqlens_q, cu_seqlens_kv, max_seqlen_q, max_seqlen_kv, *args, **kwargs
+    ):
         del args, kwargs
         return fn(
             q,
@@ -214,7 +218,9 @@ def mg1_window_cache_file(cache_dir: Path, window_index: int) -> Path:
     return Path(cache_dir) / f"w{window_index:02d}.npy"
 
 
-def condition_frame_from_chunk(frames: np.ndarray, start: int, next_start: int | None) -> np.ndarray:
+def condition_frame_from_chunk(
+    frames: np.ndarray, start: int, next_start: int | None
+) -> np.ndarray:
     """Pick the pixel that becomes the next window's I2V condition."""
     if next_start is None:
         return frames[-1]
@@ -235,7 +241,11 @@ def load_cached_mg1_windows(cache_dir: Path, windows: list[tuple[int, int]]) -> 
             frames = np.load(path)
         except Exception:
             break
-        if not isinstance(frames, np.ndarray) or frames.ndim < 1 or int(frames.shape[0]) != int(length):
+        if (
+            not isinstance(frames, np.ndarray)
+            or frames.ndim < 1
+            or int(frames.shape[0]) != int(length)
+        ):
             break
         loaded.append(np.asarray(frames))
     return loaded
@@ -440,12 +450,16 @@ def load_matrix_game_1(checkpoint_dir: Path, args: argparse.Namespace):
     )
     patch_matrix_game_1_text_encoder(text_enc)
 
-    pipeline = MatrixGameVideoPipeline(
-        vae=vae.vae,
-        text_encoder=text_enc,
-        transformer=dit,
-        scheduler=scheduler,
-    ).to(weight_dtype).to(device)
+    pipeline = (
+        MatrixGameVideoPipeline(
+            vae=vae.vae,
+            text_encoder=text_enc,
+            transformer=dit,
+            scheduler=scheduler,
+        )
+        .to(weight_dtype)
+        .to(device)
+    )
 
     transformer_cls = pipeline.transformer.__class__
     transformer_cls.enable_teacache = True
@@ -485,7 +499,10 @@ def generate_matrix_game_1(
 
     keyboard_condition = np.asarray(action_spec["keyboard_condition"], dtype=np.float32)
     mouse_condition = np.asarray(action_spec["mouse_condition"], dtype=np.float32)
-    if keyboard_condition.shape[0] != args.video_length or mouse_condition.shape[0] != args.video_length:
+    if (
+        keyboard_condition.shape[0] != args.video_length
+        or mouse_condition.shape[0] != args.video_length
+    ):
         raise ValueError(
             "Matrix-Game-1 action sequence length mismatch: "
             f"video_length={args.video_length}, keyboard={keyboard_condition.shape[0]}, "
@@ -609,7 +626,9 @@ def generate_matrix_game_1(
 def main() -> None:
     args = parse_args()
     launch_cwd = Path.cwd()
-    repo_root = prepare_matrix_game_1_repo((launch_cwd / Path(args.repo_root).expanduser()).resolve())
+    repo_root = prepare_matrix_game_1_repo(
+        (launch_cwd / Path(args.repo_root).expanduser()).resolve()
+    )
     del repo_root
     checkpoint_dir = resolve_checkpoint_path(args.checkpoint_dir, kind="dir", required=True)
     if checkpoint_dir is None:

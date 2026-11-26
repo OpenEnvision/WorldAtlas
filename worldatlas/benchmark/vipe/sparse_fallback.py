@@ -1,10 +1,10 @@
 """Per-frame metric-depth fallback for memory ViPE, without editing NVIDIA ViPE."""
 
-from dataclasses import replace
 import json
 import logging
 import sys
 from contextvars import ContextVar
+from dataclasses import replace
 
 import torch
 
@@ -37,16 +37,27 @@ class SparseDepthFallback:
                 if str(exc) != "There are not enough known points.":
                     raise
                 reason = "insufficient_sparse_depth_after_sampling"
-        result = self.metric.estimate(replace(
-            src, prompt_metric_depth=None, intrinsics=self.intrinsics,
-        ))
+        result = self.metric.estimate(
+            replace(
+                src,
+                prompt_metric_depth=None,
+                intrinsics=self.intrinsics,
+            )
+        )
         value = result.metric_depth
-        if value is None or value.shape != depth.shape or not bool(
-            (torch.isfinite(value) & (value > 0)).all()
+        if (
+            value is None
+            or value.shape != depth.shape
+            or not bool((torch.isfinite(value) & (value > 0)).all())
         ):
             raise ValueError("UniDepth sparse-depth fallback returned invalid metric depth")
-        event = dict(prior_call_index=self.call_index, valid_points=count,
-                     required_points=int(required), reason=reason, fallback="unidepth")
+        event = dict(
+            prior_call_index=self.call_index,
+            valid_points=count,
+            required_points=int(required),
+            reason=reason,
+            fallback="unidepth",
+        )
         events = FALLBACK_EVENTS.get()
         if events is not None:
             events.append(event)
@@ -71,7 +82,9 @@ def install_sparse_depth_fallback():
             if isinstance(prior, SparseDepthFallback):
                 prior = prior.prior
             self.prompt_model = SparseDepthFallback(
-                prior, self.depth_model, slam_output.intrinsics[view_idx],
+                prior,
+                self.depth_model,
+                slam_output.intrinsics[view_idx],
             )
 
     processors_mod.AdaptiveDepthProcessor = MemoryAdaptiveDepthProcessor

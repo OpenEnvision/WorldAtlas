@@ -5,14 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from worldatlas.benchmark.media import LoadedMedia
-from worldatlas.benchmark.metrics.base import Metric, normalize_score, resolve_metric_backend
-from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 from worldatlas.benchmark.long_sequence_runtime import (
     LONG_SEQUENCE_DIMENSION_MAP,
     compute_long_sequence_metrics,
 )
-
+from worldatlas.benchmark.media import LoadedMedia
+from worldatlas.benchmark.metrics.base import Metric, normalize_score, resolve_metric_backend
+from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 
 LONG_SEQUENCE_BACKENDS = {"long_sequence"}
 ALL_LONG_SEQUENCE_METRICS = tuple(LONG_SEQUENCE_DIMENSION_MAP)
@@ -32,7 +31,10 @@ def _cache_key(
     """Key long-sequence results by video file identity, runtime, and metric group."""
     path = Path(prediction_path).expanduser().resolve()
     from worldatlas.benchmark.integrity import digest_json, path_content
-    return digest_json({'video': path_content(path), 'runtime': runtime, 'metric_names': metric_names})
+
+    return digest_json(
+        {"video": path_content(path), "runtime": runtime, "metric_names": metric_names}
+    )
 
 
 def _metric_group(metric_name: str) -> tuple[str, ...]:

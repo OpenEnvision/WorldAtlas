@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from dataclasses import dataclass
-from functools import lru_cache
 import importlib
 import locale
 import os
-from pathlib import Path
 import sys
-from typing import Any, Iterator, Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
 
 from worldatlas.common.checkpoints import apply_checkpoint_env, hf_local_dir, resolve_project_path
-
 
 DEFAULT_RECONSTRUCTION_MODEL = "depth-anything/DA3-GIANT-1.1"
 DEFAULT_RECONSTRUCTION_BACKEND = "da3_reprojection"
@@ -203,9 +203,7 @@ def extract_wbench_frames(
     else:
         capture = cv2.VideoCapture(str(video_path))
     actual_decode_threads = (
-        int(capture.get(cv2.CAP_PROP_N_THREADS))
-        if hasattr(cv2, "CAP_PROP_N_THREADS")
-        else None
+        int(capture.get(cv2.CAP_PROP_N_THREADS)) if hasattr(cv2, "CAP_PROP_N_THREADS") else None
     )
     try:
         video_fps = float(capture.get(cv2.CAP_PROP_FPS))
@@ -240,25 +238,29 @@ def extract_wbench_frames(
                 if success:
                     frames.append(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
         else:
-            raise ValueError(
-                "WBench frame decode_mode must be 'random_seek' or 'sequential_exact'"
-            )
+            raise ValueError("WBench frame decode_mode must be 'random_seek' or 'sequential_exact'")
     finally:
         capture.release()
 
     if len(frames) != len(requested_indices):
-        raise ValueError(f"Incomplete WBench frame decode: expected {len(requested_indices)}, got {len(frames)}: {video_path}")
+        raise ValueError(
+            f"Incomplete WBench frame decode: expected {len(requested_indices)}, got {len(frames)}: {video_path}"
+        )
     frame_indices = requested_indices
-    return frames, frame_indices, {
-        "frame_source": "wbench_fps",
-        "frame_sampling_fps": float(fps),
-        "source_video_fps": video_fps,
-        "source_frame_count": total_frames,
-        "frame_step": step,
-        "frame_indices": frame_indices,
-        "decode_threads": actual_decode_threads,
-        "decode_mode": decode_mode,
-    }
+    return (
+        frames,
+        frame_indices,
+        {
+            "frame_source": "wbench_fps",
+            "frame_sampling_fps": float(fps),
+            "source_video_fps": video_fps,
+            "source_frame_count": total_frames,
+            "frame_step": step,
+            "frame_indices": frame_indices,
+            "decode_threads": actual_decode_threads,
+            "decode_mode": decode_mode,
+        },
+    )
 
 
 def _resize_rgb(frame: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
@@ -332,7 +334,9 @@ def _build_point_cloud(
         ys, xs = torch.where(mask)
         depths = depth_map[mask].double()
         if len(depths) > max_pts_per_frame:
-            pick = torch.randperm(len(depths), device=device, generator=generator)[:max_pts_per_frame]
+            pick = torch.randperm(len(depths), device=device, generator=generator)[
+                :max_pts_per_frame
+            ]
             xs = xs[pick]
             ys = ys[pick]
             depths = depths[pick]
@@ -424,7 +428,9 @@ def _compute_wbench_metrics(
         predicted_depth = depth_tensor[index, v_int, u_int]
         depth_valid = predicted_depth > 1e-6
         if int(depth_valid.sum()) > 0:
-            rel_err = (z_valid[depth_valid] - predicted_depth[depth_valid]).abs() / predicted_depth[depth_valid]
+            rel_err = (z_valid[depth_valid] - predicted_depth[depth_valid]).abs() / predicted_depth[
+                depth_valid
+            ]
             geo_errors.append(float(rel_err.median()))
         else:
             geo_errors.append(float("inf"))
@@ -465,7 +471,9 @@ def _compute_wbench_metrics(
     photo_mean_psnr = float(np.mean(valid_psnr)) if len(valid_psnr) > 0 else 0.0
     photo_result = {
         "photo_mean_psnr": photo_mean_psnr,
-        "photometric_consistency": _photometric_consistency_from_psnr(photo_mean_psnr) if photo_mean_psnr > 0 else 0.0,
+        "photometric_consistency": _photometric_consistency_from_psnr(photo_mean_psnr)
+        if photo_mean_psnr > 0
+        else 0.0,
         "valid_frames": int((psnr_array > 0).sum()),
     }
     return geo_result, photo_result
@@ -486,17 +494,22 @@ def _prepare_da3_geometry(
         confidence = np.asarray(prediction.conf, dtype=np.float32)
 
     expected = len(frames)
-    if (depth_maps.shape[0] != expected or extrinsics.shape[0] != expected
-            or intrinsics.shape[0] != expected or (confidence is not None and confidence.shape != depth_maps.shape)):
-        raise ValueError('DA3 geometry must cover every input frame with aligned depth, pose, intrinsics and confidence')
-    if any(not np.isfinite(array).all() for array in (depth_maps, extrinsics, intrinsics)) or (confidence is not None and not np.isfinite(confidence).all()):
-        raise ValueError('DA3 returned non-finite geometry')
+    if (
+        depth_maps.shape[0] != expected
+        or extrinsics.shape[0] != expected
+        or intrinsics.shape[0] != expected
+        or (confidence is not None and confidence.shape != depth_maps.shape)
+    ):
+        raise ValueError(
+            "DA3 geometry must cover every input frame with aligned depth, pose, intrinsics and confidence"
+        )
+    if any(not np.isfinite(array).all() for array in (depth_maps, extrinsics, intrinsics)) or (
+        confidence is not None and not np.isfinite(confidence).all()
+    ):
+        raise ValueError("DA3 returned non-finite geometry")
 
     aligned_frames = np.stack(
-        [
-            _resize_rgb(frame, depth_maps[index].shape)
-            for index, frame in enumerate(frames)
-        ],
+        [_resize_rgb(frame, depth_maps[index].shape) for index, frame in enumerate(frames)],
         axis=0,
     ).astype(np.uint8)
     return aligned_frames, depth_maps, extrinsics, intrinsics, confidence
@@ -526,9 +539,9 @@ def compute_reconstruction_consistency(
     model_name = _resolve_model_name(str(payload.get("model_name") or DEFAULT_RECONSTRUCTION_MODEL))
     process_res = int(payload.get("process_res", 504))
     max_pts_per_frame = int(payload.get("max_pts_per_frame", DEFAULT_MAX_PTS_PER_FRAME))
-    seed = int(payload.get('seed', 17))
+    seed = int(payload.get("seed", 17))
     if max_pts_per_frame <= 0:
-        raise ValueError('max_pts_per_frame must be positive')
+        raise ValueError("max_pts_per_frame must be positive")
     conf_threshold = float(payload.get("conf_threshold", 0.5))
     ref_view_strategy = str(payload.get("ref_view_strategy") or "saddle_balanced")
     use_ray_pose = bool(payload.get("use_ray_pose", False))
@@ -630,7 +643,9 @@ def compute_reconstruction_consistency(
         "raw": geometric,
         "backend": backend,
         "details": details,
-        "error": None if geometric > 0.0 or photo_psnr > 0.0 else "reconstruction consistency unavailable",
+        "error": None
+        if geometric > 0.0 or photo_psnr > 0.0
+        else "reconstruction consistency unavailable",
     }
 
 

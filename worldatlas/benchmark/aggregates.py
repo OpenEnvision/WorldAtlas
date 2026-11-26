@@ -7,7 +7,6 @@ from typing import Any
 
 from worldatlas.benchmark.metrics.catalog import METRIC_DIMENSIONS
 from worldatlas.benchmark.schemas import SampleScore
-from worldatlas.benchmark.runtime_health import is_cuda_failure
 
 
 def _mean(values: list[float]) -> float | None:
@@ -32,7 +31,9 @@ def _flatten_dimension_summary(
     row: dict[str, float | None] = {}
     for suite_name in sorted(per_dimension_summary):
         for dimension_name in sorted(per_dimension_summary[suite_name]):
-            row[f"{suite_name}__{dimension_name}"] = per_dimension_summary[suite_name][dimension_name]
+            row[f"{suite_name}__{dimension_name}"] = per_dimension_summary[suite_name][
+                dimension_name
+            ]
     return row
 
 
@@ -40,10 +41,7 @@ def _summarize_metric_values(
     metric_values: dict[str, dict[str, list[float]]],
 ) -> dict[str, dict[str, float | None]]:
     return {
-        suite: {
-            metric_name: _mean(values)
-            for metric_name, values in metric_map.items()
-        }
+        suite: {metric_name: _mean(values) for metric_name, values in metric_map.items()}
         for suite, metric_map in metric_values.items()
         if metric_map
     }
@@ -62,27 +60,26 @@ def _summarize_dimensions(
             if dimension is not None:
                 grouped[dimension].append(float(value))
 
-        summary = {
-            dimension: _mean(values)
-            for dimension, values in grouped.items()
-            if values
-        }
+        summary = {dimension: _mean(values) for dimension, values in grouped.items() if values}
         if summary:
-            per_dimension_summary[suite] = {
-                key: summary[key]
-                for key in sorted(summary)
-            }
+            per_dimension_summary[suite] = {key: summary[key] for key in sorted(summary)}
     return per_dimension_summary
 
 
 def aggregate_results(sample_scores: list[SampleScore]) -> dict[str, Any]:
+    from worldatlas.benchmark.runtime_health import metric_output_failed
+
     revisions: dict[str, dict[str, set[str]]] = defaultdict(lambda: defaultdict(set))
     for sample in sample_scores:
         for metric_name, output in sample.metrics.items():
             revision = output.details.get("implementation_revision")
             # An unversioned infrastructure exception has no score to mix. An
             # old not-applicable result does affect coverage and must be checked.
-            if revision is None and output.normalized is None and output.eligibility_status != "not_applicable":
+            if (
+                revision is None
+                and output.normalized is None
+                and output.eligibility_status != "not_applicable"
+            ):
                 continue
             revisions[sample.suite][metric_name].add(str(revision or "legacy_unversioned"))
     for suite, metrics in revisions.items():
@@ -126,7 +123,6 @@ def aggregate_results(sample_scores: list[SampleScore]) -> dict[str, Any]:
 
     for sample in sample_scores:
         for metric_name, output in sample.metrics.items():
-            from worldatlas.benchmark.runtime_health import metric_output_failed
             invalid = metric_output_failed(output.to_dict())
             if output.eligibility_status == "not_applicable" and not invalid:
                 entry = not_applicable_values[sample.suite][metric_name]
@@ -172,10 +168,7 @@ def aggregate_results(sample_scores: list[SampleScore]) -> dict[str, Any]:
     domain_breakdown = {
         dimension: {
             label: {
-                suite: {
-                    metric_name: _mean(values)
-                    for metric_name, values in metric_map.items()
-                }
+                suite: {metric_name: _mean(values) for metric_name, values in metric_map.items()}
                 for suite, metric_map in suite_map.items()
                 if metric_map
             }
@@ -188,7 +181,9 @@ def aggregate_results(sample_scores: list[SampleScore]) -> dict[str, Any]:
         suite: {
             metric_name: {
                 "failed_samples": int(entry["failed_samples"]),
-                "eligibility_statuses": sorted(str(status) for status in entry["eligibility_statuses"]),
+                "eligibility_statuses": sorted(
+                    str(status) for status in entry["eligibility_statuses"]
+                ),
                 "sample_ids": list(entry["sample_ids"]),
                 "errors": [
                     {"message": message, "count": count}
@@ -225,8 +220,11 @@ def aggregate_results(sample_scores: list[SampleScore]) -> dict[str, Any]:
     return {
         "per_metric_summary": per_metric_summary,
         "metric_implementation_revisions": {
-            suite: {metric: next(iter(versions)) for metric, versions in metrics.items()
-                    if versions != {"legacy_unversioned"}}
+            suite: {
+                metric: next(iter(versions))
+                for metric, versions in metrics.items()
+                if versions != {"legacy_unversioned"}
+            }
             for suite, metrics in revisions.items()
             if any(versions != {"legacy_unversioned"} for versions in metrics.values())
         },
@@ -245,5 +243,7 @@ def refresh_aggregate_indexes(aggregate_payload: dict[str, Any]) -> dict[str, An
     per_dimension_summary = _summarize_dimensions(per_metric_summary)
     aggregate_payload["per_dimension_summary"] = per_dimension_summary
     aggregate_payload["leaderboard_row"] = _flatten_metric_summary(per_metric_summary)
-    aggregate_payload["leaderboard_dimension_row"] = _flatten_dimension_summary(per_dimension_summary)
+    aggregate_payload["leaderboard_dimension_row"] = _flatten_dimension_summary(
+        per_dimension_summary
+    )
     return aggregate_payload

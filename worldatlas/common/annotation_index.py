@@ -9,7 +9,6 @@ from typing import Any
 
 from worldatlas.common.checkpoints import rehome_legacy_workspace_path
 
-
 ANNOTATION_INDEX_SEPARATOR = "::"
 
 
@@ -68,7 +67,9 @@ def _load_annotation_index_cached(
         for relative_path, entry in iterator:
             if isinstance(relative_path, str) and isinstance(entry, dict):
                 normalized_relative_path = normalize_relative_annotation_path(relative_path)
-                entries[normalized_relative_path] = _normalize_entry(normalized_relative_path, entry)
+                entries[normalized_relative_path] = _normalize_entry(
+                    normalized_relative_path, entry
+                )
         return entries
 
     if not isinstance(items, list):

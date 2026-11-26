@@ -126,9 +126,7 @@ def _runtime_paths(
     )
     taehv_value = generation.get("taehv_file")
     taehv_file = (
-        _resolve_path(taehv_value, bases=[PROJECT_ROOT, checkpoint_root])
-        if taehv_value
-        else None
+        _resolve_path(taehv_value, bases=[PROJECT_ROOT, checkpoint_root]) if taehv_value else None
     )
     return RuntimePaths(
         model_file=model_file.resolve(),
@@ -244,9 +242,7 @@ def _patch_inference_config(
 
 def _trajectory_runtime(generation: dict[str, Any]) -> dict[str, float]:
     return {
-        "synthetic_camera_forward_step": float(
-            generation.get("forward_distance_per_chunk", 2.54)
-        ),
+        "synthetic_camera_forward_step": float(generation.get("forward_distance_per_chunk", 2.54)),
         "synthetic_camera_lateral_step": float(
             generation.get("lateral_distance_per_chunk", 0.5348)
         ),
@@ -256,12 +252,8 @@ def _trajectory_runtime(generation: dict[str, Any]) -> dict[str, float]:
         "synthetic_camera_rotation_degrees": float(
             generation.get("rotation_degrees_per_chunk", 12.5)
         ),
-        "synthetic_camera_tilt_degrees": float(
-            generation.get("tilt_degrees_per_chunk", 10.0)
-        ),
-        "synthetic_camera_roll_degrees": float(
-            generation.get("roll_degrees_per_chunk", 8.0)
-        ),
+        "synthetic_camera_tilt_degrees": float(generation.get("tilt_degrees_per_chunk", 10.0)),
+        "synthetic_camera_roll_degrees": float(generation.get("roll_degrees_per_chunk", 8.0)),
         "synthetic_camera_orbit_radius": float(generation.get("orbit_radius", 2.0)),
     }
 
@@ -350,7 +342,9 @@ def _skill_prompt(row: dict[str, Any], generation: dict[str, Any]) -> str | None
     explicit = str(row.get("skill_prompt") or "").strip()
     if explicit:
         return explicit
-    sequence = [str(value).strip() for value in row.get("prompt_sequence") or [] if str(value).strip()]
+    sequence = [
+        str(value).strip() for value in row.get("prompt_sequence") or [] if str(value).strip()
+    ]
     if sequence and sequence[-1] != str(row.get("prompt") or "").strip():
         return sequence[-1]
     return None
@@ -467,9 +461,7 @@ def _runtime_env(generation: dict[str, Any]) -> dict[str, str]:
     env.setdefault("TOKENIZERS_PARALLELISM", "false")
     env.setdefault("OMP_NUM_THREADS", "1")
     env.setdefault("PYTHONUNBUFFERED", "1")
-    env["WORLDATLAS_ALAYAWORLD_ATTENTION_TYPE"] = str(
-        generation.get("attention_type", "xformers")
-    )
+    env["WORLDATLAS_ALAYAWORLD_ATTENTION_TYPE"] = str(generation.get("attention_type", "xformers"))
     if _as_bool(generation.get("offline"), True):
         env["HF_HUB_OFFLINE"] = "1"
         env["TRANSFORMERS_OFFLINE"] = "1"
@@ -535,8 +527,7 @@ def _load_persistent_runtime(
     )
     if apply_da3_robust_scale():
         print(
-            "[AlayaWorld] DA3 robust scale-only fallback enabled "
-            "(colinear-safe depth scaling)",
+            "[AlayaWorld] DA3 robust scale-only fallback enabled (colinear-safe depth scaling)",
             flush=True,
         )
 
@@ -548,9 +539,7 @@ def _load_persistent_runtime(
         else mode_cfg.layout.history_latent_frames
     )
     gap_steps = int(
-        float(mode_cfg.layout.max_gap_sec or 0.0)
-        * cfg.sample.fps
-        / cfg.sample.temporal_stride
+        float(mode_cfg.layout.max_gap_sec or 0.0) * cfg.sample.fps / cfg.sample.temporal_stride
     )
     condition_latent_frames = int(mode_cfg.layout.condition_latent_frames)
     print(
@@ -813,10 +802,9 @@ def _run_persistent_rows(
                     shutil.rmtree(prefix.parent)
             except Exception as exc:
                 failed += 1
-                fatal_cuda_oom = (
-                    type(exc).__name__ == "OutOfMemoryError"
-                    or "CUDA out of memory" in str(exc)
-                )
+                fatal_cuda_oom = type(
+                    exc
+                ).__name__ == "OutOfMemoryError" or "CUDA out of memory" in str(exc)
                 print_status(
                     sample_id,
                     "failed",
@@ -846,9 +834,7 @@ def main() -> int:
     paths = _runtime_paths(checkpoint_dir=checkpoint_dir, generation=generation)
     _validate_runtime(repo_root=repo_root, checkpoint_dir=checkpoint_dir, paths=paths)
 
-    output_parents = {
-        Path(str(row["output_path"])).expanduser().resolve().parent for row in rows
-    }
+    output_parents = {Path(str(row["output_path"])).expanduser().resolve().parent for row in rows}
     if len(output_parents) != 1:
         raise ValueError("AlayaWorld batch runner requires one output directory")
     output_parent = next(iter(output_parents))

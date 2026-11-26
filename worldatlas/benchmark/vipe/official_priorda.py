@@ -58,7 +58,9 @@ def torch_cluster_knn(
     if cosine:
         raise NotImplementedError("Prior-Depth-Anything does not use cosine knn")
     if x.ndim != 2 or y.ndim != 2:
-        raise ValueError(f"knn expects 2D feature matrices, got x={tuple(x.shape)} y={tuple(y.shape)}")
+        raise ValueError(
+            f"knn expects 2D feature matrices, got x={tuple(x.shape)} y={tuple(y.shape)}"
+        )
     if batch_x is None:
         batch_x = x.new_zeros(x.shape[0], dtype=torch.long)
     if batch_y is None:
@@ -76,7 +78,9 @@ def torch_cluster_knn(
         if y_batch.numel() == 0:
             continue
         if x_batch.numel() == 0:
-            raise ValueError(f"PriorDA knn shim found no reference points in batch {int(batch_id)}.")
+            raise ValueError(
+                f"PriorDA knn shim found no reference points in batch {int(batch_id)}."
+            )
         global_x = torch.nonzero(x_mask, as_tuple=False).flatten()
         global_y = torch.nonzero(y_mask, as_tuple=False).flatten()
         local_k = min(int(k), x_batch.shape[0])

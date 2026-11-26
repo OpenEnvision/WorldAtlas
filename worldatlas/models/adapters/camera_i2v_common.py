@@ -1,22 +1,23 @@
-"""Camera-path helpers for the RealCam-I2V runner.
+"""Camera-path helpers shared by the RealCam-I2V and Matrix-Game-3.5 adapters.
 
-The upstream demo consumes the RealEstate10K text layout: seven metadata
-columns followed by a flattened 3x4 world-to-camera matrix.  WorldAtlas stores
-camera intent as one or more named path segments and scores against relative
-camera-to-world matrices, so the conversion belongs at this adapter boundary.
+The RealCam-I2V upstream demo consumes the RealEstate10K text layout: seven
+metadata columns followed by a flattened 3x4 world-to-camera matrix.  WorldAtlas
+stores camera intent as one or more named path segments and scores against
+relative camera-to-world matrices, so the conversion belongs at this adapter
+boundary.
 """
 
 from __future__ import annotations
 
+import os
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-import os
-from typing import Any, Iterator, Sequence
+from typing import Any
 
 import numpy as np
 
 from worldatlas.benchmark.synthetic_camera import synthetic_camera_matrices
-
 
 OFFICIAL_CAMERA_METADATA = np.asarray(
     [114514.0, 0.5, 0.5, 0.5, 0.5, 0.0, 0.0],
@@ -76,8 +77,7 @@ def official_camera_rows(
     c2ws = np.asarray(trajectory.matrices, dtype=np.float64)
     if c2ws.shape != (int(target_frames), 4, 4):
         raise ValueError(
-            f"unexpected synthetic camera shape {c2ws.shape}; "
-            f"expected {(int(target_frames), 4, 4)}"
+            f"unexpected synthetic camera shape {c2ws.shape}; expected {(int(target_frames), 4, 4)}"
         )
     if not np.isfinite(c2ws).all():
         raise ValueError("synthetic camera trajectory contains non-finite values")

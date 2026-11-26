@@ -56,7 +56,9 @@ def normalize_unidepth_v2_hf_config(config: dict[str, Any]) -> dict[str, Any]:
 
     data = config.setdefault("data", {})
     augmentations = data.setdefault("augmentations", {})
-    constraints = augmentations.get("shape_constraints") or dict(data.get("shape_constraints") or {})
+    constraints = augmentations.get("shape_constraints") or dict(
+        data.get("shape_constraints") or {}
+    )
     bounds = constraints.get("pixels_bounds")
     if bounds and len(bounds) >= 2:
         constraints.setdefault("pixels_min", bounds[0])
@@ -68,7 +70,9 @@ def normalize_unidepth_v2_hf_config(config: dict[str, Any]) -> dict[str, Any]:
     return config
 
 
-def reshape_unidepth_state_dict(model: nn.Module, state_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+def reshape_unidepth_state_dict(
+    model: nn.Module, state_dict: dict[str, torch.Tensor]
+) -> dict[str, torch.Tensor]:
     """View older HF tensors onto the official module layout when numel matches."""
     target = model.state_dict()
     remapped: dict[str, torch.Tensor] = {}

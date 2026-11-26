@@ -67,7 +67,9 @@ def patch_torch_dynamo_config_aliases() -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Matrix-Game subprocess runner with explicit actions.")
+    parser = argparse.ArgumentParser(
+        description="Matrix-Game subprocess runner with explicit actions."
+    )
     parser.add_argument("--repo_root", required=True, type=str)
     parser.add_argument("--ckpt_dir", required=True, type=str)
     parser.add_argument("--actions_json", required=True, type=str)
@@ -144,7 +146,7 @@ def main() -> None:
     import imageio
     import torch
 
-    with open(args.actions_json, "r", encoding="utf-8") as file:
+    with open(args.actions_json, encoding="utf-8") as file:
         action_spec = json.load(file)
     keyboard_condition_np = np.asarray(action_spec["keyboard_condition"], dtype=np.float32)
     mouse_condition_np = np.asarray(action_spec["mouse_condition"], dtype=np.float32)
@@ -159,7 +161,10 @@ def main() -> None:
     import utils.visualize as visualize_utils
 
     def custom_get_data(num_frames, height, width, pil_image, device=None, dtype=None):
-        if keyboard_condition_np.shape[0] != num_frames or mouse_condition_np.shape[0] != num_frames:
+        if (
+            keyboard_condition_np.shape[0] != num_frames
+            or mouse_condition_np.shape[0] != num_frames
+        ):
             raise ValueError(
                 "Custom action sequence length mismatch: "
                 f"expected {num_frames}, got keyboard={keyboard_condition_np.shape[0]}, "
@@ -188,7 +193,9 @@ def main() -> None:
         ).tolist()
         extrinsics_all = get_extrinsics(rotations, positions)
 
-        keyboard_tensor = torch.tensor(keyboard_condition_np, dtype=dtype, device=device).unsqueeze(0)
+        keyboard_tensor = torch.tensor(keyboard_condition_np, dtype=dtype, device=device).unsqueeze(
+            0
+        )
         mouse_tensor = torch.tensor(mouse_condition_np, dtype=dtype, device=device).unsqueeze(0)
         return (
             input_image.to(device, dtype),

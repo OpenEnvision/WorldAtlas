@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any
-from pathlib import Path
 import hashlib
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -17,7 +17,6 @@ from worldatlas.benchmark.reconstruction_consistency_backend import (
 )
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 from worldatlas.common.video_io import read_video_frames
-
 
 RECONSTRUCTION_CONSISTENCY_BACKENDS = {
     DEFAULT_RECONSTRUCTION_BACKEND,
@@ -82,13 +81,25 @@ class ReconstructionConsistencyEvaluator:
         """Return the shared geometric/photometric payload for one prediction."""
         prompt = sample.prompt_target or sample.prompt_current
         from worldatlas.benchmark.integrity import digest_json, path_content
-        cache_key = digest_json({
-            'prediction': path_content(Path(prediction.path)), 'prompt': prompt, 'runtime': self.runtime,
-            'frame_source': prediction.evaluation_protocol,
-            'indices': prediction.sampled_frame_indices, 'protocol_indices': prediction.protocol_frame_indices,
-            'frames': [(frame.shape, str(frame.dtype), hashlib.sha256(np.ascontiguousarray(frame).tobytes()).hexdigest())
-                       for frame in [*prediction.frames, *prediction.anchor_frames]],
-        })
+
+        cache_key = digest_json(
+            {
+                "prediction": path_content(Path(prediction.path)),
+                "prompt": prompt,
+                "runtime": self.runtime,
+                "frame_source": prediction.evaluation_protocol,
+                "indices": prediction.sampled_frame_indices,
+                "protocol_indices": prediction.protocol_frame_indices,
+                "frames": [
+                    (
+                        frame.shape,
+                        str(frame.dtype),
+                        hashlib.sha256(np.ascontiguousarray(frame).tobytes()).hexdigest(),
+                    )
+                    for frame in [*prediction.frames, *prediction.anchor_frames]
+                ],
+            }
+        )
         if self._cache_key == cache_key and self._cache_value is not None:
             return self._cache_value
 
@@ -144,7 +155,8 @@ class ReconstructionConsistencyMetric(Metric):
 
         backend = self._resolve_backend()
         eligibility_status = (
-            "official" if self.name in {"geometric_consistency", "photometric_consistency"}
+            "official"
+            if self.name in {"geometric_consistency", "photometric_consistency"}
             else "diagnostic"
         )
         details: dict[str, Any] = {
@@ -195,9 +207,7 @@ class ReconstructionConsistencyMetric(Metric):
                     details=details,
                     eligibility_status=eligibility_status,
                     error=str(
-                        side_error
-                        or payload.get("error")
-                        or f"{self.name} has no valid frames"
+                        side_error or payload.get("error") or f"{self.name} has no valid frames"
                     ),
                 )
             raw_float = float(raw) if isinstance(raw, (int, float)) else None

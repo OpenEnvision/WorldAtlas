@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import os
+from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
-
 
 CHECKPOINT_ENV_KEYS = (
     "HF_HOME",
@@ -123,7 +122,6 @@ def canonical_checkpoint_root() -> Path:
 
 
 def _configured_checkpoint_root() -> Path | None:
-    """Configured checkpoint root -> Path | None."""
     raw = os.environ.get(CHECKPOINT_ROOT_ENV)
     if not raw:
         return None
@@ -134,12 +132,10 @@ def _configured_checkpoint_root() -> Path | None:
 
 
 def _active_checkpoint_root() -> Path:
-    """Active checkpoint root -> Path."""
     return _configured_checkpoint_root() or CANONICAL_CHECKPOINT_ROOT
 
 
 def _allowed_checkpoint_roots() -> tuple[Path, ...]:
-    """Allowed checkpoint roots -> tuple[Path, ...]."""
     roots: list[Path] = []
     for candidate in (
         _configured_checkpoint_root(),
@@ -245,7 +241,9 @@ def _hf_repo_root_candidates(repo_id: str) -> list[Path]:
         candidates.append(checkpoint_path(*mapped, kind="dir", required=False))
     else:
         candidates.append(checkpoint_path(repo_id.replace("/", "--"), kind="dir", required=False))
-    hub_layout = checkpoint_path("huggingface", "hub", _hf_hub_cache_name(repo_id), kind="dir", required=False)
+    hub_layout = checkpoint_path(
+        "huggingface", "hub", _hf_hub_cache_name(repo_id), kind="dir", required=False
+    )
     if hub_layout not in candidates:
         candidates.append(hub_layout)
     return candidates
@@ -286,9 +284,7 @@ def hf_local_dir(repo_id: str, *, required: bool = False) -> Path:
     resolved = _hf_snapshot_dir(root) or root
     if required and not resolved.is_dir():
         looked = ", ".join(str(path) for path in _hf_repo_root_candidates(repo_id))
-        raise FileNotFoundError(
-            f"checkpoint directory not found: {resolved} (looked in {looked})"
-        )
+        raise FileNotFoundError(f"checkpoint directory not found: {resolved} (looked in {looked})")
     return resolved
 
 

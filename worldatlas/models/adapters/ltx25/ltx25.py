@@ -1,4 +1,5 @@
 """LTX-2.5 image-to-video integration using the official split-weight pipeline."""
+
 from __future__ import annotations
 
 import math
@@ -22,8 +23,14 @@ def runtime_options(generation: dict) -> dict:
         raise ValueError("LTX-2.5 num_frames must be 8n+1 (at least 9)")
     result["frame_rate"] = float(generation.get("frame_rate", 24))
     result["min_seconds"] = float(generation.get("min_seconds", 5))
-    if not math.isfinite(result["frame_rate"]) or result["frame_rate"] <= 0 or not result["frame_rate"].is_integer():
-        raise ValueError("LTX-2.5 frame_rate must be a positive integer (upstream encoder contract)")
+    if (
+        not math.isfinite(result["frame_rate"])
+        or result["frame_rate"] <= 0
+        or not result["frame_rate"].is_integer()
+    ):
+        raise ValueError(
+            "LTX-2.5 frame_rate must be a positive integer (upstream encoder contract)"
+        )
     if not math.isfinite(result["min_seconds"]) or result["min_seconds"] <= 0:
         raise ValueError("LTX-2.5 min_seconds must be finite and positive")
     if result["num_frames"] / result["frame_rate"] < result["min_seconds"]:
@@ -67,6 +74,7 @@ class LTX25Adapter(ExternalBatchAdapter):
 
     def generate_batch(self, requests):
         import json
+
         from worldatlas.models.adapters.ltx25.ltx25_batch_runner import json_sha, sha_file
 
         results = super().generate_batch(requests)
@@ -77,10 +85,13 @@ class LTX25Adapter(ExternalBatchAdapter):
             receipt_path = request.output_path.with_suffix(".ltx25.json")
             try:
                 receipt = json.loads(receipt_path.read_text())
-                if (receipt["sample_id"] != request.sample.sample_id or receipt["prompt"] != request.prompt
-                        or receipt["generation_sha256"] != json_sha(self.config.generation)
-                        or receipt["conditioning_sha256"] != sha_file(request.conditioning_image)
-                        or receipt["output_sha256"] != sha_file(request.output_path)):
+                if (
+                    receipt["sample_id"] != request.sample.sample_id
+                    or receipt["prompt"] != request.prompt
+                    or receipt["generation_sha256"] != json_sha(self.config.generation)
+                    or receipt["conditioning_sha256"] != sha_file(request.conditioning_image)
+                    or receipt["output_sha256"] != sha_file(request.output_path)
+                ):
                     raise ValueError("LTX-2.5 output receipt does not match the request")
                 result["generation_receipt"] = str(receipt_path)
                 result["conditioning_geometry"] = receipt["conditioning"]

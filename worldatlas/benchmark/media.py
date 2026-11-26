@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import hashlib
-from pathlib import Path
 import time
+from dataclasses import dataclass, field
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -78,7 +78,7 @@ def _segment_random_indices(length: int, count: int, sample_key: str, seed: int)
         start = int(np.floor(segment_idx * length / segments))
         end = int(np.floor((segment_idx + 1) * length / segments)) - 1
         end = max(end, start)
-        digest = hashlib.sha256(f"{sample_key}:{seed}:{segment_idx}".encode("utf-8")).digest()
+        digest = hashlib.sha256(f"{sample_key}:{seed}:{segment_idx}".encode()).digest()
         unit = int.from_bytes(digest[:8], "big") / float(1 << 64)
         offset = int(np.floor(unit * (end - start + 1)))
         indices.append(start + min(offset, end - start))
@@ -143,7 +143,9 @@ def _open_video_capture(path: Path):
     raise RuntimeError(f"failed to open video: {path}")
 
 
-def _window_sample_indices(native_count: int, frame_count: int, start_ratio: float, end_ratio: float) -> list[int]:
+def _window_sample_indices(
+    native_count: int, frame_count: int, start_ratio: float, end_ratio: float
+) -> list[int]:
     start_index, end_index = _window_bounds(native_count, start_ratio, end_ratio)
     return [
         start_index + offset
@@ -165,7 +167,9 @@ def _collect_sampled_frames(capture, target_indices: list[int]) -> tuple[list[np
     return frames, frame_index
 
 
-def _incomplete_decode_error(path: Path, decoded_count: int, declared_count: int, collected: int, requested: int) -> RuntimeError:
+def _incomplete_decode_error(
+    path: Path, decoded_count: int, declared_count: int, collected: int, requested: int
+) -> RuntimeError:
     return RuntimeError(
         f"Incomplete video decode: {decoded_count}/{declared_count} frames, "
         f"{collected}/{requested} requested samples: {path}"
@@ -191,7 +195,9 @@ def _load_video(
         frames: list[np.ndarray]
         sampled_frame_indices: list[int]
         if declared_count > 0:
-            target_indices = _window_sample_indices(declared_count, frame_count, start_ratio, end_ratio)
+            target_indices = _window_sample_indices(
+                declared_count, frame_count, start_ratio, end_ratio
+            )
             frames, decoded_count = _collect_sampled_frames(capture, target_indices)
             native_count = declared_count
             if decoded_count != declared_count or len(frames) != len(target_indices):
@@ -202,7 +208,9 @@ def _load_video(
                 capture.release()
                 capture = _open_video_capture(path)
                 native_count = decoded_count
-                target_indices = _window_sample_indices(native_count, frame_count, start_ratio, end_ratio)
+                target_indices = _window_sample_indices(
+                    native_count, frame_count, start_ratio, end_ratio
+                )
                 frames, decoded_count = _collect_sampled_frames(capture, target_indices)
                 if decoded_count != native_count or len(frames) != len(target_indices):
                     raise _incomplete_decode_error(

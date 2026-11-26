@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
-from urllib.parse import urlparse
+from typing import Any
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 from urllib.request import ProxyHandler, Request, build_opener, urlopen
 
 from worldatlas.models.providers.base import ApiGenerationResult, ApiJobHandle, ApiProvider
@@ -119,7 +120,6 @@ class HttpPollingProvider(ApiProvider):
         self.default_timeout_seconds = float(self.api_config.get("request_timeout_seconds", 300))
 
     def _resolve_base_url(self) -> str | None:
-        """Resolve base url -> str | None."""
         if self.api_config.get("base_url"):
             return str(self.api_config["base_url"]).rstrip("/")
         env_name = self.api_config.get("base_url_env")
@@ -130,10 +130,8 @@ class HttpPollingProvider(ApiProvider):
         return None
 
     def _headers(self) -> dict[str, str]:
-        """Headers -> dict[str, str]."""
         headers = {
-            str(key): str(value)
-            for key, value in dict(self.api_config.get("headers", {})).items()
+            str(key): str(value) for key, value in dict(self.api_config.get("headers", {})).items()
         }
         api_key_env = self.api_config.get("api_key_env")
         if api_key_env:
@@ -164,7 +162,9 @@ class HttpPollingProvider(ApiProvider):
 
     def _artifact_url(self, payload: Mapping[str, Any]) -> str | None:
         artifact_url_path = self.api_config.get("artifact_url_path")
-        artifact_url = _extract_path(payload, None if artifact_url_path is None else str(artifact_url_path))
+        artifact_url = _extract_path(
+            payload, None if artifact_url_path is None else str(artifact_url_path)
+        )
         return None if artifact_url is None else str(artifact_url)
 
     def submit(self, payload: dict[str, Any]) -> ApiJobHandle:

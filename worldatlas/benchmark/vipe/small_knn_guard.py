@@ -4,6 +4,7 @@ ViPE 95a8816 allocates (N // 64) * 16 nodes, then writes node zero even
 when N < 64. Pad only that case with remote points; all returned neighbours
 must still belong to the original tree. NVIDIA's extension/weights stay intact.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,7 +22,12 @@ def guarded_nearest_neighbours(native, query, tree, k, record=None):
     n = tree.shape[0]
     if n >= MIN_TREE_SIZE or n < k or k <= 0:
         return native(query, tree, k)
-    if query.ndim != 2 or tree.ndim != 2 or query.shape[1] != tree.shape[1] or tree.shape[1] not in (2, 3):
+    if (
+        query.ndim != 2
+        or tree.ndim != 2
+        or query.shape[1] != tree.shape[1]
+        or tree.shape[1] not in (2, 3)
+    ):
         return native(query, tree, k)
     if query.shape[0] == 0:
         return (query.new_empty((0, k)), torch.empty((0, k), device=tree.device, dtype=torch.int32))
@@ -36,16 +42,27 @@ def guarded_nearest_neighbours(native, query, tree, k, record=None):
         raise ValueError("Coordinates too large to safely pad official ViPE KNN")
     distances, indices = native(query, torch.cat((tree, padding), dim=0).contiguous(), k)
     if not bool(((indices >= 0) & (indices < n)).all()):
-        raise RuntimeError("Official ViPE KNN returned a padding point; refusing altered neighbours")
+        raise RuntimeError(
+            "Official ViPE KNN returned a padding point; refusing altered neighbours"
+        )
     if record is not None:
-        record({"policy": POLICY, "tree_points": n, "padded_tree_points": MIN_TREE_SIZE,
-                "query_points": query.shape[0], "k": k, "coordinate_bound": bound})
+        record(
+            {
+                "policy": POLICY,
+                "tree_points": n,
+                "padded_tree_points": MIN_TREE_SIZE,
+                "query_points": query.shape[0],
+                "k": k,
+                "coordinate_bound": bound,
+            }
+        )
     return distances, indices
 
 
 def install(log_path: Path | None = None):
     """Install once; record in the active video's context and optional retry log."""
     import vipe_ext
+
     native = vipe_ext.utils_ext.nearest_neighbours
     if getattr(native, "_worldatlas_small_tree_guard", False):
         return

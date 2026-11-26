@@ -41,5 +41,7 @@ class SolarWMH3Adapter(ExternalBatchAdapter):
             namespace="solarwm_h3",
             focal_scale=float(self.config.generation.get("synthetic_focal_scale", 0.6)),
         )
-        payload.update(annotation_path=str(annotation), pose_source=source, source_frame_count=frames)
+        payload.update(
+            annotation_path=str(annotation), pose_source=source, source_frame_count=frames
+        )
         return payload

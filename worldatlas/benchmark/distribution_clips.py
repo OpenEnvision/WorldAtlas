@@ -15,17 +15,17 @@ import hashlib
 import json
 import math
 import os
+from collections.abc import Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 import cv2
 import numpy as np
 
 from worldatlas.common.video_io import declared_frame_count_off_by_one
-
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
@@ -83,7 +83,7 @@ class ClipSamplingSpec:
         runtime: dict[str, Any],
         *,
         default_analysis_size: int,
-    ) -> "ClipSamplingSpec":
+    ) -> ClipSamplingSpec:
         clip_frame_count = _as_positive_int(runtime.get("clip_frame_count"), 16)
         return cls(
             clip_frame_count=clip_frame_count,
@@ -122,7 +122,7 @@ class ClipSamplingSpec:
     def signature(self) -> str:
         digest = hashlib.sha256()
         for key, value in sorted(self.describe().items()):
-            digest.update(f"{key}={value}".encode("utf-8"))
+            digest.update(f"{key}={value}".encode())
         return digest.hexdigest()[:16]
 
 
@@ -188,7 +188,9 @@ def _resample_indices(
     return [min(native_count - 1, int(round(index * step))) for index in range(count)]
 
 
-def _decode_frames(path: Path, spec: ClipSamplingSpec, *, verified_frame_count: int | None = None) -> tuple[list[np.ndarray], float | None]:
+def _decode_frames(
+    path: Path, spec: ClipSamplingSpec, *, verified_frame_count: int | None = None
+) -> tuple[list[np.ndarray], float | None]:
     capture = cv2.VideoCapture(str(path))
     if not capture.isOpened():
         raise ClipDecodeError(f"failed to open video: {path}")
@@ -250,14 +252,15 @@ def _decode_frames(path: Path, spec: ClipSamplingSpec, *, verified_frame_count: 
         capture.release()
 
     if not budget_reached and native_count > 0 and frame_index != native_count:
-        if (
-            verified_frame_count is None
-            and declared_frame_count_off_by_one(native_count, frame_index)
+        if verified_frame_count is None and declared_frame_count_off_by_one(
+            native_count, frame_index
         ):
             # CAP_PROP_FRAME_COUNT is often one past the last decodable frame.
             # Resample from the observed length instead of dropping the video.
             return _decode_frames(path, spec, verified_frame_count=frame_index)
-        raise ClipDecodeError(f"Incomplete video decode: expected {native_count}, got {frame_index}: {path}")
+        raise ClipDecodeError(
+            f"Incomplete video decode: expected {native_count}, got {frame_index}: {path}"
+        )
     if not frames:
         raise ClipDecodeError(f"video contains no decodable frames: {path}")
     return frames, source_fps
@@ -279,20 +282,22 @@ def _clip_start_indices(frame_count: int, spec: ClipSamplingSpec) -> list[int]:
     if clip_count <= 1:
         return [0]
     return sorted(
-        {
-            int(round(value)) * stride
-            for value in np.linspace(0, slots - 1, num=clip_count)
-        }
+        {int(round(value)) * stride for value in np.linspace(0, slots - 1, num=clip_count)}
     )
 
 
-def clips_for_video(path: Path, spec: ClipSamplingSpec, *, verified_frame_count: int | None = None) -> tuple[list[np.ndarray], float | None]:
+def clips_for_video(
+    path: Path, spec: ClipSamplingSpec, *, verified_frame_count: int | None = None
+) -> tuple[list[np.ndarray], float | None]:
     """Decode ``path`` into ``uint8`` clips shaped ``(clip_frame_count, size, size, 3)``."""
     if path.suffix.lower() not in VIDEO_EXTENSIONS:
         raise ClipDecodeError(f"distribution metrics require video inputs, got: {path}")
 
-    frames, source_fps = (_decode_frames(path, spec) if verified_frame_count is None else
-                          _decode_frames(path, spec, verified_frame_count=verified_frame_count))
+    frames, source_fps = (
+        _decode_frames(path, spec)
+        if verified_frame_count is None
+        else _decode_frames(path, spec, verified_frame_count=verified_frame_count)
+    )
     starts = _clip_start_indices(len(frames), spec)
     if not starts:
         window = (
@@ -340,16 +345,14 @@ def build_clip_array(
         path, identifier = entry
         try:
             verified = None if verified_counts is None else verified_counts.get(str(path))
-            video_clips, source_fps = clips_for_video(
-                path, spec, verified_frame_count=verified
-            )
+            video_clips, source_fps = clips_for_video(path, spec, verified_frame_count=verified)
             return path, identifier, video_clips, source_fps, None
         except Exception as exc:
             return path, identifier, None, None, str(exc)
 
-    workers = int(os.environ.get('WORLDATLAS_DISTRIBUTION_DECODE_WORKERS', '1'))
+    workers = int(os.environ.get("WORLDATLAS_DISTRIBUTION_DECODE_WORKERS", "1"))
     if not 1 <= workers <= 8:
-        raise ValueError('Distribution decode workers must be between 1 and 8')
+        raise ValueError("Distribution decode workers must be between 1 and 8")
     context = ThreadPoolExecutor(max_workers=workers) if workers > 1 else nullcontext()
     with context as pool:
         # map preserves input order even when a later video finishes first.
@@ -437,10 +440,11 @@ def clip_set_signature(
 ) -> str:
     """Bind compressed video bytes, population identities and clip protocol."""
     from worldatlas.benchmark.integrity import path_content
+
     digest = hashlib.sha256()
     digest.update(b"content_and_sample_identity_v2")
-    digest.update(json.dumps(path_content(Path(__file__)), sort_keys=True).encode('utf-8'))
-    digest.update(cv2.getBuildInformation().encode('utf-8'))
+    digest.update(json.dumps(path_content(Path(__file__)), sort_keys=True).encode("utf-8"))
+    digest.update(cv2.getBuildInformation().encode("utf-8"))
     digest.update(spec.signature().encode("ascii"))
     for token in extra:
         digest.update(b"\x00extra\x00")
@@ -454,35 +458,60 @@ def clip_set_signature(
     return digest.hexdigest()[:20]
 
 
-def require_complete_clip_report(report: dict[str, Any], expected_videos: int, *, label: str) -> None:
-    if (report.get("candidate_video_count") != expected_videos
-            or report.get("used_video_count") != expected_videos
-            or report.get("skipped_video_count") != 0 or report.get("clip_count", 0) <= 0):
-        raise ValueError(f"{label} distribution is incomplete; skipped/missing videos cannot be scored: {report}")
+def require_complete_clip_report(
+    report: dict[str, Any], expected_videos: int, *, label: str
+) -> None:
+    if (
+        report.get("candidate_video_count") != expected_videos
+        or report.get("used_video_count") != expected_videos
+        or report.get("skipped_video_count") != 0
+        or report.get("clip_count", 0) <= 0
+    ):
+        raise ValueError(
+            f"{label} distribution is incomplete; skipped/missing videos cannot be scored: {report}"
+        )
 
 
 def validate_distribution_features(features: Any, count: int, *, label: str) -> np.ndarray:
     array = np.asarray(features)
-    if array.ndim != 2 or array.shape[0] != count or array.shape[1] == 0 or not np.isfinite(array).all():
-        raise ValueError(f"{label} features must be finite and cover all {count} clips; got {array.shape}")
+    if (
+        array.ndim != 2
+        or array.shape[0] != count
+        or array.shape[1] == 0
+        or not np.isfinite(array).all()
+    ):
+        raise ValueError(
+            f"{label} features must be finite and cover all {count} clips; got {array.shape}"
+        )
     return array
 
 
 def distribution_cache_ready(features: Path) -> bool:
     from worldatlas.benchmark.sample_identity import file_sha256
-    metadata = features.with_suffix('.json')
+
+    metadata = features.with_suffix(".json")
     if not features.is_file() or not metadata.is_file():
         return False
-    report = json.loads(metadata.read_text(encoding='utf-8'))
-    if report.get('features_sha256') != file_sha256(features):
-        raise ValueError(f"Distribution feature cache has missing/mismatched content hash: {features}")
-    validate_distribution_features(np.load(features, allow_pickle=False), int(report.get('clip_count', 0)), label='cached reference')
+    report = json.loads(metadata.read_text(encoding="utf-8"))
+    if report.get("features_sha256") != file_sha256(features):
+        raise ValueError(
+            f"Distribution feature cache has missing/mismatched content hash: {features}"
+        )
+    validate_distribution_features(
+        np.load(features, allow_pickle=False),
+        int(report.get("clip_count", 0)),
+        label="cached reference",
+    )
     return True
 
 
 def distribution_cache_metadata(features: Path, report: dict[str, Any]) -> str:
     from worldatlas.benchmark.sample_identity import file_sha256
-    return json.dumps({**report, 'features_sha256': file_sha256(features)}, indent=2, sort_keys=True) + '\n'
+
+    return (
+        json.dumps({**report, "features_sha256": file_sha256(features)}, indent=2, sort_keys=True)
+        + "\n"
+    )
 
 
 __all__ = [

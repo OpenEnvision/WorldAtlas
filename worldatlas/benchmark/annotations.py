@@ -16,7 +16,6 @@ from worldatlas.common.annotation_index import (
 )
 from worldatlas.common.checkpoints import rehome_legacy_workspace_path
 
-
 GENERIC_OBJECT_TOKENS = {
     "absence",
     "activity",
@@ -224,7 +223,9 @@ def _normalize_camera_token(value: Any) -> str | None:
     return None
 
 
-def _camera_segment_prompts(camera_path: list[str], prompt_list: list[str], *, mode: str) -> list[str]:
+def _camera_segment_prompts(
+    camera_path: list[str], prompt_list: list[str], *, mode: str
+) -> list[str]:
     prompts: list[str] = []
     if mode == "static":
         for layout, scene_prompt in zip(camera_path, prompt_list[1:]):
@@ -260,7 +261,10 @@ def resolve_prompt_contract(annotation_path: str | None) -> dict[str, Any]:
     mode = _clean_text(generation_spec.get("mode")).lower() or None
     camera_path = [
         token
-        for token in (_normalize_camera_token(item) for item in _flatten_strings(generation_spec.get("camera_path")))
+        for token in (
+            _normalize_camera_token(item)
+            for item in _flatten_strings(generation_spec.get("camera_path"))
+        )
         if token is not None
     ]
     prompt_sequence = _clean_text_list(generation_spec.get("segment_prompts"))
@@ -273,7 +277,11 @@ def resolve_prompt_contract(annotation_path: str | None) -> dict[str, Any]:
             prompt_current = prompt_list[0]
         if not prompt_sequence and camera_path and len(prompt_list) >= len(camera_path) + 1:
             prompt_sequence = _camera_segment_prompts(camera_path, prompt_list, mode="static")
-        prompt_target = " ".join(prompt_sequence) if prompt_sequence else (prompt_list[1] if len(prompt_list) > 1 else "")
+        prompt_target = (
+            " ".join(prompt_sequence)
+            if prompt_sequence
+            else (prompt_list[1] if len(prompt_list) > 1 else "")
+        )
     elif mode == "dynamic":
         dynamic_prompt = _clean_text(generation_spec.get("prompt"))
         if not prompt_current and prompt_list:
@@ -290,7 +298,11 @@ def resolve_prompt_contract(annotation_path: str | None) -> dict[str, Any]:
     else:
         if not prompt_current and prompt_list:
             prompt_current = prompt_list[0]
-        prompt_target = prompt_sequence[0] if prompt_sequence else (prompt_list[1] if len(prompt_list) > 1 else "")
+        prompt_target = (
+            prompt_sequence[0]
+            if prompt_sequence
+            else (prompt_list[1] if len(prompt_list) > 1 else "")
+        )
 
     if not prompt_current:
         prompt_current = _clean_text(load_caption(annotation_path).get("SceneSummary"))
@@ -306,7 +318,6 @@ def resolve_prompt_contract(annotation_path: str | None) -> dict[str, Any]:
 
 @lru_cache(maxsize=1)
 def _load_spacy_nlp() -> Any | None:
-    """Load spacy nlp -> Any | None."""
     try:
         import spacy
     except ModuleNotFoundError:

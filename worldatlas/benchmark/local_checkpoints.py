@@ -9,9 +9,9 @@ import shlex
 import shutil
 import sys
 import tempfile
+from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterable, Iterator
 
 from worldatlas.benchmark.metric_errors import MetricLoadError
 from worldatlas.common.checkpoints import (
@@ -22,7 +22,6 @@ from worldatlas.common.checkpoints import (
     project_root,
 )
 from worldatlas.common.progress import log_progress
-
 
 SEA_RAFT_KIND = "sea_raft"
 MEGASAM_KIND = "megasam"
@@ -116,11 +115,17 @@ def materialize_local_file(src: Path, *, kind: str, required: bool = True) -> Pa
         return src
     if is_already_materialized(src, kind) and src.is_file():
         from worldatlas.benchmark.sample_identity import file_sha256
+
         expected = src.parent.name
-        if len(expected) == 64 and all(c in '0123456789abcdef' for c in expected) and file_sha256(src) != expected:
-            raise MetricLoadError(f'Corrupted content-addressed checkpoint: {src}')
+        if (
+            len(expected) == 64
+            and all(c in "0123456789abcdef" for c in expected)
+            and file_sha256(src) != expected
+        ):
+            raise MetricLoadError(f"Corrupted content-addressed checkpoint: {src}")
         return src
     from worldatlas.benchmark.sample_identity import file_sha256
+
     source_digest = file_sha256(src)
     for candidate in local_cache_candidates(kind):
         existing = candidate / source_digest / src.name
@@ -165,7 +170,7 @@ def materialize_local_file(src: Path, *, kind: str, required: bool = True) -> Pa
                     f"local copy size mismatch: {temporary} has {copied}, expected {needed}"
                 )
             if file_sha256(temporary) != source_digest or file_sha256(src) != source_digest:
-                raise OSError('Checkpoint contents changed or were corrupted during local copy')
+                raise OSError("Checkpoint contents changed or were corrupted during local copy")
             os.replace(temporary, dest)
         except Exception:
             if temporary.exists():
@@ -195,10 +200,17 @@ def _tree_nbytes(root: Path) -> int:
 def _tree_content_digest(src: Path) -> str:
     import hashlib
     import json
+
     from worldatlas.benchmark.sample_identity import file_sha256
-    files = {str(path.relative_to(src)): {'sha256': file_sha256(path),
-             'link': os.readlink(path) if path.is_symlink() else None}
-             for path in sorted(src.rglob('*')) if path.is_file()}
+
+    files = {
+        str(path.relative_to(src)): {
+            "sha256": file_sha256(path),
+            "link": os.readlink(path) if path.is_symlink() else None,
+        }
+        for path in sorted(src.rglob("*"))
+        if path.is_file()
+    }
     return hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
 
 
@@ -211,8 +223,12 @@ def materialize_local_tree(src: Path, *, kind: str, dest_name: str | None = None
         return src
     if is_already_materialized(src, kind):
         expected = src.parent.name
-        if len(expected) == 64 and all(c in '0123456789abcdef' for c in expected) and _tree_content_digest(src) != expected:
-            raise MetricLoadError(f'Corrupted content-addressed checkpoint tree: {src}')
+        if (
+            len(expected) == 64
+            and all(c in "0123456789abcdef" for c in expected)
+            and _tree_content_digest(src) != expected
+        ):
+            raise MetricLoadError(f"Corrupted content-addressed checkpoint tree: {src}")
         return src
     needed = _tree_nbytes(src)
     name = dest_name or src.name
@@ -254,8 +270,11 @@ def materialize_local_tree(src: Path, *, kind: str, dest_name: str | None = None
         )
         try:
             shutil.copytree(src, temporary, symlinks=True)
-            if _tree_content_digest(temporary) != source_digest or _tree_content_digest(src) != source_digest:
-                raise OSError('Checkpoint tree changed or was corrupted during local copy')
+            if (
+                _tree_content_digest(temporary) != source_digest
+                or _tree_content_digest(src) != source_digest
+            ):
+                raise OSError("Checkpoint tree changed or was corrupted during local copy")
             os.replace(temporary, dest)
         except Exception:
             if temporary.exists():
@@ -348,7 +367,9 @@ def required_megasam_paths() -> list[tuple[str, Path]]:
     root = megasam_root()
     hf_home = source_hf_home()
     localized_hf = os.environ.get("WORLDATLAS_MEGASAM_HF_HOME", "").strip()
-    unidepth = unidepth_weight_path(Path(localized_hf)) if localized_hf else unidepth_weight_path(hf_home)
+    unidepth = (
+        unidepth_weight_path(Path(localized_hf)) if localized_hf else unidepth_weight_path(hf_home)
+    )
     if not _usable_file(unidepth):
         unidepth = unidepth_weight_path(hf_home)
     return [
@@ -564,7 +585,9 @@ def prepare_metric_checkpoints(metrics: Iterable[str]) -> dict[str, str]:
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Materialize WorldAtlas metric checkpoints locally.")
+    parser = argparse.ArgumentParser(
+        description="Materialize WorldAtlas metric checkpoints locally."
+    )
     parser.add_argument("--metrics", required=True, help="Comma-separated metric names.")
     parser.add_argument(
         "--export-env",

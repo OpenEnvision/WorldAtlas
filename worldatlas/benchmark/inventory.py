@@ -11,13 +11,13 @@ from typing import Any
 
 import pandas as pd
 
+from worldatlas.benchmark.config import BenchmarkConfig
+from worldatlas.benchmark.mask_provenance import validate_mask_metadata
+from worldatlas.benchmark.schemas import DiscoveredAsset
+from worldatlas.benchmark.video_mask_provenance import build_video_mask_index
 from worldatlas.common.annotation_index import build_annotation_reference, load_annotation_entry
 from worldatlas.common.media import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, probe_media
 from worldatlas.common.serialization import ensure_dir, write_json
-from worldatlas.benchmark.config import BenchmarkConfig
-from worldatlas.benchmark.schemas import DiscoveredAsset
-from worldatlas.benchmark.mask_provenance import validate_mask_metadata
-from worldatlas.benchmark.video_mask_provenance import build_video_mask_index
 
 VIPE_ANNOTATION_ENV = "WORLDATLAS_VIPE_ANNOTATION_ROOT"
 
@@ -52,7 +52,9 @@ def _image_annotation_state(path: Path, image_root: Path) -> tuple[str | None, b
         has_annotation = isinstance(entry.get("caption"), dict)
         has_instruction = isinstance(entry.get("instructions"), dict)
         has_pose = False
-        annotation_path = build_annotation_reference(index_path, relative_path) if has_annotation else None
+        annotation_path = (
+            build_annotation_reference(index_path, relative_path) if has_annotation else None
+        )
         return annotation_path, has_annotation, has_instruction, has_pose
 
     annotation_dir = _image_annotation_dir(path)
@@ -72,7 +74,9 @@ def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | Non
     if parts[0] == "static" and len(parts) >= 5:
         _, style, environment, scene, _ = parts[:5]
         category_path = "/".join(parts[:-1])
-        annotation_path, has_annotation, has_instruction, has_pose = _image_annotation_state(path, image_root)
+        annotation_path, has_annotation, has_instruction, has_pose = _image_annotation_state(
+            path, image_root
+        )
         return DiscoveredAsset(
             asset_level="image_static",
             modality="image",
@@ -104,10 +108,14 @@ def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | Non
             mask_dir = image_root / "dynamic" / style / "masks" / motion_category / path.stem
             mask_count = 0
             if mask_dir.is_dir():
-                mask_count = validate_mask_metadata(mask_dir, relative_path.as_posix())["num_saved_masks"]
+                mask_count = validate_mask_metadata(mask_dir, relative_path.as_posix())[
+                    "num_saved_masks"
+                ]
             else:
                 mask_dir = None
-            annotation_path, has_annotation, has_instruction, has_pose = _image_annotation_state(path, image_root)
+            annotation_path, has_annotation, has_instruction, has_pose = _image_annotation_state(
+                path, image_root
+            )
             return DiscoveredAsset(
                 asset_level="image_dynamic",
                 modality="image",
@@ -135,7 +143,9 @@ def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | Non
         if parts[2].startswith("_backup") and len(parts) >= 6 and parts[3] == "images":
             motion_category = parts[4]
             category_path = "/".join(parts[:-1])
-            annotation_path, has_annotation, has_instruction, has_pose = _image_annotation_state(path, image_root)
+            annotation_path, has_annotation, has_instruction, has_pose = _image_annotation_state(
+                path, image_root
+            )
             return DiscoveredAsset(
                 asset_level="image_nonformal",
                 modality="image",
@@ -163,7 +173,9 @@ def _discover_image_asset(path: Path, image_root: Path) -> DiscoveredAsset | Non
 def _annotation_flags(annotation_dir: Path) -> tuple[bool, bool, bool]:
     has_annotation = annotation_dir.exists()
     has_instruction = (annotation_dir / "instructions.json").exists()
-    has_pose = (annotation_dir / "poses.npy").exists() and (annotation_dir / "intrinsics.npy").exists()
+    has_pose = (annotation_dir / "poses.npy").exists() and (
+        annotation_dir / "intrinsics.npy"
+    ).exists()
     return has_annotation, has_instruction, has_pose
 
 
@@ -240,7 +252,9 @@ def _matching_vipe_annotation_dir(annotation_parent: Path, stem: str) -> Path | 
 
 def _static_video_vipe_annotation_dir(video_root: Path, path: Path) -> Path | None:
     relative_parent = path.relative_to(video_root).parent
-    relative_without_static = Path(*relative_parent.parts[1:]) if relative_parent.parts[:1] == ("static",) else None
+    relative_without_static = (
+        Path(*relative_parent.parts[1:]) if relative_parent.parts[:1] == ("static",) else None
+    )
     candidate_parents: list[Path] = []
     for vipe_root in _configured_vipe_annotation_roots(video_root):
         candidate_parents.append(vipe_root / relative_parent / "annotations_vipe")
@@ -248,9 +262,14 @@ def _static_video_vipe_annotation_dir(video_root: Path, path: Path) -> Path | No
             candidate_parents.append(vipe_root / relative_without_static / "annotations_vipe")
         else:
             candidate_parents.append(vipe_root / "static" / relative_parent / "annotations_vipe")
-            if not relative_parent.parts or relative_parent.parts[0] not in {"photorealistic", "stylized"}:
+            if not relative_parent.parts or relative_parent.parts[0] not in {
+                "photorealistic",
+                "stylized",
+            }:
                 for style in ("photorealistic", "stylized"):
-                    candidate_parents.append(vipe_root / "static" / style / relative_parent / "annotations_vipe")
+                    candidate_parents.append(
+                        vipe_root / "static" / style / relative_parent / "annotations_vipe"
+                    )
 
     for annotation_parent in _unique_paths(candidate_parents):
         annotation_dir = _matching_vipe_annotation_dir(annotation_parent, path.stem)
@@ -311,8 +330,7 @@ def _discover_video_asset(
         )
 
     if parts[0] == "dynamic" and (
-        (len(parts) == 4 and parts[1] == "videos")
-        or (len(parts) == 5 and parts[2] == "videos")
+        (len(parts) == 4 and parts[1] == "videos") or (len(parts) == 5 and parts[2] == "videos")
     ):
         style = parts[1] if len(parts) == 5 else None
         motion_category = parts[-2]
@@ -422,7 +440,9 @@ def discover_assets(config: BenchmarkConfig) -> list[DiscoveredAsset]:
         asset.fps = probe.get("fps")
         asset.duration_seconds = probe.get("duration_seconds")
         asset.probe_error = probe.get("probe_error")
-        asset.usable = asset.width is not None and asset.height is not None and not asset.probe_error
+        asset.usable = (
+            asset.width is not None and asset.height is not None and not asset.probe_error
+        )
 
     return assets
 
@@ -434,7 +454,7 @@ def _snapshot_hash(assets: list[DiscoveredAsset]) -> str:
             (
                 f"{asset.relative_path}|{asset.size_bytes}|{asset.width}|{asset.height}|"
                 f"{asset.fps}|{asset.duration_seconds}\n"
-            ).encode("utf-8")
+            ).encode()
         )
     return hasher.hexdigest()
 
@@ -479,7 +499,13 @@ def build_inventory(config: BenchmarkConfig) -> dict[str, Any]:
         "missing_instruction": 0,
     }
     coverage_by_asset_level: dict[str, dict[str, int]] = defaultdict(
-        lambda: {"items": 0, "with_mask": 0, "with_annotation": 0, "with_instruction": 0, "with_pose": 0}
+        lambda: {
+            "items": 0,
+            "with_mask": 0,
+            "with_annotation": 0,
+            "with_instruction": 0,
+            "with_pose": 0,
+        }
     )
 
     for asset in assets:
@@ -490,7 +516,12 @@ def build_inventory(config: BenchmarkConfig) -> dict[str, Any]:
         if asset.modality == "video":
             missing_modalities["missing_pose"] += int(not asset.has_pose)
             missing_modalities["missing_instruction"] += int(not asset.has_instruction)
-        if asset.asset_level in {"image_dynamic", "video_dynamic", "image_nonformal", "video_nonformal"}:
+        if asset.asset_level in {
+            "image_dynamic",
+            "video_dynamic",
+            "image_nonformal",
+            "video_nonformal",
+        }:
             missing_modalities["missing_masks"] += int(not asset.has_mask)
 
         bucket = coverage_by_asset_level[asset.asset_level]
@@ -521,9 +552,13 @@ def build_inventory(config: BenchmarkConfig) -> dict[str, Any]:
         )
 
     if not assets:
-        records_frame = pd.DataFrame(columns=["asset_level", "category_path", "relative_path", "modality"])
+        records_frame = pd.DataFrame(
+            columns=["asset_level", "category_path", "relative_path", "modality"]
+        )
     else:
-        records_frame = pd.DataFrame.from_records([asset.to_dict() for asset in assets]).sort_values(["asset_level", "category_path", "relative_path"])
+        records_frame = pd.DataFrame.from_records(
+            [asset.to_dict() for asset in assets]
+        ).sort_values(["asset_level", "category_path", "relative_path"])
     mismatch_frame = pd.DataFrame.from_records(mismatch_rows)
 
     summary = {
@@ -539,8 +574,12 @@ def build_inventory(config: BenchmarkConfig) -> dict[str, Any]:
         "coverage_by_asset_level": coverage_by_asset_level,
         "totals": {
             "records": int(records_frame.shape[0]),
-            "images": int((records_frame["modality"] == "image").sum()) if not records_frame.empty else 0,
-            "videos": int((records_frame["modality"] == "video").sum()) if not records_frame.empty else 0,
+            "images": int((records_frame["modality"] == "image").sum())
+            if not records_frame.empty
+            else 0,
+            "videos": int((records_frame["modality"] == "video").sum())
+            if not records_frame.empty
+            else 0,
         },
     }
 

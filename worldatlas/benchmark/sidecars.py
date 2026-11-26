@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 
 def prediction_sidecar_candidates(
@@ -20,11 +20,15 @@ def prediction_sidecar_candidates(
     """
     entry = Path(prediction_path).expanduser().absolute()
     target = entry.resolve()
-    locations = list(dict.fromkeys([
-        (entry.parent, entry.stem),
-        (target.parent, target.stem),
-        (target.parent, entry.stem),
-    ]))
+    locations = list(
+        dict.fromkeys(
+            [
+                (entry.parent, entry.stem),
+                (target.parent, target.stem),
+                (target.parent, entry.stem),
+            ]
+        )
+    )
     parents = list(dict.fromkeys(parent for parent, _ in locations))
     candidates: list[Path] = []
     for value in hints:

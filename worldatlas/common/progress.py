@@ -8,8 +8,8 @@ import sys
 import threading
 import time
 import traceback
-from typing import Any, Mapping, Sequence
-
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 _DEFAULT_HEARTBEAT_SECONDS = 120.0
 _MAX_FIELD_CHARS = 240

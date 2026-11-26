@@ -8,7 +8,12 @@ import numpy as np
 
 from worldatlas.benchmark.clip_backend import clip_image_features
 from worldatlas.benchmark.media import LoadedMedia
-from worldatlas.benchmark.metrics.base import Metric, clamp01, normalize_score, resolve_metric_backend
+from worldatlas.benchmark.metrics.base import (
+    Metric,
+    clamp01,
+    normalize_score,
+    resolve_metric_backend,
+)
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 
 BACKGROUND_CONSISTENCY_BACKENDS = {"clip_vit_b32"}
@@ -19,7 +24,9 @@ def _consecutive_cosine_similarities(features: np.ndarray) -> list[float]:
     """Compute cosine similarity between each adjacent feature pair."""
     if len(features) < 2:
         return []
-    return [float(np.dot(features[index], features[index + 1])) for index in range(len(features) - 1)]
+    return [
+        float(np.dot(features[index], features[index + 1])) for index in range(len(features) - 1)
+    ]
 
 
 def compute_background_consistency_score(

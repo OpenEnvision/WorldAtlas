@@ -7,10 +7,13 @@ from collections import defaultdict
 from pathlib import Path
 
 from worldatlas.benchmark.annotations import resolve_prompt_contract
-from worldatlas.common.serialization import ensure_dir, write_json
 from worldatlas.benchmark.config import BenchmarkConfig
+from worldatlas.benchmark.sample_identity import (
+    IMAGE_LEVELS,
+    SOURCE_FILENAME_POLICY,
+    image_sample_id,
+)
 from worldatlas.benchmark.schemas import BenchmarkSample, DiscoveredAsset
-from worldatlas.benchmark.sample_identity import IMAGE_LEVELS, SOURCE_FILENAME_POLICY, image_sample_id
 from worldatlas.benchmark.taxonomy import (
     artifact_type_for_modality,
     benchmark_split,
@@ -20,6 +23,7 @@ from worldatlas.benchmark.taxonomy import (
     suite_for_asset,
     task_family_for_suite,
 )
+from worldatlas.common.serialization import ensure_dir, write_json
 
 
 def _conditioning_protocol(
@@ -68,9 +72,13 @@ def build_manifest(assets: list[DiscoveredAsset], config: BenchmarkConfig) -> li
         )
         image_identity = asset.modality == "image" and asset.asset_level in IMAGE_LEVELS
         if image_identity:
-            sample_id = image_sample_id(asset.asset_level, asset.style, asset.fine_class, asset.path)
+            sample_id = image_sample_id(
+                asset.asset_level, asset.style, asset.fine_class, asset.path
+            )
         if sample_id in identities:
-            raise ValueError(f"Duplicate sample ID {sample_id}: {identities[sample_id]} and {asset.path}")
+            raise ValueError(
+                f"Duplicate sample ID {sample_id}: {identities[sample_id]} and {asset.path}"
+            )
         identities[sample_id] = asset.path
         split = benchmark_split()
         suite = suite_for_asset(
@@ -164,7 +172,9 @@ def load_manifest(path: Path) -> list[BenchmarkSample]:
     return samples
 
 
-def write_manifest_artifacts(manifest: list[BenchmarkSample], output_dir: Path, snapshot_name: str) -> Path:
+def write_manifest_artifacts(
+    manifest: list[BenchmarkSample], output_dir: Path, snapshot_name: str
+) -> Path:
     import pandas as pd
 
     ensure_dir(output_dir)

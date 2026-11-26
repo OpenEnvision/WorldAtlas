@@ -10,9 +10,12 @@ import time
 import traceback
 from pathlib import Path
 
-from worldatlas.common.progress import ProgressHeartbeat, log_exception, log_progress
-from worldatlas.benchmark.met3r_runtime import compute_met3r_consistency_from_paths, compute_met3r_video_consistency
 from worldatlas.benchmark.met3r_protocol import PROTOCOL
+from worldatlas.benchmark.met3r_runtime import (
+    compute_met3r_consistency_from_paths,
+    compute_met3r_video_consistency,
+)
+from worldatlas.common.progress import ProgressHeartbeat, log_exception, log_progress
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -39,7 +42,9 @@ def main(argv: list[str] | None = None) -> int:
         with ProgressHeartbeat(metric="met3r", stage="worker"):
             runtime = dict(payload.get("runtime") or {})
             if "video_path" in payload:
-                result = compute_met3r_video_consistency(Path(payload["video_path"]), runtime=runtime)
+                result = compute_met3r_video_consistency(
+                    Path(payload["video_path"]), runtime=runtime
+                )
             else:
                 result = compute_met3r_consistency_from_paths(payload["pairs"], runtime=runtime)
         log_progress(

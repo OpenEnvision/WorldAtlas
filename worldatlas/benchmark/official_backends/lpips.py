@@ -23,15 +23,11 @@ class LearnedPerceptualImagePatchSimilarityMetric(BaseMetric):
         super().__init__()
         try:
             ensure_local_alexnet_weights()
-            self._metric = LearnedPerceptualImagePatchSimilarity(net_type="alex").to(
-                self._device
-            )
+            self._metric = LearnedPerceptualImagePatchSimilarity(net_type="alex").to(self._device)
         except MetricLoadError:
             raise
         except Exception as exc:
-            raise MetricLoadError(
-                f"LPIPS failed to load: {type(exc).__name__}: {exc}"
-            ) from exc
+            raise MetricLoadError(f"LPIPS failed to load: {type(exc).__name__}: {exc}") from exc
 
     def _compute_scores(
         self,

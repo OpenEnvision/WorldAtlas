@@ -20,7 +20,9 @@ DEFAULT_THRESHOLD = 0.5
 DEFAULT_MIN_SCENE_LEN = 10
 
 
-def _filter_cuts_by_min_scene_length(cuts: list[int], frame_count: int, min_scene_len: int) -> list[int]:
+def _filter_cuts_by_min_scene_length(
+    cuts: list[int], frame_count: int, min_scene_len: int
+) -> list[int]:
     """Remove cut candidates that would leave a scene shorter than ``min_scene_len``."""
     if not cuts or min_scene_len <= 1:
         return sorted(set(cuts))
@@ -129,7 +131,9 @@ def compute_segment_continuity_score(
             "inference_device": inference.get("inference_device", "unknown"),
             "torch_num_threads": inference.get("torch_num_threads"),
             "torch_num_interop_threads": inference.get("torch_num_interop_threads"),
-            "analysis_frame_policy": inference.get("analysis_frame_policy", "loaded_sampled_frames"),
+            "analysis_frame_policy": inference.get(
+                "analysis_frame_policy", "loaded_sampled_frames"
+            ),
             "native_frame_count": inference.get("native_frame_count"),
             "native_window_start_index": inference.get("native_window_start_index"),
             "native_window_end_index": inference.get("native_window_end_index"),

@@ -22,15 +22,25 @@ def runtime_options(generation: dict[str, Any]) -> dict[str, Any]:
     if mode not in {"causal", "bidirectional"}:
         raise ValueError("Astronex mode must be causal or bidirectional")
     options = dict(
-        mode=mode, num_frames=125 if mode == "causal" else 65,
-        width=832, height=480, fps=24, sampling_steps=8 if mode == "causal" else 50,
-        guidance_scale=3.0 if mode == "causal" else 8.0, seed=1234,
-        nproc_per_node=1, offline=True, continue_on_error=True,
-        translation_per_latent=0.08, rotation_degrees_per_latent=3.0,
-        camera_path_mode="native_steps", translation_per_token=0.8,
+        mode=mode,
+        num_frames=125 if mode == "causal" else 65,
+        width=832,
+        height=480,
+        fps=24,
+        sampling_steps=8 if mode == "causal" else 50,
+        guidance_scale=3.0 if mode == "causal" else 8.0,
+        seed=1234,
+        nproc_per_node=1,
+        offline=True,
+        continue_on_error=True,
+        translation_per_latent=0.08,
+        rotation_degrees_per_latent=3.0,
+        camera_path_mode="native_steps",
+        translation_per_token=0.8,
         rotation_degrees_per_token=30.0,
         intrinsic=[0.5050505, 0.89786756, 0.5, 0.5],
-        free_cache_before_decode=True, offload_denoiser_for_decode=False,
+        free_cache_before_decode=True,
+        offload_denoiser_for_decode=False,
     )
     options.update(generation)
     for key in ("width", "height", "num_frames", "fps", "sampling_steps", "nproc_per_node"):
@@ -50,13 +60,23 @@ def runtime_options(generation: dict[str, Any]) -> dict[str, Any]:
         options["num_frames"] = max(5, math.ceil(seconds * options["fps"]))
     if options["num_frames"] < 5:
         raise ValueError("Astronex requires at least 5 requested pixel frames")
-    for key in ("offline", "continue_on_error", "free_cache_before_decode", "offload_denoiser_for_decode"):
+    for key in (
+        "offline",
+        "continue_on_error",
+        "free_cache_before_decode",
+        "offload_denoiser_for_decode",
+    ):
         if not isinstance(options[key], bool):
             raise ValueError(f"{key} must be a YAML boolean")
     if options["camera_path_mode"] not in {"native_steps", "closed_loop"}:
         raise ValueError("Astronex camera_path_mode must be native_steps or closed_loop")
-    for key in ("translation_per_latent", "rotation_degrees_per_latent", "guidance_scale",
-                "translation_per_token", "rotation_degrees_per_token"):
+    for key in (
+        "translation_per_latent",
+        "rotation_degrees_per_latent",
+        "guidance_scale",
+        "translation_per_token",
+        "rotation_degrees_per_token",
+    ):
         options[key] = float(options[key])
         if not math.isfinite(options[key]) or options[key] <= 0:
             raise ValueError(f"{key} must be finite and positive")
@@ -77,9 +97,14 @@ def camera_controls(tokens: list[str], options: dict) -> dict[str, np.ndarray]:
         raise ValueError("camera path must contain between one and generated_latents actions")
     closed_loop = options["camera_path_mode"] == "closed_loop"
     step = options["translation_per_token"] if closed_loop else options["translation_per_latent"]
-    rotation = options["rotation_degrees_per_token"] if closed_loop else options["rotation_degrees_per_latent"]
+    rotation = (
+        options["rotation_degrees_per_token"]
+        if closed_loop
+        else options["rotation_degrees_per_latent"]
+    )
     trajectory_options = {
-        "synthetic_camera_forward_step": step, "synthetic_camera_lateral_step": step,
+        "synthetic_camera_forward_step": step,
+        "synthetic_camera_lateral_step": step,
         # WorldAtlas's synthetic Y-up translations must become OpenCV Y-down.
         "synthetic_camera_vertical_step": -step,
         "synthetic_camera_rotation_degrees": rotation,
@@ -92,7 +117,9 @@ def camera_controls(tokens: list[str], options: dict) -> dict[str, np.ndarray]:
         # for unequal segment lengths. This preserves inverse legs and 90/360
         # degree turns even when 367 latent intervals cannot divide the path.
         c2w = synthetic_camera_matrices(
-            tokens, target_frames=intervals + 1, runtime=trajectory_options,
+            tokens,
+            target_frames=intervals + 1,
+            runtime=trajectory_options,
         ).matrices
         if not np.allclose(c2w[-1], c2w[0], atol=1e-4, rtol=0):
             raise ValueError("Astronex closed_loop camera path does not return to its initial pose")
@@ -107,7 +134,9 @@ def camera_controls(tokens: list[str], options: dict) -> dict[str, np.ndarray]:
     viewmats = np.linalg.inv(np.asarray(c2w)).astype(np.float32)
     intrinsic = np.asarray(options["intrinsic"], dtype=np.float32)
     if intrinsic.shape != (4,) or not np.isfinite(intrinsic).all() or np.any(intrinsic[:2] <= 0):
-        raise ValueError("Astronex intrinsic must be normalized [fx, fy, cx, cy] with positive focal lengths")
+        raise ValueError(
+            "Astronex intrinsic must be normalized [fx, fy, cx, cy] with positive focal lengths"
+        )
     fx, fy, cx, cy = intrinsic
     K = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
     return {"viewmats": viewmats, "Ks": np.repeat(K[None], len(c2w), axis=0)}
@@ -130,9 +159,13 @@ class AstronexWorldAdapter(ExternalBatchAdapter):
         row = super().batch_spec_payload(request)
         tokens, source = _camera_tokens_for_sample(request.sample)
         camera_controls(tokens, options)  # Fail before loading weights if controls are invalid.
-        row.update(camera_tokens=tokens, control_source=source,
-                   seed=sample_seed(request.sample.sample_id, options),
-                   num_frames=options["output_frames"], total_latents=options["total_latents"])
+        row.update(
+            camera_tokens=tokens,
+            control_source=source,
+            seed=sample_seed(request.sample.sample_id, options),
+            num_frames=options["output_frames"],
+            total_latents=options["total_latents"],
+        )
         # Static-suite segments describe successive camera views, not timed
         # scene events. Keep the complete target caption and drive all segments
         # through the camera trajectory, including three-segment itineraries.
@@ -145,10 +178,14 @@ class AstronexWorldAdapter(ExternalBatchAdapter):
             if prompt and (not sequence or sequence[-1] != prompt):
                 sequence.append(prompt)
         if len(sequence) > 2:
-            raise ValueError("Astronex supports one mid-rollout event (at most two prompt segments)")
+            raise ValueError(
+                "Astronex supports one mid-rollout event (at most two prompt segments)"
+            )
         if len(sequence) == 2:
             if options["mode"] != "causal":
-                raise ValueError("Astronex bidirectional does not support timed prompt switching; use causal")
+                raise ValueError(
+                    "Astronex bidirectional does not support timed prompt switching; use causal"
+                )
             row["prompt"] = sequence[0]
             row["event_prompt"] = sequence[1]
             # Events apply on causal block boundaries (including the reference).

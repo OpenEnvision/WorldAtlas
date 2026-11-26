@@ -45,7 +45,9 @@ def _synthetic_image_poses(
     """
     translation_scale = float(translation_scale)
     if not np.isfinite(translation_scale) or translation_scale < 0.0:
-        raise ValueError(f"translation_scale must be finite and non-negative, got {translation_scale!r}")
+        raise ValueError(
+            f"translation_scale must be finite and non-negative, got {translation_scale!r}"
+        )
 
     poses = synthetic_camera_matrices(
         camera_path,
@@ -100,7 +102,9 @@ def resolve_pose_annotation_path(
     camera_path = _camera_path_for_sample(sample) or ["fixed"]
     translation_scale = float(translation_scale)
     if not np.isfinite(translation_scale) or translation_scale < 0.0:
-        raise ValueError(f"translation_scale must be finite and non-negative, got {translation_scale!r}")
+        raise ValueError(
+            f"translation_scale must be finite and non-negative, got {translation_scale!r}"
+        )
     cache_payload: dict[str, Any] = {
         "sample_id": sample.sample_id,
         "relative_path": sample.relative_path,
@@ -115,8 +119,13 @@ def resolve_pose_annotation_path(
     key = hashlib.sha1(
         json.dumps(cache_payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
     ).hexdigest()[:12]
-    annotation_root = project_root() / "cache" / "model_runtime" / namespace / "synthetic_pose" / (
-        f"{sample.prediction_stem}--{key}"
+    annotation_root = (
+        project_root()
+        / "cache"
+        / "model_runtime"
+        / namespace
+        / "synthetic_pose"
+        / (f"{sample.prediction_stem}--{key}")
     )
     poses_path = annotation_root / "poses.npy"
     intrinsics_path = annotation_root / "intrinsics.npy"

@@ -5,16 +5,17 @@ from __future__ import annotations
 import json
 
 from worldatlas.benchmark.config import BenchmarkConfig
+from worldatlas.benchmark.metrics.alignment import PromptAlignmentMetric
 from worldatlas.benchmark.metrics.appearance import (
     BrightnessConsistencyMetric,
     BrightnessDistributionConsistencyMetric,
-    ColorTemperatureConstraintMetric,
     ColorTemperatureConsistencyMetric,
+    ColorTemperatureConstraintMetric,
     SharpnessRetentionMetric,
     SharpnessVectorRetentionMetric,
 )
 from worldatlas.benchmark.metrics.background_consistency import BackgroundConsistencyMetric
-from worldatlas.benchmark.metrics.segment_continuity import SegmentContinuityMetric
+from worldatlas.benchmark.metrics.base import Metric
 from worldatlas.benchmark.metrics.consistency import (
     GVGC_GEOMETRY_METRICS,
     GvgcGeometryMetric,
@@ -25,20 +26,14 @@ from worldatlas.benchmark.metrics.control import (
     CameraErrorMetric,
     MotionAccuracyMetric,
 )
-from worldatlas.benchmark.metrics.alignment import PromptAlignmentMetric
-from worldatlas.benchmark.metrics.base import Metric
-from worldatlas.benchmark.metrics.motion import MotionMagnitudeMetric, MotionSmoothnessMetric
-from worldatlas.benchmark.metrics.met3r import Met3RConsistencyMetric
-from worldatlas.benchmark.metrics.quality import HPSv3NormMetric, ImageQualityMetric, PerceptualQualityMetric
-from worldatlas.benchmark.metrics.reconstruction import (
-    RECONSTRUCTION_CONSISTENCY_METRICS,
-    ReconstructionConsistencyEvaluator,
-    ReconstructionConsistencyMetric,
+from worldatlas.benchmark.metrics.long_horizon_diagnostics import (
+    LONG_HORIZON_ACTION_METRICS,
+    LONG_HORIZON_MEMORY_METRICS,
+    LONG_HORIZON_VISUAL_METRICS,
+    KeystrokeActionMetric,
+    SceneMemoryF1Metric,
+    VisualDriftMetric,
 )
-from worldatlas.benchmark.metrics.style import StyleConsistencyMetric
-from worldatlas.benchmark.metrics.temporal import TemporalCalibrationMetric
-from worldatlas.benchmark.metrics.temporal_flickering import TemporalFlickeringMetric
-from worldatlas.benchmark.metrics.trajan import TrajanMetric
 from worldatlas.benchmark.metrics.long_sequence import LongSequenceMetric
 from worldatlas.benchmark.metrics.memory import (
     EntityReappearanceConsistencyMetric,
@@ -50,15 +45,23 @@ from worldatlas.benchmark.metrics.memory_loop import (
     MEMORY_LOOP_METRICS,
     build_memory_loop_metric,
 )
-from worldatlas.benchmark.metrics.long_horizon_diagnostics import (
-    LONG_HORIZON_ACTION_METRICS,
-    LONG_HORIZON_MEMORY_METRICS,
-    LONG_HORIZON_VISUAL_METRICS,
-    KeystrokeActionMetric,
-    SceneMemoryF1Metric,
-    VisualDriftMetric,
+from worldatlas.benchmark.metrics.met3r import Met3RConsistencyMetric
+from worldatlas.benchmark.metrics.motion import MotionMagnitudeMetric, MotionSmoothnessMetric
+from worldatlas.benchmark.metrics.quality import (
+    HPSv3NormMetric,
+    ImageQualityMetric,
+    PerceptualQualityMetric,
 )
-
+from worldatlas.benchmark.metrics.reconstruction import (
+    RECONSTRUCTION_CONSISTENCY_METRICS,
+    ReconstructionConsistencyEvaluator,
+    ReconstructionConsistencyMetric,
+)
+from worldatlas.benchmark.metrics.segment_continuity import SegmentContinuityMetric
+from worldatlas.benchmark.metrics.style import StyleConsistencyMetric
+from worldatlas.benchmark.metrics.temporal import TemporalCalibrationMetric
+from worldatlas.benchmark.metrics.temporal_flickering import TemporalFlickeringMetric
+from worldatlas.benchmark.metrics.trajan import TrajanMetric
 
 METRIC_ALIASES: dict[str, str] = {
     "scene_alignment": "prompt_alignment",
@@ -168,9 +171,15 @@ def build_metrics(metric_names: list[str], config: BenchmarkConfig) -> list[Metr
         seen.add(metric_name)
         if metric_name in SUITE_LEVEL_METRICS:
             continue
-        backend = config.metric_backends.get(metric_name, config.metric_backends.get(raw_metric_name, "auto"))
-        normalization = config.normalization.get(metric_name, config.normalization.get(raw_metric_name, {}))
-        runtime = dict(config.metric_runtime.get(metric_name, config.metric_runtime.get(raw_metric_name, {})))
+        backend = config.metric_backends.get(
+            metric_name, config.metric_backends.get(raw_metric_name, "auto")
+        )
+        normalization = config.normalization.get(
+            metric_name, config.normalization.get(raw_metric_name, {})
+        )
+        runtime = dict(
+            config.metric_runtime.get(metric_name, config.metric_runtime.get(raw_metric_name, {}))
+        )
         if metric_name in RECONSTRUCTION_CONSISTENCY_METRICS:
             backend = config.metric_backends.get(
                 metric_name,

@@ -18,12 +18,12 @@ import hashlib
 import json
 import os
 import random
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 from worldatlas.benchmark.distribution_clips import VIDEO_EXTENSIONS
-
 
 STATIC_KIND = "static"
 DYNAMIC_KIND = "dynamic"
@@ -187,9 +187,9 @@ def build_distribution_tasks(
 
     overall_reference = iter_group_entries(groups)
     overall_signature = hashlib.sha256(
-        "".join(group.signature for group in sorted(groups, key=lambda item: item.key.label)).encode(
-            "ascii"
-        )
+        "".join(
+            group.signature for group in sorted(groups, key=lambda item: item.key.label)
+        ).encode("ascii")
     ).hexdigest()[:20]
     tasks = [
         DistributionTask(
@@ -253,9 +253,7 @@ def _iter_corpus_videos(root: Path):
             if len(relative_dir.parts) >= leaf_depth:
                 dirnames[:] = []
             else:
-                dirnames[:] = sorted(
-                    name for name in dirnames if not _is_excluded_segment(name)
-                )
+                dirnames[:] = sorted(name for name in dirnames if not _is_excluded_segment(name))
             for name in sorted(filenames):
                 if Path(name).suffix.lower() not in VIDEO_EXTENSIONS:
                     continue
@@ -284,8 +282,7 @@ def classify_corpus_video(relative_path: Path) -> ReferenceGroupKey | None:
         return ReferenceGroupKey(kind=STATIC_KIND, style=style, environment=environment)
 
     if parts[0] == DYNAMIC_KIND and (
-        (len(parts) == 4 and parts[1] == "videos")
-        or (len(parts) == 5 and parts[2] == "videos")
+        (len(parts) == 4 and parts[1] == "videos") or (len(parts) == 5 and parts[2] == "videos")
     ):
         return ReferenceGroupKey(kind=DYNAMIC_KIND)
 
@@ -294,7 +291,9 @@ def classify_corpus_video(relative_path: Path) -> ReferenceGroupKey | None:
 
 def _group_signature(videos: Sequence[Path], root: Path) -> str:
     from concurrent.futures import ThreadPoolExecutor
+
     from worldatlas.benchmark.integrity import path_content
+
     digest = hashlib.sha256()
     digest.update(b"reference_content_v2")
     # Preserve roster order and the exact serial signature. Bounded parallel
@@ -328,7 +327,9 @@ def build_reference_index(
         selected = sorted(videos)
         total_available = len(selected)
         if max_videos_per_group is not None and total_available > max_videos_per_group:
-            selected = sorted(random.Random(f"{seed}:{key.label}").sample(selected, max_videos_per_group))
+            selected = sorted(
+                random.Random(f"{seed}:{key.label}").sample(selected, max_videos_per_group)
+            )
         groups[key] = ReferenceGroup(
             key=key,
             videos=tuple(selected),
@@ -387,8 +388,8 @@ def load_reference_index(path: Path) -> ReferenceIndex:
     # actually read today without modifying the historical index on disk.
     digest = hashlib.sha256()
     for key in sorted(groups, key=lambda item: item.label):
-        digest.update(key.label.encode('utf-8'))
-        digest.update(groups[key].signature.encode('ascii'))
+        digest.update(key.label.encode("utf-8"))
+        digest.update(groups[key].signature.encode("ascii"))
     return ReferenceIndex(root=root, groups=groups, signature=digest.hexdigest()[:20])
 
 

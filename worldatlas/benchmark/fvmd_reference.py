@@ -3,23 +3,28 @@
 Never use this filter for predictions. A frozen eligible reference population
 is strict at tracking time: new decode failures still fail the evaluation.
 """
+
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
 import fcntl
 import hashlib
 import json
 import math
-from pathlib import Path
 import shutil
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from pathlib import Path
 
 import cv2
 
 from worldatlas.benchmark.distribution_clips import (
-    ClipDecodeError, ClipSamplingSpec, VIDEO_EXTENSIONS, _clip_start_indices,
-    atomic_write_text, clip_set_signature,
+    VIDEO_EXTENSIONS,
+    ClipDecodeError,
+    ClipSamplingSpec,
+    _clip_start_indices,
+    atomic_write_text,
+    clip_set_signature,
 )
 from worldatlas.common.progress import log_progress
 
@@ -37,7 +42,9 @@ def cache_lock(path: Path):
 
 
 def _digest(value):
-    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
 
 
 def reference_probe_timeout(path: Path) -> float:
@@ -62,16 +69,39 @@ def inspect_reference(path: Path, spec: ClipSamplingSpec, ffprobe: str) -> dict:
     if path.suffix.lower() not in VIDEO_EXTENSIONS:
         raise ClipDecodeError(f"unsupported reference video extension: {path.suffix}")
     probe = subprocess.run(
-        [ffprobe, "-v", "error", "-threads", "1", "-select_streams", "v:0",
-         "-count_frames", "-show_entries", "stream=nb_read_frames", "-of", "json", str(path)],
-        capture_output=True, text=True, timeout=reference_probe_timeout(path), check=False,
+        [
+            ffprobe,
+            "-v",
+            "error",
+            "-threads",
+            "1",
+            "-select_streams",
+            "v:0",
+            "-count_frames",
+            "-show_entries",
+            "stream=nb_read_frames",
+            "-of",
+            "json",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=reference_probe_timeout(path),
+        check=False,
     )
     if probe.returncode or probe.stderr.strip():
         message = probe.stderr.strip()
-        if any(token in message.lower() for token in (
-            "permission denied", "input/output error", "cannot allocate memory",
-            "resource temporarily unavailable", "unknown decoder", "unrecognized option",
-        )):
+        if any(
+            token in message.lower()
+            for token in (
+                "permission denied",
+                "input/output error",
+                "cannot allocate memory",
+                "resource temporarily unavailable",
+                "unknown decoder",
+                "unrecognized option",
+            )
+        ):
             raise RuntimeError(f"Reference probe infrastructure failure: {message}")
         raise ClipDecodeError(f"reference decode error: {message[:2000]}")
     streams = json.loads(probe.stdout).get("streams", [])
@@ -89,15 +119,25 @@ def inspect_reference(path: Path, spec: ClipSamplingSpec, ffprobe: str) -> dict:
     if not math.isfinite(source_fps) or source_fps <= 0:
         raise ClipDecodeError("reference source frame rate unavailable")
     if spec.sample_fps is not None and source_fps < spec.sample_fps - 1e-6:
-        raise ClipDecodeError(f"reference source fps {source_fps} below sample fps {spec.sample_fps}")
-    sampled_count = (decoded_count if spec.sample_fps is None else
-                     int(math.floor(decoded_count / (source_fps / spec.sample_fps))))
+        raise ClipDecodeError(
+            f"reference source fps {source_fps} below sample fps {spec.sample_fps}"
+        )
+    sampled_count = (
+        decoded_count
+        if spec.sample_fps is None
+        else int(math.floor(decoded_count / (source_fps / spec.sample_fps)))
+    )
     if spec.max_source_frames is not None:
         sampled_count = min(sampled_count, spec.max_source_frames)
     clips = len(_clip_start_indices(sampled_count, spec))
-    result = dict(decoded_frame_count=decoded_count, declared_frame_count=declared_count,
-                  source_fps=source_fps, sampled_frame_count=sampled_count, clip_count=clips,
-                  frame_count_corrected=declared_count != decoded_count)
+    result = dict(
+        decoded_frame_count=decoded_count,
+        declared_frame_count=declared_count,
+        source_fps=source_fps,
+        sampled_frame_count=sampled_count,
+        clip_count=clips,
+        frame_count_corrected=declared_count != decoded_count,
+    )
     if not clips:
         return dict(result, eligible=False, reason="insufficient_sampled_frames")
     return dict(result, eligible=True)
@@ -126,16 +166,21 @@ def prepare_reference_selection(entries, spec: ClipSamplingSpec, cache_dir: Path
             if payload["sha256"] != _digest(report) or report["input_signature"] != signature:
                 raise ValueError(f"FVMD reference selection integrity mismatch: {destination}")
         else:
-            version = subprocess.run([ffprobe, "-version"], capture_output=True, text=True,
-                                     check=True, timeout=30).stdout.splitlines()[0]
-            log_progress("fvmd_reference_preflight", status="start", videos=len(entries), workers=workers)
+            version = subprocess.run(
+                [ffprobe, "-version"], capture_output=True, text=True, check=True, timeout=30
+            ).stdout.splitlines()[0]
+            log_progress(
+                "fvmd_reference_preflight", status="start", videos=len(entries), workers=workers
+            )
 
             def inspect(entry):
                 path, identifier = entry
                 try:
                     details = inspect_reference(path, spec, ffprobe)
                 except ClipDecodeError as exc:
-                    details = dict(eligible=False, reason="decode_or_sampling_error", error=str(exc))
+                    details = dict(
+                        eligible=False, reason="decode_or_sampling_error", error=str(exc)
+                    )
                 return dict(path=str(path), id=identifier, **details)
 
             rows = []
@@ -143,20 +188,39 @@ def prepare_reference_selection(entries, spec: ClipSamplingSpec, cache_dir: Path
                 for row in pool.map(inspect, entries):
                     rows.append(row)
                     if len(rows) % 25 == 0 or len(rows) == len(entries):
-                        log_progress("fvmd_reference_preflight", videos=f"{len(rows)}/{len(entries)}")
+                        log_progress(
+                            "fvmd_reference_preflight", videos=f"{len(rows)}/{len(entries)}"
+                        )
             eligible = [row for row in rows if row["eligible"]]
-            report = dict(schema_version=1, input_signature=signature, clip_spec=spec.describe(),
-                          ffprobe_version=version, candidate_video_count=len(rows),
-                          eligible_video_count=len(eligible), excluded_video_count=len(rows)-len(eligible),
-                          clip_count=sum(row["clip_count"] for row in eligible), videos=rows)
+            report = dict(
+                schema_version=1,
+                input_signature=signature,
+                clip_spec=spec.describe(),
+                ffprobe_version=version,
+                candidate_video_count=len(rows),
+                eligible_video_count=len(eligible),
+                excluded_video_count=len(rows) - len(eligible),
+                clip_count=sum(row["clip_count"] for row in eligible),
+                videos=rows,
+            )
             payload = dict(selection=report, sha256=_digest(report))
-            if clip_set_signature(entries, spec, extra=["fvmd_reference_eligibility", source_hash]) != signature:
+            if (
+                clip_set_signature(entries, spec, extra=["fvmd_reference_eligibility", source_hash])
+                != signature
+            ):
                 raise ValueError("Reference inputs changed during preparation; no roster published")
             atomic_write_text(destination, json.dumps(payload, indent=2, sort_keys=True) + "\n")
     if not report["eligible_video_count"]:
         raise ValueError(f"No eligible FVMD references; inspect {destination}")
-    log_progress("fvmd_reference_ready", eligible=report["eligible_video_count"],
-                 excluded=report["excluded_video_count"], signature=payload["sha256"], manifest=destination)
+    log_progress(
+        "fvmd_reference_ready",
+        eligible=report["eligible_video_count"],
+        excluded=report["excluded_video_count"],
+        signature=payload["sha256"],
+        manifest=destination,
+    )
     selected = [(Path(row["path"]), row["id"]) for row in report["videos"] if row["eligible"]]
-    verified = {row["path"]: row["decoded_frame_count"] for row in report["videos"] if row["eligible"]}
+    verified = {
+        row["path"]: row["decoded_frame_count"] for row in report["videos"] if row["eligible"]
+    }
     return selected, verified, payload

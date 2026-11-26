@@ -11,14 +11,22 @@ from typing import Any
 from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.common.checkpoints import apply_checkpoint_env
 from worldatlas.models.adapters.batch_runner_common import begin_sample, print_status
-from worldatlas.models.adapters.lingbot_world.common import LingBotWorldBaseAdapter, _persistent_heartbeat
-from worldatlas.models.adapters.lingbot_world.lingbot_world_batch_runner import _load_batch_spec, _write_result
+from worldatlas.models.adapters.lingbot_world.common import (
+    LingBotWorldBaseAdapter,
+    _persistent_heartbeat,
+)
+from worldatlas.models.adapters.lingbot_world.lingbot_world_batch_runner import (
+    _load_batch_spec,
+    _write_result,
+)
 from worldatlas.models.registry import build_model_adapter
 from worldatlas.models.config import load_model_config
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="WorldAtlas LingBot distributed persistent batch runner.")
+    parser = argparse.ArgumentParser(
+        description="WorldAtlas LingBot distributed persistent batch runner."
+    )
     parser.add_argument("--model-config", required=True, type=Path)
     parser.add_argument("--batch-spec-path", required=True, type=Path)
     parser.add_argument("--results-path", required=True, type=Path)
@@ -31,8 +39,12 @@ def main() -> None:
     args = parse_args()
     os.environ.update(apply_checkpoint_env())
     if args.heartbeat_path is not None:
-        os.environ["LINGBOT_PERSISTENT_HEARTBEAT_LOG"] = str(args.heartbeat_path.expanduser().resolve())
-    _persistent_heartbeat("runner_start", batch_spec_path=args.batch_spec_path, results_path=args.results_path)
+        os.environ["LINGBOT_PERSISTENT_HEARTBEAT_LOG"] = str(
+            args.heartbeat_path.expanduser().resolve()
+        )
+    _persistent_heartbeat(
+        "runner_start", batch_spec_path=args.batch_spec_path, results_path=args.results_path
+    )
 
     model_config = load_model_config(args.model_config.resolve())
     adapter = build_model_adapter(model_config)
@@ -76,7 +88,9 @@ def main() -> None:
                 "prediction_path": str(output_path),
                 "prompt": prompt,
             }
-            _persistent_heartbeat("sample_start", index=index, total=total_requests, sample_id=sample.sample_id)
+            _persistent_heartbeat(
+                "sample_start", index=index, total=total_requests, sample_id=sample.sample_id
+            )
             try:
                 generation_payload = adapter._run_persistent_generation(
                     runtime,
@@ -99,13 +113,20 @@ def main() -> None:
                     print_status(sample.sample_id, "failed", error=str(exc), label="LingBot-World")
                     _write_result(result_handle, result)
                 raise
-            _persistent_heartbeat("sample_done", index=index, total=total_requests, sample_id=sample.sample_id)
+            _persistent_heartbeat(
+                "sample_done", index=index, total=total_requests, sample_id=sample.sample_id
+            )
             if runtime.rank == 0 and result_handle is not None:
                 result.update(generation_payload)
                 result["status"] = "generated"
                 result["error"] = None
                 _write_result(result_handle, result)
-                print_status(sample.sample_id, "generated", output_path=str(output_path), label="LingBot-World")
+                print_status(
+                    sample.sample_id,
+                    "generated",
+                    output_path=str(output_path),
+                    label="LingBot-World",
+                )
     finally:
         _persistent_heartbeat("runner_finally_start")
         if result_handle is not None:

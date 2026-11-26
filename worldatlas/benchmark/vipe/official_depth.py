@@ -167,7 +167,11 @@ def _install_vda_local_hub() -> Path:
     from worldatlas.benchmark.vipe.memory_weights import vda_checkpoint_path
 
     src = vda_checkpoint_path()
-    hub = Path(os.environ.get("TORCH_HOME", str(checkpoint_root(create=False) / "torch"))) / "hub" / "checkpoints"
+    hub = (
+        Path(os.environ.get("TORCH_HOME", str(checkpoint_root(create=False) / "torch")))
+        / "hub"
+        / "checkpoints"
+    )
     dest = hub / src.name
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.resolve() != src.resolve():
@@ -290,7 +294,10 @@ def install_official_vipe_runtime() -> None:
     global _RUNTIME_INSTALLED
     if _RUNTIME_INSTALLED:
         return
-    from worldatlas.benchmark.vipe.memory_weights import ensure_unidepth_refs, link_official_vipe_pose_assets
+    from worldatlas.benchmark.vipe.memory_weights import (
+        ensure_unidepth_refs,
+        link_official_vipe_pose_assets,
+    )
     from worldatlas.benchmark.vipe.official_priorda import ensure_torch_cluster_shim
 
     ensure_official_vipe_on_path()

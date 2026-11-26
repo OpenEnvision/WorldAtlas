@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from contextlib import nullcontext
-from functools import lru_cache
 import os
+from contextlib import nullcontext
+from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from worldatlas.common.checkpoints import checkpoint_path, resolve_checkpoint_path
 from worldatlas.benchmark.flow_sources import (
     amt_runtime_context,
     inspect_flow_source_layout,
     raft_runtime_context,
 )
 from worldatlas.benchmark.metrics.base import clamp01
+from worldatlas.common.checkpoints import checkpoint_path, resolve_checkpoint_path
 from worldatlas.common.video_io import probe_video_fps, read_video_frames
 
 
@@ -192,7 +192,13 @@ class RAFTDynamicDegreeBackend:
             }
 
         def tensor_frame(frame):
-            return torch.from_numpy(np.ascontiguousarray(frame)).permute(2, 0, 1).float().unsqueeze(0).to(self.device)
+            return (
+                torch.from_numpy(np.ascontiguousarray(frame))
+                .permute(2, 0, 1)
+                .float()
+                .unsqueeze(0)
+                .to(self.device)
+            )
 
         scale = min(sampled_frames[0].shape[:2])
         threshold = 6.0 * (scale / 256.0)
@@ -202,7 +208,9 @@ class RAFTDynamicDegreeBackend:
         # Scoped fallback for cuDNN stream/plan failures on the Hope runtime.
         # This changes the convolution engine, not frames, weights or scoring.
         cudnn_disabled = os.environ.get("WORLDATLAS_RAFT_CUDNN_ENABLED", "1") == "0"
-        convolution_context = torch.backends.cudnn.flags(enabled=False) if cudnn_disabled else nullcontext()
+        convolution_context = (
+            torch.backends.cudnn.flags(enabled=False) if cudnn_disabled else nullcontext()
+        )
         with torch.inference_mode(), convolution_context:
             image1 = tensor_frame(sampled_frames[0])
             for frame in sampled_frames[1:]:
@@ -268,7 +276,9 @@ def load_amt_motion_smoothness_backend(
         network_cfg = OmegaConf.load(resolve_amt_config_path(config_path)).network
         model = build_from_cfg(network_cfg)
     try:
-        checkpoint = torch.load(resolve_amt_s_checkpoint(ckpt_path), map_location="cpu", weights_only=False)
+        checkpoint = torch.load(
+            resolve_amt_s_checkpoint(ckpt_path), map_location="cpu", weights_only=False
+        )
     except TypeError:
         checkpoint = torch.load(resolve_amt_s_checkpoint(ckpt_path), map_location="cpu")
     model.load_state_dict(checkpoint["state_dict"])

@@ -2,27 +2,24 @@
 
 from __future__ import annotations
 
+import sys
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
-import sys
-from typing import Any, Iterator, Sequence
-
+from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def resolve_amt_root() -> Path:
-    """Resolve amt root -> Path."""
     return (PROJECT_ROOT / "thirdparty" / "AMT").resolve()
 
 
 def resolve_raft_root() -> Path:
-    """Resolve raft root -> Path."""
     return (PROJECT_ROOT / "thirdparty" / "RAFT").resolve()
 
 
 def inspect_flow_source_layout() -> dict[str, Any]:
-    """Inspect flow source layout -> dict[str, Any]."""
     amt_root = resolve_amt_root()
     raft_root = resolve_raft_root()
 
@@ -122,7 +119,6 @@ def isolated_upstream_import_context(*paths: Path) -> Iterator[None]:
 
 @contextmanager
 def amt_runtime_context() -> Iterator[Path]:
-    """Amt runtime context -> Iterator[Path]."""
     root = resolve_amt_root()
     with isolated_upstream_import_context(root):
         yield root
@@ -130,7 +126,6 @@ def amt_runtime_context() -> Iterator[Path]:
 
 @contextmanager
 def raft_runtime_context() -> Iterator[Path]:
-    """Raft runtime context -> Iterator[Path]."""
     root = resolve_raft_root()
     with isolated_upstream_import_context(root / "core", root):
         yield root

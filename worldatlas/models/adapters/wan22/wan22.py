@@ -7,7 +7,11 @@ from uuid import uuid4
 
 from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.models.adapters.base import ModelAdapter, PreparedGenerationRequest
-from worldatlas.models.adapters.common import build_env, extend_command_with_options, worldatlas_project_root
+from worldatlas.models.adapters.common import (
+    build_env,
+    extend_command_with_options,
+    worldatlas_project_root,
+)
 from worldatlas.models.adapters.external_batch import run_logged_command
 
 
@@ -92,7 +96,7 @@ class Wan22Adapter(ModelAdapter):
                         ensure_ascii=False,
                     )
                     + "\n"
-        )
+                )
 
         generation = self.config.generation
         command = _runner_command(self.config.python_bin, generation)

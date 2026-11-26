@@ -2,7 +2,6 @@ from pathlib import Path
 
 from setuptools import find_namespace_packages, setup
 
-
 setup(
     name="worldatlas",
     version="1.0.0",
@@ -12,13 +11,22 @@ setup(
     author="OpenEnvision",
     url="https://github.com/OpenEnvision/WorldAtlas",
     license="MIT",
-    packages=["worldatlas"] + [
+    packages=["worldatlas"]
+    + [
         f"worldatlas.{name}"
         for name in find_namespace_packages(
             where="worldatlas",
             exclude=[
-                "docs", "docs.*", "datasets", "datasets.*",
-                "tests", "tests.*", "*.tests", "*.tests.*", "*.__pycache__", "*.backup*",
+                "docs",
+                "docs.*",
+                "datasets",
+                "datasets.*",
+                "tests",
+                "tests.*",
+                "*.tests",
+                "*.tests.*",
+                "*.__pycache__",
+                "*.backup*",
             ],
         )
     ],

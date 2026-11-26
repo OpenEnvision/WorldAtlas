@@ -16,7 +16,6 @@ from worldatlas.benchmark.taxonomy import MEMORY_SUITE
 from worldatlas.models.adapters.base import PreparedGenerationRequest, plan_rollout
 from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 
-
 PIXEL_FRAMES_PER_CHUNK = 36
 LATENT_FRAMES_PER_CHUNK = 33
 OUTPUT_FPS = 24.0
@@ -248,12 +247,16 @@ def _build_control_payload(
         raise ValueError(f"unsupported memory_action_policy: {memory_policy!r}")
     if sample.suite == MEMORY_SUITE and memory_policy == "single_sequence":
         from worldatlas.benchmark.memory_duration import sample_action_timeline
+
         trajectory_actions = list(camera_tokens)
         chunk_actions = sample_action_timeline(trajectory_actions, int(resolved["num_chunks"]))
     elif sample.suite == MEMORY_SUITE and resolved.get("memory_reference_num_chunks") is not None:
         from worldatlas.benchmark.memory_duration import sample_action_timeline
+
         trajectory_actions = _expand_chunk_actions(
-            camera_tokens, int(resolved["memory_reference_num_chunks"]), closed_loop=True,
+            camera_tokens,
+            int(resolved["memory_reference_num_chunks"]),
+            closed_loop=True,
         )
         chunk_actions = sample_action_timeline(trajectory_actions, int(resolved["num_chunks"]))
     fps = max(float(resolved.get("fps", OUTPUT_FPS)), 1e-6)

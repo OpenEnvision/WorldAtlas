@@ -6,19 +6,20 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from pathlib import Path
 import re
 import subprocess
 import sys
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def git(path: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess:
     return subprocess.run(
-        ["git", "-C", str(path), *args], check=check, text=True,
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        ["git", "-C", str(path), *args],
+        check=check,
+        text=True,
+        capture_output=True,
     )
 
 
@@ -31,13 +32,23 @@ def prepare(root: Path, name: str, source: dict, *, check_only: bool) -> None:
         raise ValueError(f"{name}: expected a full Git commit ID")
     destination = root / relative
     # An empty submodule directory can inherit the parent repository's Git state.
-    probe = git(destination, "rev-parse", "--show-toplevel", check=False) if destination.is_dir() else None
-    is_checkout = probe is not None and probe.returncode == 0 and Path(probe.stdout.strip()).resolve() == destination.resolve()
+    probe = (
+        git(destination, "rev-parse", "--show-toplevel", check=False)
+        if destination.is_dir()
+        else None
+    )
+    is_checkout = (
+        probe is not None
+        and probe.returncode == 0
+        and Path(probe.stdout.strip()).resolve() == destination.resolve()
+    )
     if not is_checkout:
         if check_only:
             raise RuntimeError(f"{name}: missing checkout; run this command without --check")
         if destination.is_symlink() or (destination.exists() and any(destination.iterdir())):
-            raise RuntimeError(f"{name}: {destination} contains files; choose an empty checkout directory")
+            raise RuntimeError(
+                f"{name}: {destination} contains files; choose an empty checkout directory"
+            )
         destination.mkdir(parents=True, exist_ok=True)
         git(destination, "init")
         git(destination, "remote", "add", "origin", source["url"])
@@ -57,7 +68,12 @@ def prepare(root: Path, name: str, source: dict, *, check_only: bool) -> None:
             raise ValueError(f"{name}: patch must be inside the release tree")
         if hashlib.sha256(patch_path.read_bytes()).hexdigest() != patch["sha256"]:
             raise ValueError(f"{name}: patch checksum mismatch: {patch_path.name}")
-        if git(destination, "apply", "--reverse", "--check", str(patch_path), check=False).returncode == 0:
+        if (
+            git(
+                destination, "apply", "--reverse", "--check", str(patch_path), check=False
+            ).returncode
+            == 0
+        ):
             continue
         if check_only:
             raise RuntimeError(f"{name}: runtime patch is missing: {patch_path.name}")
@@ -70,8 +86,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("names", nargs="*", help="Dependency names from --list")
     parser.add_argument("--list", action="store_true", help="List available pinned dependencies")
-    parser.add_argument("--all", action="store_true", help="Prepare every dependency; downloads can be large")
-    parser.add_argument("--check", action="store_true", help="Verify revisions and patches without changing files")
+    parser.add_argument(
+        "--all", action="store_true", help="Prepare every dependency; downloads can be large"
+    )
+    parser.add_argument(
+        "--check", action="store_true", help="Verify revisions and patches without changing files"
+    )
     args = parser.parse_args()
     sources = json.loads((ROOT / "thirdparty/sources.lock.json").read_text())["sources"]
     if args.list:

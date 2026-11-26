@@ -56,22 +56,36 @@ def main() -> int:
     from longcat_video.context_parallel.context_parallel_util import init_context_parallel
     from longcat_video.modules.autoencoder_kl_wan import AutoencoderKLWan
     from longcat_video.modules.longcat_video_dit import LongCatVideoTransformer3DModel
-    from longcat_video.modules.scheduling_flow_match_euler_discrete import FlowMatchEulerDiscreteScheduler
+    from longcat_video.modules.scheduling_flow_match_euler_discrete import (
+        FlowMatchEulerDiscreteScheduler,
+    )
     from longcat_video.pipeline_longcat_video import LongCatVideoPipeline
 
-    checkpoint_dir = Path(args.checkpoint_dir or generation.get("checkpoint_dir", "")).expanduser().resolve()
+    checkpoint_dir = (
+        Path(args.checkpoint_dir or generation.get("checkpoint_dir", "")).expanduser().resolve()
+    )
     _init_single_rank_dist(torch, dist)
     local_rank = 0
     if torch.cuda.is_available():
         torch.cuda.set_device(local_rank)
-    init_context_parallel(context_parallel_size=int(generation.get("context_parallel_size", 1)), global_rank=0, world_size=1)
+    init_context_parallel(
+        context_parallel_size=int(generation.get("context_parallel_size", 1)),
+        global_rank=0,
+        world_size=1,
+    )
     cp_split_hw = context_parallel_util.get_optimal_split(context_parallel_util.get_cp_size())
 
     dtype = torch.bfloat16
-    tokenizer = AutoTokenizer.from_pretrained(checkpoint_dir, subfolder="tokenizer", torch_dtype=dtype)
-    text_encoder = UMT5EncoderModel.from_pretrained(checkpoint_dir, subfolder="text_encoder", torch_dtype=dtype)
+    tokenizer = AutoTokenizer.from_pretrained(
+        checkpoint_dir, subfolder="tokenizer", torch_dtype=dtype
+    )
+    text_encoder = UMT5EncoderModel.from_pretrained(
+        checkpoint_dir, subfolder="text_encoder", torch_dtype=dtype
+    )
     vae = AutoencoderKLWan.from_pretrained(checkpoint_dir, subfolder="vae", torch_dtype=dtype)
-    scheduler = FlowMatchEulerDiscreteScheduler.from_pretrained(checkpoint_dir, subfolder="scheduler", torch_dtype=dtype)
+    scheduler = FlowMatchEulerDiscreteScheduler.from_pretrained(
+        checkpoint_dir, subfolder="scheduler", torch_dtype=dtype
+    )
     dit = LongCatVideoTransformer3DModel.from_pretrained(
         checkpoint_dir,
         subfolder="dit",
@@ -80,7 +94,9 @@ def main() -> int:
     )
     if generation.get("enable_compile", False):
         dit = torch.compile(dit)
-    pipe = LongCatVideoPipeline(tokenizer=tokenizer, text_encoder=text_encoder, vae=vae, scheduler=scheduler, dit=dit)
+    pipe = LongCatVideoPipeline(
+        tokenizer=tokenizer, text_encoder=text_encoder, vae=vae, scheduler=scheduler, dit=dit
+    )
     pipe.to(local_rank)
 
     failed = 0
@@ -105,7 +121,10 @@ def main() -> int:
                 generator=generator,
             )[0]
             frames = [(output[i] * 255).astype(np.uint8) for i in range(output.shape[0])]
-            frames = [PIL.Image.fromarray(frame).resize(target_size, PIL.Image.BICUBIC) for frame in frames]
+            frames = [
+                PIL.Image.fromarray(frame).resize(target_size, PIL.Image.BICUBIC)
+                for frame in frames
+            ]
             output_tensor = torch.from_numpy(np.array(frames))
             output_path = Path(str(row["output_path"])).expanduser().resolve()
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -116,7 +135,12 @@ def main() -> int:
                 video_codec="libx264",
                 options={"crf": str(int(generation.get("crf", 18)))},
             )
-            print_status(sample_id, "generated", output_path=str(output_path), fps=int(generation.get("fps", 15)))
+            print_status(
+                sample_id,
+                "generated",
+                output_path=str(output_path),
+                fps=int(generation.get("fps", 15)),
+            )
             del output
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()

@@ -486,7 +486,9 @@ def _generate_one(
 def main() -> int:
     args = parse_args()
     repo_root = Path(args.repo_root).expanduser().resolve()
-    checkpoint_dir = Path(args.checkpoint_dir).expanduser().resolve() if args.checkpoint_dir else None
+    checkpoint_dir = (
+        Path(args.checkpoint_dir).expanduser().resolve() if args.checkpoint_dir else None
+    )
     if checkpoint_dir is None or not checkpoint_dir.is_dir():
         raise FileNotFoundError(f"Stable Virtual Camera checkpoint_dir not found: {checkpoint_dir}")
 

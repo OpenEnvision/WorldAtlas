@@ -64,8 +64,7 @@ def resolve_runtime_paths(
     missing_sources = [path for path in required_sources if not path.exists()]
     if missing_sources:
         raise FileNotFoundError(
-            "Echo-WM source tree is incomplete: "
-            + ", ".join(str(path) for path in missing_sources)
+            "Echo-WM source tree is incomplete: " + ", ".join(str(path) for path in missing_sources)
         )
     if not checkpoint.is_file():
         raise FileNotFoundError(f"Echo-WM checkpoint not found: {checkpoint}")
@@ -114,7 +113,9 @@ def generate_and_encode_window(
     import torch
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=f".{output_path.stem}-", dir=output_path.parent) as temporary:
+    with tempfile.TemporaryDirectory(
+        prefix=f".{output_path.stem}-", dir=output_path.parent
+    ) as temporary:
         pending = Path(temporary) / output_path.name
         with torch.inference_mode():
             video, audio = pipeline(**pipeline_kwargs)
@@ -146,7 +147,9 @@ def split_action_windows(
     if num_frames < 2 or chunk_num_frames < 9:
         raise ValueError("Echo action windows require num_frames >= 2 and chunk_num_frames >= 9")
     if (chunk_num_frames - 1) % 8:
-        raise ValueError(f"Echo chunk_num_frames must lie on the 1+8m lattice, got {chunk_num_frames}")
+        raise ValueError(
+            f"Echo chunk_num_frames must lie on the 1+8m lattice, got {chunk_num_frames}"
+        )
 
     actions: list[str] = []
     for raw_segment in str(action_str).split(","):
@@ -441,7 +444,8 @@ def main() -> int:
                 torch.cuda.empty_cache()
             if consecutive_failures >= max_consecutive_failures:
                 log_pipeline(
-                    "batch_aborted", label="Echo-WM",
+                    "batch_aborted",
+                    label="Echo-WM",
                     consecutive_failures=consecutive_failures,
                     reason="consecutive sample failures; fix the error before resubmitting",
                 )

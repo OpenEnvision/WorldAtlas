@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 from PIL import Image
 
 from worldatlas.common.checkpoints import hf_local_dir
 from worldatlas.common.progress import ProgressHeartbeat, log_exception, log_progress
-
 
 DEFAULT_CLIP_MODEL_NAME = "openai/clip-vit-base-patch16"
 ALLOWED_CLIP_STATE_DICT_UNEXPECTED_KEYS = {
@@ -106,7 +106,9 @@ def load_clip_backend(
                 incompatible = model.load_state_dict(state_dict, strict=False)
                 unexpected_keys = set(incompatible.unexpected_keys)
                 missing_keys = set(incompatible.missing_keys)
-                if missing_keys or not unexpected_keys.issubset(ALLOWED_CLIP_STATE_DICT_UNEXPECTED_KEYS):
+                if missing_keys or not unexpected_keys.issubset(
+                    ALLOWED_CLIP_STATE_DICT_UNEXPECTED_KEYS
+                ):
                     raise RuntimeError(
                         "unexpected CLIP state_dict mismatch when loading cached safetensors: "
                         f"missing_keys={sorted(missing_keys)} unexpected_keys={sorted(unexpected_keys)}"
@@ -186,7 +188,9 @@ def clip_text_features(
     import torch.nn.functional as F
 
     loader_name, model, processor, device, _, _ = backend
-    max_position_embeddings = getattr(getattr(model.config, "text_config", None), "max_position_embeddings", None)
+    max_position_embeddings = getattr(
+        getattr(model.config, "text_config", None), "max_position_embeddings", None
+    )
     processor_kwargs: dict[str, Any] = {
         "text": list(texts),
         "return_tensors": "pt",
@@ -197,7 +201,10 @@ def clip_text_features(
         processor_kwargs["max_length"] = max_position_embeddings
     inputs = processor(**processor_kwargs)
     if isinstance(max_position_embeddings, int) and max_position_embeddings > 0:
-        if "attention_mask" in inputs and inputs["attention_mask"].shape[-1] > max_position_embeddings:
+        if (
+            "attention_mask" in inputs
+            and inputs["attention_mask"].shape[-1] > max_position_embeddings
+        ):
             inputs["attention_mask"] = inputs["attention_mask"][..., :max_position_embeddings]
         if "input_ids" in inputs and inputs["input_ids"].shape[-1] > max_position_embeddings:
             inputs["input_ids"] = inputs["input_ids"][..., :max_position_embeddings]

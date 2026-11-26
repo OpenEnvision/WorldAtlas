@@ -97,16 +97,21 @@ def main() -> int:
         )
     action_ckpt = resolve_project_path(generation.get("action_ckpt"))
     if action_ckpt is None or not action_ckpt.is_file():
-        raise FileNotFoundError(f"HY-WorldPlay action checkpoint is missing: {generation.get('action_ckpt')}")
+        raise FileNotFoundError(
+            f"HY-WorldPlay action checkpoint is missing: {generation.get('action_ckpt')}"
+        )
 
     resolution = str(generation.get("resolution", "480p")).strip()
     if resolution != "480p":
-        raise ValueError(f"HY-WorldPlay currently only supports resolution=480p, got {resolution!r}")
+        raise ValueError(
+            f"HY-WorldPlay currently only supports resolution=480p, got {resolution!r}"
+        )
 
     import torch
+
     # generate.py initializes its CUDA process mesh on import. Select the
     # local rank first so NCCL never initializes both ranks on device zero.
-    torch.cuda.set_device(int(os.environ.get('LOCAL_RANK', '0')))
+    torch.cuda.set_device(int(os.environ.get("LOCAL_RANK", "0")))
     from hyvideo.commons.infer_state import initialize_infer_state
     from hyvideo.generate import pose_to_input, save_video
     from hyvideo.pipelines.worldplay_video_pipeline import HunyuanVideo_1_5_Pipeline
@@ -136,9 +141,7 @@ def main() -> int:
     model_type = str(generation.get("model_type", "ar"))
     aspect_ratio = str(generation.get("aspect_ratio", "16:9"))
     negative_prompt = str(generation.get("negative_prompt", ""))
-    num_inference_steps = int(
-        generation.get("num_inference_steps", 4 if few_step else 50)
-    )
+    num_inference_steps = int(generation.get("num_inference_steps", 4 if few_step else 50))
     default_video_length = int(generation.get("video_length", 125))
     default_width = int(generation.get("width", 832))
     default_height = int(generation.get("height", 480))
@@ -219,7 +222,9 @@ def main() -> int:
                             save_video(out.videos, str(pre_sr_tmp))
                             copy_output(
                                 pre_sr_tmp,
-                                output_path.with_name(f"{output_path.stem}.pre_sr{output_path.suffix}"),
+                                output_path.with_name(
+                                    f"{output_path.stem}.pre_sr{output_path.suffix}"
+                                ),
                             )
                     else:
                         save_video(out.videos, str(video_path))

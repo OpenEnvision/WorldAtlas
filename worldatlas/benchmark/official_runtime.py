@@ -12,11 +12,12 @@ import re
 import subprocess
 import sys
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import cv2
 import numpy as np
@@ -26,19 +27,18 @@ from worldatlas.benchmark.camera_alignment import (
     resample_camera_matrices,
     score_camera_trajectories,
 )
+from worldatlas.benchmark.local_checkpoints import (
+    MEGASAM_KIND,
+    prepare_megasam_checkpoints,
+)
 from worldatlas.benchmark.metric_errors import MetricLoadError
 from worldatlas.common.checkpoints import (
     apply_checkpoint_env,
     checkpoint_env,
     filter_checkpoint_env_overrides,
 )
-from worldatlas.benchmark.local_checkpoints import (
-    MEGASAM_KIND,
-    prepare_megasam_checkpoints,
-)
 from worldatlas.common.progress import log_progress, run_progress_subprocess
 from worldatlas.common.video_io import declared_frame_count_off_by_one
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 THIRDPARTY_ROOT = PROJECT_ROOT / "thirdparty"
@@ -91,13 +91,17 @@ _METRIC_INSTANCE_CACHE: dict[tuple[str, str, str], Any] = {}
 
 
 def _runtime_cache_dir(name: str) -> Path:
-    cache_root = Path(os.environ.get("WORLDATLAS_RUNTIME_CACHE_ROOT", PROJECT_ROOT / ".cache" / "benchmark"))
+    cache_root = Path(
+        os.environ.get("WORLDATLAS_RUNTIME_CACHE_ROOT", PROJECT_ROOT / ".cache" / "benchmark")
+    )
     path = cache_root / name
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def _select_candidate_path(candidates: list[Path], *, package_prefix: str | None = None) -> Path | None:
+def _select_candidate_path(
+    candidates: list[Path], *, package_prefix: str | None = None
+) -> Path | None:
     unique_candidates = []
     seen = set()
     for candidate in candidates:
@@ -127,7 +131,6 @@ def _first_existing_path(paths: list[Path]) -> Path | None:
 
 
 def _torch_library_path() -> Path | None:
-    """Torch library path -> Path | None."""
     try:
         import torch  # noqa: PLC0415
     except Exception:
@@ -140,11 +143,7 @@ def _lietorch_build_paths(lietorch_root: Path | None) -> list[Path]:
     if lietorch_root is None:
         return []
     return sorted(
-        {
-            path.parent
-            for path in lietorch_root.rglob("lietorch_backends*.so")
-            if path.is_file()
-        }
+        {path.parent for path in lietorch_root.rglob("lietorch_backends*.so") if path.is_file()}
     )
 
 
@@ -178,10 +177,7 @@ def resolve_metric_source_layout() -> MetricSourceLayout:
         ]
     )
     droid_build_root = _select_candidate_path(
-        [
-            path.parent
-            for path in droid_checkout.glob("droid_backends*.so")
-        ],
+        [path.parent for path in droid_checkout.glob("droid_backends*.so")],
         package_prefix="DROID-SLAM",
     )
     lietorch_root = _select_candidate_path(
@@ -194,9 +190,7 @@ def resolve_metric_source_layout() -> MetricSourceLayout:
     )
     sea_raft_checkout = THIRDPARTY_ROOT / "SEA-RAFT"
     sea_raft_root = (
-        sea_raft_checkout.resolve()
-        if (sea_raft_checkout / "core" / "raft.py").is_file()
-        else None
+        sea_raft_checkout.resolve() if (sea_raft_checkout / "core" / "raft.py").is_file() else None
     )
     grounding_dino_checkout = THIRDPARTY_ROOT / "GroundingDINO"
     grounding_dino_root = _select_candidate_path(
@@ -233,7 +227,6 @@ def resolve_metric_source_layout() -> MetricSourceLayout:
 
 @contextmanager
 def metric_runtime_context() -> Iterator[MetricSourceLayout]:
-    """Metric runtime context -> Iterator[MetricSourceLayout]."""
     layout = resolve_metric_source_layout()
     previous_cwd = Path.cwd()
     env_updates = checkpoint_env(create=True)
@@ -255,11 +248,7 @@ def metric_runtime_context() -> Iterator[MetricSourceLayout]:
         if path is not None
     ]
     inserted_paths.extend(_lietorch_build_paths(layout.lietorch_root))
-    library_paths = [
-        path
-        for path in (_torch_library_path(),)
-        if path is not None
-    ]
+    library_paths = [path for path in (_torch_library_path(),) if path is not None]
     previous_ld_library_path = os.environ.get("LD_LIBRARY_PATH")
     try:
         os.environ.update(env_updates)
@@ -338,11 +327,7 @@ def _subprocess_runtime_env(runtime: dict[str, Any] | None) -> dict[str, str]:
     _prepend_env_path(
         env,
         "LD_LIBRARY_PATH",
-        [
-            path
-            for path in (_torch_library_path(),)
-            if path is not None
-        ],
+        [path for path in (_torch_library_path(),) if path is not None],
     )
     for key, value in filter_checkpoint_env_overrides(dict((runtime or {}).get("env", {}))).items():
         env[str(key)] = str(value)
@@ -397,13 +382,19 @@ def _maybe_run_metric_in_subprocess(
 
     if not response_path.exists():
         logs = " | ".join(
-            part for part in ((completed.stderr or "").strip(), (completed.stdout or "").strip()) if part
+            part
+            for part in ((completed.stderr or "").strip(), (completed.stdout or "").strip())
+            if part
         )
-        raise RuntimeError(f"official runtime subprocess did not write a response for {metric_name}: {logs}")
+        raise RuntimeError(
+            f"official runtime subprocess did not write a response for {metric_name}: {logs}"
+        )
 
     response = json.loads(response_path.read_text(encoding="utf-8"))
     if not bool(response.get("ok")):
-        error = str(response.get("error") or f"official runtime subprocess failed for {metric_name}")
+        error = str(
+            response.get("error") or f"official runtime subprocess failed for {metric_name}"
+        )
         traceback_text = str(response.get("traceback") or "").strip()
         stderr = str(response.get("stderr") or "").strip()
         stdout = str(response.get("stdout") or "").strip()
@@ -416,7 +407,7 @@ def _maybe_run_metric_in_subprocess(
     return dict(response["result"])
 
 
-@lru_cache(maxsize=None)
+@cache
 def _load_metric_class(metric_name: str) -> type[Any]:
     with metric_runtime_context() as layout:
         try:
@@ -463,7 +454,9 @@ def _aepe_frame_max_side(runtime: dict[str, Any] | None) -> int:
     configured = _coerce_runtime_int((runtime or {}).get("frame_max_side"))
     if configured is not None:
         return configured
-    return _coerce_runtime_int(os.environ.get("WORLDATLAS_AEPE_FRAME_MAX_SIDE"), default=1920) or 1920
+    return (
+        _coerce_runtime_int(os.environ.get("WORLDATLAS_AEPE_FRAME_MAX_SIDE"), default=1920) or 1920
+    )
 
 
 def _motion_sm_frame_max_side(runtime: dict[str, Any] | None) -> int:
@@ -495,7 +488,9 @@ def _resolve_runtime_device(value: Any) -> str | None:
     return device
 
 
-def _configure_motion_accuracy_runtime(metric: Any, runtime: dict[str, Any] | None) -> dict[str, Any]:
+def _configure_motion_accuracy_runtime(
+    metric: Any, runtime: dict[str, Any] | None
+) -> dict[str, Any]:
     runtime = dict(runtime or {})
     details: dict[str, Any] = {}
 
@@ -526,6 +521,7 @@ def _configure_motion_accuracy_runtime(metric: Any, runtime: dict[str, Any] | No
             )
 
             if getattr(predictor, "_worldatlas_offload_settings", None) != desired_offload:
+
                 def wrapped_init_state(*args: Any, **kwargs: Any) -> Any:
                     kwargs.setdefault("offload_video_to_cpu", offload_video_to_cpu)
                     kwargs.setdefault("offload_state_to_cpu", offload_state_to_cpu)
@@ -638,12 +634,18 @@ def _derive_droid_calib_from_runtime(
             "droid_calib": calib,
         }
 
-    policy = str(
-        runtime.get(
-            "droid_intrinsics",
-            runtime.get("droid_intrinsics_policy", runtime.get("intrinsics_policy", "actual_resolution")),
+    policy = (
+        str(
+            runtime.get(
+                "droid_intrinsics",
+                runtime.get(
+                    "droid_intrinsics_policy", runtime.get("intrinsics_policy", "actual_resolution")
+                ),
+            )
         )
-    ).strip().lower()
+        .strip()
+        .lower()
+    )
     if policy in {"", "actual_resolution", "resolution_scaled", "actual"}:
         policy = "actual_resolution"
     else:
@@ -765,9 +767,15 @@ def _run_megasam_tracking(
 
     default_python = PROJECT_ROOT.parent / "conda" / "envs" / "mega_sam" / "bin" / "python"
     default_hf_home = PROJECT_ROOT.parent / "conda" / "hf-home"
-    script_path = _resolve_runtime_path(runtime.get("megasam_runner"), PROJECT_ROOT / "scripts" / "run_megasam_video.py")
-    output_root = _resolve_runtime_path(runtime.get("megasam_output_root"), _runtime_cache_dir("megasam_camera_error"))
-    mega_root = _resolve_runtime_path(runtime.get("megasam_root", runtime.get("mega_sam_root")), THIRDPARTY_ROOT / "mega-sam")
+    script_path = _resolve_runtime_path(
+        runtime.get("megasam_runner"), PROJECT_ROOT / "scripts" / "run_megasam_video.py"
+    )
+    output_root = _resolve_runtime_path(
+        runtime.get("megasam_output_root"), _runtime_cache_dir("megasam_camera_error")
+    )
+    mega_root = _resolve_runtime_path(
+        runtime.get("megasam_root", runtime.get("mega_sam_root")), THIRDPARTY_ROOT / "mega-sam"
+    )
     hf_home = _resolve_runtime_path(
         runtime.get("megasam_hf_home")
         or os.environ.get("WORLDATLAS_MEGASAM_HF_HOME")
@@ -793,7 +801,9 @@ def _run_megasam_tracking(
     except MetricLoadError:
         raise
     except Exception as exc:
-        raise MetricLoadError(f"MegaSAM checkpoint localization failed: {type(exc).__name__}: {exc}") from exc
+        raise MetricLoadError(
+            f"MegaSAM checkpoint localization failed: {type(exc).__name__}: {exc}"
+        ) from exc
     os.environ.update(local_assets)
     local_hf = local_assets.get("WORLDATLAS_MEGASAM_HF_HOME") or local_assets.get("HF_HOME")
     if local_hf:
@@ -897,10 +907,7 @@ def _run_megasam_tracking(
     intrinsics_path = recon_scene / "intrinsics.npy"
     metadata_path = run_root / "run_config.json"
     cache_complete = (
-        not overwrite
-        and skip_existing
-        and poses_path.is_file()
-        and metadata_path.is_file()
+        not overwrite and skip_existing and poses_path.is_file() and metadata_path.is_file()
     )
     if not cache_complete:
         try:
@@ -1035,6 +1042,7 @@ def _intrinsics_details(intrinsics: np.ndarray | None) -> dict[str, Any]:
 
 def _video_frame_cache_key(path: Path, *, cache_variant: str = "") -> str:
     from worldatlas.benchmark.sample_identity import file_sha256
+
     # Decoding/resizing implementation changes must invalidate decoded pixels,
     # not only the final score cache. Include the actual decoder build as well.
     decoder = hashlib.sha256(cv2.getBuildInformation().encode()).hexdigest()
@@ -1069,37 +1077,52 @@ def materialize_frame_paths(media_path: str, *, max_side: int | None = None) -> 
         return [str(path)]
 
     cache_variant = "decode_complete_v3::" + (f"max_side={max_side}" if max_side else "original")
-    frame_dir = _runtime_cache_dir("metric_frames") / _video_frame_cache_key(path, cache_variant=cache_variant)
+    frame_dir = _runtime_cache_dir("metric_frames") / _video_frame_cache_key(
+        path, cache_variant=cache_variant
+    )
     frame_dir.mkdir(parents=True, exist_ok=True)
     # Serial/parallel runs can request the same video simultaneously. Publish
     # only complete indexes under a lock; never expose a half-written cache.
     import fcntl
-    with (frame_dir / '.decode.lock').open('a') as lock:
+
+    with (frame_dir / ".decode.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         return _materialize_video_frames(path, frame_dir, max_side=max_side)
 
 
 def _materialize_video_frames(path: Path, frame_dir: Path, *, max_side: int | None) -> list[str]:
     from worldatlas.benchmark.sample_identity import file_sha256
+
     index_path = frame_dir / "index.json"
     if index_path.exists():
         try:
             payload = json.loads(index_path.read_text(encoding="utf-8"))
-            count, expected = payload['frame_count'], payload['expected_frame_count']
-            generation = payload['generation']
-            names = payload['frames']
-            valid = (type(count) is int and count > 0 and type(expected) is int
-                     and (expected <= 0 or count == expected)
-                     and isinstance(generation, str) and re.fullmatch(r'[a-f0-9]{32}', generation)
-                     and names == [f'{generation}/{i:06d}.png' for i in range(count)]
-                     and payload['max_side'] == max_side
-                     and payload['source_sha256'] == file_sha256(path)
-                     and set(payload['sha256']) == set(names))
-            if valid and all((frame_dir / name).is_file() and payload['sha256'][name] == file_sha256(frame_dir / name)
-                             for name in names):
+            count, expected = payload["frame_count"], payload["expected_frame_count"]
+            generation = payload["generation"]
+            names = payload["frames"]
+            valid = (
+                type(count) is int
+                and count > 0
+                and type(expected) is int
+                and (expected <= 0 or count == expected)
+                and isinstance(generation, str)
+                and re.fullmatch(r"[a-f0-9]{32}", generation)
+                and names == [f"{generation}/{i:06d}.png" for i in range(count)]
+                and payload["max_side"] == max_side
+                and payload["source_sha256"] == file_sha256(path)
+                and set(payload["sha256"]) == set(names)
+            )
+            if valid and all(
+                (frame_dir / name).is_file()
+                and payload["sha256"][name] == file_sha256(frame_dir / name)
+                for name in names
+            ):
                 # SAM2 reads the containing directory, not just this list.
-                actual = {p.name for p in (frame_dir / generation).iterdir()
-                          if p.suffix.lower() in {'.png', '.jpg', '.jpeg'}}
+                actual = {
+                    p.name
+                    for p in (frame_dir / generation).iterdir()
+                    if p.suffix.lower() in {".png", ".jpg", ".jpeg"}
+                }
                 if actual == {Path(name).name for name in names}:
                     return [str(frame_dir / name) for name in names]
         except (OSError, ValueError, KeyError, TypeError):
@@ -1133,16 +1156,26 @@ def _materialize_video_frames(path: Path, frame_dir: Path, *, max_side: int | No
         raise RuntimeError(f"video contains no decodable frames: {path}")
     if expected_count > 0 and len(frame_names) != expected_count:
         if not declared_frame_count_off_by_one(expected_count, len(frame_names)):
-            raise RuntimeError(f"Incomplete video decode: {len(frame_names)}/{expected_count} frames: {path}")
+            raise RuntimeError(
+                f"Incomplete video decode: {len(frame_names)}/{expected_count} frames: {path}"
+            )
         expected_count = len(frame_names)
     if file_sha256(path) != source_hash:
         raise RuntimeError(f"Video changed during frame decoding: {path}")
-    temporary_index = frame_dir / f'index.{generation}.tmp'
+    temporary_index = frame_dir / f"index.{generation}.tmp"
     temporary_index.write_text(
-        json.dumps({"frames": frame_names, "max_side": max_side, "fps": fps,
-                    "frame_count": len(frame_names), "expected_frame_count": expected_count,
-                    "generation": generation, "source_sha256": source_hash,
-                    "sha256": {name: file_sha256(frame_dir / name) for name in frame_names}}),
+        json.dumps(
+            {
+                "frames": frame_names,
+                "max_side": max_side,
+                "fps": fps,
+                "frame_count": len(frame_names),
+                "expected_frame_count": expected_count,
+                "generation": generation,
+                "source_sha256": source_hash,
+                "sha256": {name: file_sha256(frame_dir / name) for name in frame_names},
+            }
+        ),
         encoding="utf-8",
     )
     temporary_index.replace(index_path)
@@ -1152,8 +1185,11 @@ def _materialize_video_frames(path: Path, frame_dir: Path, *, max_side: int | No
 def _normalize_empirical(score: float, spec: dict[str, Any]) -> float:
     empirical_max = float(spec["empirical_max"])
     empirical_min = float(spec.get("empirical_min", 0.0))
-    if not all(math.isfinite(v) for v in (score, empirical_min, empirical_max)) or empirical_max <= empirical_min:
-        raise ValueError('Empirical normalization requires finite values and max > min')
+    if (
+        not all(math.isfinite(v) for v in (score, empirical_min, empirical_max))
+        or empirical_max <= empirical_min
+    ):
+        raise ValueError("Empirical normalization requires finite values and max > min")
     normalized = (max(empirical_min, min(empirical_max, score)) - empirical_min) / (
         empirical_max - empirical_min
     )
@@ -1164,9 +1200,11 @@ def _normalize_empirical(score: float, spec: dict[str, Any]) -> float:
 
 def _normalize_empirical_components(score: list[float], spec: dict[str, Any]) -> float:
     minima = spec.get("empirical_min", [0.0] * len(score))
-    if not score or any(not isinstance(v, (list, tuple)) or len(v) != len(score)
-                        for v in (spec['empirical_max'], minima, spec['higher_is_better'])):
-        raise ValueError('Normalization component counts differ; truncation is forbidden')
+    if not score or any(
+        not isinstance(v, (list, tuple)) or len(v) != len(score)
+        for v in (spec["empirical_max"], minima, spec["higher_is_better"])
+    ):
+        raise ValueError("Normalization component counts differ; truncation is forbidden")
     normalized_components: list[float] = []
     for score_i, empirical_max, empirical_min, higher_is_better in zip(
         score,
@@ -1184,8 +1222,8 @@ def _normalize_empirical_components(score: list[float], spec: dict[str, Any]) ->
         )
         normalized_components.append(normalized_component)
     reducer = str(spec.get("reducer", "geometric_mean"))
-    if reducer not in {'geometric_mean', 'arithmetic_mean'}:
-        raise ValueError(f'Unknown normalization reducer: {reducer}')
+    if reducer not in {"geometric_mean", "arithmetic_mean"}:
+        raise ValueError(f"Unknown normalization reducer: {reducer}")
     if reducer == "arithmetic_mean":
         return float(sum(normalized_components) / len(normalized_components))
     product = 1.0
@@ -1200,9 +1238,16 @@ def _normalize_zscore(score: float, spec: dict[str, Any]) -> float:
     z_max = float(spec["z_max"])
     z_min = float(spec["z_min"])
     score_range = spec.get("range", [0.25, 0.75])
-    if (len(score_range) != 2 or not all(math.isfinite(float(v)) for v in (score, avg, std, z_max, z_min, *score_range))
-            or std <= 0 or z_max <= z_min or not 0 <= float(score_range[0]) < float(score_range[1]) <= 1):
-        raise ValueError('Z-score normalization requires finite values, positive std and increasing valid ranges')
+    if (
+        len(score_range) != 2
+        or not all(math.isfinite(float(v)) for v in (score, avg, std, z_max, z_min, *score_range))
+        or std <= 0
+        or z_max <= z_min
+        or not 0 <= float(score_range[0]) < float(score_range[1]) <= 1
+    ):
+        raise ValueError(
+            "Z-score normalization requires finite values, positive std and increasing valid ranges"
+        )
     x_prime = ((float(score) - avg) / std - z_min) / (z_max - z_min)
     if not bool(spec.get("higher_is_better", True)):
         x_prime = 1.0 - x_prime
@@ -1254,7 +1299,6 @@ def _run_metric_instance(
 
 
 def inspect_metric_source_layout() -> dict[str, Any]:
-    """Inspect metric source layout -> dict[str, Any]."""
     try:
         layout = resolve_metric_source_layout()
     except Exception as exc:
@@ -1268,7 +1312,9 @@ def inspect_metric_source_layout() -> dict[str, Any]:
         "source_root": str(layout.source_root),
         "package_name": layout.package_name,
         "droid_root": str(layout.droid_root) if layout.droid_root is not None else None,
-        "droid_build_root": str(layout.droid_build_root) if layout.droid_build_root is not None else None,
+        "droid_build_root": str(layout.droid_build_root)
+        if layout.droid_build_root is not None
+        else None,
         "lietorch_root": str(layout.lietorch_root) if layout.lietorch_root is not None else None,
         "sea_raft_root": str(layout.sea_raft_root) if layout.sea_raft_root is not None else None,
         "grounding_dino_root": (
@@ -1356,7 +1402,9 @@ def compute_camera_error(
     )
     if delegated is not None:
         return delegated
-    frame_paths = list(frame_paths) if frame_paths is not None else materialize_frame_paths(prediction_path)
+    frame_paths = (
+        list(frame_paths) if frame_paths is not None else materialize_frame_paths(prediction_path)
+    )
     try:
         import torch
     except ModuleNotFoundError as exc:  # pragma: no cover - optional runtime dependency
@@ -1403,7 +1451,9 @@ def compute_camera_error_megasam(
     frame_paths: list[str] | None = None,
     runtime: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    frame_paths = list(frame_paths) if frame_paths is not None else materialize_frame_paths(prediction_path)
+    frame_paths = (
+        list(frame_paths) if frame_paths is not None else materialize_frame_paths(prediction_path)
+    )
     source_width, source_height = _first_frame_resolution(frame_paths)
 
     megasam = _run_megasam_tracking(prediction_path, runtime)
@@ -1547,7 +1597,9 @@ def compute_reprojection_error(
             score = float(metric._compute_scores(frame_paths))
             # The backend chooses its stride from the actual decoded length.
             droid_details["droid_frame_stride"] = int(getattr(metric._args, "stride", 1))
-            droid_details["droid_tracked_frames"] = len(frame_paths[::droid_details["droid_frame_stride"]])
+            droid_details["droid_tracked_frames"] = len(
+                frame_paths[:: droid_details["droid_frame_stride"]]
+            )
         finally:
             del metric
             _empty_cuda_cache()
@@ -1760,6 +1812,7 @@ def compute_motion_accuracy(
     if len(frame_paths) < 2:
         raise ValueError("Motion accuracy requires at least two decoded video frames")
     from worldatlas.benchmark.mask_geometry import aligned_mask_paths
+
     with Image.open(frame_paths[0]) as first_frame:
         target_size = first_frame.size
     capture = cv2.VideoCapture(prediction_path)
@@ -1770,8 +1823,13 @@ def compute_motion_accuracy(
         metric = _run_metric_instance("motion_accuracy", generate_type, runtime=runtime)
         runtime_details = _configure_motion_accuracy_runtime(metric, runtime)
         try:
-            with aligned_mask_paths(mask_dir, source_path=source_path, relative_path=relative_path,
-                                    geometry=conditioning_geometry, target_size=target_size) as aligned:
+            with aligned_mask_paths(
+                mask_dir,
+                source_path=source_path,
+                relative_path=relative_path,
+                geometry=conditioning_geometry,
+                target_size=target_size,
+            ) as aligned:
                 score = metric._compute_scores(frame_paths, aligned, [])
             score_details = dict(getattr(metric, "_last_score_details", {}))
         finally:
@@ -1794,6 +1852,7 @@ def compute_motion_accuracy(
     }
     if score is None:
         from worldatlas.benchmark.mask_geometry import PROPAGATED_MASK_NA_REASON
+
         reason = score_details.get("not_applicable_reason") or PROPAGATED_MASK_NA_REASON
         details["not_applicable_reason"] = reason
         return {

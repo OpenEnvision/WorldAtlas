@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import importlib
 import json
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from worldatlas.benchmark.long_video import build_long_video_manifest, prepare_long_video_clips
-
 
 LONG_SEQUENCE_EVALUATOR_SPECS: dict[str, tuple[str, str]] = {
     "motion_smoothness": (

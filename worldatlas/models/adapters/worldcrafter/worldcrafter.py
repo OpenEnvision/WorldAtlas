@@ -34,15 +34,18 @@ class WorldCrafterAdapter(ExternalBatchAdapter):
         payload = super().batch_spec_payload(request)
         chunks, frames, _ = rollout_geometry(self.config.generation)
         output_frames = output_frame_count(
-            str(self.config.generation.get("model_type", "fast")), frames,
+            str(self.config.generation.get("model_type", "fast")),
+            frames,
         )
         recipe = self.config.generation.get("camera_control_recipe", "legacy")
         if recipe == "official_demo_v1":
             from worldatlas.models.adapters.worldcrafter.camera import demo_camera_annotation
+
             if int(self.config.generation.get("fps", 16)) != 16:
                 raise ValueError("WorldCrafter official demo camera recipe requires 16 fps")
             annotation, pose_source, camera_recipe = demo_camera_annotation(
-                request.sample, frame_count=frames, video_frame_count=output_frames)
+                request.sample, frame_count=frames, video_frame_count=output_frames
+            )
             payload["camera_control_recipe"] = camera_recipe
         elif recipe == "legacy":
             annotation, pose_source = camera_annotation_for_conditioning_image(

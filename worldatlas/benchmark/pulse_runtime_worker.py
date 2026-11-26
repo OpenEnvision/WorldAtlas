@@ -10,8 +10,8 @@ import time
 import traceback
 from pathlib import Path
 
-from worldatlas.common.progress import ProgressHeartbeat, log_exception, log_progress
 from worldatlas.benchmark.pulse_runtime import compute_pulse_metrics
+from worldatlas.common.progress import ProgressHeartbeat, log_exception, log_progress
 
 
 def main(argv: list[str] | None = None) -> int:

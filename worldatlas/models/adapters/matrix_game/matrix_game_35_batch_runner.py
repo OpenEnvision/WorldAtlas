@@ -83,7 +83,7 @@ def _target_size(generation: dict[str, Any]) -> tuple[int, int] | None:
     return width, height
 
 
-def _cover_center_crop(image: "Image.Image", target_width: int, target_height: int) -> "Image.Image":
+def _cover_center_crop(image: Image.Image, target_width: int, target_height: int) -> Image.Image:
     """Resize-to-cover then center-crop to exactly (target_width, target_height).
 
     Replicates Matrix-Game's own center_crop_resize verbatim
@@ -285,11 +285,7 @@ def _write_action_sidecar(
         # block (85 frames for the common single-block run).
         "generated_frames": 80 * num_blocks,
         "total_frames": 1 + POSES_PER_BLOCK * num_blocks,
-        **(
-            {"rollout_plan": generation["rollout_plan"]}
-            if generation.get("rollout_plan")
-            else {}
-        ),
+        **({"rollout_plan": generation["rollout_plan"]} if generation.get("rollout_plan") else {}),
     }
     sidecar = output_path.with_name(f"{output_path.stem}_actions.json")
     sidecar.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")

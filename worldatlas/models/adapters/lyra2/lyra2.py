@@ -8,13 +8,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import subprocess
 from typing import Any
 from uuid import uuid4
 
 from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.models.adapters.base import ModelAdapter, PreparedGenerationRequest
-from worldatlas.models.adapters.common import build_env, extend_command_with_options, worldatlas_project_root
+from worldatlas.models.adapters.common import (
+    build_env,
+    extend_command_with_options,
+    worldatlas_project_root,
+)
 from worldatlas.models.adapters.pose_synthesis import resolve_pose_annotation_path
 
 
@@ -34,7 +37,6 @@ class Lyra2Adapter(ModelAdapter):
     """Generate pose-aware world videos via the Lyra-2 upstream repo."""
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return True
 
     def batch_checkpoint_load_policy(self) -> str:
@@ -79,7 +81,9 @@ class Lyra2Adapter(ModelAdapter):
                         {
                             "sample_id": request.sample.sample_id,
                             "prediction_stem": request.sample.prediction_stem,
-                            "conditioning_image": str(request.conditioning_image.expanduser().resolve()),
+                            "conditioning_image": str(
+                                request.conditioning_image.expanduser().resolve()
+                            ),
                             "output_path": str(request.output_path),
                             "prompt": request.prompt,
                             "annotation_path": str(pose_annotation_path),
@@ -135,7 +139,9 @@ class Lyra2Adapter(ModelAdapter):
             ),
         )
         if "use_moge_scale" in generation:
-            command.append("--use_moge_scale" if generation["use_moge_scale"] else "--no-use_moge_scale")
+            command.append(
+                "--use_moge_scale" if generation["use_moge_scale"] else "--no-use_moge_scale"
+            )
 
         env = build_env(
             extra_pythonpaths=[project_root],
@@ -245,7 +251,9 @@ class Lyra2Adapter(ModelAdapter):
             ),
         )
         if "use_moge_scale" in generation:
-            command.append("--use_moge_scale" if generation["use_moge_scale"] else "--no-use_moge_scale")
+            command.append(
+                "--use_moge_scale" if generation["use_moge_scale"] else "--no-use_moge_scale"
+            )
 
         env = build_env(
             extra_pythonpaths=[project_root],

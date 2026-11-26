@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import Any
 
 from worldatlas.models.adapters.base import PreparedGenerationRequest
-from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 from worldatlas.models.adapters.camera_i2v_common import normalize_camera_path
+from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 
 
 class RealCamI2VAdapter(ExternalBatchAdapter):

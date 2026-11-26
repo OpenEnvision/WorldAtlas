@@ -4,23 +4,34 @@ from __future__ import annotations
 
 import json
 import math
-from pathlib import Path
 import re
-from typing import Any, Sequence
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 
+from worldatlas.benchmark.action_timeline import realize_matrix_game_2_actions
 from worldatlas.benchmark.media import LoadedMedia
 from worldatlas.benchmark.memory_pairing import (
-    MEMORY_SAFETY_REVISION, load_pose_frame_indices, validate_pose_frame_indices,
+    MEMORY_SAFETY_REVISION,
+    load_pose_frame_indices,
+    validate_pose_frame_indices,
 )
-from worldatlas.benchmark.metrics.base import Metric, clamp01, normalize_score, resolve_metric_backend
-from worldatlas.benchmark.quality_backends import compute_musiq_scores, compute_quality_component_scores
+from worldatlas.benchmark.metrics.base import (
+    Metric,
+    clamp01,
+    normalize_score,
+    resolve_metric_backend,
+)
+from worldatlas.benchmark.quality_backends import (
+    compute_musiq_scores,
+    compute_quality_component_scores,
+)
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 from worldatlas.benchmark.sidecars import prediction_sidecar_candidates
 from worldatlas.benchmark.taxonomy import is_memory_suite
 from worldatlas.common.video_io import probe_video_fps, read_video_frames
-from worldatlas.benchmark.action_timeline import realize_matrix_game_2_actions
 
 # Same token-to-keystroke map the Matrix-Game adapters use when they execute a
 # WorldAtlas camera_path. Memory-loop samples store the closed itinerary as
@@ -134,14 +145,7 @@ def _round_list(values: Sequence[float], digits: int = 6) -> list[float]:
 
 def _normalize_action_text(value: Any) -> str:
     """Canonicalize raw action labels into comparable lowercase tokens."""
-    return (
-        str(value or "")
-        .strip()
-        .lower()
-        .replace("+", "_")
-        .replace("-", "_")
-        .replace(" ", "_")
-    )
+    return str(value or "").strip().lower().replace("+", "_").replace("-", "_").replace(" ", "_")
 
 
 def action_parts_from_label(value: Any) -> frozenset[str]:
@@ -150,16 +154,26 @@ def action_parts_from_label(value: Any) -> frozenset[str]:
     # InfiniteWorld's native commands are an explicit grammar, not arbitrary
     # words to discard: unknown/uncertain controls must still be rejected.
     native = raw.replace("_", " ")
-    if re.fullmatch(r"(?:go (?:forward|back|left|right)|turn (?:up|down|left|right))(?: and (?:go (?:forward|back|left|right)|turn (?:up|down|left|right)))*", native):
+    if re.fullmatch(
+        r"(?:go (?:forward|back|left|right)|turn (?:up|down|left|right))(?: and (?:go (?:forward|back|left|right)|turn (?:up|down|left|right)))*",
+        native,
+    ):
         translations = {
-            "go forward": "forward", "go back": "back", "go left": "left", "go right": "right",
-            "turn up": "camera_up", "turn down": "camera_down",
-            "turn left": "camera_l", "turn right": "camera_r",
+            "go forward": "forward",
+            "go back": "back",
+            "go left": "left",
+            "go right": "right",
+            "turn up": "camera_up",
+            "turn down": "camera_down",
+            "turn left": "camera_l",
+            "turn right": "camera_r",
         }
         return frozenset(translations[part] for part in native.split(" and "))
     # Preserve signs before '+'/'-' are treated as compound-label separators.
     for signed in ("yaw+", "yaw-", "pitch+", "pitch-"):
-        raw = re.sub(r"(?<![a-z0-9])" + re.escape(signed) + r"(?![a-z0-9])", ACTION_ALIASES[signed], raw)
+        raw = re.sub(
+            r"(?<![a-z0-9])" + re.escape(signed) + r"(?![a-z0-9])", ACTION_ALIASES[signed], raw
+        )
     label = _normalize_action_text(raw)
     if label in NOOP_LABELS:
         return frozenset()
@@ -254,7 +268,9 @@ def action_parts_from_payload(payload: dict[str, Any], frame_count: int) -> list
     keyboard_rows = list(payload.get("keyboard_condition") or [])
     mouse_rows = list(payload.get("mouse_condition") or [])
     if keyboard_rows or mouse_rows:
-        total_rows = max(len(keyboard_rows), len(mouse_rows), int(payload.get("total_frames") or 0), frame_count)
+        total_rows = max(
+            len(keyboard_rows), len(mouse_rows), int(payload.get("total_frames") or 0), frame_count
+        )
         parts = [
             _label_from_keyboard_mouse(
                 keyboard_rows[index] if index < len(keyboard_rows) else None,
@@ -266,11 +282,15 @@ def action_parts_from_payload(payload: dict[str, Any], frame_count: int) -> list
 
     frame_actions = payload.get("frame_actions")
     if isinstance(frame_actions, list) and frame_actions:
-        return _pad_or_trim_parts([_parts_from_frame_action(item) for item in frame_actions], frame_count)
+        return _pad_or_trim_parts(
+            [_parts_from_frame_action(item) for item in frame_actions], frame_count
+        )
 
     actions = [item for item in (payload.get("actions") or []) if str(item).strip()]
     if actions:
-        frames_per_action = int(payload.get("frames_per_action") or math.ceil(frame_count / max(len(actions), 1)))
+        frames_per_action = int(
+            payload.get("frames_per_action") or math.ceil(frame_count / max(len(actions), 1))
+        )
         expanded: list[frozenset[str]] = []
         for action in actions:
             expanded.extend([action_parts_from_label(action)] * max(frames_per_action, 1))
@@ -296,13 +316,21 @@ def _matrix_game_35_camera_parts(payload: dict[str, Any], frame_count: int) -> l
         return [frozenset()] * max(frame_count, 0)
     if len(poses) < frame_count or int(payload.get("total_frames", len(poses))) < frame_count:
         raise ValueError("input camera poses do not cover the video timeline")
-    relative = np.linalg.inv(poses[:frame_count - 1]) @ poses[1:frame_count]
+    relative = np.linalg.inv(poses[: frame_count - 1]) @ poses[1:frame_count]
     # Current keystroke diagnostics cannot represent vertical translation/roll.
     if np.any(np.abs(relative[:, 1, 3]) > 1e-6) or np.any(np.abs(relative[:, 1, 0]) > 1e-5):
-        raise ValueError("input camera has vertical translation or roll outside the keystroke action space")
-    parts = [_pose_parts_from_relative_pose(
-        pose, move_threshold=1e-6, axis_threshold=1e-6, rotation_threshold_degrees=1e-4,
-    ) for pose in relative]
+        raise ValueError(
+            "input camera has vertical translation or roll outside the keystroke action space"
+        )
+    parts = [
+        _pose_parts_from_relative_pose(
+            pose,
+            move_threshold=1e-6,
+            axis_threshold=1e-6,
+            rotation_threshold_degrees=1e-4,
+        )
+        for pose in relative
+    ]
     return parts + [frozenset()] if frame_count else []
 
 
@@ -334,7 +362,10 @@ def _load_action_payload_for_prediction(
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Load action JSON from generation records, sidecars, or the memory camera path."""
     try:
-        from worldatlas.benchmark.generation_records import _find_generation_record, _load_action_payload
+        from worldatlas.benchmark.generation_records import (
+            _find_generation_record,
+            _load_action_payload,
+        )
 
         record = _find_generation_record(sample, prediction_path)
         payload = _load_action_payload(record, prediction_path)
@@ -469,7 +500,9 @@ def _matrix_to_quaternion(rotation: np.ndarray) -> np.ndarray:
 
 def _quaternion_to_matrix(quaternion: np.ndarray) -> np.ndarray:
     """Convert a normalized quaternion to a 3x3 rotation matrix."""
-    qx, qy, qz, qw = (np.asarray(quaternion, dtype=np.float64) / max(float(np.linalg.norm(quaternion)), 1e-8))
+    qx, qy, qz, qw = np.asarray(quaternion, dtype=np.float64) / max(
+        float(np.linalg.norm(quaternion)), 1e-8
+    )
     return np.asarray(
         [
             [1.0 - 2.0 * (qy * qy + qz * qz), 2.0 * (qx * qy - qz * qw), 2.0 * (qx * qz + qy * qw)],
@@ -509,10 +542,7 @@ def _resample_pose_sequence_by_index(poses: np.ndarray, target_count: int) -> np
     source_positions = np.linspace(0.0, 1.0, num=len(poses), dtype=np.float32)
     target_positions = np.linspace(0.0, 1.0, num=target_count, dtype=np.float32)
     translations = np.stack(
-        [
-            np.interp(target_positions, source_positions, poses[:, axis, 3])
-            for axis in range(3)
-        ],
+        [np.interp(target_positions, source_positions, poses[:, axis, 3]) for axis in range(3)],
         axis=1,
     ).astype(np.float32)
     quaternions = np.stack([_matrix_to_quaternion(pose[:3, :3]) for pose in poses], axis=0)
@@ -524,8 +554,12 @@ def _resample_pose_sequence_by_index(poses: np.ndarray, target_count: int) -> np
         if lower == upper or source_positions[upper] == source_positions[lower]:
             rotations.append(_quaternion_to_matrix(quaternions[lower]))
             continue
-        ratio = float((target - source_positions[lower]) / (source_positions[upper] - source_positions[lower]))
-        rotations.append(_quaternion_to_matrix(_slerp(quaternions[lower], quaternions[upper], ratio)))
+        ratio = float(
+            (target - source_positions[lower]) / (source_positions[upper] - source_positions[lower])
+        )
+        rotations.append(
+            _quaternion_to_matrix(_slerp(quaternions[lower], quaternions[upper], ratio))
+        )
     result = np.repeat(np.eye(4, dtype=np.float32)[None], repeats=target_count, axis=0)
     result[:, :3, :3] = np.stack(rotations, axis=0)
     result[:, :3, 3] = translations
@@ -564,11 +598,17 @@ def _pose_parts_from_relative_pose(
         axis_cosine = 0.5
         if translation[2] / magnitude > axis_cosine and abs(float(translation[2])) > axis_threshold:
             parts.add("forward")
-        if translation[2] / magnitude < -axis_cosine and abs(float(translation[2])) > axis_threshold:
+        if (
+            translation[2] / magnitude < -axis_cosine
+            and abs(float(translation[2])) > axis_threshold
+        ):
             parts.add("back")
         if translation[0] / magnitude > axis_cosine and abs(float(translation[0])) > axis_threshold:
             parts.add("right")
-        if translation[0] / magnitude < -axis_cosine and abs(float(translation[0])) > axis_threshold:
+        if (
+            translation[0] / magnitude < -axis_cosine
+            and abs(float(translation[0])) > axis_threshold
+        ):
             parts.add("left")
 
     pitch, yaw = _pitch_yaw_from_rotation(relative_pose[:3, :3])
@@ -604,34 +644,59 @@ def strict_partial_accuracy(
         raise ValueError("action durations must be finite, positive, and aligned")
     weights = weights / float(np.max(weights))
     strict = [float(pred == gt) for pred, gt in zip(predicted, ground_truth)]
-    partial = [2 * len(pred & gt) / (len(pred) + len(gt)) if pred or gt else 1.0
-               for pred, gt in zip(predicted, ground_truth)]
+    partial = [
+        2 * len(pred & gt) / (len(pred) + len(gt)) if pred or gt else 1.0
+        for pred, gt in zip(predicted, ground_truth)
+    ]
+
     def conditional(values, mask):
         selected = weights * np.asarray(mask, dtype=bool)
         return float(np.average(values, weights=selected)) if np.sum(selected) else None
+
     return {
         "strict_accuracy": float(np.average(strict, weights=weights)),
         "partial_accuracy": float(np.average(partial, weights=weights)),
         "partial_definition": "duration_weighted_set_f1",
-        "move_accuracy": float(np.average([(p & MOVE_PARTS) == (g & MOVE_PARTS) for p, g in zip(predicted, ground_truth)], weights=weights)),
-        "look_accuracy": float(np.average([(p & LOOK_PARTS) == (g & LOOK_PARTS) for p, g in zip(predicted, ground_truth)], weights=weights)),
+        "move_accuracy": float(
+            np.average(
+                [(p & MOVE_PARTS) == (g & MOVE_PARTS) for p, g in zip(predicted, ground_truth)],
+                weights=weights,
+            )
+        ),
+        "look_accuracy": float(
+            np.average(
+                [(p & LOOK_PARTS) == (g & LOOK_PARTS) for p, g in zip(predicted, ground_truth)],
+                weights=weights,
+            )
+        ),
         "commanded_strict_accuracy": conditional(strict, [bool(g) for g in ground_truth]),
         "commanded_partial_accuracy": conditional(partial, [bool(g) for g in ground_truth]),
-        "idle_false_action_rate": conditional([bool(p) for p in predicted], [not g for g in ground_truth]),
+        "idle_false_action_rate": conditional(
+            [bool(p) for p in predicted], [not g for g in ground_truth]
+        ),
         "aligned_frame_count": float(count),
     }
 
 
 def _pose_action_intervals(poses_c2w, action_count, *, fps, frame_indices=None):
     poses = np.asarray(poses_c2w, dtype=np.float64)
-    if poses.ndim != 3 or poses.shape[1:] != (4, 4) or len(poses) < 2 or not np.isfinite(poses).all():
+    if (
+        poses.ndim != 3
+        or poses.shape[1:] != (4, 4)
+        or len(poses) < 2
+        or not np.isfinite(poses).all()
+    ):
         raise ValueError("action evaluation needs finite [N,4,4] poses")
     if not math.isfinite(fps) or fps <= 0 or action_count <= 0:
         raise ValueError("action evaluation needs positive FPS and a nonempty timeline")
-    indices = validate_pose_frame_indices(np.arange(len(poses)) if frame_indices is None else frame_indices, len(poses))
+    indices = validate_pose_frame_indices(
+        np.arange(len(poses)) if frame_indices is None else frame_indices, len(poses)
+    )
     # Missing observations are not interpolated, stretched, or called freezes.
     # Direction within a multi-frame gap is not enough to certify its execution.
-    valid = np.flatnonzero((np.diff(indices) == 1) & (indices[:-1] < action_count) & (indices[1:] <= action_count))
+    valid = np.flatnonzero(
+        (np.diff(indices) == 1) & (indices[:-1] < action_count) & (indices[1:] <= action_count)
+    )
     if not len(valid):
         raise ValueError("no observed consecutive-frame action intervals")
     return poses, indices, valid
@@ -657,19 +722,30 @@ def discretize_pose_actions(
     del latent_stride
     if move_thresholds is not None:
         if len(move_thresholds) != 1:
-            raise ValueError("test-label threshold sweeps are removed; set one move_speed_threshold")
+            raise ValueError(
+                "test-label threshold sweeps are removed; set one move_speed_threshold"
+            )
         move_speed_threshold = float(move_thresholds[0]) * 30.0
     if rotation_threshold_degrees is not None:
         rotation_speed_threshold = float(rotation_threshold_degrees) * 30.0
-    if not np.isfinite([move_speed_threshold, rotation_speed_threshold]).all() or min(move_speed_threshold, rotation_speed_threshold) <= 0:
+    if (
+        not np.isfinite([move_speed_threshold, rotation_speed_threshold]).all()
+        or min(move_speed_threshold, rotation_speed_threshold) <= 0
+    ):
         raise ValueError("action rate thresholds must be finite and positive")
-    poses, indices, valid = _pose_action_intervals(poses_c2w, len(ground_truth), fps=fps, frame_indices=frame_indices)
+    poses, indices, valid = _pose_action_intervals(
+        poses_c2w, len(ground_truth), fps=fps, frame_indices=frame_indices
+    )
     relative_poses = np.linalg.inv(poses[valid]) @ poses[valid + 1]
-    predictions = [_pose_parts_from_relative_pose(
-        relative, move_threshold=move_speed_threshold / fps,
-        rotation_threshold_degrees=rotation_speed_threshold / fps,
-        axis_threshold=0.5 * move_speed_threshold / fps,
-    ) for relative in relative_poses]
+    predictions = [
+        _pose_parts_from_relative_pose(
+            relative,
+            move_threshold=move_speed_threshold / fps,
+            rotation_threshold_degrees=rotation_speed_threshold / fps,
+            axis_threshold=0.5 * move_speed_threshold / fps,
+        )
+        for relative in relative_poses
+    ]
     aligned_truth = [ground_truth[int(indices[index])] for index in valid]
     return {
         "predicted_parts": predictions,
@@ -683,7 +759,9 @@ def discretize_pose_actions(
         "expected_interval_count": len(ground_truth),
         "observation_coverage": len(valid) / len(ground_truth),
         "observed_frame_indices": indices[valid].tolist(),
-        **strict_partial_accuracy(predictions, aligned_truth, durations=np.repeat(1 / fps, len(valid))),
+        **strict_partial_accuracy(
+            predictions, aligned_truth, durations=np.repeat(1 / fps, len(valid))
+        ),
     }
 
 
@@ -744,7 +822,9 @@ def _resample_poses_by_arclength(poses: np.ndarray, count: int) -> tuple[np.ndar
             sampled_rotations.append(_quaternion_to_matrix(quaternions[lower]))
             continue
         ratio = float((target - cumulative[lower]) / (cumulative[upper] - cumulative[lower]))
-        sampled_rotations.append(_quaternion_to_matrix(_slerp(quaternions[lower], quaternions[upper], ratio)))
+        sampled_rotations.append(
+            _quaternion_to_matrix(_slerp(quaternions[lower], quaternions[upper], ratio))
+        )
     return sampled_positions, np.stack(sampled_rotations, axis=0).astype(np.float32)
 
 
@@ -769,7 +849,11 @@ def _ideal_segment_poses(predicted_segment: np.ndarray, parts: frozenset[str]) -
     if float(np.linalg.norm(local_direction)) > 1e-8 and translation_length > 0.0:
         local_direction = local_direction / max(float(np.linalg.norm(local_direction)), 1e-8)
         world_direction = start_pose[:3, :3] @ local_direction
-        positions = start_pose[:3, 3] + np.linspace(0.0, translation_length, num=count, dtype=np.float32)[:, None] * world_direction
+        positions = (
+            start_pose[:3, 3]
+            + np.linspace(0.0, translation_length, num=count, dtype=np.float32)[:, None]
+            * world_direction
+        )
     else:
         positions = np.repeat(start_pose[:3, 3][None], repeats=count, axis=0)
 
@@ -819,9 +903,19 @@ def trajectory_score(
     can erase a freeze/delay. Missing pose intervals remain unobserved, not zeros.
     """
     del total_points  # Deprecated; native intervals determine the time weighting.
-    if not np.isfinite([min_path_length, min_rotation_degrees, move_speed_threshold, rotation_speed_threshold]).all() or min(min_path_length, min_rotation_degrees, move_speed_threshold, rotation_speed_threshold) <= 0:
+    if (
+        not np.isfinite(
+            [min_path_length, min_rotation_degrees, move_speed_threshold, rotation_speed_threshold]
+        ).all()
+        or min(
+            min_path_length, min_rotation_degrees, move_speed_threshold, rotation_speed_threshold
+        )
+        <= 0
+    ):
         raise ValueError("trajectory normalizers and rate thresholds must be finite and positive")
-    poses, indices, valid = _pose_action_intervals(poses_c2w, len(ground_truth), fps=fps, frame_indices=frame_indices)
+    poses, indices, valid = _pose_action_intervals(
+        poses_c2w, len(ground_truth), fps=fps, frame_indices=frame_indices
+    )
     if any(parts - ALL_ACTION_PARTS for parts in ground_truth):
         raise ValueError("unsupported trajectory action parts")
     parts_by_interval = [ground_truth[int(indices[index])] for index in valid]
@@ -833,33 +927,55 @@ def trajectory_score(
             segments.append((int(index), int(index + 1), parts))
     translation_error = rotation_error = 0.0
     for start, end, parts in segments:
-        predicted_segment = poses[start:end + 1]
+        predicted_segment = poses[start : end + 1]
         ideal = _ideal_segment_poses(predicted_segment, parts)
         errors_t = np.linalg.norm(predicted_segment[:, :3, 3] - ideal[:, :3, 3], axis=1)
-        errors_r = np.array([_rotation_angle_degrees(p[:3, :3], g[:3, :3]) for p, g in zip(predicted_segment, ideal)])
+        errors_r = np.array(
+            [
+                _rotation_angle_degrees(p[:3, :3], g[:3, :3])
+                for p, g in zip(predicted_segment, ideal)
+            ]
+        )
         translation_error += float(np.sum(0.5 * (errors_t[:-1] + errors_t[1:])))
         rotation_error += float(np.sum(0.5 * (errors_r[:-1] + errors_r[1:])))
     ate_t, ate_r = translation_error / len(valid), rotation_error / len(valid)
     translation_steps = np.linalg.norm(poses[valid + 1, :3, 3] - poses[valid, :3, 3], axis=1)
-    rotation_steps = np.array([_rotation_angle_degrees(poses[i, :3, :3], poses[i + 1, :3, :3]) for i in valid])
+    rotation_steps = np.array(
+        [_rotation_angle_degrees(poses[i, :3, :3], poses[i + 1, :3, :3]) for i in valid]
+    )
     path_length, total_rotation = float(np.sum(translation_steps)), float(np.sum(rotation_steps))
     move_commands = np.array([bool(p & MOVE_PARTS) for p in parts_by_interval])
     look_commands = np.array([bool(p & LOOK_PARTS) for p in parts_by_interval])
     moving = translation_steps * fps > move_speed_threshold
     rotating = rotation_steps * fps > rotation_speed_threshold
-    commanded_move_frames, commanded_look_frames = int(np.sum(move_commands)), int(np.sum(look_commands))
+    commanded_move_frames, commanded_look_frames = (
+        int(np.sum(move_commands)),
+        int(np.sum(look_commands)),
+    )
     stalled_move_frames = int(np.sum(move_commands & ~moving))
     stalled_look_frames = int(np.sum(look_commands & ~rotating))
-    missing_translation = stalled_move_frames / commanded_move_frames if commanded_move_frames else 0.0
+    missing_translation = (
+        stalled_move_frames / commanded_move_frames if commanded_move_frames else 0.0
+    )
     missing_rotation = stalled_look_frames / commanded_look_frames if commanded_look_frames else 0.0
+
     def activity_error(commanded, active):
         evaluated = commanded | active
         return float(np.mean((commanded != active)[evaluated])) if np.any(evaluated) else 0.0
-    natet = max(clamp01(ate_t / max(path_length, float(min_path_length))), activity_error(move_commands, moving))
-    nater = max(clamp01(ate_r / max(total_rotation, float(min_rotation_degrees))), activity_error(look_commands, rotating))
+
+    natet = max(
+        clamp01(ate_t / max(path_length, float(min_path_length))),
+        activity_error(move_commands, moving),
+    )
+    nater = max(
+        clamp01(ate_r / max(total_rotation, float(min_rotation_degrees))),
+        activity_error(look_commands, rotating),
+    )
     translation_evaluated = bool(np.any(move_commands | moving))
     rotation_evaluated = bool(np.any(look_commands | rotating))
-    axis_errors = ([natet] if translation_evaluated else []) + ([nater] if rotation_evaluated else [])
+    axis_errors = ([natet] if translation_evaluated else []) + (
+        [nater] if rotation_evaluated else []
+    )
     score = 1.0 - float(np.mean(axis_errors)) if axis_errors else 1.0
     return {
         "traj_score": clamp01(score),
@@ -899,10 +1015,17 @@ def compute_action_payload_metrics(
     for field in ("frame_actions", "keyboard_condition", "mouse_condition"):
         rows = action_payload.get(field)
         if rows and len(rows) < needed_intervals:
-            raise ValueError(f"{field} does not cover the video timeline; cannot pad unknown actions")
+            raise ValueError(
+                f"{field} does not cover the video timeline; cannot pad unknown actions"
+            )
     if action_payload.get("actions") and action_payload.get("frames_per_action") is not None:
-        if len(action_payload["actions"]) * int(action_payload["frames_per_action"]) < needed_intervals:
-            raise ValueError("action program does not cover the video timeline; cannot pad unknown actions")
+        if (
+            len(action_payload["actions"]) * int(action_payload["frames_per_action"])
+            < needed_intervals
+        ):
+            raise ValueError(
+                "action program does not cover the video timeline; cannot pad unknown actions"
+            )
     gt_parts = action_parts_from_payload(action_payload, frame_count)
     if not gt_parts or frame_count < 2:
         raise ValueError("action payload does not contain usable frame actions")
@@ -910,19 +1033,30 @@ def compute_action_payload_metrics(
     # subsequent image. Never stretch a shorter pose track to fill that interval.
     interval_parts = gt_parts[:-1]
     poses = np.asarray(poses_c2w, dtype=np.float32)
-    if runtime.get("move_thresholds") is not None or runtime.get("rotation_threshold_degrees") is not None:
-        raise ValueError("configure fixed per-second action thresholds; legacy per-frame/swept runtime removed")
+    if (
+        runtime.get("move_thresholds") is not None
+        or runtime.get("rotation_threshold_degrees") is not None
+    ):
+        raise ValueError(
+            "configure fixed per-second action thresholds; legacy per-frame/swept runtime removed"
+        )
     move_rate = float(runtime.get("move_speed_threshold", DEFAULT_MOVE_SPEED_THRESHOLD))
     rotation_rate = float(runtime.get("rotation_speed_threshold", DEFAULT_ROTATION_SPEED_THRESHOLD))
     discretized = discretize_pose_actions(
         poses,
-        interval_parts, fps=fps, frame_indices=frame_indices,
-        move_speed_threshold=move_rate, rotation_speed_threshold=rotation_rate,
+        interval_parts,
+        fps=fps,
+        frame_indices=frame_indices,
+        move_speed_threshold=move_rate,
+        rotation_speed_threshold=rotation_rate,
     )
     trajectory = trajectory_score(
         poses,
-        interval_parts, fps=fps, frame_indices=frame_indices,
-        move_speed_threshold=move_rate, rotation_speed_threshold=rotation_rate,
+        interval_parts,
+        fps=fps,
+        frame_indices=frame_indices,
+        move_speed_threshold=move_rate,
+        rotation_speed_threshold=rotation_rate,
         total_points=int(runtime.get("trajectory_points", 60)),
         min_path_length=float(runtime.get("min_path_length", 0.5)),
         min_rotation_degrees=float(runtime.get("min_rotation_degrees", 10.0)),
@@ -937,11 +1071,19 @@ def compute_action_payload_metrics(
         **trajectory,
         "action_score": action_score,
         "gt_frame_count": len(gt_parts),
-        "threshold_calibration": str(runtime.get("action_threshold_calibration", "uncalibrated_legacy_30fps_reference")),
+        "threshold_calibration": str(
+            runtime.get("action_threshold_calibration", "uncalibrated_legacy_30fps_reference")
+        ),
         "action_timeline_definition": (
-            "provided_input_camera_pose_timeline" if action_payload.get("native_action_space") == "matrix_game_3_5_camera_poses"
-            else "provided_frame_timeline" if any(action_payload.get(k) for k in ("frame_actions", "keyboard_condition", "mouse_condition"))
-            else "provided_frames_per_action" if action_payload.get("frames_per_action") is not None
+            "provided_input_camera_pose_timeline"
+            if action_payload.get("native_action_space") == "matrix_game_3_5_camera_poses"
+            else "provided_frame_timeline"
+            if any(
+                action_payload.get(k)
+                for k in ("frame_actions", "keyboard_condition", "mouse_condition")
+            )
+            else "provided_frames_per_action"
+            if action_payload.get("frames_per_action") is not None
             else "uniform_action_token_timing_assumption"
         ),
         "action_timeline_alignment": action_payload.get("action_timeline_alignment"),
@@ -968,7 +1110,9 @@ def rollout_visual_score_from_components(
 
 
 def segment_drift(
-    scores: Sequence[float], *, segment_count: int = 10,
+    scores: Sequence[float],
+    *,
+    segment_count: int = 10,
     times_seconds: Sequence[float] | None = None,
 ) -> dict[str, Any]:
     """Maximum chronological relative drawdown of temporal quality segments.
@@ -982,7 +1126,11 @@ def segment_drift(
         raise ValueError("segment drift requires at least two finite nonnegative scores")
     if int(segment_count) < 2:
         raise ValueError("segment drift requires at least two temporal segments")
-    times = np.linspace(0, 1, len(values)) if times_seconds is None else np.asarray(times_seconds, dtype=float)
+    times = (
+        np.linspace(0, 1, len(values))
+        if times_seconds is None
+        else np.asarray(times_seconds, dtype=float)
+    )
     if times.shape != values.shape or not np.isfinite(times).all() or np.any(np.diff(times) <= 0):
         raise ValueError("quality timestamps must be finite, increasing, and aligned")
     times = times - times[0]
@@ -995,7 +1143,7 @@ def segment_drift(
     drawdowns = (peaks - segment_means) / np.maximum(peaks, 1e-12)
     drift = float(np.max(drawdowns))
     centered = times - np.mean(times)
-    slope = float(np.sum(centered * (values - np.mean(values))) / np.sum(centered ** 2))
+    slope = float(np.sum(centered * (values - np.mean(values))) / np.sum(centered**2))
     return {
         "drift": clamp01(drift),
         "drift_definition": "maximum_chronological_relative_drawdown",
@@ -1026,10 +1174,13 @@ def _visual_cache_key(prediction_path: Path, runtime: dict[str, Any]) -> str:
         "fps": runtime.get("fps"),
     }
     from worldatlas.benchmark.integrity import digest_json, path_content
-    return digest_json({'video': path_content(prediction_path), 'runtime': relevant})
+
+    return digest_json({"video": path_content(prediction_path), "runtime": relevant})
 
 
-def _sample_frames_for_visual(frames: list[np.ndarray], *, max_frames: int | None) -> tuple[list[np.ndarray], list[int]]:
+def _sample_frames_for_visual(
+    frames: list[np.ndarray], *, max_frames: int | None
+) -> tuple[list[np.ndarray], list[int]]:
     """Uniformly subsample decoded frames for quality drift analysis."""
     if max_frames is None or max_frames <= 0 or len(frames) <= max_frames:
         return frames, list(range(len(frames)))
@@ -1068,7 +1219,11 @@ def _component_drift_or_error(
     times_seconds: Sequence[float] | None = None,
 ) -> tuple[dict[str, Any] | None, Exception | None]:
     try:
-        return segment_drift(payload.get("frame_scores") or [], segment_count=segment_count, times_seconds=times_seconds), None
+        return segment_drift(
+            payload.get("frame_scores") or [],
+            segment_count=segment_count,
+            times_seconds=times_seconds,
+        ), None
     except Exception as exc:
         return None, exc
 
@@ -1093,7 +1248,11 @@ def compute_visual_drift_metrics(
     # for a per-second slope if the video header cannot supply them.
     fps = None
     try:
-        measured_fps = float(runtime["fps"]) if "fps" in runtime else probe_video_fps(prediction_path, default=float("nan"))
+        measured_fps = (
+            float(runtime["fps"])
+            if "fps" in runtime
+            else probe_video_fps(prediction_path, default=float("nan"))
+        )
         fps = measured_fps if math.isfinite(measured_fps) and measured_fps > 0 else None
     except (OSError, RuntimeError, ValueError):
         pass
@@ -1104,30 +1263,40 @@ def compute_visual_drift_metrics(
     imaging, imaging_error = _quality_component_or_error(
         lambda: compute_musiq_scores(
             frames,
-            model_path=None if runtime.get("musiq_model_path") is None else str(runtime.get("musiq_model_path")),
+            model_path=None
+            if runtime.get("musiq_model_path") is None
+            else str(runtime.get("musiq_model_path")),
             preprocess_mode=str(runtime.get("imaging_quality_preprocessing_mode") or "longer"),
         )
     )
     segment_count = int(runtime.get("segment_count", 10))
-    for component_name, component in (('aesthetic', aesthetic), ('imaging', imaging)):
-        scores = component.get('frame_scores') or []
+    for component_name, component in (("aesthetic", aesthetic), ("imaging", imaging)):
+        scores = component.get("frame_scores") or []
         if len(scores) != len(frames) or not np.isfinite(scores).all():
-            error = ValueError(f'{component_name} quality must return finite scores for every sampled frame')
-            if component_name == 'aesthetic':
+            error = ValueError(
+                f"{component_name} quality must return finite scores for every sampled frame"
+            )
+            if component_name == "aesthetic":
                 aesthetic_error = aesthetic_error or error
             else:
                 imaging_error = imaging_error or error
     aesthetic_drift = None
     if aesthetic_error is None:
         aesthetic_drift, aesthetic_error = _component_drift_or_error(
-            aesthetic, segment_count=segment_count, times_seconds=quality_times,
+            aesthetic,
+            segment_count=segment_count,
+            times_seconds=quality_times,
         )
     imaging_drift = None
     if imaging_error is None:
         imaging_drift, imaging_error = _component_drift_or_error(
-            imaging, segment_count=segment_count, times_seconds=quality_times,
+            imaging,
+            segment_count=segment_count,
+            times_seconds=quality_times,
         )
-    aesthetic_raw = None if aesthetic_error is not None else _optional_finite_float(aesthetic.get("raw"))
+    aesthetic_raw = (
+        None if aesthetic_error is not None else _optional_finite_float(aesthetic.get("raw"))
+    )
     imaging_raw = None if imaging_error is not None else _optional_finite_float(imaging.get("raw"))
     if aesthetic_error is None and aesthetic_raw is None:
         aesthetic_error = RuntimeError("aesthetic backend did not return a score")
@@ -1187,7 +1356,9 @@ def _voxel_downsample(points: np.ndarray, voxel_size: float) -> np.ndarray:
     return (result / np.maximum(counts[:, None], 1.0)).astype(np.float32)
 
 
-def _nearest_distances(query: np.ndarray, target: np.ndarray, *, chunk_size: int = 4096) -> np.ndarray:
+def _nearest_distances(
+    query: np.ndarray, target: np.ndarray, *, chunk_size: int = 4096
+) -> np.ndarray:
     """Compute nearest-neighbor distances from query to target point clouds."""
     query = _finite_points(query)
     target = _finite_points(target)
@@ -1202,7 +1373,9 @@ def _nearest_distances(query: np.ndarray, target: np.ndarray, *, chunk_size: int
         for start in range(0, len(query), max(int(chunk_size), 1)):
             chunk = query[start : start + chunk_size]
             diff = chunk[:, None, :] - target[None, :, :]
-            distances.append(np.sqrt(np.min(np.sum(diff * diff, axis=2), axis=1)).astype(np.float32))
+            distances.append(
+                np.sqrt(np.min(np.sum(diff * diff, axis=2), axis=1)).astype(np.float32)
+            )
         return np.concatenate(distances, axis=0) if distances else np.asarray([], dtype=np.float32)
 
 
@@ -1347,8 +1520,12 @@ def _explicit_scene_memory_clouds(
     """Load observation/revisit clouds from explicit paths or NPZ sidecars."""
     base_dir = prediction_path.resolve().parent
     payload = dict(action_payload or {})
-    explicit_obs = runtime.get("observation_point_cloud_path") or payload.get("observation_point_cloud_path")
-    explicit_rev = runtime.get("revisit_point_cloud_path") or payload.get("revisit_point_cloud_path")
+    explicit_obs = runtime.get("observation_point_cloud_path") or payload.get(
+        "observation_point_cloud_path"
+    )
+    explicit_rev = runtime.get("revisit_point_cloud_path") or payload.get(
+        "revisit_point_cloud_path"
+    )
     if explicit_obs and explicit_rev:
         obs_path = Path(str(explicit_obs)).expanduser()
         rev_path = Path(str(explicit_rev)).expanduser()
@@ -1378,7 +1555,9 @@ def _explicit_scene_memory_clouds(
     return None
 
 
-def _resolve_vipe_dir(prediction_path: Path, action_payload: dict[str, Any] | None, runtime: dict[str, Any]) -> Path | None:
+def _resolve_vipe_dir(
+    prediction_path: Path, action_payload: dict[str, Any] | None, runtime: dict[str, Any]
+) -> Path | None:
     """Locate ViPE annotation directories for depth-based scene memory."""
     values = [
         runtime.get("vipe_annotation_path"),
@@ -1387,7 +1566,9 @@ def _resolve_vipe_dir(prediction_path: Path, action_payload: dict[str, Any] | No
         (action_payload or {}).get("prediction_annotation_path"),
     ]
     for candidate in prediction_sidecar_candidates(
-        prediction_path, ("annotations_vipe/{stem}_vipe_ann", "{stem}_vipe_ann"), values,
+        prediction_path,
+        ("annotations_vipe/{stem}_vipe_ann", "{stem}_vipe_ann"),
+        values,
     ):
         if candidate.exists():
             return candidate
@@ -1465,7 +1646,9 @@ def _select_segment_indices(start: int, end: int, count: int) -> list[int]:
         return []
     frame_count = end - start
     target_count = min(max(int(count), 1), frame_count)
-    return sorted({int(start + round(value)) for value in np.linspace(0, frame_count - 1, num=target_count)})
+    return sorted(
+        {int(start + round(value)) for value in np.linspace(0, frame_count - 1, num=target_count)}
+    )
 
 
 def _reconstruct_vipe_scene_clouds(
@@ -1519,12 +1702,16 @@ def _reconstruct_vipe_scene_clouds(
     ]
     obs = np.concatenate(obs_points, axis=0) if obs_points else np.empty((0, 3), dtype=np.float32)
     rev = np.concatenate(rev_points, axis=0) if rev_points else np.empty((0, 3), dtype=np.float32)
-    return obs, rev, {
-        "vipe_annotation_path": str(vipe_dir),
-        "transition_frame": transition_index,
-        "observation_frame_indices": obs_indices,
-        "revisit_frame_indices": rev_indices,
-    }
+    return (
+        obs,
+        rev,
+        {
+            "vipe_annotation_path": str(vipe_dir),
+            "transition_frame": transition_index,
+            "observation_frame_indices": obs_indices,
+            "revisit_frame_indices": rev_indices,
+        },
+    )
 
 
 def score_point_cloud_memory(
@@ -1596,12 +1783,16 @@ def compute_scene_memory_metric(
         reconstruction["point_cloud_source"] = source_text
     else:
         if action_payload is None:
-            raise FileNotFoundError("scene memory requires action payload or explicit point-cloud sidecar")
+            raise FileNotFoundError(
+                "scene memory requires action payload or explicit point-cloud sidecar"
+            )
         action_parts = action_parts_from_payload(action_payload, frame_count)
         vipe_dir = _resolve_vipe_dir(prediction_path, action_payload, runtime)
         if vipe_dir is None:
             raise FileNotFoundError("scene memory point-cloud or ViPE sidecar is unavailable")
-        obs, rev, reconstruction = _reconstruct_vipe_scene_clouds(vipe_dir, action_parts, runtime=runtime)
+        obs, rev, reconstruction = _reconstruct_vipe_scene_clouds(
+            vipe_dir, action_parts, runtime=runtime
+        )
         reconstruction["point_cloud_source"] = "vipe_depth_reconstruction"
 
     scored = score_point_cloud_memory(obs, rev, runtime=runtime)
@@ -1610,6 +1801,7 @@ def compute_scene_memory_metric(
 
 class KeystrokeActionMetric(Metric):
     """Expose one keystroke diagnostic score from pose and action sidecars."""
+
     def __init__(
         self,
         *,
@@ -1624,7 +1816,6 @@ class KeystrokeActionMetric(Metric):
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
-        """Resolve backend -> str."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -1650,17 +1841,33 @@ class KeystrokeActionMetric(Metric):
         }
         action_payload, action_source = _load_action_payload_for_prediction(sample, prediction_path)
         if action_payload is None:
-            return _not_applicable(self.name, backend, "action specification unavailable", **details)
+            return _not_applicable(
+                self.name, backend, "action specification unavailable", **details
+            )
         poses, pose_source = _load_prediction_poses(prediction_path, action_payload)
         if poses is None:
             details["action_source"] = action_source
             details["measurement_status"] = "pose_sidecar_unavailable"
-            return _not_applicable(self.name, backend, "prediction pose sidecar unavailable", **details)
-        frame_count = int(prediction.native_frame_count or len(prediction.frames) or max(len(poses) - 1, 1))
+            return _not_applicable(
+                self.name, backend, "prediction pose sidecar unavailable", **details
+            )
+        frame_count = int(
+            prediction.native_frame_count or len(prediction.frames) or max(len(poses) - 1, 1)
+        )
         try:
-            if action_payload.get("camera_npz") and not Path(action_payload["camera_npz"]).is_absolute():
-                action_payload = {**action_payload, "camera_npz": str(prediction_path.parent / action_payload["camera_npz"])}
-            fps = float(self.runtime["fps"]) if "fps" in self.runtime else probe_video_fps(prediction_path, default=float("nan"))
+            if (
+                action_payload.get("camera_npz")
+                and not Path(action_payload["camera_npz"]).is_absolute()
+            ):
+                action_payload = {
+                    **action_payload,
+                    "camera_npz": str(prediction_path.parent / action_payload["camera_npz"]),
+                }
+            fps = (
+                float(self.runtime["fps"])
+                if "fps" in self.runtime
+                else probe_video_fps(prediction_path, default=float("nan"))
+            )
             if not math.isfinite(fps) or fps <= 0:
                 raise ValueError("action evaluation requires known positive video FPS")
             pose_location = Path(pose_source)
@@ -1719,9 +1926,14 @@ class KeystrokeActionMetric(Metric):
                     "measurement_status": "observed",
                 }
             )
-            evaluated_key = {"keystroke_natet": "translation_evaluated", "keystroke_nater": "rotation_evaluated"}.get(self.name)
+            evaluated_key = {
+                "keystroke_natet": "translation_evaluated",
+                "keystroke_nater": "rotation_evaluated",
+            }.get(self.name)
             if evaluated_key and not result[evaluated_key]:
-                return _not_applicable(self.name, backend, "no commanded or observed motion on this axis", **details)
+                return _not_applicable(
+                    self.name, backend, "no commanded or observed motion on this axis", **details
+                )
             raw_key = {
                 "keystroke_strict_action_accuracy": "strict_accuracy",
                 "keystroke_partial_action_accuracy": "partial_accuracy",
@@ -1753,6 +1965,7 @@ class KeystrokeActionMetric(Metric):
 
 class VisualDriftMetric(Metric):
     """Expose one rollout visual-drift sub-metric from quality scoring."""
+
     def __init__(
         self,
         *,
@@ -1767,7 +1980,6 @@ class VisualDriftMetric(Metric):
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
-        """Resolve backend -> str."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,
@@ -1792,7 +2004,9 @@ class VisualDriftMetric(Metric):
             "implementation_revision": MEMORY_SAFETY_REVISION,
         }
         if prediction.modality != "video":
-            return _not_applicable(self.name, backend, "visual drift requires a video prediction", **details)
+            return _not_applicable(
+                self.name, backend, "visual drift requires a video prediction", **details
+            )
         try:
             result = compute_visual_drift_metrics(prediction_path, runtime=self.runtime)
             details.update(
@@ -1821,7 +2035,9 @@ class VisualDriftMetric(Metric):
                 "rollout_aesthetic_drift": result.get("aesthetic_drift"),
                 "rollout_imaging_drift": result.get("imaging_drift"),
             }.get(self.name)
-            raw = None if not isinstance(drift, dict) else _optional_finite_float(drift.get("drift"))
+            raw = (
+                None if not isinstance(drift, dict) else _optional_finite_float(drift.get("drift"))
+            )
             if raw is None:
                 raise RuntimeError(f"{self.name} did not return a score")
             return MetricOutput(
@@ -1844,6 +2060,7 @@ class VisualDriftMetric(Metric):
 
 class SceneMemoryF1Metric(Metric):
     """Score long-horizon scene memory with point-cloud F1 diagnostics."""
+
     def __init__(
         self,
         *,
@@ -1857,7 +2074,6 @@ class SceneMemoryF1Metric(Metric):
         self._resolve_backend()
 
     def _resolve_backend(self) -> str:
-        """Resolve backend -> str."""
         return resolve_metric_backend(
             metric_name=self.name,
             configured_backend=self.backend,

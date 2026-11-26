@@ -94,4 +94,6 @@ class ArenaVideoDepthAnythingModel:
             input_size=self.input_size,
             fp32=self.use_fp32,
         )
-        return DepthEstimationResult(relative_inv_depth=torch.from_numpy(np.asarray(depths)).float().cuda())
+        return DepthEstimationResult(
+            relative_inv_depth=torch.from_numpy(np.asarray(depths)).float().cuda()
+        )

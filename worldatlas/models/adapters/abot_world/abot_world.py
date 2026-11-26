@@ -15,7 +15,6 @@ from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.models.adapters.base import PreparedGenerationRequest
 from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 
-
 KEY_ORDER = ("W", "A", "S", "D", "I", "J", "K", "L")
 
 _CAMERA_TOKEN_ALIASES = {
@@ -110,9 +109,7 @@ def _action_for_value(value: Any) -> dict[str, bool]:
         if len(value) == len(KEY_ORDER) and all(
             isinstance(item, (bool, int, float)) for item in value
         ):
-            return _keys_dict(
-                [key for key, enabled in zip(KEY_ORDER, value) if bool(enabled)]
-            )
+            return _keys_dict([key for key, enabled in zip(KEY_ORDER, value) if bool(enabled)])
         return _keys_dict([str(item) for item in value])
 
     raw = str(value or "").strip()
@@ -187,6 +184,7 @@ def _build_control_payload(
         block_actions.append(dict(block_actions[-1]))
     if sample.suite == "memory_loop" and generation.get("memory_reference_blocks") is not None:
         from worldatlas.benchmark.memory_duration import sample_action_timeline
+
         reference_generation = dict(generation)
         reference_generation["blocks"] = reference_generation.pop("memory_reference_blocks")
         reference = _build_control_payload(sample, reference_generation)

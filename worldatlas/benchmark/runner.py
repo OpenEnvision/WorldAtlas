@@ -30,12 +30,15 @@ from worldatlas.benchmark.reference_corpus import (
     resolve_reference_index,
 )
 from worldatlas.benchmark.report import write_run_outputs
+from worldatlas.benchmark.runtime_health import (
+    CudaContextError,
+    append_sample_checkpoint,
+    load_sample_checkpoint,
+    raise_if_cuda_failure,
+    sample_score_failed,
+)
 from worldatlas.benchmark.sample_identity import cache_file_digests
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput, SampleScore
-from worldatlas.benchmark.runtime_health import (
-    CudaContextError, append_sample_checkpoint, load_sample_checkpoint,
-    raise_if_cuda_failure, sample_score_failed,
-)
 from worldatlas.benchmark.taxonomy import prediction_extensions, prediction_modality_for_task
 from worldatlas.common.progress import (
     ProgressHeartbeat,
@@ -55,15 +58,21 @@ def _prediction_modality(sample: BenchmarkSample) -> str:
 
 
 def _resolve_prediction_path(predictions_root: Path, sample: BenchmarkSample) -> Path | None:
-    from worldatlas.benchmark.camera_video_identity import POLICY as CAMERA_POLICY, resolve_video as resolve_camera
+    from worldatlas.benchmark.camera_video_identity import (
+        POLICY as CAMERA_POLICY,
+        resolve_video as resolve_camera,
+    )
+
     if sample.sample_id_policy == CAMERA_POLICY:
         return resolve_camera(sample, predictions_root)
     from worldatlas.benchmark.video_metric_identity import POLICY, resolve_video
+
     if sample.sample_id_policy == POLICY:
         return resolve_video(sample, predictions_root)
     _validate_image_identity_policy(sample)
     if sample.sample_id_policy:
         from worldatlas.benchmark.sample_identity import resolve_bound_prediction
+
         return resolve_bound_prediction(sample, predictions_root)
     candidates: list[Path] = []
     for extension in prediction_extensions(_prediction_modality(sample)):
@@ -81,12 +90,18 @@ def _resolve_prediction_path(predictions_root: Path, sample: BenchmarkSample) ->
 
 def _validate_image_identity_policy(sample: BenchmarkSample, *, required: bool = False) -> None:
     from worldatlas.benchmark.video_metric_identity import POLICY
+
     if sample.sample_id_policy == POLICY and not required:
         return  # run_benchmark separately enforces the video-only metric allowlist.
     from worldatlas.benchmark.sample_identity import IMAGE_LEVELS, SOURCE_FILENAME_POLICY
-    if sample.suite in IMAGE_LEVELS and (required or sample.source_name == "worldatlas_formal_image"):
+
+    if sample.suite in IMAGE_LEVELS and (
+        required or sample.source_name == "worldatlas_formal_image"
+    ):
         if sample.sample_id_policy != SOURCE_FILENAME_POLICY:
-            raise ValueError("Formal image evaluation requires a verified filename-ID manifest; legacy ordinal inputs are disabled")
+            raise ValueError(
+                "Formal image evaluation requires a verified filename-ID manifest; legacy ordinal inputs are disabled"
+            )
 
 
 def _evaluation_start_ratio(sample: BenchmarkSample) -> float:
@@ -146,12 +161,12 @@ def _format_score(value: Any) -> str | None:
 
 def _metric_status(output: MetricOutput) -> str:
     from worldatlas.benchmark.runtime_health import metric_output_failed
+
     if metric_output_failed(output.to_dict()):
         return "fail"
     if output.eligibility_status == "not_applicable":
         return "skip"
     if output.eligibility_status == "diagnostic" and output.normalized is not None:
-        from worldatlas.benchmark.runtime_health import metric_output_failed
         if not metric_output_failed(output.to_dict()):
             return "ok"  # A zero-valued return gate may carry an explanatory reason.
     if output.error:
@@ -282,7 +297,9 @@ def _record_suite_metric_not_applicable(
     reason: str,
     sample_ids: list[str],
 ) -> None:
-    aggregate_payload.setdefault("not_applicable_summary", {}).setdefault(suite, {})[metric_name] = {
+    aggregate_payload.setdefault("not_applicable_summary", {}).setdefault(suite, {})[
+        metric_name
+    ] = {
         "samples": len(sample_ids),
         "sample_ids": sample_ids[:5],
         "reasons": [{"message": reason, "count": 1}],
@@ -318,9 +335,7 @@ def _run_distribution_backend(
 ) -> dict[str, Any]:
     runtime = dict(config.metric_runtime.get(metric_name, {}))
     cache_dir = config.reference_corpus.cache_dir
-    compute = (
-        compute_frechet_video_motion_distance if backend == "fvmd" else compute_jedi_distance
-    )
+    compute = compute_frechet_video_motion_distance if backend == "fvmd" else compute_jedi_distance
     return compute(
         prediction_entries=task.prediction_entries(),
         reference_entries=task.reference,
@@ -385,8 +400,7 @@ def apply_suite_level_metrics(
 
             if reference_index is None:
                 reason = (
-                    f"{metric_label} needs a reference corpus; enable "
-                    "benchmark.reference_corpus"
+                    f"{metric_label} needs a reference corpus; enable benchmark.reference_corpus"
                 )
                 log_progress(
                     "suite_metric", suite=suite, metric=metric_name, status="skip", error=reason
@@ -400,12 +414,16 @@ def apply_suite_level_metrics(
                 )
                 continue
 
-            if (len(prediction_sample_ids) != len(sample_ids)
-                    or set(prediction_sample_ids) != set(sample_ids)
-                    or len(set(prediction_sample_ids)) != len(prediction_sample_ids)):
+            if (
+                len(prediction_sample_ids) != len(sample_ids)
+                or set(prediction_sample_ids) != set(sample_ids)
+                or len(set(prediction_sample_ids)) != len(prediction_sample_ids)
+            ):
                 _record_suite_metric_failure(
-                    aggregate_payload, suite=suite, metric_name=metric_name,
-                    error='Distribution prediction population is incomplete or duplicated; refusing subset scoring',
+                    aggregate_payload,
+                    suite=suite,
+                    metric_name=metric_name,
+                    error="Distribution prediction population is incomplete or duplicated; refusing subset scoring",
                     sample_ids=sample_ids,
                 )
                 continue
@@ -417,7 +435,9 @@ def apply_suite_level_metrics(
                 stratified=corpus.stratified,
             )
             if not tasks:
-                reason = f"{metric_label} found no prediction videos or no reference group for {suite}"
+                reason = (
+                    f"{metric_label} found no prediction videos or no reference group for {suite}"
+                )
                 log_progress(
                     "suite_metric", suite=suite, metric=metric_name, status="skip", error=reason
                 )
@@ -432,9 +452,7 @@ def apply_suite_level_metrics(
 
             runtime = dict(config.metric_runtime.get(metric_name, {}))
             reference_spec_runtime = reference_runtime(runtime)
-            min_prediction_clips, min_reference_clips = _distribution_clip_floors(
-                corpus, runtime
-            )
+            min_prediction_clips, min_reference_clips = _distribution_clip_floors(corpus, runtime)
             group_results: dict[str, Any] = {}
             headline: dict[str, Any] | None = None
 
@@ -581,24 +599,27 @@ def run_benchmark(
     run_suite_level_metrics: bool = True,
     checkpoint_path: Path | None = None,
 ) -> dict[str, Any]:
-    filtered_manifest = [
-        sample
-        for sample in manifest
-        if not suites or sample.suite in suites
-    ]
+    from worldatlas.benchmark.camera_video_identity import POLICY as CAMERA_POLICY
+    from worldatlas.benchmark.video_metric_identity import validate_metric_scope
+
+    filtered_manifest = [sample for sample in manifest if not suites or sample.suite in suites]
     if limit is not None:
         filtered_manifest = filtered_manifest[:limit]
     if len({s.sample_id for s in filtered_manifest}) != len(filtered_manifest):
         raise ValueError("Duplicate sample IDs in evaluation manifest")
     prediction_paths: dict[str, Path | None] = {}
     for sample in filtered_manifest:
-        from worldatlas.benchmark.video_metric_identity import validate_metric_scope
-        validate_metric_scope(sample, config.metrics_by_suite.get(sample.suite, []), config.require_verified_image_bindings)
-        from worldatlas.benchmark.camera_video_identity import POLICY as CAMERA_POLICY
+        validate_metric_scope(
+            sample,
+            config.metrics_by_suite.get(sample.suite, []),
+            config.require_verified_image_bindings,
+        )
         if sample.sample_id_policy == CAMERA_POLICY and (
-                config.metric_backends.get('camera_error') != 'megasam'
-                or config.metric_runtime.get('camera_error', {}).get('camera_gt_policy') != 'native_intended'):
-            raise ValueError('Recorded camera videos require MegaSAM native_intended scoring')
+            config.metric_backends.get("camera_error") != "megasam"
+            or config.metric_runtime.get("camera_error", {}).get("camera_gt_policy")
+            != "native_intended"
+        ):
+            raise ValueError("Recorded camera videos require MegaSAM native_intended scoring")
         _validate_image_identity_policy(sample, required=config.require_verified_image_bindings)
         prediction_paths[sample.sample_id] = _resolve_prediction_path(predictions_root, sample)
 
@@ -629,9 +650,11 @@ def run_benchmark(
     selected_total = len(filtered_manifest)
     checkpoints = load_sample_checkpoint(checkpoint_path) if checkpoint_path is not None else {}
     from worldatlas.benchmark.integrity import sample_fingerprint, scoring_context
+
     integrity_context = (
         scoring_context(config, Path(__file__).resolve().parents[2], metric_names)
-        if checkpoint_path is not None else None
+        if checkpoint_path is not None
+        else None
     )
     log_progress(
         "job_start",
@@ -715,7 +738,8 @@ def run_benchmark(
         sample_started_at = time.perf_counter()
         input_fingerprint = (
             sample_fingerprint(sample, prediction_path, integrity_context)
-            if integrity_context is not None else None
+            if integrity_context is not None
+            else None
         )
         cached = checkpoints.get(sample.sample_id)
         if (
@@ -726,10 +750,14 @@ def run_benchmark(
             and not sample_score_failed(cached, [metric.name for metric in suite_metrics])
         ):
             cached = dict(cached)
-            cached["metrics"] = {name: MetricOutput(**value) for name, value in cached["metrics"].items()}
+            cached["metrics"] = {
+                name: MetricOutput(**value) for name, value in cached["metrics"].items()
+            }
             sample_scores.append(SampleScore(**cached))
             status_counts["ok"] += 1
-            log_progress("sample_resume", sample_id=sample.sample_id, index=index_label, status="ok")
+            log_progress(
+                "sample_resume", sample_id=sample.sample_id, index=index_label, status="ok"
+            )
             continue
         try:
             # Distribution-only shards collect input identities. Their full videos
@@ -858,7 +886,9 @@ def run_benchmark(
     run_manifest = {
         "integrity_version": "content_bound_v2",
         "scoring_context": integrity_context,
-        "identity_policy": sorted({s.sample_id_policy or "legacy_unverified" for s in filtered_manifest}),
+        "identity_policy": sorted(
+            {s.sample_id_policy or "legacy_unverified" for s in filtered_manifest}
+        ),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "model_name": model_name,
         "predictions_root": str(predictions_root),
@@ -892,12 +922,12 @@ def run_benchmark(
             if metric_map
         },
         "evaluation_protocol": config.protocol.official,
-        "metric_implementation_revisions": aggregate_payload.get("metric_implementation_revisions", {}),
+        "metric_implementation_revisions": aggregate_payload.get(
+            "metric_implementation_revisions", {}
+        ),
         # Distribution scores are only comparable against the same corpus, so the
         # signature travels with the run.
-        "reference_corpus": (
-            None if reference_index is None else reference_index.describe()
-        ),
+        "reference_corpus": (None if reference_index is None else reference_index.describe()),
     }
     write_run_outputs(
         output_dir=output_dir,

@@ -3,12 +3,13 @@
 from worldatlas.benchmark.metrics.appearance import (
     BrightnessConsistencyMetric,
     BrightnessDistributionConsistencyMetric,
-    ColorTemperatureConstraintMetric,
     ColorTemperatureConsistencyMetric,
+    ColorTemperatureConstraintMetric,
     SharpnessRetentionMetric,
     SharpnessVectorRetentionMetric,
 )
 from worldatlas.benchmark.metrics.background_consistency import BackgroundConsistencyMetric
+from worldatlas.benchmark.metrics.catalog import METRIC_DIMENSIONS, group_metrics_by_dimension
 from worldatlas.benchmark.metrics.consistency import (
     OpticalFlowAepeMetric,
     ReprojectionErrorMetric,
@@ -17,20 +18,19 @@ from worldatlas.benchmark.metrics.control import (
     CameraErrorMetric,
     MotionAccuracyMetric,
 )
-from worldatlas.benchmark.metrics.catalog import METRIC_DIMENSIONS, group_metrics_by_dimension
-from worldatlas.benchmark.metrics.met3r import Met3RConsistencyMetric
+from worldatlas.benchmark.metrics.long_sequence import LongSequenceMetric
 from worldatlas.benchmark.metrics.memory import MemoryRevisitConsistencyMetric, MemorySymmetryMetric
+from worldatlas.benchmark.metrics.met3r import Met3RConsistencyMetric
 from worldatlas.benchmark.metrics.motion import MotionMagnitudeMetric, MotionSmoothnessMetric
 from worldatlas.benchmark.metrics.quality import HPSv3NormMetric, ImageQualityMetric
 from worldatlas.benchmark.metrics.reconstruction import (
     ReconstructionConsistencyEvaluator,
     ReconstructionConsistencyMetric,
 )
+from worldatlas.benchmark.metrics.registry import build_metrics
 from worldatlas.benchmark.metrics.segment_continuity import SegmentContinuityMetric
 from worldatlas.benchmark.metrics.temporal import TemporalCalibrationMetric
 from worldatlas.benchmark.metrics.temporal_flickering import TemporalFlickeringMetric
-from worldatlas.benchmark.metrics.long_sequence import LongSequenceMetric
-from worldatlas.benchmark.metrics.registry import build_metrics
 
 __all__ = [
     "BackgroundConsistencyMetric",

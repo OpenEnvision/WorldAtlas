@@ -9,7 +9,13 @@ from pathlib import Path
 def collect_cleanup_targets(project_root: Path, include_generated: bool = False) -> list[Path]:
     targets: list[Path] = []
 
-    for relative in [".cache", ".pytest_cache", ".ruff_cache", "site/doc", "artifacts/dataset_stats/cache"]:
+    for relative in [
+        ".cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        "site/doc",
+        "artifacts/dataset_stats/cache",
+    ]:
         path = project_root / relative
         if path.exists():
             targets.append(path)

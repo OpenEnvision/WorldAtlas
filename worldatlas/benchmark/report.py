@@ -7,8 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from worldatlas.common.serialization import ensure_dir, write_json
 from worldatlas.benchmark.schemas import SampleScore
+from worldatlas.common.serialization import ensure_dir, write_json
 
 
 def _distribution_group_breakdown(distribution_details: dict[str, Any]) -> dict[str, Any]:
@@ -64,7 +64,10 @@ def write_run_outputs(
     run_manifest = json.loads(json.dumps(run_manifest, default=str))
     write_json(output_dir / "run_manifest.json", run_manifest)
     write_json(output_dir / "per_metric_summary.json", aggregate_payload["per_metric_summary"])
-    write_json(output_dir / "per_dimension_summary.json", aggregate_payload.get("per_dimension_summary", {}))
+    write_json(
+        output_dir / "per_dimension_summary.json",
+        aggregate_payload.get("per_dimension_summary", {}),
+    )
 
     diagnostic_summary = aggregate_payload.get("diagnostic_metric_summary", {})
     diagnostic_path = output_dir / "diagnostic_metric_summary.json"

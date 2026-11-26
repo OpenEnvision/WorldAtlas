@@ -50,7 +50,9 @@ def _value(row: dict[str, Any], name: str, default: Any) -> Any:
 def _single_runtime_value(rows: list[dict[str, Any]], name: str, default: Any) -> Any:
     values = {_generation(row).get(name, default) for row in rows}
     if len(values) > 1:
-        raise ValueError(f"YUME persistent batch cannot vary {name} within one worker: {sorted(values)!r}")
+        raise ValueError(
+            f"YUME persistent batch cannot vary {name} within one worker: {sorted(values)!r}"
+        )
     return next(iter(values))
 
 
@@ -91,7 +93,9 @@ def main() -> None:
             sample_id = str(row.get("sample_id", f"row-{index}"))
             output_path = Path(row["output_path"]).expanduser().resolve()
             conditioning_image = row.get("conditioning_image")
-            conditioning_path = Path(conditioning_image).expanduser().resolve() if conditioning_image else None
+            conditioning_path = (
+                Path(conditioning_image).expanduser().resolve() if conditioning_image else None
+            )
             prompt = str(row.get("prompt", ""))
             try:
                 payload = _run_persistent_generation(

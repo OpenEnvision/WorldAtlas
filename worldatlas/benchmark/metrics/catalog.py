@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 TOP_LEVEL_DIMENSIONS: tuple[str, ...] = (
     "long_sequence",
     "action_control",

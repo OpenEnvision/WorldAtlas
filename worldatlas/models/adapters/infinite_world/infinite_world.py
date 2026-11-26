@@ -22,7 +22,6 @@ from worldatlas.models.adapters.common import (
 )
 from worldatlas.models.adapters.lingbot_world.common import _camera_path_for_sample
 
-
 MOVE_ACTION_MAP = {
     "no-op": 0,
     "go forward": 1,
@@ -163,19 +162,27 @@ def _normalize_interaction(action: str | dict[str, str]) -> dict[str, str]:
 def _interaction_plan(config: dict[str, Any], suite: str) -> list[str | dict[str, str]]:
     plan = dict(config.get("action_plan", {}))
     by_suite = plan.get("by_suite", {})
-    actions = by_suite.get(suite) or plan.get("default") or [
-        "forward",
-        "camera_right",
-        "forward",
-        "camera_left",
-        "forward",
-    ]
+    actions = (
+        by_suite.get(suite)
+        or plan.get("default")
+        or [
+            "forward",
+            "camera_right",
+            "forward",
+            "camera_left",
+            "forward",
+        ]
+    )
     return list(actions)
 
 
-def _worldatlas_actions_for_sample(sample: BenchmarkSample) -> tuple[list[str], list[dict[str, str]], str]:
+def _worldatlas_actions_for_sample(
+    sample: BenchmarkSample,
+) -> tuple[list[str], list[dict[str, str]], str]:
     raw_camera_path = _camera_path_for_sample(sample) or ["fixed"]
-    camera_tokens = [_sanitize_action_token(token) for token in raw_camera_path if str(token).strip()] or ["fixed"]
+    camera_tokens = [
+        _sanitize_action_token(token) for token in raw_camera_path if str(token).strip()
+    ] or ["fixed"]
     control_source = "camera_path" if sample.camera_path else "annotation_or_default_camera_path"
     actions: list[dict[str, str]] = []
     for camera_token in camera_tokens:
@@ -201,7 +208,11 @@ def _build_action_payload(
     camera_tokens: list[str] = []
     control_source = action_source
 
-    if sample is not None and action_source in {"worldatlas_prompt", "camera_path", "prompt_target"}:
+    if sample is not None and action_source in {
+        "worldatlas_prompt",
+        "camera_path",
+        "prompt_target",
+    }:
         camera_tokens, normalized_actions, control_source = _worldatlas_actions_for_sample(sample)
         actions: list[str | dict[str, str]] = normalized_actions
         frames_per_action = max(math.ceil(required_frames / max(len(actions), 1)), 1)
@@ -220,13 +231,20 @@ def _build_action_payload(
         frame_actions.append(dict(frame_actions[-1]))
     if suite == "memory_loop" and config.get("memory_action_duration_seconds") is not None:
         from worldatlas.benchmark.memory_duration import sample_action_timeline
-        active_frames = round(float(config["memory_action_duration_seconds"]) * float(config.get("fps", 30)))
+
+        active_frames = round(
+            float(config["memory_action_duration_seconds"]) * float(config.get("fps", 30))
+        )
         if not 1 <= active_frames <= required_frames:
             raise ValueError("memory action duration exceeds the generated frame budget")
         # The runner trims its native chunks to target_duration_sec. Complete the
         # entire control path before that boundary, rather than trimming its return leg.
-        frame_actions = sample_action_timeline([_normalize_interaction(a) for a in actions], active_frames)
-        frame_actions.extend([{"move": "no-op", "view": "no-op"} for _ in range(required_frames - active_frames)])
+        frame_actions = sample_action_timeline(
+            [_normalize_interaction(a) for a in actions], active_frames
+        )
+        frame_actions.extend(
+            [{"move": "no-op", "view": "no-op"} for _ in range(required_frames - active_frames)]
+        )
 
     return {
         "actions": actions,
@@ -234,7 +252,7 @@ def _build_action_payload(
         "frames_per_action": frames_per_action,
         "required_frames": required_frames,
         "validation_num_frames": validation_num_frames,
-            "chunk_stride": chunk_stride,
+        "chunk_stride": chunk_stride,
         "num_chunks": num_chunks,
         "action_source": action_source,
         "control_source": control_source,
@@ -287,7 +305,6 @@ class InfiniteWorldAdapter(ModelAdapter):
     """Generate action-controlled world videos via the InfiniteWorld upstream repo."""
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return True
 
     def batch_checkpoint_load_policy(self) -> str:
@@ -362,7 +379,9 @@ class InfiniteWorldAdapter(ModelAdapter):
             )
             run_command(command, cwd=project_root, env=env)
             if not results_json.exists():
-                raise FileNotFoundError(f"Infinite-World runner did not write results: {results_json}")
+                raise FileNotFoundError(
+                    f"Infinite-World runner did not write results: {results_json}"
+                )
             raw_results = json.loads(results_json.read_text(encoding="utf-8"))
 
         results: dict[str, dict[str, Any]] = {}
@@ -392,7 +411,9 @@ class InfiniteWorldAdapter(ModelAdapter):
         )
         payload = self.generate_batch([request]).get(sample.sample_id, {})
         if not payload:
-            raise RuntimeError(f"Infinite-World runner returned no result for sample {sample.sample_id}")
+            raise RuntimeError(
+                f"Infinite-World runner returned no result for sample {sample.sample_id}"
+            )
         if payload.get("status") == "failed":
             raise RuntimeError(str(payload.get("error", "Infinite-World generation failed")))
         return payload

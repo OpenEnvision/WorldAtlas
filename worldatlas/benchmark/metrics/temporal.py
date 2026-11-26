@@ -10,7 +10,6 @@ from worldatlas.benchmark.metrics.base import Metric, normalize_score, resolve_m
 from worldatlas.benchmark.pulse_runtime import compute_pulse_metrics
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 
-
 TEMPORAL_CALIBRATION_BACKENDS = {"pulse_of_motion"}
 _PULSE_RESULT_CACHE: dict[str, dict[str, Any]] = {}
 
@@ -24,7 +23,10 @@ def _cache_key(
     """Build a cache key from video identity, metadata FPS, and runtime options."""
     path = Path(prediction_path).expanduser().resolve()
     from worldatlas.benchmark.integrity import digest_json, path_content
-    return digest_json({'video': path_content(path), 'fallback_meta_fps': fallback_meta_fps, 'runtime': runtime})
+
+    return digest_json(
+        {"video": path_content(path), "fallback_meta_fps": fallback_meta_fps, "runtime": runtime}
+    )
 
 
 def _pulse_result(

@@ -99,9 +99,7 @@ def _joystick_hud_choice(value: Any, default: str = "off") -> str:
         return default
     choice = _JOYSTICK_HUD_ALIASES.get(text)
     if choice not in _JOYSTICK_HUD_CHOICES:
-        raise ValueError(
-            f"joystick_hud must be one of {_JOYSTICK_HUD_CHOICES}, got {value!r}"
-        )
+        raise ValueError(f"joystick_hud must be one of {_JOYSTICK_HUD_CHOICES}, got {value!r}")
     return choice
 
 
@@ -166,7 +164,9 @@ def _trajectory_runtime(generation: dict[str, Any]) -> dict[str, float]:
     return {
         "synthetic_camera_forward_step": float(generation.get("forward_distance_per_chunk", 1.2)),
         "synthetic_camera_lateral_step": float(generation.get("lateral_distance_per_chunk", 0.4)),
-        "synthetic_camera_vertical_step": float(generation.get("vertical_distance_per_chunk", 0.35)),
+        "synthetic_camera_vertical_step": float(
+            generation.get("vertical_distance_per_chunk", 0.35)
+        ),
         "synthetic_camera_rotation_degrees": float(
             generation.get("rotation_degrees_per_chunk", 8.0)
         ),
@@ -245,7 +245,9 @@ def _materialize_case(
 
     chunk_actions = [str(value) for value in row.get("chunk_actions") or ["fixed"]]
     pose_payload = build_pose_npz(
-        chunk_actions, generation, trajectory_actions=row.get("trajectory_actions"),
+        chunk_actions,
+        generation,
+        trajectory_actions=row.get("trajectory_actions"),
     )
     pose_path = row_root / f"{stem}_pose.npz"
     np.savez(pose_path, **pose_payload)
@@ -258,7 +260,9 @@ def _materialize_case(
     schedule_path = None
     if schedule:
         schedule_path = row_root / f"{stem}_schedule.json"
-        schedule_path.write_text(json.dumps(schedule, ensure_ascii=False, indent=2), encoding="utf-8")
+        schedule_path.write_text(
+            json.dumps(schedule, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
     height = int(generation.get("height", 384))
     width = int(generation.get("width", 640))
@@ -349,9 +353,7 @@ def _infer_env(
             "RENDER_MODE": str(generation.get("render_mode", "backward_zbuf")),
             "BW_FILL_ITERS": str(int(generation.get("bw_fill_iters", 12))),
             "DEPTH_BACKEND": str(generation.get("depth_backend", "vigeo")),
-            "VIGEO_DEPTH_MEDIAN_TARGET": str(
-                generation.get("vigeo_depth_median_target", 5)
-            ),
+            "VIGEO_DEPTH_MEDIAN_TARGET": str(generation.get("vigeo_depth_median_target", 5)),
             "ZBUF_DESPECKLE": "1" if _as_bool(generation.get("zbuf_despeckle"), False) else "0",
             "WARP_MODE": str(generation.get("warp_mode", "fixed_mem")),
             "WARP": warp,
@@ -359,7 +361,9 @@ def _infer_env(
             "DUMP_GEO": "1" if _as_bool(generation.get("dump_geo"), False) else "0",
             "SAVE_SEGMENTS": "1" if _as_bool(generation.get("save_segments"), False) else "0",
             "JOYSTICK_HUD": _joystick_hud_choice(generation.get("joystick_hud"), "off"),
-            "REF_VIDEO_SEC": str(generation.get("ref_video_sec", 0.0 if sample_type != "v2v" else 2.0)),
+            "REF_VIDEO_SEC": str(
+                generation.get("ref_video_sec", 0.0 if sample_type != "v2v" else 2.0)
+            ),
             "START_SECONDS": str(generation.get("start_seconds", 0.0)),
             "SHARD": "0",
             "NSHARD": "1",
@@ -387,9 +391,7 @@ def main() -> int:
     paths = _runtime_paths(checkpoint_dir=checkpoint_dir, generation=generation)
     _validate_runtime(repo_root=repo_root, checkpoint_dir=checkpoint_dir, paths=paths)
 
-    output_parents = {
-        Path(str(row["output_path"])).expanduser().resolve().parent for row in rows
-    }
+    output_parents = {Path(str(row["output_path"])).expanduser().resolve().parent for row in rows}
     if len(output_parents) != 1:
         raise ValueError("EVOKE batch runner requires one output directory")
     output_parent = next(iter(output_parents))
@@ -491,7 +493,9 @@ def main() -> int:
                 handle.write(json.dumps(item["case"]["record"], ensure_ascii=False) + "\n")
         out_root = official_root / f"{sample_type}_{warp}"
         out_root.mkdir(parents=True, exist_ok=True)
-        num_chunks = max(int(item["row"].get("num_chunks", generation["num_chunks"])) for item in items)
+        num_chunks = max(
+            int(item["row"].get("num_chunks", generation["num_chunks"])) for item in items
+        )
         env = _infer_env(
             generation=generation,
             paths=paths,

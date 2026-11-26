@@ -63,7 +63,12 @@ def main() -> int:
     lora_path = None
     if not no_lora:
         lora_path = resolve_checkpoint_path(
-            checkpoint_dir / str(generation.get("lora_path", "warp-as-history/visible_lora_state_step1000.safetensors")),
+            checkpoint_dir
+            / str(
+                generation.get(
+                    "lora_path", "warp-as-history/visible_lora_state_step1000.safetensors"
+                )
+            ),
             kind="file",
             required=True,
         )

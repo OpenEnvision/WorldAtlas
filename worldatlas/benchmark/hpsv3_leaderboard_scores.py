@@ -3,10 +3,11 @@
 Per-sample normalized scores may already be clipped; their mean cannot recover
 the raw mean. Published values live in scores, with evidence in score_details.
 """
-from copy import deepcopy
+
 import hashlib
 import json
 import math
+from copy import deepcopy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,7 +33,7 @@ def sha256(path):
 
 
 def rounded(value, decimals=4):
-    scale = 10 ** decimals
+    scale = 10**decimals
     return math.floor(value * scale + 0.5) / scale
 
 
@@ -48,9 +49,14 @@ def score_mean(mean, policy, mean_rounding_decimals=None):
 
 
 def calibration(root=ROOT):
-    return {"revision": REVISION, "policy": POLICY_FILE,
-            "policy_sha256": sha256(Path(root) / POLICY_FILE), "metric": METRIC,
-            "score_field": "scores.hpsv3_norm", "aggregation": "mean_raw_then_display"}
+    return {
+        "revision": REVISION,
+        "policy": POLICY_FILE,
+        "policy_sha256": sha256(Path(root) / POLICY_FILE),
+        "metric": METRIC,
+        "score_field": "scores.hpsv3_norm",
+        "aggregation": "mean_raw_then_display",
+    }
 
 
 def source_file(root, source):
@@ -80,15 +86,21 @@ def aggregate(path, suite, policy):
                 continue
             expected += 1
             obs = (row.get("metrics") or {}).get(METRIC) or {}
-            if (row.get("error") or obs.get("error") or obs.get("eligibility_status") in
-                    {"failed", "missing", "not_applicable"} or not finite(obs.get("normalized"))):
+            if (
+                row.get("error")
+                or obs.get("error")
+                or obs.get("eligibility_status") in {"failed", "missing", "not_applicable"}
+                or not finite(obs.get("normalized"))
+            ):
                 continue
             sid = row.get("sample_id")
             if not sid or sid in ids:
                 raise ValueError(f"Missing/duplicate HPSv3 sample: {path}/{sid}")
             if not finite(obs.get("raw")) or not 0 <= obs["raw"] <= 1:
                 raise ValueError(f"Missing/invalid HPSv3 raw observation: {path}/{sid}")
-            if (obs.get("details") or {}).get("hpsv3_normalization_percentiles") != policy["official_percentiles"]:
+            if (obs.get("details") or {}).get("hpsv3_normalization_percentiles") != policy[
+                "official_percentiles"
+            ]:
                 raise ValueError(f"HPSv3 raw normalization differs: {path}/{sid}")
             ids.add(sid)
             raw.append(obs["raw"])
@@ -99,26 +111,39 @@ def aggregate(path, suite, policy):
     if not raw:
         raise ValueError(f"No valid HPSv3 raw observations: {path}/{suite}")
     mean = math.fsum(raw) / len(raw)
-    return {"aggregation": "mean_raw_then_display", "raw_mean": mean,
-            "published_score": score_mean(mean, policy), "numeric_count": len(raw),
-            "expected_count": expected, "excluded_count": expected - len(raw),
-            "report_normalized_mean": math.fsum(normalized) / len(raw),
-            "sample_ids_sha256": hashlib.sha256(json.dumps(sorted(ids)).encode()).hexdigest(),
-            "source_file": str(path.resolve()), "source_sha256": digest.hexdigest(),
-            "source_state": {"size": before.st_size, "mtime_ns": str(before.st_mtime_ns)}}
+    return {
+        "aggregation": "mean_raw_then_display",
+        "raw_mean": mean,
+        "published_score": score_mean(mean, policy),
+        "numeric_count": len(raw),
+        "expected_count": expected,
+        "excluded_count": expected - len(raw),
+        "report_normalized_mean": math.fsum(normalized) / len(raw),
+        "sample_ids_sha256": hashlib.sha256(json.dumps(sorted(ids)).encode()).hexdigest(),
+        "source_file": str(path.resolve()),
+        "source_sha256": digest.hexdigest(),
+        "source_state": {"size": before.st_size, "mtime_ns": str(before.st_mtime_ns)},
+    }
 
 
 def bind(stat, row, policy_sha):
-    return {**stat, "revision": REVISION, "policy_sha256": policy_sha,
-            "source_snapshot": deepcopy(row.get("metric_sources", {}).get(METRIC) or {})}
+    return {
+        **stat,
+        "revision": REVISION,
+        "policy_sha256": policy_sha,
+        "source_snapshot": deepcopy(row.get("metric_sources", {}).get(METRIC) or {}),
+    }
 
 
 def validate_detail(detail, row, policy, policy_sha):
-    if (detail.get("revision") != REVISION or detail.get("policy_sha256") != policy_sha
-            or detail.get("source_snapshot") != (row.get("metric_sources", {}).get(METRIC) or {})
-            or not finite(detail.get("published_score"))
-            or detail["published_score"] != row["scores"][METRIC]
-            or len(detail.get("source_sha256", "")) != 64):
+    if (
+        detail.get("revision") != REVISION
+        or detail.get("policy_sha256") != policy_sha
+        or detail.get("source_snapshot") != (row.get("metric_sources", {}).get(METRIC) or {})
+        or not finite(detail.get("published_score"))
+        or detail["published_score"] != row["scores"][METRIC]
+        or len(detail.get("source_sha256", "")) != 64
+    ):
         raise ValueError("Stale or invalid HPSv3 publication")
     if detail.get("aggregation") == "mean_raw_then_display":
         if not detail.get("numeric_count"):
@@ -163,12 +188,16 @@ def prepare_publication(payload, root=ROOT):
                 if path not in checked:
                     checked[path] = sha256(path)
                 if checked[path] != detail["source_sha256"]:
-                    raise ValueError(f"Published HPSv3 evidence changed: {path}; update its source binding")
+                    raise ValueError(
+                        f"Published HPSv3 evidence changed: {path}; update its source binding"
+                    )
                 row["scores"][METRIC] = detail["published_score"]
                 continue
             path = source_file(root, source)
             if path is None or not path.is_file():
-                raise ValueError(f"New HPSv3 publication requires per-sample raw evidence: {suite}/{model}")
+                raise ValueError(
+                    f"New HPSv3 publication requires per-sample raw evidence: {suite}/{model}"
+                )
             stat = aggregate(path, suite, policy)
             row["scores"][METRIC] = stat["published_score"]
             row.setdefault("score_details", {})[METRIC] = bind(stat, row, spec["policy_sha256"])

@@ -1,4 +1,3 @@
-from typing import List
 import torch
 import numpy as np
 import cv2
@@ -109,9 +108,8 @@ class CameraErrorMetric(BaseMetric):
             print(f"Error setting start method: {e}")
 
     def _compute_scores(
-        self, rendered_images: List[str], cameras_gt: torch.Tensor, scale: float = 1.0
+        self, rendered_images: list[str], cameras_gt: torch.Tensor, scale: float = 1.0
     ) -> float:
-
         try:
             with without_shared_cuda_memory():
                 for t, image, intrinsics in tqdm(
@@ -130,14 +128,10 @@ class CameraErrorMetric(BaseMetric):
             )
             cameras_pred = SE3(torch.as_tensor(traj_est)).matrix()
 
-            to_blender = torch.diag(
-                torch.tensor([-1.0, 1.0, 1.0, 1.0], device=cameras_pred.device)
-            )
+            to_blender = torch.diag(torch.tensor([-1.0, 1.0, 1.0, 1.0], device=cameras_pred.device))
             cameras_pred = to_blender @ cameras_pred
 
-            to_blender = torch.diag(
-                torch.tensor([1.0, 1.0, -1.0, 1.0], device=cameras_pred.device)
-            )
+            to_blender = torch.diag(torch.tensor([1.0, 1.0, -1.0, 1.0], device=cameras_pred.device))
             w2c_cameras_pred = torch.inverse(cameras_pred)
             w2c_cameras_pred = to_blender @ w2c_cameras_pred
             cameras_pred = torch.inverse(w2c_cameras_pred)

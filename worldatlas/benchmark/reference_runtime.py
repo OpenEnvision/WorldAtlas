@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 import os
-from typing import Any, Sequence
+from collections.abc import Sequence
+from functools import lru_cache
+from typing import Any
 
 import numpy as np
 from PIL import Image
@@ -22,12 +23,12 @@ from worldatlas.benchmark.quality_backends import (
 )
 from worldatlas.common.checkpoints import checkpoint_env
 
-
 STYLE_CAPTURE_INDICES = (0, 2, 5, 7, 10)
 
 
 def clamp01(value: float) -> float:
     from worldatlas.benchmark.metrics.base import clamp01 as finite_clamp01
+
     return finite_clamp01(value)
 
 
@@ -51,11 +52,17 @@ def _paired_reference_prediction_frames(
         return list(zip(reference_frames, prediction_frames)), "aligned"
     if len(reference_frames) == 1:
         reference_frame = reference_frames[0]
-        return [(reference_frame, prediction_frame) for prediction_frame in prediction_frames], "broadcast_reference"
+        return [
+            (reference_frame, prediction_frame) for prediction_frame in prediction_frames
+        ], "broadcast_reference"
     if len(prediction_frames) == 1:
         prediction_frame = prediction_frames[0]
-        return [(reference_frame, prediction_frame) for reference_frame in reference_frames], "broadcast_prediction"
-    raise ValueError("Reference/prediction frame counts differ; refusing silent temporal truncation")
+        return [
+            (reference_frame, prediction_frame) for reference_frame in reference_frames
+        ], "broadcast_prediction"
+    raise ValueError(
+        "Reference/prediction frame counts differ; refusing silent temporal truncation"
+    )
 
 
 def _frame_to_image(frame: np.ndarray) -> Image.Image:
@@ -64,7 +71,6 @@ def _frame_to_image(frame: np.ndarray) -> Image.Image:
 
 @lru_cache(maxsize=1)
 def _reference_prompt_alignment_backend_name() -> str | None:
-    """Reference prompt alignment backend name -> str | None."""
     backend = load_clip_backend()
     if backend is None:
         return None
@@ -74,7 +80,6 @@ def _reference_prompt_alignment_backend_name() -> str | None:
 
 @lru_cache(maxsize=1)
 def _load_reference_style_backend() -> tuple[str, Any, Any, str] | None:
-    """Load reference style backend -> tuple[str, Any, Any, str] | None."""
     try:
         os.environ.update(checkpoint_env())
         import torch
@@ -102,17 +107,14 @@ def _load_reference_style_backend() -> tuple[str, Any, Any, str] | None:
 
 
 def reference_prompt_alignment_available() -> bool:
-    """Reference prompt alignment available -> bool."""
     return clip_backend_available()
 
 
 def reference_style_consistency_available() -> bool:
-    """Reference style consistency available -> bool."""
     return _load_reference_style_backend() is not None
 
 
 def reference_perceptual_quality_available() -> bool:
-    """Reference perceptual quality available -> bool."""
     return all(
         quality_component_available(component_name)
         for component_name in REQUIRED_REFERENCE_QUALITY_COMPONENTS
@@ -181,11 +183,17 @@ def compute_reference_prompt_alignment(
     text_features, _ = clip_text_features([prompt])
     image_features = np.asarray(image_features)
     text_features = np.asarray(text_features)
-    if (image_features.ndim != 2 or text_features.ndim != 2
-            or image_features.shape[0] != len(frames) or text_features.shape[0] != 1
-            or image_features.shape[1] != text_features.shape[1]
-            or image_features.shape[1] == 0):
-        raise ValueError("CLIPScore requires complete image/text feature batches with matching dimensions")
+    if (
+        image_features.ndim != 2
+        or text_features.ndim != 2
+        or image_features.shape[0] != len(frames)
+        or text_features.shape[0] != 1
+        or image_features.shape[1] != text_features.shape[1]
+        or image_features.shape[1] == 0
+    ):
+        raise ValueError(
+            "CLIPScore requires complete image/text feature batches with matching dimensions"
+        )
     if not np.isfinite(image_features).all() or not np.isfinite(text_features).all():
         raise ValueError("CLIPScore returned non-finite features")
     text_feature = text_features[0]
@@ -258,12 +266,19 @@ def compute_reference_perceptual_quality(
             component_name=component_name,
         )
         normalized_scores = list(component_result["frame_scores"])
-        native_scores = list(component_result['native_frame_scores'])
+        native_scores = list(component_result["native_frame_scores"])
         if len(normalized_scores) != len(frames) or len(native_scores) != len(frames):
-            raise ValueError(f'Perceptual quality component {component_name} returned incomplete frame coverage')
-        if (not np.isfinite(normalized_scores).all() or not np.isfinite(native_scores).all()
-                or any(not 0 <= value <= 1 for value in normalized_scores)):
-            raise ValueError(f'Perceptual quality component {component_name} returned invalid scores')
+            raise ValueError(
+                f"Perceptual quality component {component_name} returned incomplete frame coverage"
+            )
+        if (
+            not np.isfinite(normalized_scores).all()
+            or not np.isfinite(native_scores).all()
+            or any(not 0 <= value <= 1 for value in normalized_scores)
+        ):
+            raise ValueError(
+                f"Perceptual quality component {component_name} returned invalid scores"
+            )
         for index, normalized_score in enumerate(normalized_scores):
             frame_component_scores[index].append(float(normalized_score))
         components[component_name] = {

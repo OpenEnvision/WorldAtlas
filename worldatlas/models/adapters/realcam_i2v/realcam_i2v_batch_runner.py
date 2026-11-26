@@ -110,8 +110,7 @@ def _validate_runtime(
     video_length = int(generation.get("num_frames", generation.get("video_length", 81)))
     if video_length < 17 or (video_length - 1) % 16 != 0:
         raise ValueError(
-            "RealCam-I2V/CogVideoX1.5 expects frame counts 16n+1 (17, 33, ...); "
-            f"got {video_length}"
+            f"RealCam-I2V/CogVideoX1.5 expects frame counts 16n+1 (17, 33, ...); got {video_length}"
         )
 
 
@@ -254,9 +253,7 @@ def _generate_one(
         text_cfg=float(generation.get("text_cfg", generation.get("guidance_scale", 5.0))),
         seed=int(generation.get("seed", 123)) + row_index,
         noise_shaping=as_bool(generation.get("noise_shaping"), default=False),
-        noise_shaping_minimum_timesteps=int(
-            generation.get("noise_shaping_minimum_timesteps", 900)
-        ),
+        noise_shaping_minimum_timesteps=int(generation.get("noise_shaping_minimum_timesteps", 900)),
         video_shape=video_shape,
         resize_for_rectangle_crop=as_bool(
             generation.get("resize_for_rectangle_crop"), default=True
@@ -320,9 +317,7 @@ def main() -> int:
         controlnet_checkpoint=controlnet_checkpoint,
         generation=generation,
     )
-    output_parents = {
-        Path(str(row["output_path"])).expanduser().resolve().parent for row in rows
-    }
+    output_parents = {Path(str(row["output_path"])).expanduser().resolve().parent for row in rows}
     # Each GPU shard has its own UUID-bearing batch spec.  Keep the generated
     # model/camera metadata under that namespace so concurrent runners cannot
     # race on the same camera_poses.json file.

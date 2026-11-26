@@ -135,7 +135,9 @@ def _bucket_hw_for_frame(frame: np.ndarray, bucket_config) -> tuple[int, int]:
 
 
 def _request_bucket_key(request: dict[str, Any], *, bucket_config) -> tuple[int, int]:
-    return _bucket_hw_for_frame(_read_condition_frame(Path(str(request["image_path"]))), bucket_config)
+    return _bucket_hw_for_frame(
+        _read_condition_frame(Path(str(request["image_path"]))), bucket_config
+    )
 
 
 def _load_action_sequence(path: Path):
@@ -205,7 +207,9 @@ def _request_payloads(args: argparse.Namespace) -> list[dict[str, Any]]:
         payload = json.loads(Path(args.requests_json).read_text(encoding="utf-8"))
         requests = payload.get("requests", payload) if isinstance(payload, dict) else payload
         if not isinstance(requests, list):
-            raise ValueError("Infinite-World requests_json must contain a list or a {'requests': list} payload")
+            raise ValueError(
+                "Infinite-World requests_json must contain a list or a {'requests': list} payload"
+            )
         return [dict(item) for item in requests]
 
     missing = [
@@ -247,7 +251,9 @@ def _generate_request(
     import torch
 
     _setup_seed(int(request.get("seed", args.seed)))
-    condition_video = _load_condition_video(Path(str(request["image_path"])), bucket_config).to(device)
+    condition_video = _load_condition_video(Path(str(request["image_path"])), bucket_config).to(
+        device
+    )
     move_ids, view_ids = _load_action_sequence(Path(str(request["actions_json"])))
     move_ids = torch.tensor(move_ids, dtype=torch.long)
     view_ids = torch.tensor(view_ids, dtype=torch.long)
@@ -293,7 +299,12 @@ def _generate_request(
         target_frames = max(int(round(float(args.target_duration_sec) * float(args.fps))), 1)
         video_buffer = video_buffer[:, :, :target_frames]
 
-    _write_video(Path(str(request["output_path"])).expanduser().resolve(), video_buffer, fps=args.fps, quality=args.quality)
+    _write_video(
+        Path(str(request["output_path"])).expanduser().resolve(),
+        video_buffer,
+        fps=args.fps,
+        quality=args.quality,
+    )
 
 
 def _prepare_request(request: dict[str, Any], *, bucket_config) -> dict[str, Any]:
@@ -308,7 +319,9 @@ def _prepare_request(request: dict[str, Any], *, bucket_config) -> dict[str, Any
     }
 
 
-def _write_prepared_batch_videos(prepared: list[dict[str, Any]], video_buffer, *, args: argparse.Namespace) -> None:
+def _write_prepared_batch_videos(
+    prepared: list[dict[str, Any]], video_buffer, *, args: argparse.Namespace
+) -> None:
     if args.target_duration_sec is not None:
         target_frames = max(int(round(float(args.target_duration_sec) * float(args.fps))), 1)
         video_buffer = video_buffer[:, :, :target_frames]
@@ -340,7 +353,9 @@ def _generate_prepared_batch(
     if not prepared:
         return
     _setup_seed(int(prepared[0]["request"].get("seed", args.seed)))
-    video_buffer = torch.cat([item["condition_video"] for item in prepared], dim=0).detach().cpu().float()
+    video_buffer = (
+        torch.cat([item["condition_video"] for item in prepared], dim=0).detach().cpu().float()
+    )
     prompts = [str(item["request"]["prompt"]) for item in prepared]
 
     for _ in range(max(int(args.num_chunks), 1)):
@@ -420,7 +435,9 @@ def _run_generation_requests(
                 {
                     "status": "generated",
                     "sample_id": sample_id,
-                    "prediction_path": str(Path(str(request["output_path"])).expanduser().resolve()),
+                    "prediction_path": str(
+                        Path(str(request["output_path"])).expanduser().resolve()
+                    ),
                     "prompt": str(request["prompt"]),
                     "prompt_source": request.get("prompt_source", "prompt_target"),
                     "prompt_current": request.get("prompt_current"),
@@ -428,7 +445,9 @@ def _run_generation_requests(
                     "camera_path": request.get("camera_path", []),
                     "camera_tokens": request.get("camera_tokens", []),
                     "actions": request.get("actions", []),
-                    "action_spec_path": request.get("action_spec_path", request.get("actions_json")),
+                    "action_spec_path": request.get(
+                        "action_spec_path", request.get("actions_json")
+                    ),
                     "action_source": request.get("action_source"),
                     "control_source": request.get("control_source"),
                     "batch_size": len(items),
@@ -542,13 +561,17 @@ def main() -> None:
             )
 
     vae = get_obj_from_str(cfg.vae_target)(**cfg.vae_cfg).to(device)
-    text_encoder = get_obj_from_str(cfg.text_encoder_target)(device=device.index or 0, **cfg.text_encoder_cfg)
+    text_encoder = get_obj_from_str(cfg.text_encoder_target)(
+        device=device.index or 0, **cfg.text_encoder_cfg
+    )
     text_encoder.t5.model.to(device)
 
     scheduler = get_obj_from_str(cfg.scheduler_target)(**cfg.val_scheduler_cfg)
     scheduler.num_sampling_steps = int(args.num_sampling_steps)
     scheduler.shift = float(
-        args.sample_shift if args.sample_shift is not None else cfg.val_scheduler_cfg.get("shift", 7.0)
+        args.sample_shift
+        if args.sample_shift is not None
+        else cfg.val_scheduler_cfg.get("shift", 7.0)
     )
 
     model_dtype = getattr(torch, cfg.get("amp_dtype", "bfloat16"))
@@ -618,7 +641,9 @@ def main() -> None:
     if args.results_json:
         results_path = Path(args.results_json).expanduser().resolve()
         results_path.parent.mkdir(parents=True, exist_ok=True)
-        results_path.write_text(json.dumps({"results": results}, indent=2, ensure_ascii=False), encoding="utf-8")
+        results_path.write_text(
+            json.dumps({"results": results}, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
 
 
 if __name__ == "__main__":

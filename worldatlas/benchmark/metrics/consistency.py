@@ -5,21 +5,20 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from worldatlas.benchmark.media import LoadedMedia
-from worldatlas.benchmark.metric_errors import MetricLoadError
-from worldatlas.benchmark.metrics.official import OfficialMetric
-from worldatlas.benchmark.metrics.base import Metric, normalize_score, resolve_metric_backend
 from worldatlas.benchmark.gvgc_geometry_backend import (
     DEFAULT_BACKEND as DEFAULT_GVGC_GEOMETRY_BACKEND,
     compute_gvgc_geometry,
 )
+from worldatlas.benchmark.media import LoadedMedia
+from worldatlas.benchmark.metric_errors import MetricLoadError
+from worldatlas.benchmark.metrics.base import Metric, normalize_score, resolve_metric_backend
+from worldatlas.benchmark.metrics.official import OfficialMetric
 from worldatlas.benchmark.official_runtime import (
     compute_optical_flow_aepe,
     compute_reprojection_error,
 )
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 from worldatlas.common.progress import log_exception
-
 
 REPROJECTION_ERROR_BACKENDS = {"droid_slam"}
 OPTICAL_FLOW_AEPE_BACKENDS = {"sea_raft"}

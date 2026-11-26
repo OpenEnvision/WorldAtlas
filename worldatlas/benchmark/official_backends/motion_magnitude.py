@@ -1,4 +1,3 @@
-from typing import List
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -51,9 +50,7 @@ class OpticalFlowMetric(BaseMetric):
         except MetricLoadError:
             raise
         except Exception as exc:
-            raise MetricLoadError(
-                f"SEA-RAFT failed to load: {type(exc).__name__}: {exc}"
-            ) from exc
+            raise MetricLoadError(f"SEA-RAFT failed to load: {type(exc).__name__}: {exc}") from exc
 
     def load_image(self, imfile):
         image = cv2.imread(imfile)
@@ -98,15 +95,18 @@ class OpticalFlowMetric(BaseMetric):
 
     def _compute_scores(
         self,
-        rendered_images: List[str],
+        rendered_images: list[str],
         *,
         flow_pixel_scale: tuple[float, float] = (1.0, 1.0),
     ) -> float:
-
         if len(rendered_images) < 2:
             raise ValueError("motion_magnitude requires at least two frames")
         pixel_scale = np.asarray(flow_pixel_scale, dtype=np.float32)
-        if pixel_scale.shape != (2,) or not np.all(np.isfinite(pixel_scale)) or np.any(pixel_scale <= 0):
+        if (
+            pixel_scale.shape != (2,)
+            or not np.all(np.isfinite(pixel_scale))
+            or np.any(pixel_scale <= 0)
+        ):
             raise ValueError("flow_pixel_scale must contain two finite positive values")
         scores = []
 
@@ -125,7 +125,7 @@ class OpticalFlowMetric(BaseMetric):
                 # Restore each vector component before taking the norm/median;
                 # rounded resize dimensions can have different x/y ratios.
                 flow = flow * pixel_scale
-                flow_magnitude = np.sqrt((flow[..., 0] ** 2 + flow[..., 1] ** 2))
+                flow_magnitude = np.sqrt(flow[..., 0] ** 2 + flow[..., 1] ** 2)
                 median_flow = float(torch.from_numpy(flow_magnitude).median().item())
                 scores.append(median_flow)
 

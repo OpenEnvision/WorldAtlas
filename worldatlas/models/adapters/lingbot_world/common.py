@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
-from abc import abstractmethod
-from dataclasses import dataclass
 import gc
 import hashlib
 import json
-import numpy as np
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import time
+from abc import abstractmethod
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
+import numpy as np
 
 from worldatlas.benchmark.annotations import (
     _matrix_to_pose_vector,
@@ -25,6 +26,8 @@ from worldatlas.benchmark.annotations import (
     load_intrinsics_sequence,
     resolve_prompt_contract,
 )
+from worldatlas.benchmark.schemas import BenchmarkSample
+from worldatlas.benchmark.synthetic_camera import synthetic_camera_matrices
 from worldatlas.common.annotation_index import split_annotation_reference
 from worldatlas.common.checkpoints import (
     project_root as worldatlas_project_root,
@@ -39,9 +42,6 @@ from worldatlas.models.adapters.common import (
     run_command,
 )
 from worldatlas.models.config import ModelRuntimeConfig
-from worldatlas.benchmark.schemas import BenchmarkSample
-from worldatlas.benchmark.synthetic_camera import synthetic_camera_matrices
-
 
 LINGBOT_INTRINSICS_BASE_WIDTH = 832.0
 LINGBOT_INTRINSICS_BASE_HEIGHT = 480.0
@@ -144,7 +144,9 @@ def _repair_diffusers_metadata(overlay_root: Path) -> None:
         subdir = overlay_root / subfolder
         if not subdir.exists():
             continue
-        fallback_subdirs = [overlay_root / sibling for sibling in subfolders if sibling != subfolder]
+        fallback_subdirs = [
+            overlay_root / sibling for sibling in subfolders if sibling != subfolder
+        ]
         for filename in metadata_names:
             target = subdir / filename
             if _valid_json_file(target):
@@ -152,9 +154,14 @@ def _repair_diffusers_metadata(overlay_root: Path) -> None:
             candidates = [
                 _json_retry_variant(target),
                 *(fallback_subdir / filename for fallback_subdir in fallback_subdirs),
-                *(_json_retry_variant(fallback_subdir / filename) for fallback_subdir in fallback_subdirs),
+                *(
+                    _json_retry_variant(fallback_subdir / filename)
+                    for fallback_subdir in fallback_subdirs
+                ),
             ]
-            fallback = next((candidate for candidate in candidates if _valid_json_file(candidate)), None)
+            fallback = next(
+                (candidate for candidate in candidates if _valid_json_file(candidate)), None
+            )
             if fallback is not None:
                 _ensure_symlink(target, fallback)
 
@@ -294,7 +301,9 @@ def _rotation_matrix_z(angle_degrees: float) -> np.ndarray:
     )
 
 
-def _rigid_transform(rotation: np.ndarray | None = None, translation: np.ndarray | None = None) -> np.ndarray:
+def _rigid_transform(
+    rotation: np.ndarray | None = None, translation: np.ndarray | None = None
+) -> np.ndarray:
     matrix = np.eye(4, dtype=np.float32)
     if rotation is not None:
         matrix[:3, :3] = np.asarray(rotation, dtype=np.float32)
@@ -323,7 +332,9 @@ def _camera_path_for_sample(sample: BenchmarkSample) -> list[str]:
     return []
 
 
-def _interpolate_pose_segment(start_pose: np.ndarray, end_pose: np.ndarray, *, frames: int) -> np.ndarray:
+def _interpolate_pose_segment(
+    start_pose: np.ndarray, end_pose: np.ndarray, *, frames: int
+) -> np.ndarray:
     pose_vectors = np.stack(
         [
             _matrix_to_pose_vector(start_pose.astype(np.float32)),
@@ -333,7 +344,9 @@ def _interpolate_pose_segment(start_pose: np.ndarray, end_pose: np.ndarray, *, f
     ).astype(np.float32)
     indices = np.asarray([0.0, 1.0], dtype=np.float32)
     interpolated = _resample_pose_vectors(pose_vectors, indices, frames)
-    return np.stack([_pose_vector_to_matrix(pose_row) for pose_row in interpolated], axis=0).astype(np.float32)
+    return np.stack([_pose_vector_to_matrix(pose_row) for pose_row in interpolated], axis=0).astype(
+        np.float32
+    )
 
 
 def _synthetic_image_poses(camera_path: list[str], *, frame_num: int) -> np.ndarray:
@@ -358,7 +371,9 @@ def _synthetic_intrinsics_sequence(frame_num: int) -> np.ndarray:
     return np.repeat(intrinsics[None, :], repeats=target_frames, axis=0).astype(np.float32)
 
 
-def _synthetic_image_action_path(config: ModelRuntimeConfig, sample: BenchmarkSample) -> Path | None:
+def _synthetic_image_action_path(
+    config: ModelRuntimeConfig, sample: BenchmarkSample
+) -> Path | None:
     if sample.modality != "image":
         return None
     frame_num = resolve_frame_num(config.generation)
@@ -380,7 +395,11 @@ def _synthetic_image_action_path(config: ModelRuntimeConfig, sample: BenchmarkSa
     rank_suffix = ""
     if int(os.environ.get("WORLD_SIZE", "1")) > 1:
         rank_suffix = f"--rank{int(os.environ.get('RANK', '0'))}"
-    action_root = _runtime_root(config) / "image_action_paths" / f"{sample.prediction_stem}--{key}{rank_suffix}"
+    action_root = (
+        _runtime_root(config)
+        / "image_action_paths"
+        / f"{sample.prediction_stem}--{key}{rank_suffix}"
+    )
     poses_path = action_root / "poses.npy"
     intrinsics_path = action_root / "intrinsics.npy"
     if poses_path.exists() and intrinsics_path.exists():
@@ -458,11 +477,7 @@ def _intrinsics_are_normalized_for_lingbot(intrinsics: np.ndarray) -> bool:
         return False
     fx_fy = np.abs(intrinsics[:, :2])
     cx_cy = intrinsics[:, 2:]
-    return bool(
-        np.max(fx_fy) <= 4.0
-        and np.max(cx_cy) <= 2.0
-        and np.min(cx_cy) >= -1.0
-    )
+    return bool(np.max(fx_fy) <= 4.0 and np.max(cx_cy) <= 2.0 and np.min(cx_cy) >= -1.0)
 
 
 def _prepare_lingbot_intrinsics(intrinsics: np.ndarray) -> tuple[np.ndarray, bool]:
@@ -499,7 +514,7 @@ def _prepare_annotation_action_path(
     if poses_ready and intrinsics_ready and not intrinsics_converted:
         return annotation_path
 
-    key = hashlib.sha1(f"{annotation_path.resolve()}::{sample.sample_id}".encode("utf-8")).hexdigest()[:12]
+    key = hashlib.sha1(f"{annotation_path.resolve()}::{sample.sample_id}".encode()).hexdigest()[:12]
     normalized_dir = _runtime_root(config) / "annotations" / f"{sample.prediction_stem}--{key}"
     normalized_dir.mkdir(parents=True, exist_ok=True)
     np.save(normalized_dir / "poses.npy", pose_matrices.astype(np.float32))
@@ -598,7 +613,9 @@ def _parse_lingbot_size(value: object) -> tuple[int, int]:
     return int(width_text), int(height_text)
 
 
-def _debug_runtime_stage(runtime: _LingBotPersistentRuntime, sample: BenchmarkSample, stage: str, **payload: Any) -> None:
+def _debug_runtime_stage(
+    runtime: _LingBotPersistentRuntime, sample: BenchmarkSample, stage: str, **payload: Any
+) -> None:
     if os.environ.get("LINGBOT_DEBUG_STAGES") != "1":
         return
     log_path = Path(os.environ.get("LINGBOT_DEBUG_STAGE_LOG", "/tmp/lingbot_debug_stages.log"))
@@ -703,13 +720,19 @@ class LingBotWorldBaseAdapter(ModelAdapter):
         if str(repo_root) not in sys.path:
             sys.path.insert(0, str(repo_root))
 
-        _persistent_heartbeat("runtime_import_start", distributed=distributed, device_id=device_id, repo_root=repo_root)
+        _persistent_heartbeat(
+            "runtime_import_start",
+            distributed=distributed,
+            device_id=device_id,
+            repo_root=repo_root,
+        )
         import torch
         import torch.distributed as dist
         import wan
         from wan.configs import MAX_AREA_CONFIGS, WAN_CONFIGS
         from wan.distributed.util import init_distributed_group
         from wan.utils.utils import save_video
+
         _persistent_heartbeat("runtime_import_done", distributed=distributed, device_id=device_id)
 
         generation = dict(config.generation)
@@ -759,9 +782,13 @@ class LingBotWorldBaseAdapter(ModelAdapter):
                 )
             if cfg.num_heads % ulysses_size != 0:
                 raise ValueError(f"{cfg.num_heads=} cannot be divided by {ulysses_size=}")
-            _persistent_heartbeat("ulysses_init_start", rank=rank, world_size=world_size, ulysses_size=ulysses_size)
+            _persistent_heartbeat(
+                "ulysses_init_start", rank=rank, world_size=world_size, ulysses_size=ulysses_size
+            )
             init_distributed_group()
-            _persistent_heartbeat("ulysses_init_done", rank=rank, world_size=world_size, ulysses_size=ulysses_size)
+            _persistent_heartbeat(
+                "ulysses_init_done", rank=rank, world_size=world_size, ulysses_size=ulysses_size
+            )
 
         offload_model = generation.get("offload_model")
         if offload_model is None:
@@ -815,7 +842,9 @@ class LingBotWorldBaseAdapter(ModelAdapter):
             world_size=world_size,
         )
 
-    def _prepare_conditioning_image_for_runtime(self, runtime: _LingBotPersistentRuntime, conditioning_image: Path):
+    def _prepare_conditioning_image_for_runtime(
+        self, runtime: _LingBotPersistentRuntime, conditioning_image: Path
+    ):
         from PIL import Image
 
         with Image.open(conditioning_image) as handle:
@@ -840,7 +869,13 @@ class LingBotWorldBaseAdapter(ModelAdapter):
     ) -> dict[str, Any]:
         conditioning_image = conditioning_image.expanduser().resolve()
         output_path = output_path.expanduser().resolve()
-        _debug_runtime_stage(runtime, sample, "runtime_enter", conditioning_image=conditioning_image, output_path=output_path)
+        _debug_runtime_stage(
+            runtime,
+            sample,
+            "runtime_enter",
+            conditioning_image=conditioning_image,
+            output_path=output_path,
+        )
         action_path, action_string, allow_act2cam = _resolve_action_controls(
             runtime.config,
             sample,
@@ -862,7 +897,9 @@ class LingBotWorldBaseAdapter(ModelAdapter):
                 image,
                 **generate_kwargs,
             )
-            _debug_runtime_stage(runtime, sample, "pipeline_generate_done", returned=video is not None)
+            _debug_runtime_stage(
+                runtime, sample, "pipeline_generate_done", returned=video is not None
+            )
 
         if runtime.rank == 0:
             if video is None:
@@ -912,7 +949,6 @@ class LingBotWorldBaseAdapter(ModelAdapter):
         return Path(__file__).with_name("lingbot_world_distributed_batch_runner.py")
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return not bool(self.config.generation.get("disable_batch_generation", False))
 
     def batch_checkpoint_load_policy(self) -> str:
@@ -952,7 +988,9 @@ class LingBotWorldBaseAdapter(ModelAdapter):
                         {
                             "sample_id": request.sample.sample_id,
                             "prediction_stem": request.sample.prediction_stem,
-                            "conditioning_image": str(request.conditioning_image.expanduser().resolve()),
+                            "conditioning_image": str(
+                                request.conditioning_image.expanduser().resolve()
+                            ),
                             "output_path": str(request.output_path.expanduser().resolve()),
                             "prompt": request.prompt,
                             "sample": request.sample.to_dict(),
@@ -1013,7 +1051,8 @@ class LingBotWorldBaseAdapter(ModelAdapter):
             if not payload:
                 payload = {
                     "status": "failed",
-                    "error": cli_error or f"LingBot batch result missing for {request.sample.sample_id}",
+                    "error": cli_error
+                    or f"LingBot batch result missing for {request.sample.sample_id}",
                 }
             payload.setdefault("command", command)
             payload.setdefault("prediction_path", str(request.output_path))
@@ -1040,23 +1079,23 @@ class LingBotWorldBaseAdapter(ModelAdapter):
         )
         command.extend(
             [
-            str(entrypoint),
-            "--task",
-            str(generation.get("task", "i2v-A14B")),
-            "--ckpt_dir",
-            str(checkpoint_dir),
-            "--save_file",
-            str(output_path),
-            "--prompt",
-            prompt,
-            "--image",
-            str(conditioning_image),
-            "--base_seed",
-            str(int(generation.get("base_seed", 42))),
-            "--size",
-            str(generation.get("size", "832*480")),
-            "--frame_num",
-            str(resolve_frame_num(generation)),
+                str(entrypoint),
+                "--task",
+                str(generation.get("task", "i2v-A14B")),
+                "--ckpt_dir",
+                str(checkpoint_dir),
+                "--save_file",
+                str(output_path),
+                "--prompt",
+                prompt,
+                "--image",
+                str(conditioning_image),
+                "--base_seed",
+                str(int(generation.get("base_seed", 42))),
+                "--size",
+                str(generation.get("size", "832*480")),
+                "--frame_num",
+                str(resolve_frame_num(generation)),
             ]
         )
         if entrypoint_name != "generate_fast.py":

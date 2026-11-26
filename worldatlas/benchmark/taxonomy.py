@@ -24,7 +24,6 @@ CAMERA_PATH_SUITES = ("image_static", MEMORY_SUITE)
 
 
 def benchmark_split() -> str:
-    """Benchmark split -> str."""
     return BENCHMARK_SPLIT
 
 

@@ -10,7 +10,6 @@ from worldatlas.models.adapters.base import PreparedGenerationRequest
 from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 from worldatlas.models.adapters.lingbot_world.common import _camera_path_for_sample
 
-
 ECHO_WM_DEFAULT_FPS = 24.0
 ECHO_WM_DEFAULT_FRAMES = 241
 _PROMPT_FIELDS = ("Environment", "Character", "Style", "Perspective", "Sounds", "Speech")
@@ -68,7 +67,8 @@ def echo_action_string(camera_path: list[str], *, num_frames: int) -> tuple[str,
     approximations = [
         token
         for token in tokens
-        if token in {"pedestal_up", "pedestal_down", "orbit_left", "orbit_right", "roll_cw", "roll_ccw"}
+        if token
+        in {"pedestal_up", "pedestal_down", "orbit_left", "orbit_right", "roll_cw", "roll_ccw"}
     ]
     return ",".join(segments), approximations
 

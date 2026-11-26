@@ -1,3 +1,23 @@
 [build-system]
 requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP"]
+# E501: the formatter wraps code; long strings and comments stay as written.
+# UP038: `isinstance(x, A | B)` is slower than the tuple form.
+ignore = ["E501", "UP038"]
+
+[tool.ruff.lint.per-file-ignores]
+# Upstream research modules resolve through sys.path; keep their import order as written.
+"worldatlas/benchmark/official_backends/*.py" = ["I001"]
+"worldatlas/benchmark/vipe/official_*.py" = ["I001"]
+"worldatlas/models/adapters/**/*_runner.py" = ["I001"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+known-first-party = ["worldatlas"]

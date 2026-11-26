@@ -9,7 +9,6 @@ import os
 import random
 from pathlib import Path
 import sys
-import traceback
 import types
 from typing import Any
 
@@ -147,11 +146,13 @@ def _load_wan_runtime(repo_root: Path):
     import torch
     from PIL import Image
     from wan.configs import MAX_AREA_CONFIGS, SIZE_CONFIGS, SUPPORTED_SIZES, WAN_CONFIGS
+
     _patch_flash_attention_fallback()
     from wan.image2video import WanI2V
     from wan.text2video import WanT2V
     from wan.textimage2video import WanTI2V
     from wan.utils.utils import save_video
+
     _patch_flash_attention_fallback()
 
     wan = types.SimpleNamespace(WanI2V=WanI2V, WanT2V=WanT2V, WanTI2V=WanTI2V)
@@ -289,7 +290,9 @@ def _generate_one(
         image = None
         image_path_raw = str(row.get("conditioning_image") or "")
         if image_path_raw:
-            image = runtime["Image"].open(Path(image_path_raw).expanduser().resolve()).convert("RGB")
+            image = (
+                runtime["Image"].open(Path(image_path_raw).expanduser().resolve()).convert("RGB")
+            )
         video = pipeline.generate(
             prompt,
             img=image,
@@ -439,7 +442,10 @@ def main() -> int:
                 logging.exception("Wan2.2 row failed sample_id=%s error=%s", sample_id, exc)
                 print_status(sample_id, "failed", error=str(exc))
     logging.info("Wan2.2 batch completed rows=%s failed=%s", len(rows), failed)
-    if runtime["torch"].distributed.is_available() and runtime["torch"].distributed.is_initialized():
+    if (
+        runtime["torch"].distributed.is_available()
+        and runtime["torch"].distributed.is_initialized()
+    ):
         runtime["torch"].distributed.destroy_process_group()
     return 0
 

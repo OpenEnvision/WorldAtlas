@@ -33,7 +33,6 @@ DEFAULT_DERIVED_AGGREGATION_WEIGHTS: dict[str, float] = {
 
 
 def _default_derived_aggregation_weights() -> dict[str, float]:
-    """Default derived aggregation weights -> dict[str, float]."""
     return dict(DEFAULT_DERIVED_AGGREGATION_WEIGHTS)
 
 
@@ -136,7 +135,9 @@ def load_config(path: Path) -> BenchmarkConfig:
     )
 
     return BenchmarkConfig(
-        require_verified_image_bindings=bool(benchmark_payload.get('require_verified_image_bindings', False)),
+        require_verified_image_bindings=bool(
+            benchmark_payload.get("require_verified_image_bindings", False)
+        ),
         config_path=config_path,
         paths=paths,
         snapshot_name=benchmark_payload.get("snapshot_name", "worldatlas"),
@@ -153,12 +154,10 @@ def load_config(path: Path) -> BenchmarkConfig:
             for key, value in benchmark_payload.get("metrics_by_suite", {}).items()
         },
         metric_backends={
-            key: str(value)
-            for key, value in benchmark_payload.get("metric_backends", {}).items()
+            key: str(value) for key, value in benchmark_payload.get("metric_backends", {}).items()
         },
         normalization={
-            key: dict(value)
-            for key, value in benchmark_payload.get("normalization", {}).items()
+            key: dict(value) for key, value in benchmark_payload.get("normalization", {}).items()
         },
         metric_runtime={
             key: dict(_resolve_runtime_value(value or {}))

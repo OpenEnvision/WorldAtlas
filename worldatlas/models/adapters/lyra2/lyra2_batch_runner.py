@@ -49,7 +49,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--context_parallel_size", default=1, type=int)
     parser.add_argument("--prompt_suffix", default="", type=str)
     parser.add_argument("--use_moge_scale", action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument("--da3_model_name", default="depth-anything/DA3NESTED-GIANT-LARGE-1.1", type=str)
+    parser.add_argument(
+        "--da3_model_name", default="depth-anything/DA3NESTED-GIANT-LARGE-1.1", type=str
+    )
     parser.add_argument("--da3_model_path_custom", default=None, type=str)
     parser.add_argument("--da3_frame_interval", default=8, type=int)
     parser.add_argument("--da3_max_history_frames", default=10, type=int)

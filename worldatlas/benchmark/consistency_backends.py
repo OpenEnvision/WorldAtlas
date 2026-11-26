@@ -3,20 +3,20 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from functools import lru_cache
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 from PIL import Image
 
-from worldatlas.common.checkpoints import checkpoint_env, checkpoint_root, hf_local_dir
 from worldatlas.benchmark.metrics.base import cosine_similarity
+from worldatlas.common.checkpoints import checkpoint_env, checkpoint_root, hf_local_dir
 from worldatlas.common.progress import ProgressHeartbeat, log_exception, log_progress
 
 
 @lru_cache(maxsize=1)
 def _load_dinov2_backend() -> tuple[Any, Any, str] | None:
-    """Load dinov2 backend -> tuple[Any, Any, str] | None."""
     try:
         import torch
         from transformers import AutoImageProcessor, AutoModel
@@ -25,7 +25,9 @@ def _load_dinov2_backend() -> tuple[Any, Any, str] | None:
         return None
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    log_progress("metric_load", metric="dino", status="start", model="facebook/dinov2-base", device=device)
+    log_progress(
+        "metric_load", metric="dino", status="start", model="facebook/dinov2-base", device=device
+    )
     with ProgressHeartbeat(metric="dino", stage="model_load"):
         model_dir = hf_local_dir("facebook/dinov2-base", required=True)
         processor = AutoImageProcessor.from_pretrained(str(model_dir))
@@ -57,7 +59,6 @@ def dinov2_image_features(frames: Sequence[np.ndarray]) -> np.ndarray:
 
 @lru_cache(maxsize=1)
 def _load_dreamsim_backend() -> tuple[Any, Any, str] | None:
-    """Load dreamsim backend -> tuple[Any, Any, str] | None."""
     try:
         os.environ.update(checkpoint_env())
         import torch

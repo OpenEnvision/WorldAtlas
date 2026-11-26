@@ -8,10 +8,10 @@ import os
 import sys
 import time
 import traceback
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from worldatlas.common.progress import ProgressHeartbeat, log_exception, log_progress
 from worldatlas.benchmark.official_runtime import (
     compute_camera_error,
     compute_motion_accuracy,
@@ -20,7 +20,7 @@ from worldatlas.benchmark.official_runtime import (
     compute_optical_flow_aepe,
     compute_reprojection_error,
 )
-
+from worldatlas.common.progress import ProgressHeartbeat, log_exception, log_progress
 
 METRIC_HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
     "camera_error": compute_camera_error,

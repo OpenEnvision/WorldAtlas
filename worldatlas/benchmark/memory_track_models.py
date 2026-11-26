@@ -16,7 +16,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-
 MEMORY_CONFIG_SUFFIX = "_memory"
 
 

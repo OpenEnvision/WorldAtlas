@@ -14,7 +14,7 @@ from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 def clamp01(value: float) -> float:
     """Clamp finite measurements only; NaN must not turn into a perfect 1."""
     if not np.isfinite(float(value)):
-        raise ValueError('Cannot clamp a non-finite metric value')
+        raise ValueError("Cannot clamp a non-finite metric value")
     return max(0.0, min(1.0, float(value)))
 
 
@@ -32,7 +32,7 @@ def recover_error(value: float, spec: dict[str, Any]) -> float:
         raise ValueError(f"unsupported error_from '{error_from}'; supported values: {supported}")
     raw = float(value)
     if not np.isfinite(raw):
-        raise ValueError('Normalization requires finite values and a positive error_ref')
+        raise ValueError("Normalization requires finite values and a positive error_ref")
     if error_from == "raw":
         error = raw
     elif error_from == "complement":
@@ -50,10 +50,10 @@ def normalize_score(value: float | None, spec: dict[str, Any]) -> float | None:
         return None
     if spec.get("error_ref") is not None:
         if any(key in spec for key in _LINEAR_BOUND_KEYS):
-            raise ValueError('error_ref cannot be combined with linear or z-score bounds')
+            raise ValueError("error_ref cannot be combined with linear or z-score bounds")
         error_ref = float(spec["error_ref"])
         if not np.isfinite(float(value)) or not np.isfinite(error_ref) or error_ref <= 0.0:
-            raise ValueError('Normalization requires finite values and a positive error_ref')
+            raise ValueError("Normalization requires finite values and a positive error_ref")
         error = recover_error(float(value), spec)
         if not np.isfinite(error):
             return 0.0
@@ -62,7 +62,7 @@ def normalize_score(value: float | None, spec: dict[str, Any]) -> float | None:
     upper = float(spec.get("upper", 1.0))
     higher_is_better = bool(spec.get("higher_is_better", True))
     if not all(np.isfinite(v) for v in (value, lower, upper)) or upper <= lower:
-        raise ValueError('Normalization requires finite values and upper > lower')
+        raise ValueError("Normalization requires finite values and upper > lower")
     if higher_is_better:
         scaled = (float(value) - lower) / (upper - lower)
     else:

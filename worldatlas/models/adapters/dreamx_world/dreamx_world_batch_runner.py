@@ -106,7 +106,10 @@ def _uses_ar_forcing(generation: dict[str, Any]) -> bool:
     seconds. ``inference_ar_forcing.py`` is the chunk-wise causal path upstream
     recommends for long videos, which is what a minute-long memory rollout needs.
     """
-    return Path(str(generation.get("entrypoint", "inference_dreamx5b.py"))).name == AR_FORCING_ENTRYPOINT
+    return (
+        Path(str(generation.get("entrypoint", "inference_dreamx5b.py"))).name
+        == AR_FORCING_ENTRYPOINT
+    )
 
 
 def _dreamx_ar_command(
@@ -202,7 +205,9 @@ def _dreamx_command(
         generation.get("model_name") or generation.get("base_model_path"),
         bases=ckpt_bases,
     )
-    transformer_path = _resolve_path(generation.get("transformer_path"), bases=ckpt_bases) or checkpoint_dir
+    transformer_path = (
+        _resolve_path(generation.get("transformer_path"), bases=ckpt_bases) or checkpoint_dir
+    )
     config_path = _resolve_path(
         generation.get("config_path", "configs/wan2.2/wan_ti2v_5b.yaml"),
         bases=[repo_root],
@@ -334,7 +339,11 @@ def main() -> int:
         source = Path(row["conditioning_image"]).expanduser().resolve()
         suffix = source.suffix or ".png"
         staged_image = _stage_image(source, input_dir / f"{row['prediction_stem']}{suffix}")
-        action_seq = [str(item).strip().lower() for item in row.get("dreamx_action_seq", ["w"]) if str(item).strip()]
+        action_seq = [
+            str(item).strip().lower()
+            for item in row.get("dreamx_action_seq", ["w"])
+            if str(item).strip()
+        ]
         if not action_seq:
             action_seq = ["w"]
         speed_list = [int(item) for item in row.get("dreamx_action_speed_list", [])]

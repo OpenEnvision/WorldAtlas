@@ -1,4 +1,3 @@
-from typing import List
 import torch
 import cv2
 import numpy as np
@@ -36,9 +35,7 @@ class MotionSmoothnessMetric(BaseMetric):
         super().__init__()
         try:
             model = Model(-1)
-            checkpoint = torch.load(
-                official_checkpoint_path("VFIMamba.pkl"), map_location="cpu"
-            )
+            checkpoint = torch.load(official_checkpoint_path("VFIMamba.pkl"), map_location="cpu")
             model.net.load_state_dict(convert(checkpoint), strict=True)
             model.eval()
             model.device()
@@ -48,13 +45,11 @@ class MotionSmoothnessMetric(BaseMetric):
         except MetricLoadError:
             raise
         except Exception as exc:
-            raise MetricLoadError(
-                f"VFIMamba failed to load: {type(exc).__name__}: {exc}"
-            ) from exc
+            raise MetricLoadError(f"VFIMamba failed to load: {type(exc).__name__}: {exc}") from exc
 
     def _compute_scores(
         self,
-        rendered_images: List[str],
+        rendered_images: list[str],
     ) -> float:
         scores_ssim = []
         scores_lpips = []
@@ -77,9 +72,7 @@ class MotionSmoothnessMetric(BaseMetric):
 
             mid = (
                 padder.unpad(
-                    self._model.inference(
-                        I0_, I2_, True, TTA=TTA, fast_TTA=TTA, scale=0.0
-                    )
+                    self._model.inference(I0_, I2_, True, TTA=TTA, fast_TTA=TTA, scale=0.0)
                 )[0]
                 .detach()
                 .cpu()
@@ -88,7 +81,9 @@ class MotionSmoothnessMetric(BaseMetric):
                 * 255.0
             )
             if not np.isfinite(mid).all():
-                raise ValueError(f"VFIMamba produced non-finite pixels at midpoint {i}: {odd_image}")
+                raise ValueError(
+                    f"VFIMamba produced non-finite pixels at midpoint {i}: {odd_image}"
+                )
             mid = mid.astype(np.uint8)
 
             ssim_score = self._ssim_metric._compute_scores(mid, mid_pred)
@@ -97,7 +92,9 @@ class MotionSmoothnessMetric(BaseMetric):
             mse_score = mean_squared_pixel_error(mid, mid_pred)
             for name, value in (("ssim", ssim_score), ("lpips", lpips_score), ("mse", mse_score)):
                 if not np.isfinite(value):
-                    raise ValueError(f"Motion smoothness {name} is non-finite at midpoint {i}: {odd_image}")
+                    raise ValueError(
+                        f"Motion smoothness {name} is non-finite at midpoint {i}: {odd_image}"
+                    )
 
             scores_ssim.append(ssim_score)
             scores_lpips.append(lpips_score)

@@ -103,4 +103,3 @@ class LingBotWorldV2Adapter(LingBotWorldBaseAdapter):
         cropped = raw[:, :, top : top + target_height, left : left + target_width]
         arr = cropped.squeeze(0).permute(1, 2, 0).clamp(0, 255).round().to(torch.uint8).numpy()
         return Image.fromarray(arr)
-

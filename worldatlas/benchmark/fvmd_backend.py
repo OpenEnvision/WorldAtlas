@@ -19,10 +19,11 @@ import os
 import sys
 import threading
 import time
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -33,23 +34,20 @@ from worldatlas.benchmark.distribution_clips import (
     atomic_write_text,
     clip_set_signature,
     clips_for_video,
-    distribution_cache_ready,
     distribution_cache_metadata,
+    distribution_cache_ready,
+    reference_runtime,
     require_complete_clip_report,
     validate_distribution_features,
-    reference_runtime,
 )
-from worldatlas.common.progress import log_progress
+from worldatlas.benchmark.fvmd_reference import cache_lock, prepare_reference_selection
+from worldatlas.benchmark.fvmd_streaming import ordered_prefetch
 from worldatlas.benchmark.metrics.base import normalize_score
 from worldatlas.common.checkpoints import checkpoint_env, filter_checkpoint_env_overrides
-from worldatlas.benchmark.fvmd_streaming import ordered_prefetch
-from worldatlas.benchmark.fvmd_reference import cache_lock, prepare_reference_selection
-
+from worldatlas.common.progress import log_progress
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_FVMD_REPO_CANDIDATES = (
-    PROJECT_ROOT / "thirdparty" / "FVMD-frechet-video-motion-distance",
-)
+DEFAULT_FVMD_REPO_CANDIDATES = (PROJECT_ROOT / "thirdparty" / "FVMD-frechet-video-motion-distance",)
 DEFAULT_ANALYSIS_SIZE = 256
 
 # Upstream's histogram layout is fixed: 400 tracked points fold into a 20x20
@@ -79,9 +77,7 @@ def _resolve_fvmd_repo_root(runtime: dict[str, Any]) -> Path | None:
         if not repo_root.exists():
             raise FileNotFoundError(f"FVMD repo_root does not exist: {repo_root}")
         if not (repo_root / "fvmd").is_dir():
-            raise FileNotFoundError(
-                f"FVMD repo_root does not contain an fvmd package: {repo_root}"
-            )
+            raise FileNotFoundError(f"FVMD repo_root does not contain an fvmd package: {repo_root}")
         return repo_root.resolve()
 
     for candidate in DEFAULT_FVMD_REPO_CANDIDATES:
@@ -167,7 +163,9 @@ def _contiguous_partitions(items: Sequence[Any], parts: int) -> list[Sequence[An
     return partitions
 
 
-def _merge_clip_reports(parts: Sequence[ClipBuildReport], *, candidate_video_count: int) -> ClipBuildReport:
+def _merge_clip_reports(
+    parts: Sequence[ClipBuildReport], *, candidate_video_count: int
+) -> ClipBuildReport:
     merged = ClipBuildReport(candidate_video_count=candidate_video_count)
     for report in parts:
         merged.used_video_count += report.used_video_count
@@ -332,8 +330,14 @@ def _features_for_entries(
                     report.skipped_videos_preview.append(
                         {"id": identifier, "path": str(path), "reason": error}
                     )
-                log_progress("fvmd_decode", label=label, device=device, sample_id=identifier,
-                             status="fail", error=error)
+                log_progress(
+                    "fvmd_decode",
+                    label=label,
+                    device=device,
+                    sample_id=identifier,
+                    status="fail",
+                    error=error,
+                )
                 continue
             clip_array = np.stack(video_clips, axis=0)
             tracking_started = time.monotonic()
@@ -356,10 +360,17 @@ def _features_for_entries(
                 report.used_ids_preview.append(identifier)
             done = report.used_video_count + report.skipped_video_count
             if report.used_video_count == 1 or done % progress_every == 0 or done == len(entries):
-                log_progress("fvmd_track_progress", label=label, device=device,
-                             videos=f"{done}/{len(entries)}", clips=report.clip_count,
-                             decode_prefetch_videos=ahead, decode_wait_s=round(decode_wait, 2),
-                             tracking_s=round(track_seconds, 2), elapsed_s=round(time.monotonic() - started, 2))
+                log_progress(
+                    "fvmd_track_progress",
+                    label=label,
+                    device=device,
+                    videos=f"{done}/{len(entries)}",
+                    clips=report.clip_count,
+                    decode_prefetch_videos=ahead,
+                    decode_wait_s=round(decode_wait, 2),
+                    tracking_s=round(track_seconds, 2),
+                    elapsed_s=round(time.monotonic() - started, 2),
+                )
             del clip_array, video_clips
     if not chunks:
         raise ValueError(f"{label} side produced no FVMD motion windows")
@@ -401,7 +412,9 @@ def _extract_motion_side(
         shards=len(partitions),
     )
 
-    def _shard(item: tuple[int, Sequence[tuple[Path, str]]]) -> tuple[int, np.ndarray, ClipBuildReport]:
+    def _shard(
+        item: tuple[int, Sequence[tuple[Path, str]]],
+    ) -> tuple[int, np.ndarray, ClipBuildReport]:
         shard_index, shard_entries = item
         device_id = int(device_ids[shard_index])
         model = _build_tracker(modules, {**runtime, "device_ids": [device_id]})
@@ -453,30 +466,53 @@ def compute_frechet_video_motion_distance(
 
     cache_dir = reference_cache_dir or (output_dir / "reference_cache")
     reference_entries, verified_counts, selection = prepare_reference_selection(
-        reference_entries, reference_spec, cache_dir,
+        reference_entries,
+        reference_spec,
+        cache_dir,
         workers=runtime.get("reference_preflight_workers", 8),
     )
-    atomic_write_text(output_dir / "reference_selection.json", json.dumps(selection, indent=2, sort_keys=True) + "\n")
+    atomic_write_text(
+        output_dir / "reference_selection.json",
+        json.dumps(selection, indent=2, sort_keys=True) + "\n",
+    )
     reference_floor = max(reference_spec.min_clip_count, int(runtime.get("min_reference_clips", 0)))
     if selection["selection"]["clip_count"] < reference_floor:
-        raise ValueError(f"Eligible FVMD reference clips below minimum {reference_floor}; inspect reference_selection.json")
+        raise ValueError(
+            f"Eligible FVMD reference clips below minimum {reference_floor}; inspect reference_selection.json"
+        )
 
     _prepare_runtime_environment(runtime)
     modules, repo_root = _load_fvmd_modules(runtime)
 
-    from worldatlas.benchmark.integrity import path_content
     from urllib.parse import urlparse
+
     import torch
-    weights_name = Path(urlparse(str(getattr(modules['tracking'], 'PIPS_WEIGHTS', 'pips2_weights.pth'))).path).name
-    dependencies = [json.dumps(runtime, sort_keys=True, default=str),
-                    json.dumps(path_content(Path(__file__)), sort_keys=True),
-                    json.dumps(path_content(Path(__file__).with_name('fvmd_streaming.py')), sort_keys=True),
-                    json.dumps(path_content(Path(__file__).with_name('fvmd_reference.py')), sort_keys=True),
-                    json.dumps(path_content(Path(torch.hub.get_dir()) / 'checkpoints' / weights_name), sort_keys=True)]
+
+    from worldatlas.benchmark.integrity import path_content
+
+    weights_name = Path(
+        urlparse(str(getattr(modules["tracking"], "PIPS_WEIGHTS", "pips2_weights.pth"))).path
+    ).name
+    dependencies = [
+        json.dumps(runtime, sort_keys=True, default=str),
+        json.dumps(path_content(Path(__file__)), sort_keys=True),
+        json.dumps(path_content(Path(__file__).with_name("fvmd_streaming.py")), sort_keys=True),
+        json.dumps(path_content(Path(__file__).with_name("fvmd_reference.py")), sort_keys=True),
+        json.dumps(
+            path_content(Path(torch.hub.get_dir()) / "checkpoints" / weights_name), sort_keys=True
+        ),
+    ]
     if repo_root is not None:
-        dependencies.extend(json.dumps(path_content(p), sort_keys=True) for p in sorted((repo_root / 'fvmd').rglob('*.py')))
-    reference_signature = clip_set_signature(reference_entries, reference_spec, extra=[*dependencies, selection["sha256"]])
-    prediction_signature = clip_set_signature(prediction_entries, prediction_spec, extra=dependencies)
+        dependencies.extend(
+            json.dumps(path_content(p), sort_keys=True)
+            for p in sorted((repo_root / "fvmd").rglob("*.py"))
+        )
+    reference_signature = clip_set_signature(
+        reference_entries, reference_spec, extra=[*dependencies, selection["sha256"]]
+    )
+    prediction_signature = clip_set_signature(
+        prediction_entries, prediction_spec, extra=dependencies
+    )
     cached_features = cache_dir / f"{reference_signature}.npy"
     cached_report = cache_dir / f"{reference_signature}.json"
 
@@ -490,8 +526,15 @@ def compute_frechet_video_motion_distance(
         "tracking_device_ids": device_ids,
         "decode_prefetch_videos": runtime.get("decode_prefetch_videos", 2),
         "reference_selection_sha256": selection["sha256"],
-        "reference_population": {key: selection["selection"][key] for key in
-                                 ("candidate_video_count", "eligible_video_count", "excluded_video_count", "clip_count")},
+        "reference_population": {
+            key: selection["selection"][key]
+            for key in (
+                "candidate_video_count",
+                "eligible_video_count",
+                "excluded_video_count",
+                "clip_count",
+            )
+        },
     }
 
     prediction_features, prediction_report, prediction_mode = _extract_motion_side(
@@ -504,9 +547,9 @@ def compute_frechet_video_motion_distance(
     )
     details["prediction"] = prediction_report.describe()
     details["prediction_feature_extraction"] = prediction_mode
-    require_complete_clip_report(details["prediction"], len(prediction_entries), label='prediction')
+    require_complete_clip_report(details["prediction"], len(prediction_entries), label="prediction")
     validate_distribution_features(
-        prediction_features, int(details["prediction"]["clip_count"]), label='FVMD prediction'
+        prediction_features, int(details["prediction"]["clip_count"]), label="FVMD prediction"
     )
 
     # Concurrent model jobs share one reference extraction, not competing writes.
@@ -519,7 +562,9 @@ def compute_frechet_video_motion_distance(
             details["reference_feature_extraction"] = "cache"
         else:
             if cached_features.exists():
-                raise ValueError(f"Incomplete reference feature cache requires review: {cached_features}")
+                raise ValueError(
+                    f"Incomplete reference feature cache requires review: {cached_features}"
+                )
             reference_features, reference_report, reference_mode = _extract_motion_side(
                 reference_entries,
                 modules=modules,
@@ -530,26 +575,26 @@ def compute_frechet_video_motion_distance(
             )
             details["reference"] = reference_report.describe()
             details["reference_feature_extraction"] = reference_mode
-            require_complete_clip_report(details["reference"], len(reference_entries), label='reference')
+            require_complete_clip_report(
+                details["reference"], len(reference_entries), label="reference"
+            )
             if details["reference"]["clip_count"] != selection["selection"]["clip_count"]:
                 raise ValueError("FVMD reference clip count changed after preparation")
             validate_distribution_features(
-                reference_features, int(details["reference"]["clip_count"]), label='FVMD reference'
+                reference_features, int(details["reference"]["clip_count"]), label="FVMD reference"
             )
             atomic_save_npy(cached_features, reference_features)
             atomic_write_text(
                 cached_report, distribution_cache_metadata(cached_features, details["reference"])
             )
-    require_complete_clip_report(details["reference"], len(reference_entries), label='reference')
+    require_complete_clip_report(details["reference"], len(reference_entries), label="reference")
     if details["reference"]["clip_count"] != selection["selection"]["clip_count"]:
         raise ValueError("FVMD cached reference clip count differs from frozen selection")
 
     prediction_mu, prediction_sigma = modules["activation_statistics"](prediction_features)
     reference_mu, reference_sigma = modules["activation_statistics"](reference_features)
     raw = float(
-        modules["frechet_distance"](
-            prediction_mu, prediction_sigma, reference_mu, reference_sigma
-        )
+        modules["frechet_distance"](prediction_mu, prediction_sigma, reference_mu, reference_sigma)
     )
     if not np.isfinite(raw):
         raise ValueError(f"FVMD returned a non-finite score: {raw}")

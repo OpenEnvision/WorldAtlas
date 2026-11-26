@@ -4,22 +4,24 @@ from __future__ import annotations
 
 import faulthandler
 import functools
-from contextlib import contextmanager
 import math
 import os
-from pathlib import Path
 import sys
 import threading
 import time
 import traceback
+from contextlib import contextmanager
+from pathlib import Path
 
 
 def thread_stacks():
     """Take owned frame references from a Python thread that holds the GIL."""
     frames = sys._current_frames()
     try:
-        result = [f"H3_STACK time={time.strftime('%Y-%m-%dT%H:%M:%S%z')} "
-                  f"rank={os.environ.get('RANK', '0')} pid={os.getpid()}\n"]
+        result = [
+            f"H3_STACK time={time.strftime('%Y-%m-%dT%H:%M:%S%z')} "
+            f"rank={os.environ.get('RANK', '0')} pid={os.getpid()}\n"
+        ]
         for identifier, frame in frames.items():
             if identifier == threading.get_ident():
                 continue
@@ -55,8 +57,11 @@ def periodic_stack_dumps(path: Path, *, interval=300):
                 with path.open("a", encoding="utf-8") as output:
                     output.write(text)
             except Exception as error:
-                print(f"H3_DIAGNOSTIC_ERROR rank={os.environ.get('RANK', '0')} "
-                      f"error={type(error).__name__}: {error}", flush=True)
+                print(
+                    f"H3_DIAGNOSTIC_ERROR rank={os.environ.get('RANK', '0')} "
+                    f"error={type(error).__name__}: {error}",
+                    flush=True,
+                )
 
     sampler = threading.Thread(target=sample, name="h3-stack-sampler", daemon=True)
     sampler.start()
@@ -118,7 +123,9 @@ def install_diagnostics():
     fsdp.initialize_distributed = trace(initialize_and_probe, "initialize_distributed")
     for name in ("prepare", "generate", "prepared_case_receipt", "selected_rows", "sha"):
         setattr(full_inference, name, trace(getattr(full_inference, name), name))
-    distributed.broadcast_sp_tensor = trace(distributed.broadcast_sp_tensor, "sp_broadcast", limit=8)
+    distributed.broadcast_sp_tensor = trace(
+        distributed.broadcast_sp_tensor, "sp_broadcast", limit=8
+    )
     dist.barrier = trace(dist.barrier, "barrier")
     # All ranks report their first forward; rank zero reports subsequent forwards.
     forward = trace(sgf_rollout.h3_student_forward, "student_forward", rank_zero=True)
@@ -132,9 +139,12 @@ def install_diagnostics():
         return decode(*args, **kwargs)
 
     full_inference.decode_write = trace(decode_with_progress, "decode_write")
-    print(f"H3_STAGE rank={os.environ.get('RANK', '0')} stage=diagnostics event=ready "
-          f"torch={torch.__version__} cuda={torch.version.cuda} "
-          f"pid={os.getpid()} python={sys.version.split()[0]} stack_sampler=python_thread", flush=True)
+    print(
+        f"H3_STAGE rank={os.environ.get('RANK', '0')} stage=diagnostics event=ready "
+        f"torch={torch.__version__} cuda={torch.version.cuda} "
+        f"pid={os.getpid()} python={sys.version.split()[0]} stack_sampler=python_thread",
+        flush=True,
+    )
 
 
 def main():

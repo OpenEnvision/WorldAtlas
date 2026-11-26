@@ -71,8 +71,7 @@ def _ssim_channel(left: np.ndarray, right: np.ndarray) -> float:
 def _ssim_rgb(left: np.ndarray, right: np.ndarray) -> float:
     """Average per-channel SSIM across RGB and clamp to [0, 1]."""
     scores = [
-        _ssim_channel(left[:, :, channel], right[:, :, channel])
-        for channel in range(left.shape[2])
+        _ssim_channel(left[:, :, channel], right[:, :, channel]) for channel in range(left.shape[2])
     ]
     return clamp01(float(np.mean(scores)))
 

@@ -10,15 +10,14 @@ reported as not having returned rather than as having forgotten.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 from worldatlas.benchmark.sidecars import prediction_sidecar_candidates
-
 
 MEMORY_SAFETY_REVISION = "memory_eval_v3_candidate"
 
@@ -176,7 +175,9 @@ def _pose_sidecar_candidates(prediction_path: Path, runtime: dict[str, Any]) -> 
     )
 
 
-def resolve_pose_sidecar(prediction_path: Path, runtime: dict[str, Any] | None = None) -> tuple[np.ndarray, str]:
+def resolve_pose_sidecar(
+    prediction_path: Path, runtime: dict[str, Any] | None = None
+) -> tuple[np.ndarray, str]:
     """Find and load the estimated camera trajectory beside a prediction video."""
     prediction_path = Path(prediction_path).absolute()
     for candidate in _pose_sidecar_candidates(prediction_path, dict(runtime or {})):
@@ -207,7 +208,12 @@ def resolve_pose_track(prediction_path: Path, runtime: dict[str, Any] | None = N
             loaded = np.asarray(np.load(intrinsics_path), dtype=np.float64)
             if loaded.shape == (3, 3):
                 loaded = loaded[None]
-            if loaded.ndim != 3 or loaded.shape[1:] != (3, 3) or len(loaded) not in (1, len(poses)) or not np.isfinite(loaded).all():
+            if (
+                loaded.ndim != 3
+                or loaded.shape[1:] != (3, 3)
+                or len(loaded) not in (1, len(poses))
+                or not np.isfinite(loaded).all()
+            ):
                 raise ValueError(f"invalid intrinsics alignment: {intrinsics_path}")
             intrinsics = loaded
         return PoseTrack(
@@ -225,9 +231,13 @@ def resolve_pose_track(prediction_path: Path, runtime: dict[str, Any] | None = N
 def validate_pose_frame_indices(frame_indices: np.ndarray, pose_count: int) -> np.ndarray:
     """Never silently turn sparse, fractional, or malformed mappings into dense time."""
     values = np.asarray(frame_indices)
-    if (values.shape != (pose_count,) or not np.isfinite(values).all()
-            or np.any(values < 0) or np.any(values >= np.iinfo(np.int64).max)
-            or np.any(values != np.floor(values))):
+    if (
+        values.shape != (pose_count,)
+        or not np.isfinite(values).all()
+        or np.any(values < 0)
+        or np.any(values >= np.iinfo(np.int64).max)
+        or np.any(values != np.floor(values))
+    ):
         raise ValueError("pose frame indices must be aligned nonnegative integers")
     indices = values.astype(np.int64)
     if np.any(np.diff(indices) <= 0):
@@ -277,7 +287,12 @@ def pose_distance_matrix(
     degenerates to rotation only.
     """
     poses = np.asarray(poses_c2w, dtype=np.float64)
-    if poses.ndim != 3 or poses.shape[1:] != (4, 4) or len(poses) < 2 or not np.isfinite(poses).all():
+    if (
+        poses.ndim != 3
+        or poses.shape[1:] != (4, 4)
+        or len(poses) < 2
+        or not np.isfinite(poses).all()
+    ):
         raise ValueError(f"expected at least two [4,4] poses, got {poses.shape}")
 
     translations = poses[:, :3, 3]
@@ -323,10 +338,16 @@ def find_revisit_pairs(
     poses = np.asarray(poses_c2w, dtype=np.float64)
     frame_count = len(poses)
     frame_rate = float(fps)
-    if not math.isfinite(frame_rate) or frame_rate <= 0 or not math.isfinite(min_gap_seconds) or min_gap_seconds <= 0:
+    if (
+        not math.isfinite(frame_rate)
+        or frame_rate <= 0
+        or not math.isfinite(min_gap_seconds)
+        or min_gap_seconds <= 0
+    ):
         raise ValueError("fps and minimum time gap must be finite and positive")
     native_indices = validate_pose_frame_indices(
-        np.arange(frame_count) if frame_indices is None else frame_indices, frame_count,
+        np.arange(frame_count) if frame_indices is None else frame_indices,
+        frame_count,
     )
 
     distances, translation_distances, rotation_degrees, degenerate = pose_distance_matrix(
@@ -346,7 +367,9 @@ def find_revisit_pairs(
     threshold = float(max_pair_distance)
     for revisit_index in range(1, frame_count):
         cutoff = native_indices[revisit_index] - float(min_gap_seconds) * frame_rate
-        earlier_count = min(revisit_index, int(np.searchsorted(native_indices, cutoff + 1e-9, side="right")))
+        earlier_count = min(
+            revisit_index, int(np.searchsorted(native_indices, cutoff + 1e-9, side="right"))
+        )
         window = distances[revisit_index, :earlier_count]
         if window.size == 0:
             continue
@@ -365,7 +388,8 @@ def find_revisit_pairs(
                 pose_distance=distance,
                 translation_distance=float(translation_distances[revisit_index, first_index]),
                 rotation_degrees=float(rotation_degrees[revisit_index, first_index]),
-                gap_seconds=float(native_indices[revisit_index] - native_indices[first_index]) / frame_rate,
+                gap_seconds=float(native_indices[revisit_index] - native_indices[first_index])
+                / frame_rate,
                 excursion=excursion,
                 excursion_index=first_index + 1 + int(np.argmax(between)) if between.size else None,
             )
@@ -431,12 +455,19 @@ def observation_revisit_split(
         raise ValueError("cannot split a rollout that never revisits an earlier viewpoint")
     if min_segment_frames < 1 or int(min_segment_frames) != min_segment_frames:
         raise ValueError("minimum segment length must be a positive integer")
-    candidates = sorted(structure.pairs, key=lambda pair: (
-        -pair.gap_seconds, pair.first_index, pair.revisit_index,
-    ))
+    candidates = sorted(
+        structure.pairs,
+        key=lambda pair: (
+            -pair.gap_seconds,
+            pair.first_index,
+            pair.revisit_index,
+        ),
+    )
     for pair in candidates:
         peak = pair.excursion_index
-        if peak is None or not (0 <= pair.first_index < peak < pair.revisit_index < structure.frame_count):
+        if peak is None or not (
+            0 <= pair.first_index < peak < pair.revisit_index < structure.frame_count
+        ):
             continue
         observation = range(pair.first_index, peak)
         revisit = range(peak, pair.revisit_index + 1)
@@ -481,7 +512,9 @@ def fit_exponential_half_life(
         raise ValueError("min_points must be an integer of at least 3 for a three-parameter fit")
     finite = np.isfinite(gaps) & np.isfinite(scores)
     if not finite.all():
-        raise ValueError("half-life observations must all be finite; invalid pairs cannot be silently dropped")
+        raise ValueError(
+            "half-life observations must all be finite; invalid pairs cannot be silently dropped"
+        )
     if np.any(gaps < 0.0):
         raise ValueError("time gaps must be nonnegative")
     if len(gaps) < int(min_points):
@@ -528,9 +561,7 @@ def fit_exponential_half_life(
         if not np.isfinite(predicted).all():
             return None
         amplitude = (
-            math.exp(log_amplitude)
-            if log_amplitude <= math.log(np.finfo(np.float64).max)
-            else None
+            math.exp(log_amplitude) if log_amplitude <= math.log(np.finfo(np.float64).max) else None
         )
         return {
             "amplitude": amplitude,

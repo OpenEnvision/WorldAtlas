@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
 import shutil
 import subprocess
-from typing import Any
 import uuid
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -20,20 +20,19 @@ from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.benchmark.synthetic_camera import synthetic_camera_matrices
 from worldatlas.common.annotation_index import split_annotation_reference
 from worldatlas.common.media import probe_image
+from worldatlas.common.progress import log_progress
 from worldatlas.models.adapters.base import ModelAdapter, PreparedGenerationRequest
 from worldatlas.models.adapters.common import build_env, run_command, worldatlas_project_root
-from worldatlas.common.progress import log_progress
 from worldatlas.models.adapters.flashworld.flashworld_runner import (
     FLASHWORLD_CAMERA_CONVENTION,
     FLASHWORLD_WAN_DIFFUSERS_ENV,
     _build_request_payload,
     _resolve_checkpoint_path,
-    resolve_wan_diffusers_dir,
     flashworld_runtime_env,
+    resolve_wan_diffusers_dir,
 )
 from worldatlas.models.adapters.lingbot_world.common import _camera_path_for_sample
 from worldatlas.models.config import ModelRuntimeConfig
-
 
 FLASHWORLD_DEFAULT_FOCAL_SCALE = 0.6
 
@@ -44,7 +43,10 @@ def _project_root(config: ModelRuntimeConfig) -> Path:
         if parent.name == "models" and parent.parent.name == "config":
             return parent.parent.parent
 
-    if config.repo_root is not None and config.repo_root.parent.name in {"thirdparty", "third_party"}:
+    if config.repo_root is not None and config.repo_root.parent.name in {
+        "thirdparty",
+        "third_party",
+    }:
         return config.repo_root.parent.parent
 
     if config.checkpoint_dir is not None and config.checkpoint_dir.parent.name == "ckpt":
@@ -71,7 +73,9 @@ def _synthetic_intrinsics_sequence(
         [focal_length, focal_length, image_width / 2.0, image_height / 2.0],
         dtype=np.float32,
     )
-    return np.repeat(intrinsics[None, :], repeats=max(int(frame_count), 1), axis=0).astype(np.float32)
+    return np.repeat(intrinsics[None, :], repeats=max(int(frame_count), 1), axis=0).astype(
+        np.float32
+    )
 
 
 def _synthetic_image_poses(camera_path: list[str], *, frame_count: int) -> np.ndarray:
@@ -97,7 +101,9 @@ def _synthetic_image_annotation_path(
     image_probe = probe_image(conditioning_image)
     image_width = int(image_probe["width"])
     image_height = int(image_probe["height"])
-    focal_scale = float(config.generation.get("synthetic_focal_scale", FLASHWORLD_DEFAULT_FOCAL_SCALE))
+    focal_scale = float(
+        config.generation.get("synthetic_focal_scale", FLASHWORLD_DEFAULT_FOCAL_SCALE)
+    )
     cache_key_payload = {
         "sample_id": sample.sample_id,
         "relative_path": sample.relative_path,
@@ -111,7 +117,9 @@ def _synthetic_image_annotation_path(
     key = hashlib.sha1(
         json.dumps(cache_key_payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
     ).hexdigest()[:12]
-    annotation_root = _runtime_root(config) / "image_annotations" / f"{sample.prediction_stem}--{key}"
+    annotation_root = (
+        _runtime_root(config) / "image_annotations" / f"{sample.prediction_stem}--{key}"
+    )
     poses_path = annotation_root / "poses.npy"
     intrinsics_path = annotation_root / "intrinsics.npy"
     if poses_path.exists() and intrinsics_path.exists():
@@ -148,7 +156,9 @@ def _resolved_annotation_path(
         if (annotation_dir / "poses.npy").exists() and (annotation_dir / "intrinsics.npy").exists():
             return annotation_dir
 
-    if sample.modality == "image" and (sample.suite == "image_static" or sample.generation_mode == "static"):
+    if sample.modality == "image" and (
+        sample.suite == "image_static" or sample.generation_mode == "static"
+    ):
         return _synthetic_image_annotation_path(
             config,
             sample,
@@ -166,10 +176,12 @@ def _flashworld_subprocess_env(config: ModelRuntimeConfig, project_root: Path) -
     overrides[FLASHWORLD_WAN_DIFFUSERS_ENV] = str(
         resolve_wan_diffusers_dir(overrides.get(FLASHWORLD_WAN_DIFFUSERS_ENV))
     )
-    return flashworld_runtime_env(build_env(
-        extra_pythonpaths=[project_root],
-        overrides=overrides,
-    ))
+    return flashworld_runtime_env(
+        build_env(
+            extra_pythonpaths=[project_root],
+            overrides=overrides,
+        )
+    )
 
 
 def _flashworld_cli_command(
@@ -185,7 +197,7 @@ def _flashworld_cli_command(
     generation = config.generation
     command = [
         config.python_bin,
-        str(Path(__file__).with_name('cli_bootstrap.py')),
+        str(Path(__file__).with_name("cli_bootstrap.py")),
         str(cli_path),
         "--ckpt",
         str(checkpoint_path),
@@ -210,7 +222,6 @@ class FlashWorldAdapter(ModelAdapter):
     """Generate camera-guided videos via the FlashWorld upstream repo."""
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return True
 
     def batch_checkpoint_load_policy(self) -> str:

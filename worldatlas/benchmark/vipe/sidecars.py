@@ -5,16 +5,14 @@ from __future__ import annotations
 import json
 import os
 import zipfile
-
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
 
 import cv2
 import numpy as np
 import OpenEXR
-
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 REQUIRED_SIDECAR_FILES = (
@@ -50,27 +48,22 @@ class VipeArtifactPaths:
 
     @property
     def pose_path(self) -> Path:
-        """Pose path -> Path."""
         return self.root / "pose" / f"{self.stem}.npz"
 
     @property
     def intrinsics_path(self) -> Path:
-        """Intrinsics path -> Path."""
         return self.root / "intrinsics" / f"{self.stem}.npz"
 
     @property
     def camera_type_path(self) -> Path:
-        """Camera type path -> Path."""
         return self.root / "intrinsics" / f"{self.stem}_camera.txt"
 
     @property
     def depth_path(self) -> Path:
-        """Depth path -> Path."""
         return self.root / "depth" / f"{self.stem}.zip"
 
 
 def is_video_file(path: Path) -> bool:
-
     return path.is_file() and path.suffix.lower() in VIDEO_EXTENSIONS
 
 
@@ -200,7 +193,9 @@ def intrinsics_vec_to_matrix(vec: np.ndarray) -> np.ndarray:
 def intrinsics_sequence_to_matrices(intrinsics: np.ndarray) -> np.ndarray:
     """Convert a sequence of ViPE intrinsics vectors to `[N, 3, 3]` matrices."""
 
-    return np.stack([intrinsics_vec_to_matrix(vec) for vec in intrinsics], axis=0).astype(np.float32)
+    return np.stack([intrinsics_vec_to_matrix(vec) for vec in intrinsics], axis=0).astype(
+        np.float32
+    )
 
 
 def read_video_frame(path: Path, frame_index: int) -> np.ndarray:
@@ -241,7 +236,9 @@ def write_depth_preview(
         preview = cv2.applyColorMap((normalized * 255.0).astype(np.uint8), cv2.COLORMAP_INFERNO)
         preview[~valid_mask] = 0
     combined = np.concatenate([cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR), preview], axis=1)
-    cv2.putText(combined, "RGB", (24, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(
+        combined, "RGB", (24, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA
+    )
     cv2.putText(
         combined,
         "ViPE Depth",
@@ -256,7 +253,6 @@ def write_depth_preview(
 
 
 def sidecar_complete(path: Path) -> bool:
-
     if not path.is_dir():
         return False
     return all((path / name).exists() for name in REQUIRED_SIDECAR_FILES)
@@ -306,22 +302,42 @@ def validate_export(
         depth_has_inf = bool(np.isinf(depth_metric).any())
     has_nan = bool(pose_has_nan or intrinsics_has_nan or depth_has_nan)
     has_inf = bool(pose_has_inf or intrinsics_has_inf or depth_has_inf)
-    inverse_residual = float(
-        np.max(np.abs(np.matmul(poses_c2w, poses_w2c) - np.eye(4, dtype=np.float32)))
-    ) if pose_shape_ok and pose_inverse_shape_ok and aligned_count > 0 else float("inf")
-    rotation_ortho_residual = float(
-        np.max(
-            np.abs(
-                np.matmul(poses_c2w[:, :3, :3], np.transpose(poses_c2w[:, :3, :3], (0, 2, 1)))
-                - np.eye(3, dtype=np.float32)
+    inverse_residual = (
+        float(np.max(np.abs(np.matmul(poses_c2w, poses_w2c) - np.eye(4, dtype=np.float32))))
+        if pose_shape_ok and pose_inverse_shape_ok and aligned_count > 0
+        else float("inf")
+    )
+    rotation_ortho_residual = (
+        float(
+            np.max(
+                np.abs(
+                    np.matmul(poses_c2w[:, :3, :3], np.transpose(poses_c2w[:, :3, :3], (0, 2, 1)))
+                    - np.eye(3, dtype=np.float32)
+                )
             )
         )
-    ) if pose_shape_ok and aligned_count > 0 else float("inf")
-    rotation_det = np.linalg.det(poses_c2w[:, :3, :3]).astype(np.float32) if pose_shape_ok and aligned_count > 0 else np.array([], dtype=np.float32)
-    valid_fraction = float(depth_valid_mask.mean()) if depth_shape_ok and depth_valid_mask.size > 0 else 0.0
-    coverage_ratio = float(aligned_count / source_video.frame_count) if source_video.frame_count > 0 else 0.0
+        if pose_shape_ok and aligned_count > 0
+        else float("inf")
+    )
+    rotation_det = (
+        np.linalg.det(poses_c2w[:, :3, :3]).astype(np.float32)
+        if pose_shape_ok and aligned_count > 0
+        else np.array([], dtype=np.float32)
+    )
+    valid_fraction = (
+        float(depth_valid_mask.mean()) if depth_shape_ok and depth_valid_mask.size > 0 else 0.0
+    )
+    coverage_ratio = (
+        float(aligned_count / source_video.frame_count) if source_video.frame_count > 0 else 0.0
+    )
     status = "passed"
-    if not counts_consistent or not pose_shape_ok or not pose_inverse_shape_ok or not intrinsics_shape_ok or not depth_shape_ok:
+    if (
+        not counts_consistent
+        or not pose_shape_ok
+        or not pose_inverse_shape_ok
+        or not intrinsics_shape_ok
+        or not depth_shape_ok
+    ):
         status = "failed"
     elif has_inf or inverse_residual > 1e-3:
         status = "failed"
@@ -373,14 +389,22 @@ def export_vipe_sidecar(
     intr_indices, intrinsics_vec = read_vipe_intrinsics_artifacts(paths.intrinsics_path)
     depth_indices = list_vipe_depth_indices(paths.depth_path)
     camera_types_by_index = read_vipe_camera_types(paths.camera_type_path, intr_indices)
-    common_indices = sorted(set(pose_indices.tolist()) & set(intr_indices.tolist()) & set(depth_indices))
+    common_indices = sorted(
+        set(pose_indices.tolist()) & set(intr_indices.tolist()) & set(depth_indices)
+    )
     if not common_indices:
         raise RuntimeError(f"no common pose/intrinsics/depth frame indices found for {video_path}")
 
-    pose_map = {int(index): pose for index, pose in zip(pose_indices.tolist(), poses_c2w, strict=True)}
-    intr_map = {int(index): intr for index, intr in zip(intr_indices.tolist(), intrinsics_vec, strict=True)}
+    pose_map = {
+        int(index): pose for index, pose in zip(pose_indices.tolist(), poses_c2w, strict=True)
+    }
+    intr_map = {
+        int(index): intr for index, intr in zip(intr_indices.tolist(), intrinsics_vec, strict=True)
+    }
     frame_indices = np.asarray(common_indices, dtype=np.int32)
-    aligned_poses_c2w = np.stack([pose_map[index] for index in common_indices], axis=0).astype(np.float32)
+    aligned_poses_c2w = np.stack([pose_map[index] for index in common_indices], axis=0).astype(
+        np.float32
+    )
     aligned_poses_w2c = np.linalg.inv(aligned_poses_c2w).astype(np.float32)
     aligned_intrinsics = intrinsics_sequence_to_matrices(
         np.stack([intr_map[index] for index in common_indices], axis=0).astype(np.float32)

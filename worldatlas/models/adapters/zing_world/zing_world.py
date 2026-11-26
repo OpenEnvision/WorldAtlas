@@ -34,8 +34,12 @@ _APPROXIMATIONS = {"orbit_left", "orbit_right", "pedestal_up", "pedestal_down"}
 
 
 def _integer(value: Any, name: str, minimum: int = 1) -> int:
-    if (isinstance(value, bool) or not math.isfinite(float(value))
-            or float(value) != int(value) or int(value) < minimum):
+    if (
+        isinstance(value, bool)
+        or not math.isfinite(float(value))
+        or float(value) != int(value)
+        or int(value) < minimum
+    ):
         raise ValueError(f"Zing {name} must be an integer >= {minimum}")
     return int(value)
 
@@ -43,8 +47,16 @@ def _integer(value: Any, name: str, minimum: int = 1) -> int:
 def runtime_options(generation: dict[str, Any]) -> dict[str, Any]:
     """Resolve the native frame lattice without changing playback speed."""
     allowed = {
-        "num_frames", "target_duration_seconds", "fps", "width", "height", "seed",
-        "local_attn_size", "sink_size", "nproc_per_node", "require_persistent_batch",
+        "num_frames",
+        "target_duration_seconds",
+        "fps",
+        "width",
+        "height",
+        "seed",
+        "local_attn_size",
+        "sink_size",
+        "nproc_per_node",
+        "require_persistent_batch",
     }
     unknown = set(generation) - allowed
     if unknown:
@@ -71,16 +83,22 @@ def runtime_options(generation: dict[str, Any]) -> dict[str, Any]:
     local = _integer(generation.get("local_attn_size", 97), "local_attn_size", -1)
     sink = _integer(generation.get("sink_size", 9), "sink_size", 0)
     # Match upstream _validate_cache_window with frames_per_block=4.
-    if ((local == -1 and sink != 0)
-            or (local != -1 and (local < 1 or math.ceil(local / 4) - math.ceil(sink / 4) < 2))):
+    if (local == -1 and sink != 0) or (
+        local != -1 and (local < 1 or math.ceil(local / 4) - math.ceil(sink / 4) < 2)
+    ):
         raise ValueError("Zing cache window is invalid; use 97/9, 33/5, or -1/0")
     seed = _integer(generation.get("seed", 42), "seed", 0)
     if seed >= 2**32:
         raise ValueError("Zing seed must be in [0, 2**32)")
     return {
-        "num_frames": num_frames, "requested_frames": requested, "fps": fps,
-        "width": width, "height": height, "seed": seed,
-        "local_attn_size": local, "sink_size": sink,
+        "num_frames": num_frames,
+        "requested_frames": requested,
+        "fps": fps,
+        "width": width,
+        "height": height,
+        "seed": seed,
+        "local_attn_size": local,
+        "sink_size": sink,
     }
 
 
@@ -92,7 +110,9 @@ def sample_seed(base_seed: int, sample_id: str) -> int:
 
 def keyboard_actions(camera_path: list[str], num_frames: int) -> tuple[list[list[int]], list[str]]:
     """Expand the entire camera itinerary into Zing's W/A/S/D/I/J/K/L rows."""
-    tokens = [str(token).strip().lower() for token in camera_path if str(token).strip()] or ["fixed"]
+    tokens = [str(token).strip().lower() for token in camera_path if str(token).strip()] or [
+        "fixed"
+    ]
     unknown = [token for token in tokens if token not in _ACTION_KEYS]
     if unknown:
         raise ValueError(f"Unsupported Zing camera actions (no native keyboard mapping): {unknown}")
@@ -122,11 +142,14 @@ def build_message(row: dict[str, Any], options: dict[str, Any]) -> dict[str, Any
         "messages": [
             {"role": "user", "type": "text", "content": prompt},
             {
-                "role": "target", "type": "video", "reference_frame_count": 1,
+                "role": "target",
+                "type": "video",
+                "reference_frame_count": 1,
                 "uri": str(image),
                 "output": {
                     "frames": options["num_frames"] - 1,
-                    "height": options["height"], "width": options["width"],
+                    "height": options["height"],
+                    "width": options["width"],
                 },
                 "controls": [{"type": "keyboard_direction_frame_interval", "actions": actions}],
             },
@@ -150,8 +173,11 @@ class ZingWorldAdapter(ExternalBatchAdapter):
         options = runtime_options(self.config.generation)
         camera_path = _camera_path_for_sample(request.sample) or ["fixed"]
         _, approximations = keyboard_actions(camera_path, options["num_frames"])
-        payload.update(camera_path=camera_path, action_approximations=approximations,
-                       num_frames=options["num_frames"])
+        payload.update(
+            camera_path=camera_path,
+            action_approximations=approximations,
+            num_frames=options["num_frames"],
+        )
         return payload
 
     def _build_command(self, spec_path: Path, generation_path: Path) -> list[str]:

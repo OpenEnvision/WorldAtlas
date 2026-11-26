@@ -1,24 +1,27 @@
 from __future__ import annotations
 
 import argparse
-from collections import defaultdict
 import hashlib
 import json
 import os
-from pathlib import Path
 import shlex
 import subprocess
 import sys
 import threading
 import time
-from typing import Iterable, TextIO
+from collections import defaultdict
+from collections.abc import Iterable
+from pathlib import Path
+from typing import TextIO
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sharded WorldAtlas evaluation across GPUs.")
     parser.add_argument("--config", default="config/benchmark.yaml")
     parser.add_argument("--model-config", default=None)
-    parser.add_argument("--manifest", default="artifacts/benchmark/manifest/worldatlas_manifest.jsonl")
+    parser.add_argument(
+        "--manifest", default="artifacts/benchmark/manifest/worldatlas_manifest.jsonl"
+    )
     parser.add_argument("--predictions-root", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--suites", default="image_dynamic")
@@ -177,6 +180,7 @@ def _sha256_file(path: Path | None) -> str | None:
 
 def _evaluation_source_hashes(project_root: Path) -> dict[str, str]:
     from worldatlas.benchmark.integrity import evaluation_source_hashes
+
     return evaluation_source_hashes(project_root)
 
 
@@ -465,31 +469,58 @@ def _shard_resume_signature(
         "motion_frame_max_side": getattr(args, "motion_frame_max_side", None),
         "motion_smoothness_frame_max_side": getattr(args, "motion_smoothness_frame_max_side", None),
         "manifest_sha256": _sha256_file(manifest_path),
-        "config_sha256": _sha256_file(_resolve_project_path(getattr(args, "config", None), project_root)),
-        "model_config_sha256": _sha256_file(_resolve_project_path(getattr(args, "model_config", None), project_root)),
+        "config_sha256": _sha256_file(
+            _resolve_project_path(getattr(args, "config", None), project_root)
+        ),
+        "model_config_sha256": _sha256_file(
+            _resolve_project_path(getattr(args, "model_config", None), project_root)
+        ),
         "evaluation_source_sha256": _evaluation_source_hashes(project_root),
-        "runtime_env": {key: os.environ.get(key) for key in (
-            "TORCH_CUDNN_V8_API_DISABLED", "WORLDATLAS_RAFT_CUDNN_ENABLED",
-        )},
+        "runtime_env": {
+            key: os.environ.get(key)
+            for key in (
+                "TORCH_CUDNN_V8_API_DISABLED",
+                "WORLDATLAS_RAFT_CUDNN_ENABLED",
+            )
+        },
     }
-    from worldatlas.benchmark.integrity import sample_input_content, digest_json, scoring_environment, package_versions
+    from worldatlas.benchmark.integrity import (
+        digest_json,
+        package_versions,
+        sample_input_content,
+        scoring_environment,
+    )
+
     signature["scoring_environment"] = scoring_environment()
-    signature['package_versions'] = package_versions()
+    signature["package_versions"] = package_versions()
     if manifest_path is not None and manifest_path.is_file():
         from worldatlas.benchmark.manifest import load_manifest
         from worldatlas.benchmark.runner import _resolve_prediction_path
+
         selected_suites = _suites_set(args.suites)
-        selected = [s for s in load_manifest(manifest_path) if not selected_suites or s.suite in selected_suites]
+        selected = [
+            s
+            for s in load_manifest(manifest_path)
+            if not selected_suites or s.suite in selected_suites
+        ]
         selected = selected[shard_index::num_shards]
         if args.limit is not None:
-            selected = selected[:args.limit]
-        signature["input_content_sha256"] = digest_json([
-            sample_input_content(s, _resolve_prediction_path(predictions_root, s)) for s in selected])
+            selected = selected[: args.limit]
+        signature["input_content_sha256"] = digest_json(
+            [
+                sample_input_content(s, _resolve_prediction_path(predictions_root, s))
+                for s in selected
+            ]
+        )
     requested = _metric_list(args.metrics)
     from worldatlas.benchmark.integrity import checkpoint_content_for_metrics
-    signature['motion_checkpoint_content'] = checkpoint_content_for_metrics(
-        requested or {'motion_accuracy', 'motion_magnitude', 'optical_flow_aepe'}, project_root)
-    if not requested or any(name.startswith(("memory_", "keystroke_", "rollout_")) for name in requested):
+
+    signature["motion_checkpoint_content"] = checkpoint_content_for_metrics(
+        requested or {"motion_accuracy", "motion_magnitude", "optical_flow_aepe"}, project_root
+    )
+    if not requested or any(
+        name.startswith(("memory_", "keystroke_", "rollout_")) for name in requested
+    ):
         signature["memory_metric_source_sha256"] = {
             relative: _sha256_file(project_root / relative)
             for relative in (
@@ -583,7 +614,11 @@ def _can_skip_existing_shard(
     if not requested and not configured:
         return False, "existing full-suite report lacks requested metric coverage"
     try:
-        rows = [json.loads(line) for line in scores_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        rows = [
+            json.loads(line)
+            for line in scores_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
     except (OSError, json.JSONDecodeError) as exc:
         return False, f"invalid sample scores: {exc}"
     if len(rows) != payload.get("items", len(rows)) or (not rows and payload.get("items") != 0):
@@ -621,8 +656,12 @@ def run_shard(args: argparse.Namespace) -> int:
     suites = _suites_set(args.suites)
     metrics = _metric_list(args.metrics)
     _apply_metric_override(config, suites, metrics)
-    runtime_metrics = metrics or [name for suite, names in config.metrics_by_suite.items()
-                                  if not suites or suite in suites for name in names]
+    runtime_metrics = metrics or [
+        name
+        for suite, names in config.metrics_by_suite.items()
+        if not suites or suite in suites
+        for name in names
+    ]
     _bind_runtime_to_visible_gpu(config, runtime_metrics, args)
 
     filtered = [s for s in manifest if not suites or s.suite in suites]
@@ -648,26 +687,47 @@ def run_shard(args: argparse.Namespace) -> int:
         output_dir=str(out_dir),
     )
 
-    from worldatlas.benchmark.runtime_health import CUDA_RESTART_EXIT_CODE, CudaContextError, sample_score_failed
+    from worldatlas.benchmark.runtime_health import (
+        CUDA_RESTART_EXIT_CODE,
+        CudaContextError,
+        sample_score_failed,
+    )
+
     signature = _shard_resume_signature(
-        args, shard_index=args.shard_index, num_shards=args.num_shards, predictions_root=predictions_root,
+        args,
+        shard_index=args.shard_index,
+        num_shards=args.num_shards,
+        predictions_root=predictions_root,
     )
     fingerprint = hashlib.sha256(json.dumps(signature, sort_keys=True).encode()).hexdigest()
     try:
         result = run_benchmark(
-            config=config, manifest=shard, predictions_root=predictions_root,
-            output_dir=out_dir, model_name=model_name, suites=suites, limit=None,
+            config=config,
+            manifest=shard,
+            predictions_root=predictions_root,
+            output_dir=out_dir,
+            model_name=model_name,
+            suites=suites,
+            limit=None,
             run_suite_level_metrics=False,
             checkpoint_path=sample_checkpoint_path(out_dir, fingerprint),
         )
     except CudaContextError as exc:
-        log_exception("cuda_worker_restart_required", exc, shard=args.shard_index,
-                      exit_code=CUDA_RESTART_EXIT_CODE)
+        log_exception(
+            "cuda_worker_restart_required",
+            exc,
+            shard=args.shard_index,
+            exit_code=CUDA_RESTART_EXIT_CODE,
+        )
         return CUDA_RESTART_EXIT_CODE
     _write_shard_resume_signature(out_dir, signature)
     required = result["run_manifest"]["requested_metrics"]
-    return int(any(sample_score_failed(score.to_dict(), required.get(score.suite, []))
-                   for score in result["sample_scores"]))
+    return int(
+        any(
+            sample_score_failed(score.to_dict(), required.get(score.suite, []))
+            for score in result["sample_scores"]
+        )
+    )
 
 
 def _load_scores(path: Path):
@@ -729,7 +789,9 @@ def merge(args: argparse.Namespace, num_shards: int) -> dict:
                 shard_source_changes[str(i)] = changes
 
     model_config = load_model_config(Path(args.model_config)) if args.model_config else None
-    model_name = args.model_name or (model_config.name if model_config else Path(args.predictions_root).name)
+    model_name = args.model_name or (
+        model_config.name if model_config else Path(args.predictions_root).name
+    )
     config_path = _resolve_project_path(args.config, project_root)
     model_config_path = _resolve_project_path(args.model_config, project_root)
     manifest_path = _resolve_project_path(args.manifest, project_root)
@@ -741,15 +803,23 @@ def merge(args: argparse.Namespace, num_shards: int) -> dict:
     selected_suites = _suites_set(args.suites)
     _apply_metric_override(config, selected_suites, _metric_list(args.metrics))
     manifest_samples = load_manifest(manifest_path)
-    manifest_by_id = {
-        sample.sample_id: sample
-        for sample in manifest_samples
-    }
+    manifest_by_id = {sample.sample_id: sample for sample in manifest_samples}
     if len(manifest_by_id) != len(manifest_samples):
-        raise ValueError('Duplicate sample IDs in merge manifest')
-    filtered = [sample for sample in manifest_samples if not selected_suites or sample.suite in selected_suites]
-    expected_ids = {sample.sample_id for i in range(num_shards)
-                    for sample in (filtered[i::num_shards][:args.limit] if args.limit is not None else filtered[i::num_shards])}
+        raise ValueError("Duplicate sample IDs in merge manifest")
+    filtered = [
+        sample
+        for sample in manifest_samples
+        if not selected_suites or sample.suite in selected_suites
+    ]
+    expected_ids = {
+        sample.sample_id
+        for i in range(num_shards)
+        for sample in (
+            filtered[i::num_shards][: args.limit]
+            if args.limit is not None
+            else filtered[i::num_shards]
+        )
+    }
     actual_ids = [score.sample_id for score in all_scores]
     if len(set(actual_ids)) != len(actual_ids) or set(actual_ids) != expected_ids:
         missing = sorted(expected_ids - set(actual_ids))
@@ -760,7 +830,7 @@ def merge(args: argparse.Namespace, num_shards: int) -> dict:
             f"missing={len(missing)} extra={len(extra)}"
         )
     if any(score.suite != manifest_by_id[score.sample_id].suite for score in all_scores):
-        raise ValueError('Shard score suite differs from the selected manifest')
+        raise ValueError("Shard score suite differs from the selected manifest")
     suite_level_metric_names: dict[str, list[str]] = {}
     for suite_name, metric_names in config.metrics_by_suite.items():
         if selected_suites is not None and suite_name not in selected_suites:
@@ -818,9 +888,7 @@ def merge(args: argparse.Namespace, num_shards: int) -> dict:
         for suite in suite_level_metric_names
     }
     suite_level_failure_summary = {
-        suite: metrics
-        for suite, metrics in suite_level_failure_summary.items()
-        if metrics
+        suite: metrics for suite, metrics in suite_level_failure_summary.items() if metrics
     }
     suites = sorted({s.suite for s in all_scores})
 
@@ -834,8 +902,7 @@ def merge(args: argparse.Namespace, num_shards: int) -> dict:
         "missing_predictions": sum(1 for s in all_scores if s.error == "missing prediction"),
         "suites": suites,
         "reported_metrics": {
-            suite: sorted(m.keys())
-            for suite, m in aggregate_payload["per_metric_summary"].items()
+            suite: sorted(m.keys()) for suite, m in aggregate_payload["per_metric_summary"].items()
         },
         "reported_dimensions": {
             suite: sorted(m.keys())
@@ -858,7 +925,9 @@ def merge(args: argparse.Namespace, num_shards: int) -> dict:
             if m
         },
         "num_shards": num_shards,
-        "metric_implementation_revisions": aggregate_payload.get("metric_implementation_revisions", {}),
+        "metric_implementation_revisions": aggregate_payload.get(
+            "metric_implementation_revisions", {}
+        ),
         "metric_override": _metric_list(args.metrics),
         "limit": args.limit,
         "reference_corpus": (None if reference_index is None else reference_index.describe()),
@@ -1029,7 +1098,10 @@ def launch(args: argparse.Namespace) -> int:
                 reason=skip_reason,
                 output_dir=str(shard_dir),
             )
-            print(f"[run_eval_shards] shard={shard_index} gpu={gpu_id} skip existing {shard_dir}", flush=True)
+            print(
+                f"[run_eval_shards] shard={shard_index} gpu={gpu_id} skip existing {shard_dir}",
+                flush=True,
+            )
             skipped += 1
             continue
         if args.skip_existing_shards and (shard_dir / "per_sample_scores.jsonl").exists():
@@ -1043,7 +1115,11 @@ def launch(args: argparse.Namespace) -> int:
             )
         pending.append((shard_index, gpu_id))
 
-    max_concurrent = args.max_concurrent_shards if args.max_concurrent_shards and args.max_concurrent_shards > 0 else len(pending)
+    max_concurrent = (
+        args.max_concurrent_shards
+        if args.max_concurrent_shards and args.max_concurrent_shards > 0
+        else len(pending)
+    )
     max_concurrent = max(max_concurrent, 1)
     max_concurrent_per_gpu = max(args.max_concurrent_per_gpu, 0)
     requested_retries = getattr(args, "cuda_retries", DEFAULT_CUDA_RETRIES)
@@ -1053,8 +1129,12 @@ def launch(args: argparse.Namespace) -> int:
         # the shard layout (and checkpoints), but run each GPU's shards serially.
         max_concurrent_per_gpu = 1
         args.max_concurrent_per_gpu = 1
-        log_progress("gpu_concurrency", metrics="reprojection_error",
-                     max_concurrent_per_gpu=1, reason="DROID memory budget")
+        log_progress(
+            "gpu_concurrency",
+            metrics="reprojection_error",
+            max_concurrent_per_gpu=1,
+            reason="DROID memory budget",
+        )
         log_progress(
             "cuda_retries",
             metrics="reprojection_error",
@@ -1113,13 +1193,20 @@ def launch(args: argparse.Namespace) -> int:
             "-u",
             str(Path(__file__).resolve()),
             "--internal-shard",
-            "--config", args.config,
-            "--manifest", args.manifest,
-            "--predictions-root", args.predictions_root,
-            "--output-dir", str(base),
-            "--suites", args.suites,
-            "--num-shards", str(num_shards),
-            "--shard-index", str(shard_index),
+            "--config",
+            args.config,
+            "--manifest",
+            args.manifest,
+            "--predictions-root",
+            args.predictions_root,
+            "--output-dir",
+            str(base),
+            "--suites",
+            args.suites,
+            "--num-shards",
+            str(num_shards),
+            "--shard-index",
+            str(shard_index),
         ]
         if args.model_config:
             cmd.extend(["--model-config", args.model_config])
@@ -1132,7 +1219,9 @@ def launch(args: argparse.Namespace) -> int:
         if args.motion_frame_max_side:
             cmd.extend(["--motion-frame-max-side", str(args.motion_frame_max_side)])
         if args.motion_smoothness_frame_max_side:
-            cmd.extend(["--motion-smoothness-frame-max-side", str(args.motion_smoothness_frame_max_side)])
+            cmd.extend(
+                ["--motion-smoothness-frame-max-side", str(args.motion_smoothness_frame_max_side)]
+            )
         if args.model_name:
             cmd.extend(["--model-name", args.model_name])
         attempt_suffix = "" if attempts[shard_index] == 1 else f".attempt{attempts[shard_index]}"
@@ -1291,11 +1380,20 @@ def launch(args: argparse.Namespace) -> int:
                 exit_code=code,
                 log=str(log_path),
             )
-            print(f"[run_eval_shards] shard={shard_index} gpu={gpu_id} exited code={code}", flush=True)
-            if should_retry_cuda_worker(code, attempts[shard_index], getattr(args, "cuda_retries", DEFAULT_CUDA_RETRIES)):
+            print(
+                f"[run_eval_shards] shard={shard_index} gpu={gpu_id} exited code={code}", flush=True
+            )
+            if should_retry_cuda_worker(
+                code, attempts[shard_index], getattr(args, "cuda_retries", DEFAULT_CUDA_RETRIES)
+            ):
                 pending.append((shard_index, gpu_id))
-                log_progress("shard_retry", shard=shard_index, gpu=gpu_id,
-                             next_attempt=attempts[shard_index] + 1, reason="fresh CUDA process; resume healthy samples")
+                log_progress(
+                    "shard_retry",
+                    shard=shard_index,
+                    gpu=gpu_id,
+                    next_attempt=attempts[shard_index] + 1,
+                    reason="fresh CUDA process; resume healthy samples",
+                )
                 continue
             failed = failed or code != 0
             finished += 1
@@ -1361,8 +1459,11 @@ def launch(args: argparse.Namespace) -> int:
         )
         return 1
     result = merge(args, num_shards)
-    merge_failed = bool(result.get("failure_summary") or result.get("suite_level_failure_summary")
-                        or result.get("run_manifest", {}).get("missing_predictions"))
+    merge_failed = bool(
+        result.get("failure_summary")
+        or result.get("suite_level_failure_summary")
+        or result.get("run_manifest", {}).get("missing_predictions")
+    )
     log_progress(
         "job_done",
         job_id=os.environ.get("WORLDATLAS_JOB_ID"),

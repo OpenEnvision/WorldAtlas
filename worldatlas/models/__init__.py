@@ -10,6 +10,7 @@ def build_model_adapter(config: ModelRuntimeConfig):
 
     return _build_model_adapter(config)
 
+
 __all__ = [
     "ModelRuntimeConfig",
     "build_model_adapter",

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 import os
+from functools import lru_cache
 from typing import Any
 
 import numpy as np
@@ -13,7 +13,6 @@ from worldatlas.benchmark.media import LoadedMedia, protocol_frame_details
 from worldatlas.benchmark.metrics.base import Metric, normalize_score, resolve_metric_backend
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 from worldatlas.common.checkpoints import checkpoint_env
-
 
 GRAM_EMPIRICAL_MIN = 0.0
 GRAM_EMPIRICAL_MAX = 0.007
@@ -75,7 +74,9 @@ def _gram_distances(
         return [], []
 
     torch, nn, F, model, preprocessing, normalization_mean, normalization_std, device = backend
-    reference_tensor = preprocessing(_frame_to_image(reference_frame)).unsqueeze(0).to(device, torch.float)
+    reference_tensor = (
+        preprocessing(_frame_to_image(reference_frame)).unsqueeze(0).to(device, torch.float)
+    )
     rendered_tensor = torch.stack(
         [preprocessing(_frame_to_image(frame)) for frame in rendered_frames],
         dim=0,
@@ -101,12 +102,16 @@ def _gram_distances(
                         reference_gram.expand_as(rendered_grams),
                         reduction="none",
                     ).mean(dim=(1, 2))
-                    for frame_index, layer_distance in enumerate(layer_distances.detach().cpu().tolist()):
+                    for frame_index, layer_distance in enumerate(
+                        layer_distances.detach().cpu().tolist()
+                    ):
                         layer_distances_per_frame[frame_index].append(float(layer_distance))
                 if conv_index >= len(GRAM_STYLE_LAYERS):
                     break
 
-    native_distances = [float(sum(layer_distances)) for layer_distances in layer_distances_per_frame]
+    native_distances = [
+        float(sum(layer_distances)) for layer_distances in layer_distances_per_frame
+    ]
     return native_distances, layer_distances_per_frame
 
 
@@ -204,17 +209,23 @@ class StyleConsistencyMetric(Metric):
                 reference_frame,
                 selected_frames,
             )
-            if (len(native_distances) != len(selected_frames) or len(native_layer_distances) != len(selected_frames)
-                    or not np.isfinite(native_distances).all()
-                    or any(not layer or not np.isfinite(layer).all() for layer in native_layer_distances)):
-                raise ValueError('Style backend must return complete finite distances for every selected frame')
+            if (
+                len(native_distances) != len(selected_frames)
+                or len(native_layer_distances) != len(selected_frames)
+                or not np.isfinite(native_distances).all()
+                or any(
+                    not layer or not np.isfinite(layer).all() for layer in native_layer_distances
+                )
+            ):
+                raise ValueError(
+                    "Style backend must return complete finite distances for every selected frame"
+                )
             normalized_frame_scores = [
                 normalize_score(native_distance, self.normalization) or 0.0
                 for native_distance in native_distances
             ]
             layer_distances_per_frame = [
-                _round(layer_distances)
-                for layer_distances in native_layer_distances
+                _round(layer_distances) for layer_distances in native_layer_distances
             ]
 
             raw = float(np.mean(native_distances)) if native_distances else None

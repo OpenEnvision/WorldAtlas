@@ -55,8 +55,13 @@ def camera_annotation_for_conditioning_image(
     key = hashlib.sha1(
         json.dumps(cache_payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
     ).hexdigest()[:12]
-    annotation_root = project_root() / "cache" / "model_runtime" / namespace / "synthetic_pose" / (
-        f"{sample.prediction_stem}--{key}"
+    annotation_root = (
+        project_root()
+        / "cache"
+        / "model_runtime"
+        / namespace
+        / "synthetic_pose"
+        / (f"{sample.prediction_stem}--{key}")
     )
     poses_path = annotation_root / "poses.npy"
     intrinsics_path = annotation_root / "intrinsics.npy"

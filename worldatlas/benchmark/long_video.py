@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import re
-from typing import Sequence
+from collections.abc import Sequence
+from pathlib import Path
 
 from worldatlas.common.video_io import probe_video_fps, read_video_frames, write_video_frames
-
 
 LONG_VIDEO_SUFFIXES = {".mp4", ".avi", ".mov"}
 
@@ -107,7 +106,9 @@ def _split_video_into_clips(
         segment_index += 1
 
     if remaining_frames > 0:
-        extended_start = max(0, (total_segments * segment_frame_count) - (segment_frame_count - remaining_frames))
+        extended_start = max(
+            0, (total_segments * segment_frame_count) - (segment_frame_count - remaining_frames)
+        )
         write_video_frames(
             output_dir / f"{video_name}_{segment_index:03d}.mp4",
             frames[extended_start:],

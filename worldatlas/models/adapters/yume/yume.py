@@ -21,7 +21,6 @@ from worldatlas.models.adapters.common import (
 )
 from worldatlas.models.adapters.lingbot_world.common import _camera_path_for_sample
 
-
 _YUME_OPTION_NAMES = (
     "mode",
     "caption_model_dir",
@@ -75,7 +74,9 @@ def _suite_value(payload: dict[str, Any], name: str, suite: str) -> Any:
     return payload.get(name)
 
 
-def _generation_payload_for_sample(generation: dict[str, Any], sample: BenchmarkSample) -> dict[str, Any]:
+def _generation_payload_for_sample(
+    generation: dict[str, Any], sample: BenchmarkSample
+) -> dict[str, Any]:
     payload = dict(generation)
     for option_name in _YUME_OPTION_NAMES:
         resolved = _suite_value(generation, option_name, sample.suite)
@@ -84,7 +85,9 @@ def _generation_payload_for_sample(generation: dict[str, Any], sample: Benchmark
     return payload
 
 
-def _action_payload_for_sample(generation: dict[str, Any], sample: BenchmarkSample) -> dict[str, Any]:
+def _action_payload_for_sample(
+    generation: dict[str, Any], sample: BenchmarkSample
+) -> dict[str, Any]:
     action_source = str(generation.get("action_source", "prompt_target")).strip().lower()
     if action_source not in _WORLDATLAS_ACTION_SOURCE_VALUES:
         return {
@@ -143,7 +146,9 @@ def _aligned_prompt_for_sample(
     prompt: str,
 ) -> tuple[str, dict[str, Any]]:
     action_payload = _action_payload_for_sample(generation, sample)
-    text_actions = [str(item).strip() for item in action_payload["text_actions"] if str(item).strip()]
+    text_actions = [
+        str(item).strip() for item in action_payload["text_actions"] if str(item).strip()
+    ]
     if not text_actions:
         return prompt, action_payload
     action_text = " ".join(text_actions)
@@ -156,7 +161,6 @@ class YumeAdapter(ModelAdapter):
     """Generate camera-controlled videos via the Yume upstream repo."""
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return True
 
     def batch_checkpoint_load_policy(self) -> str:
@@ -192,7 +196,9 @@ class YumeAdapter(ModelAdapter):
                     request.sample,
                     request.prompt,
                 )
-                action_spec_path = request.output_path.parent / f"{request.output_path.stem}_actions.json"
+                action_spec_path = (
+                    request.output_path.parent / f"{request.output_path.stem}_actions.json"
+                )
                 action_spec_path.write_text(
                     json.dumps(action_payload, indent=2, ensure_ascii=False),
                     encoding="utf-8",
@@ -203,7 +209,9 @@ class YumeAdapter(ModelAdapter):
                             "sample_id": request.sample.sample_id,
                             "prediction_stem": request.sample.prediction_stem,
                             "suite": request.sample.suite,
-                            "conditioning_image": str(request.conditioning_image.expanduser().resolve()),
+                            "conditioning_image": str(
+                                request.conditioning_image.expanduser().resolve()
+                            ),
                             "output_path": str(request.output_path),
                             "prompt": prompt_text,
                             "source_prompt": request.prompt,
@@ -243,7 +251,9 @@ class YumeAdapter(ModelAdapter):
                 request.sample,
                 request.prompt,
             )
-            action_spec_path = request.output_path.parent / f"{request.output_path.stem}_actions.json"
+            action_spec_path = (
+                request.output_path.parent / f"{request.output_path.stem}_actions.json"
+            )
             if request.output_path.exists():
                 results[request.sample.sample_id] = {
                     "status": "generated",

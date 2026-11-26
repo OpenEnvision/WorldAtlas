@@ -21,7 +21,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-
 PRIMARY_METRICS: dict[str, list[str]] = {
     "dynamic_motion3": ["motion_accuracy", "motion_magnitude", "motion_smoothness"],
     "static7": [
@@ -156,7 +155,9 @@ def count_direct_children(report_dir: Path) -> tuple[int, list[str]]:
 
 def metric_items(metrics: Any) -> list[tuple[str, dict[str, Any]]]:
     if isinstance(metrics, dict):
-        return [(str(name), value if isinstance(value, dict) else {}) for name, value in metrics.items()]
+        return [
+            (str(name), value if isinstance(value, dict) else {}) for name, value in metrics.items()
+        ]
     if not isinstance(metrics, list):
         return []
     items: list[tuple[str, dict[str, Any]]] = []
@@ -173,7 +174,11 @@ def metric_items(metrics: Any) -> list[tuple[str, dict[str, Any]]]:
 def detect_report_type(report_name: str, suite: str, metric_names: set[str]) -> str:
     if suite == "image_dynamic" and set(PRIMARY_METRICS["dynamic_motion3"]) <= metric_names:
         return "dynamic_motion3"
-    if suite == "image_static" and "static7" in report_name and set(PRIMARY_METRICS["static7"]) <= metric_names:
+    if (
+        suite == "image_static"
+        and "static7" in report_name
+        and set(PRIMARY_METRICS["static7"]) <= metric_names
+    ):
         return "static7"
     if suite == "image_static" and "noslam19" in report_name:
         return "static_noslam19"
@@ -195,8 +200,12 @@ def classify_report(
 ) -> str:
     full_rows = expected is not None and expected > 0 and rows == expected
     primary_metrics = PRIMARY_METRICS.get(report_type, [])
-    full_primary = bool(primary_metrics) and all(metric_nonnull.get(metric, 0) == rows for metric in primary_metrics)
-    attempted_primary = bool(primary_metrics) and all(metric_present.get(metric, 0) == rows for metric in primary_metrics)
+    full_primary = bool(primary_metrics) and all(
+        metric_nonnull.get(metric, 0) == rows for metric in primary_metrics
+    )
+    attempted_primary = bool(primary_metrics) and all(
+        metric_present.get(metric, 0) == rows for metric in primary_metrics
+    )
 
     if full_rows and row_errors == 0 and full_primary:
         return "COVERAGE_COMPLETE"
@@ -245,7 +254,7 @@ def audit_report(report_dir: Path, expected_counts: dict[str, int]) -> ReportAud
                 continue
             payload = json.loads(line)
             rows += 1
-            sample_id = payload.get('sample_id')
+            sample_id = payload.get("sample_id")
             if not sample_id or sample_id in sample_ids:
                 invalid_identity = True
             sample_ids.add(sample_id)
@@ -259,9 +268,11 @@ def audit_report(report_dir: Path, expected_counts: dict[str, int]) -> ReportAud
                 metric_rows += 1
             for metric_name, metric_payload in metric_items(metrics):
                 metric_present[metric_name] += 1
-                if (not metric_output_failed(metric_payload)
-                        and metric_payload.get('normalized') is not None
-                        and metric_payload.get('eligibility_status', 'official') == 'official'):
+                if (
+                    not metric_output_failed(metric_payload)
+                    and metric_payload.get("normalized") is not None
+                    and metric_payload.get("eligibility_status", "official") == "official"
+                ):
                     metric_nonnull[metric_name] += 1
 
     suite = suites.most_common(1)[0][0] if suites else ""
@@ -279,7 +290,7 @@ def audit_report(report_dir: Path, expected_counts: dict[str, int]) -> ReportAud
         metric_nonnull=metric_nonnull,
     )
     if invalid_identity or len(suites) != 1:
-        status = 'INVALID_SAMPLE_COVERAGE'
+        status = "INVALID_SAMPLE_COVERAGE"
 
     primary_coverage = ";".join(
         f"{metric}:{metric_nonnull.get(metric, 0)}/{rows}"
@@ -287,7 +298,7 @@ def audit_report(report_dir: Path, expected_counts: dict[str, int]) -> ReportAud
     )
     notes: list[str] = []
     if invalid_identity:
-        notes.append('duplicate_or_missing_sample_id')
+        notes.append("duplicate_or_missing_sample_id")
     if row_errors:
         notes.append(f"row_errors={row_errors}")
     missing_predictions = run_payload.get("missing_predictions", "")
@@ -331,13 +342,21 @@ def write_csv(path: Path, rows: list[ReportAudit]) -> None:
         writer.writerows(row.to_row() for row in rows)
 
 
-def write_markdown(path: Path, rows: list[ReportAudit], expected_counts: dict[str, int], csv_path: Path) -> None:
+def write_markdown(
+    path: Path, rows: list[ReportAudit], expected_counts: dict[str, int], csv_path: Path
+) -> None:
     counts = Counter(row.status for row in rows)
     coverage_complete = [row for row in rows if row.status == "COVERAGE_COMPLETE"]
     groups = [
-        ("Image Dynamic Motion3", [row for row in coverage_complete if row.type == "dynamic_motion3"]),
+        (
+            "Image Dynamic Motion3",
+            [row for row in coverage_complete if row.type == "dynamic_motion3"],
+        ),
         ("Image Static Static7", [row for row in coverage_complete if row.type == "static7"]),
-        ("Image Static Noslam19", [row for row in coverage_complete if row.type == "static_noslam19"]),
+        (
+            "Image Static Noslam19",
+            [row for row in coverage_complete if row.type == "static_noslam19"],
+        ),
     ]
 
     lines: list[str] = [
@@ -361,9 +380,18 @@ def write_markdown(path: Path, rows: list[ReportAudit], expected_counts: dict[st
     lines.extend(["", "## Complete Primary Coverage", ""])
 
     for title, group_rows in groups:
-        lines.extend([f"### {title}", "", "| report | rows | primary coverage | notes |", "| --- | ---: | --- | --- |"])
+        lines.extend(
+            [
+                f"### {title}",
+                "",
+                "| report | rows | primary coverage | notes |",
+                "| --- | ---: | --- | --- |",
+            ]
+        )
         for row in group_rows:
-            lines.append(f"| `{row.report}` | {row.rows} | `{row.primary_coverage}` | {row.notes} |")
+            lines.append(
+                f"| `{row.report}` | {row.rows} | `{row.primary_coverage}` | {row.notes} |"
+            )
         if not group_rows:
             lines.append("| _none_ | 0 |  |  |")
         lines.append("")
@@ -414,7 +442,10 @@ def main() -> int:
     args.output_prefix = resolve_path(args.output_prefix)
 
     expected_counts = load_expected_counts(args.manifest)
-    rows = [audit_report(report_dir, expected_counts) for report_dir in iter_report_dirs(args.reports_root)]
+    rows = [
+        audit_report(report_dir, expected_counts)
+        for report_dir in iter_report_dirs(args.reports_root)
+    ]
 
     csv_path = args.output_prefix.with_suffix(".csv")
     md_path = args.output_prefix.with_suffix(".md")
@@ -429,7 +460,11 @@ def main() -> int:
         csv_path=csv_path,
         md_path=md_path,
     )
-    print(json.dumps({"csv": str(csv_path), "md": str(md_path), "manifest": str(manifest_path)}, indent=2))
+    print(
+        json.dumps(
+            {"csv": str(csv_path), "md": str(md_path), "manifest": str(manifest_path)}, indent=2
+        )
+    )
     return 0
 
 

@@ -1,4 +1,3 @@
-from typing import List
 import argparse
 import os
 from pathlib import Path
@@ -28,7 +27,6 @@ from worldatlas.common.progress import log_progress
 install_sea_raft_compat()
 
 
-
 def compute_epe(flow1, flow2, crop=30, k=1.0, error_threshold=5.0):
     """
     Calculate the End-Point Error (EPE) between two flow fields.
@@ -50,17 +48,11 @@ def compute_epe(flow1, flow2, crop=30, k=1.0, error_threshold=5.0):
     start_y = (H - crop_size_H) // 2
 
     # Crop the flow fields to the central crop_size_H x crop_size_W region
-    flow1_cropped = flow1[
-        start_y : start_y + crop_size_H, start_x : start_x + crop_size_W, :
-    ]
-    flow2_cropped = flow2[
-        start_y : start_y + crop_size_H, start_x : start_x + crop_size_W, :
-    ]
+    flow1_cropped = flow1[start_y : start_y + crop_size_H, start_x : start_x + crop_size_W, :]
+    flow2_cropped = flow2[start_y : start_y + crop_size_H, start_x : start_x + crop_size_W, :]
 
     # Create a grid of coordinates (x, y)
-    y_coords, x_coords = np.meshgrid(
-        np.arange(crop_size_H), np.arange(crop_size_W), indexing="ij"
-    )
+    y_coords, x_coords = np.meshgrid(np.arange(crop_size_H), np.arange(crop_size_W), indexing="ij")
 
     # Coordinates after applying flow1 (warping points from image1 to image2)
     warped_x1 = x_coords + flow1_cropped[..., 0]
@@ -106,9 +98,9 @@ class OpticalFlowAverageEndPointErrorMetric(BaseMetric):
             with open(config_path, encoding="utf-8") as handle:
                 args = argparse.Namespace(**json.load(handle))
             args.cfg = config_path
-            checkpoint = os.environ.get("WORLDATLAS_SEA_RAFT_CHECKPOINT", "").strip() or official_checkpoint_path(
-                "Tartan-C-T-TSKH-spring540x960-M.pth"
-            )
+            checkpoint = os.environ.get(
+                "WORLDATLAS_SEA_RAFT_CHECKPOINT", ""
+            ).strip() or official_checkpoint_path("Tartan-C-T-TSKH-spring540x960-M.pth")
             checkpoint_path = materialize_local_file(Path(checkpoint), kind="sea_raft")
             args.path = str(checkpoint_path)
             log_progress(
@@ -128,9 +120,7 @@ class OpticalFlowAverageEndPointErrorMetric(BaseMetric):
         except MetricLoadError:
             raise
         except Exception as exc:
-            raise MetricLoadError(
-                f"SEA-RAFT failed to load: {type(exc).__name__}: {exc}"
-            ) from exc
+            raise MetricLoadError(f"SEA-RAFT failed to load: {type(exc).__name__}: {exc}") from exc
 
     def load_image(self, imfile):
         image = cv2.imread(imfile)
@@ -179,9 +169,8 @@ class OpticalFlowAverageEndPointErrorMetric(BaseMetric):
 
     def _compute_scores(
         self,
-        rendered_images: List[str],
+        rendered_images: list[str],
     ) -> float:
-
         images = list(rendered_images)
         if len(images) < 2:
             raise ValueError("optical_flow_aepe requires at least two frames")

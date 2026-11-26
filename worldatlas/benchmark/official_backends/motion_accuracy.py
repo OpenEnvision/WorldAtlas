@@ -1,4 +1,3 @@
-from typing import List
 import os
 import argparse
 
@@ -73,17 +72,13 @@ def mask_resize(mask, target_size):
     return resized_mask
 
 
-def load_model(
-    model_config_path, model_checkpoint_path, bert_base_uncased_path, device
-):
+def load_model(model_config_path, model_checkpoint_path, bert_base_uncased_path, device):
     args = SLConfig.fromfile(model_config_path)
     args.device = device
     args.bert_base_uncased_path = bert_base_uncased_path
     model = build_model(args)
     checkpoint = torch.load(model_checkpoint_path, map_location="cpu")
-    load_res = model.load_state_dict(
-        clean_state_dict(checkpoint["model"]), strict=False
-    )
+    load_res = model.load_state_dict(clean_state_dict(checkpoint["model"]), strict=False)
     print(load_res)
     _ = model.eval()
     return model
@@ -122,9 +117,7 @@ def get_grounding_output(
     # build pred
     pred_phrases = []
     for logit, box in zip(logits_filt, boxes_filt):
-        pred_phrase = get_phrases_from_posmap(
-            logit > text_threshold, tokenized, tokenlizer
-        )
+        pred_phrase = get_phrases_from_posmap(logit > text_threshold, tokenized, tokenlizer)
         if with_logits:
             pred_phrases.append(pred_phrase + f"({str(logit.max().item())[:4]})")
         else:
@@ -231,11 +224,7 @@ def load_masks_from_dir(input_mask_path, per_obj_png_file, allow_missing=False):
         # each object is a directory in "{object_id:%03d}" format
         for object_id, file_name in enumerate(
             sorted(
-                [
-                    f
-                    for f in os.listdir(input_mask_path)
-                    if f.endswith(".png") or f.endswith(".jpg")
-                ]
+                [f for f in os.listdir(input_mask_path) if f.endswith(".png") or f.endswith(".jpg")]
             )
         ):
             input_mask_path_ = os.path.join(input_mask_path, file_name)
@@ -255,9 +244,7 @@ def generate_masks(
 ):
     """Save masks to a directory as PNG files."""
     if not per_obj_png_file:
-        output_mask = put_per_obj_mask(per_obj_output_mask, height, width).astype(
-            np.bool_
-        )
+        output_mask = put_per_obj_mask(per_obj_output_mask, height, width).astype(np.bool_)
     else:
         output_mask = np.zeros((height, width), dtype=np.uint8)
         for _, object_mask in per_obj_output_mask.items():
@@ -430,8 +417,7 @@ class MotionAccuracyMetric(BaseMetric):
 
         # if we use per-object PNG files, they could possibly overlap in inputs and outputs
         hydra_overrides_extra = [
-            "++model.non_overlap_masks="
-            + ("false" if self._per_obj_png_file else "true")
+            "++model.non_overlap_masks=" + ("false" if self._per_obj_png_file else "true")
         ]
         with sam2_config_context():
             self._predictor = build_sam2_video_predictor(
@@ -451,9 +437,7 @@ class MotionAccuracyMetric(BaseMetric):
                     "config",
                     "GroundingDINO_SwinT_OGC.py",
                 ),
-                "grounded_checkpoint": official_checkpoint_path(
-                    "groundingdino_swint_ogc.pth"
-                ),
+                "grounded_checkpoint": official_checkpoint_path("groundingdino_swint_ogc.pth"),
                 "sam_version": "vit_h",
                 "sam_checkpoint": official_checkpoint_path("sam_vit_h_4b8939.pth"),
                 "sam_hq_checkpoint": None,
@@ -519,7 +503,9 @@ class MotionAccuracyMetric(BaseMetric):
             "flow_pixel_scale": [original_w / W, original_h / H],
         }
         flow, _ = self.forward_flow(img1, img2)
-        flow_down = F.interpolate(flow, size=(original_h, original_w), mode="bilinear", align_corners=False)
+        flow_down = F.interpolate(
+            flow, size=(original_h, original_w), mode="bilinear", align_corners=False
+        )
         flow_down[:, 0] *= original_w / flow.shape[-1]
         flow_down[:, 1] *= original_h / flow.shape[-2]
 
@@ -529,9 +515,9 @@ class MotionAccuracyMetric(BaseMetric):
 
     def _compute_scores(
         self,
-        rendered_images: List[str],
-        masked_images: List[str],
-        objects_list: List[str],
+        rendered_images: list[str],
+        masked_images: list[str],
+        objects_list: list[str],
     ) -> float | None:
         self._flow_resolution_details = {}
         video_dir = os.path.dirname(rendered_images[0])
@@ -546,16 +532,16 @@ class MotionAccuracyMetric(BaseMetric):
         )
 
         if len(rendered_images) < 2 or len(masks) != len(rendered_images):
-            raise ValueError("Motion accuracy requires complete frame/mask coverage and at least two frames")
+            raise ValueError(
+                "Motion accuracy requires complete frame/mask coverage and at least two frames"
+            )
         scores = []
         skipped = []
         foreground_fractions = []
 
         with torch.no_grad():
             images = rendered_images
-            for i, (imfile1, imfile2, mask) in enumerate(
-                zip(images[:-1], images[1:], masks[:-1])
-            ):
+            for i, (imfile1, imfile2, mask) in enumerate(zip(images[:-1], images[1:], masks[:-1])):
                 print(f"processing {imfile1}, {imfile2}...")
                 image1, image2 = self.load_image(imfile1), self.load_image(imfile2)
                 try:
@@ -564,37 +550,42 @@ class MotionAccuracyMetric(BaseMetric):
                     mask = mask.astype(bool)
                     skip_reason = propagated_mask_skip_reason(mask)
                     if skip_reason is not None:
-                        skipped.append({
-                            "pair_index": i,
-                            "foreground_fraction": float(mask.mean()),
-                            "reason": skip_reason,
-                        })
+                        skipped.append(
+                            {
+                                "pair_index": i,
+                                "foreground_fraction": float(mask.mean()),
+                                "reason": skip_reason,
+                            }
+                        )
                         continue
                     flow = self._compute_flow(image1, image2)
                 finally:
                     del image1, image2
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
-                flow_magnitude = np.sqrt((flow[..., 0] ** 2 + flow[..., 1] ** 2))
+                flow_magnitude = np.sqrt(flow[..., 0] ** 2 + flow[..., 1] ** 2)
                 if mask.shape != flow_magnitude.shape:
-                    mask = mask_resize(
-                        mask.astype(np.uint8), flow_magnitude.shape
-                    ).astype(bool)
+                    mask = mask_resize(mask.astype(np.uint8), flow_magnitude.shape).astype(bool)
                     skip_reason = propagated_mask_skip_reason(mask)
                     if skip_reason is not None:
-                        skipped.append({
-                            "pair_index": i,
-                            "foreground_fraction": float(mask.mean()),
-                            "reason": skip_reason,
-                        })
+                        skipped.append(
+                            {
+                                "pair_index": i,
+                                "foreground_fraction": float(mask.mean()),
+                                "reason": skip_reason,
+                            }
+                        )
                         continue
                 contrast = flow_region_contrast(flow_magnitude, mask)
                 if contrast is None:
-                    skipped.append({
-                        "pair_index": i,
-                        "foreground_fraction": float(mask.mean()),
-                        "reason": propagated_mask_skip_reason(mask) or PROPAGATED_MASK_NA_REASON,
-                    })
+                    skipped.append(
+                        {
+                            "pair_index": i,
+                            "foreground_fraction": float(mask.mean()),
+                            "reason": propagated_mask_skip_reason(mask)
+                            or PROPAGATED_MASK_NA_REASON,
+                        }
+                    )
                     continue
                 scores.append(contrast)
                 foreground_fractions.append(float(mask.mean()))

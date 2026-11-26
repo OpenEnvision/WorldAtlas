@@ -21,7 +21,6 @@ from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 from worldatlas.benchmark.synthetic_camera import synthetic_camera_matrices_for_sample
 from worldatlas.common.progress import log_exception
 
-
 CAMERA_ERROR_BACKENDS = {"droid_slam", "megasam"}
 MOTION_ACCURACY_BACKENDS = {"sam2_sea_raft"}
 
@@ -37,11 +36,15 @@ def _manually_emptied_mask(sample: BenchmarkSample) -> bool:
         if not relative.startswith("dynamic/"):
             relative = "dynamic/" + relative
         return bool(
-            sample.suite == "image_dynamic" and relative == sample.relative_path
-            and meta.get("num_saved_masks") == 0 and meta.get("saved_masks") == []
+            sample.suite == "image_dynamic"
+            and relative == sample.relative_path
+            and meta.get("num_saved_masks") == 0
+            and meta.get("saved_masks") == []
             and (meta.get("last_manual_deletion") or meta.get("manual_deletions"))
-            and not any(p.is_file() and p.suffix.lower() in {".png", ".jpg", ".jpeg"}
-                        for p in directory.iterdir())
+            and not any(
+                p.is_file() and p.suffix.lower() in {".png", ".jpg", ".jpeg"}
+                for p in directory.iterdir()
+            )
         )
     except (OSError, ValueError, TypeError, AttributeError):
         return False
@@ -78,7 +81,9 @@ class CameraErrorMetric(OfficialMetric):
             camera_gt_policy = str(self.runtime.get("camera_gt_policy", "")).strip().lower()
             if camera_gt_policy in {"native_intended", "native_intent", "intended"}:
                 if backend != "megasam":
-                    raise ValueError("native_intended camera_error currently requires the megasam backend")
+                    raise ValueError(
+                        "native_intended camera_error currently requires the megasam backend"
+                    )
                 result = compute_camera_error_megasam_native_intended(
                     prediction.path,
                     sample=sample,
@@ -170,6 +175,7 @@ class CameraErrorMetric(OfficialMetric):
                 error=f"{type(exc).__name__}: {exc}",
             )
 
+
 class MotionAccuracyMetric(OfficialMetric):
     """Measure masked object motion fidelity with SAM2 and SEA-RAFT."""
 
@@ -201,10 +207,14 @@ class MotionAccuracyMetric(OfficialMetric):
             if _manually_emptied_mask(sample):
                 reason = "mask annotation contains no foreground instances after manual deletion"
                 details.update(mask_dir=sample.mask_path, not_applicable_reason=reason)
-                details['implementation_revision'] = 'aligned_mask_contrast_v2'
+                details["implementation_revision"] = "aligned_mask_contrast_v2"
                 return MetricOutput(
-                    raw=None, normalized=None, backend=backend, details=details,
-                    eligibility_status="not_applicable", error=reason,
+                    raw=None,
+                    normalized=None,
+                    backend=backend,
+                    details=details,
+                    eligibility_status="not_applicable",
+                    error=reason,
                 )
             return MetricOutput(
                 raw=None,
@@ -215,20 +225,36 @@ class MotionAccuracyMetric(OfficialMetric):
             )
         try:
             from worldatlas.benchmark.mask_provenance import validate_mask_metadata
-            details['implementation_revision'] = 'aligned_mask_contrast_v2'
+
+            details["implementation_revision"] = "aligned_mask_contrast_v2"
             validate_mask_metadata(Path(sample.mask_path), sample.relative_path)
             geometry = (sample.prediction_binding or {}).get("conditioning_geometry")
             if not geometry:
-                raise ValueError("Motion accuracy requires verified source-to-video conditioning_geometry; resize cannot be assumed")
+                raise ValueError(
+                    "Motion accuracy requires verified source-to-video conditioning_geometry; resize cannot be assumed"
+                )
             from worldatlas.benchmark.motion_mask_support import conditioning_mask_support
-            support = conditioning_mask_support(sample.mask_path, source_path=sample.path,
-                relative_path=sample.relative_path, geometry=geometry)
-            details['conditioning_mask_support'] = support
-            if support['not_applicable_reason']:
-                details.update(conditioning_geometry=geometry,
-                               not_applicable_reason=support['not_applicable_reason'])
-                return MetricOutput(raw=None, normalized=None, backend=backend, details=details,
-                                    eligibility_status='not_applicable', error=support['not_applicable_reason'])
+
+            support = conditioning_mask_support(
+                sample.mask_path,
+                source_path=sample.path,
+                relative_path=sample.relative_path,
+                geometry=geometry,
+            )
+            details["conditioning_mask_support"] = support
+            if support["not_applicable_reason"]:
+                details.update(
+                    conditioning_geometry=geometry,
+                    not_applicable_reason=support["not_applicable_reason"],
+                )
+                return MetricOutput(
+                    raw=None,
+                    normalized=None,
+                    backend=backend,
+                    details=details,
+                    eligibility_status="not_applicable",
+                    error=support["not_applicable_reason"],
+                )
             result = compute_motion_accuracy(
                 prediction.path,
                 mask_dir=sample.mask_path,

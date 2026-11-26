@@ -7,8 +7,8 @@ Maps ``camera_path`` tokens to LucidDreamer render presets and launches
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import tempfile
+from pathlib import Path
 from typing import Any
 
 from worldatlas.benchmark.schemas import BenchmarkSample
@@ -95,7 +95,9 @@ class LucidDreamerAdapter(ModelAdapter):
             raise ValueError("LucidDreamer adapter requires repo_root")
 
         project_root = worldatlas_project_root()
-        runner_path = project_root / "worldatlas" / "models" / "adapters" / "luciddreamer_batch_runner.py"
+        runner_path = (
+            project_root / "worldatlas" / "models" / "adapters" / "luciddreamer_batch_runner.py"
+        )
         if not runner_path.exists():
             raise FileNotFoundError(f"LucidDreamer batch runner not found: {runner_path}")
 
@@ -115,7 +117,9 @@ class LucidDreamerAdapter(ModelAdapter):
                         "camera_path": generation.get("_camera_path") or [],
                         "camera_path_primary": generation.get("_camera_path_primary"),
                         "campath_render_source": generation.get("_campath_render_source", "config"),
-                        "conditioning_image": str(request.conditioning_image.expanduser().resolve()),
+                        "conditioning_image": str(
+                            request.conditioning_image.expanduser().resolve()
+                        ),
                         "output_path": str(request.output_path.expanduser().resolve()),
                         "prompt": prompt_text,
                         "negative_prompt": str(generation.get("negative_prompt", "")),
@@ -154,7 +158,9 @@ class LucidDreamerAdapter(ModelAdapter):
 
             results: dict[str, dict[str, Any]] = {}
             if not results_path.exists():
-                raise FileNotFoundError(f"LucidDreamer batch runner did not write results: {results_path}")
+                raise FileNotFoundError(
+                    f"LucidDreamer batch runner did not write results: {results_path}"
+                )
             with results_path.open("r", encoding="utf-8") as file:
                 for line in file:
                     if not line.strip():
@@ -184,7 +190,9 @@ class LucidDreamerAdapter(ModelAdapter):
                 ]
             )[sample.sample_id]
             if result.get("status") != "generated":
-                raise RuntimeError(str(result.get("error") or "LucidDreamer batch generation failed"))
+                raise RuntimeError(
+                    str(result.get("error") or "LucidDreamer batch generation failed")
+                )
             return result
 
         repo_root = self.config.repo_root

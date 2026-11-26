@@ -7,9 +7,9 @@ JSONL spec writing, logging, and per-sample result collection.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
@@ -78,7 +78,6 @@ class ExternalBatchAdapter(ModelAdapter):
     label: str = "external model"
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return True
 
     def batch_spec_payload(self, request: PreparedGenerationRequest) -> dict[str, Any]:
@@ -208,4 +207,3 @@ class ExternalBatchAdapter(ModelAdapter):
         if result.get("status") == "failed":
             raise RuntimeError(str(result.get("error", f"{self.label} generation failed")))
         return result
-

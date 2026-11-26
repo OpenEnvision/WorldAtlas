@@ -66,8 +66,7 @@ def _install_attention_backend_override(
     enum_type.__call__ = _worldatlas_call
     enum_type._worldatlas_backend_override = normalized
     print(
-        "[WorldAtlas:AlayaWorld] attention override: "
-        f"hard-coded flash_attention_3 -> {normalized}",
+        f"[WorldAtlas:AlayaWorld] attention override: hard-coded flash_attention_3 -> {normalized}",
         flush=True,
     )
     return True

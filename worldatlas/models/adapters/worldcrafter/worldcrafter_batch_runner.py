@@ -14,7 +14,11 @@ import numpy as np
 from worldatlas.benchmark.annotations import load_camera_matrices
 from worldatlas.common.media import probe_video
 from worldatlas.models.adapters.batch_runner_common import (
-    add_common_batch_args, begin_sample, load_batch_spec, load_json, log_pipeline,
+    add_common_batch_args,
+    begin_sample,
+    load_batch_spec,
+    load_json,
+    log_pipeline,
     print_status,
 )
 from worldatlas.models.adapters.worldcrafter.geometry import FRAMES_PER_CHUNK, output_frame_count
@@ -70,7 +74,9 @@ def prepare_camera(row: dict, directory: Path) -> Path:
 
 def verify_video(path: Path, *, expected_frames: int, fps: int) -> dict:
     probe = probe_video(path)
-    actual_frames = int(probe.get("frame_count") or round(float(probe["duration_seconds"]) * float(probe["fps"])))
+    actual_frames = int(
+        probe.get("frame_count") or round(float(probe["duration_seconds"]) * float(probe["fps"]))
+    )
     if actual_frames != expected_frames or not math.isclose(float(probe["fps"]), fps, abs_tol=0.05):
         raise RuntimeError(f"WorldCrafter output timing mismatch: {path}: {probe}")
     if (int(probe["width"]), int(probe["height"])) != (640, 384):
@@ -92,6 +98,7 @@ def main() -> int:
         raise FileNotFoundError(f"WorldCrafter checkpoint not found: {checkpoint}")
 
     from worldcrafter.inference import WorldCrafter
+
     install_local_lora_name_hint()
 
     model_type = str(generation.get("model_type", "fast"))
@@ -131,12 +138,19 @@ def main() -> int:
                 prompt=str(row["prompt"]),
                 negative_prompt=negative,
                 num_chunks=int(row["num_chunks"]),
-                num_inference_steps=int(generation.get("num_inference_steps", 6 if model_type == "fast" else 50)),
-                guidance_scale=float(generation.get("guidance_scale", 1 if model_type == "fast" else 5)),
+                num_inference_steps=int(
+                    generation.get("num_inference_steps", 6 if model_type == "fast" else 50)
+                ),
+                guidance_scale=float(
+                    generation.get("guidance_scale", 1 if model_type == "fast" else 5)
+                ),
                 seed=seed,
                 fps=fps,
             )
-            expected_output_frames = int(row.get("output_frame_count") or output_frame_count(model_type, int(row["num_frames"])))
+            expected_output_frames = int(
+                row.get("output_frame_count")
+                or output_frame_count(model_type, int(row["num_frames"]))
+            )
             probe = verify_video(pending, expected_frames=expected_output_frames, fps=fps)
             pending.replace(output)
             summary = dict(result.summary)
@@ -146,12 +160,19 @@ def main() -> int:
             if row.get("camera_control_recipe"):
                 summary["camera_control_recipe"] = row["camera_control_recipe"]
             summary_path = output.with_suffix(".json")
-            summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+            summary_path.write_text(
+                json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+            )
             Path(result.summary_path).unlink(missing_ok=True)
-            print_status(sample_id, "generated", output_path=str(output),
-                         pose_source=row.get("pose_source"), num_chunks=row["num_chunks"],
-                         duration_seconds=probe["duration_seconds"],
-                         summary_path=str(summary_path))
+            print_status(
+                sample_id,
+                "generated",
+                output_path=str(output),
+                pose_source=row.get("pose_source"),
+                num_chunks=row["num_chunks"],
+                duration_seconds=probe["duration_seconds"],
+                summary_path=str(summary_path),
+            )
         except Exception as exc:
             failures += 1
             print_status(sample_id, "failed", error=str(exc), traceback=traceback.format_exc())

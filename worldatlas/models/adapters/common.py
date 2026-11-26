@@ -7,8 +7,9 @@ import io
 import os
 import subprocess
 import time
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping
+from typing import TYPE_CHECKING, Any
 
 import cv2
 from PIL import Image
@@ -18,7 +19,7 @@ from worldatlas.common.checkpoints import (
     CHECKPOINT_ROOT_ENV,
     apply_checkpoint_env,
     filter_checkpoint_env_overrides,
-    project_root as worldatlas_project_root,
+    project_root as worldatlas_project_root,  # noqa: F401 - re-exported for model adapters
 )
 
 if TYPE_CHECKING:
@@ -109,8 +110,8 @@ def run_command(
 
 
 def run_sequential_generate_batch(
-    adapter: "ModelAdapter",
-    requests: list["PreparedGenerationRequest"],
+    adapter: ModelAdapter,
+    requests: list[PreparedGenerationRequest],
 ) -> dict[str, dict[str, Any]]:
     """Fallback batch path that calls ``generate`` once per sample in-process."""
     from worldatlas.common.progress import log_progress, rate_samples_per_hour

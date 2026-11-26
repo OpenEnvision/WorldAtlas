@@ -10,8 +10,8 @@ from pathlib import Path
 
 from worldatlas.common.checkpoints import checkpoint_path, checkpoint_root
 
+
 def _packaging_namespace() -> object:
-    """Packaging namespace -> object."""
     import packaging
     from packaging import version as packaging_version
 
@@ -24,6 +24,7 @@ def ensure_pkg_resources_compat() -> None:
     """Ensure pkg resources compat."""
     try:
         import pkg_resources  # noqa: F401
+
         return
     except ModuleNotFoundError:
         pass
@@ -44,7 +45,6 @@ def ensure_pkg_resources_compat() -> None:
 
 
 def _candidate_openai_clip_cache_dirs() -> list[Path]:
-    """Candidate openai clip cache dirs -> list[Path]."""
     return [
         checkpoint_path("torch", "hub", "clip"),
         checkpoint_root() / "clip",
@@ -62,19 +62,19 @@ def _usable_openai_clip_weight(path: Path) -> bool:
 
 
 def _resolve_openai_clip_cache_dir() -> Path | None:
-    """Resolve openai clip cache dir -> Path | None."""
     for path in _candidate_openai_clip_cache_dirs():
         try:
             resolved = path.expanduser().resolve()
         except FileNotFoundError:
             continue
-        if resolved.is_dir() and any(_usable_openai_clip_weight(item) for item in resolved.glob("*.pt")):
+        if resolved.is_dir() and any(
+            _usable_openai_clip_weight(item) for item in resolved.glob("*.pt")
+        ):
             return resolved
     return None
 
 
 def resolve_openai_clip_cache_dir() -> Path | None:
-    """Resolve openai clip cache dir -> Path | None."""
     return _resolve_openai_clip_cache_dir()
 
 

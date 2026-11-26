@@ -31,7 +31,6 @@ from worldatlas.models.adapters.gen3c.gen3c_runner import (
     _require_repo_layout,
 )
 
-
 # Compatibility-only values accepted by GEN3C's upstream CLI.  When a
 # WorldAtlas camera_path is present, these presets do not define the geometry;
 # gen3c_runner builds the canonical per-frame path directly.
@@ -88,7 +87,9 @@ def _generation_for_camera_token(
     camera_token: str,
 ) -> dict[str, Any]:
     resolved = _generation_for_suite(generation, sample.suite)
-    use_sample_camera_path = bool(resolved.get("use_sample_camera_path", sample.suite == "image_static"))
+    use_sample_camera_path = bool(
+        resolved.get("use_sample_camera_path", sample.suite == "image_static")
+    )
     if not use_sample_camera_path or sample.suite != "image_static":
         return resolved
 
@@ -106,7 +107,10 @@ def _generation_for_camera_token(
 
     trajectory, camera_rotation = GEN3C_CAMERA_TRAJECTORIES.get(
         primary_token,
-        (str(resolved.get("trajectory", "left")), str(resolved.get("camera_rotation", "center_facing"))),
+        (
+            str(resolved.get("trajectory", "left")),
+            str(resolved.get("camera_rotation", "center_facing")),
+        ),
     )
     resolved["trajectory"] = trajectory
     resolved["camera_rotation"] = camera_rotation
@@ -135,7 +139,6 @@ class Gen3CAdapter(ModelAdapter):
     """Generate trajectory-controlled videos via the GEN3C upstream repo."""
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return True
 
     def batch_checkpoint_load_policy(self) -> str:
@@ -199,12 +202,8 @@ class Gen3CAdapter(ModelAdapter):
                         "trajectory": sample_generation.get("trajectory"),
                         "camera_rotation": sample_generation.get("camera_rotation"),
                         "movement_distance": sample_generation.get("movement_distance"),
-                        "filter_points_threshold": sample_generation.get(
-                            "filter_points_threshold"
-                        ),
-                        "foreground_masking": sample_generation.get(
-                            "foreground_masking", False
-                        ),
+                        "filter_points_threshold": sample_generation.get("filter_points_threshold"),
+                        "foreground_masking": sample_generation.get("foreground_masking", False),
                         "negative_prompt": sample_generation.get("negative_prompt"),
                         "num_video_frames": sample_generation.get("num_video_frames"),
                         "height": sample_generation.get("height"),

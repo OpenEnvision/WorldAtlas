@@ -6,7 +6,6 @@ from typing import Any
 
 import numpy as np
 
-
 _EPSILON = 1e-12
 
 
@@ -161,22 +160,17 @@ def score_camera_trajectories(
     )
 
     aligned_positions = (
-        similarity_scale * (pred[:, :3, 3] @ similarity_rotation.T)
-        + similarity_translation
+        similarity_scale * (pred[:, :3, 3] @ similarity_rotation.T) + similarity_translation
     )
     aligned_rotations = np.einsum(
         "ij,njk->nik",
         similarity_rotation,
         pred[:, :3, :3],
     )
-    translation_error = float(
-        np.linalg.norm(aligned_positions - gt[:, :3, 3], axis=1).mean()
-    )
+    translation_error = float(np.linalg.norm(aligned_positions - gt[:, :3, 3], axis=1).mean())
     rotation_product = aligned_rotations @ np.swapaxes(gt[:, :3, :3], 1, 2)
     cosine = (np.trace(rotation_product, axis1=1, axis2=2) - 1.0) / 2.0
-    rotation_error = float(
-        np.degrees(np.arccos(np.clip(cosine, -1.0, 1.0))).mean()
-    )
+    rotation_error = float(np.degrees(np.arccos(np.clip(cosine, -1.0, 1.0))).mean())
     details.update(
         {
             "camera_pred_frame_count": pred_frame_count,

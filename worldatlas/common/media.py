@@ -6,13 +6,13 @@ import concurrent.futures
 import json
 import math
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from PIL import Image
 
 from worldatlas.common.serialization import ensure_dir
-
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
@@ -118,7 +118,9 @@ def probe_video(path: Path) -> dict[str, Any]:
         }
 
     payload = json.loads(result.stdout or "{}")
-    stream = next((item for item in payload.get("streams", []) if item.get("codec_type") == "video"), {})
+    stream = next(
+        (item for item in payload.get("streams", []) if item.get("codec_type") == "video"), {}
+    )
     width = stream.get("width")
     height = stream.get("height")
     duration_raw = stream.get("duration") or payload.get("format", {}).get("duration")

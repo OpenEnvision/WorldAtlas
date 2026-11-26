@@ -56,12 +56,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--video_length", default=125, type=int)
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--sr", type=_str_to_bool, nargs="?", const=True, default=False)
-    parser.add_argument("--save_pre_sr_video", type=_str_to_bool, nargs="?", const=True, default=False)
+    parser.add_argument(
+        "--save_pre_sr_video", type=_str_to_bool, nargs="?", const=True, default=False
+    )
     parser.add_argument("--rewrite", type=_str_to_bool, nargs="?", const=True, default=False)
     parser.add_argument("--offloading", type=_str_to_bool, nargs="?", const=True, default=True)
-    parser.add_argument("--group_offloading", type=_str_to_optional_bool, nargs="?", const=True, default=None)
+    parser.add_argument(
+        "--group_offloading", type=_str_to_optional_bool, nargs="?", const=True, default=None
+    )
     parser.add_argument("--dtype", choices=("bf16", "fp32"), default="bf16", type=str)
-    parser.add_argument("--enable_torch_compile", type=_str_to_bool, nargs="?", const=True, default=False)
+    parser.add_argument(
+        "--enable_torch_compile", type=_str_to_bool, nargs="?", const=True, default=False
+    )
     parser.add_argument("--few_step", type=_str_to_bool, nargs="?", const=True, default=True)
     parser.add_argument("--model_type", choices=("bi", "ar"), default="ar", type=str)
     parser.add_argument("--height", default=None, type=int)
@@ -69,7 +75,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--with_ui", type=_str_to_bool, nargs="?", const=True, default=False)
     parser.add_argument("--use_sageattn", type=_str_to_bool, nargs="?", const=True, default=False)
     parser.add_argument("--sage_blocks_range", default="0-53", type=str)
-    parser.add_argument("--use_vae_parallel", type=_str_to_bool, nargs="?", const=True, default=False)
+    parser.add_argument(
+        "--use_vae_parallel", type=_str_to_bool, nargs="?", const=True, default=False
+    )
     parser.add_argument("--use_fp8_gemm", type=_str_to_bool, nargs="?", const=True, default=False)
     parser.add_argument("--quant_type", default="fp8-per-block", type=str)
     parser.add_argument("--include_patterns", default="double_blocks", type=str)
@@ -164,7 +172,9 @@ def main() -> None:
             raise FileNotFoundError(f"HY-WorldPlay model path is missing: {args.model_path}")
         action_ckpt = resolve_project_path(args.action_ckpt)
         if action_ckpt is None or not action_ckpt.is_file():
-            raise FileNotFoundError(f"HY-WorldPlay action checkpoint is missing: {args.action_ckpt}")
+            raise FileNotFoundError(
+                f"HY-WorldPlay action checkpoint is missing: {args.action_ckpt}"
+            )
 
         command = _entrypoint_command(args, entrypoint_path)
         command.extend(
@@ -228,7 +238,9 @@ def main() -> None:
             ]
         )
         if args.group_offloading is not None:
-            command.extend(["--group_offloading", "true" if bool(args.group_offloading) else "false"])
+            command.extend(
+                ["--group_offloading", "true" if bool(args.group_offloading) else "false"]
+            )
         if args.height is not None:
             command.extend(["--height", str(int(args.height))])
         if args.width is not None:
@@ -250,8 +262,14 @@ def main() -> None:
             shutil.copy2(generated_video, output_path)
 
             pre_sr_video = runtime_output_dir / "gen.mp4"
-            if generated_video.name != "gen.mp4" and bool(args.save_pre_sr_video) and pre_sr_video.exists():
-                pre_sr_output = output_path.with_name(f"{output_path.stem}.pre_sr{output_path.suffix}")
+            if (
+                generated_video.name != "gen.mp4"
+                and bool(args.save_pre_sr_video)
+                and pre_sr_video.exists()
+            ):
+                pre_sr_output = output_path.with_name(
+                    f"{output_path.stem}.pre_sr{output_path.suffix}"
+                )
                 pre_sr_output.unlink(missing_ok=True)
                 shutil.copy2(pre_sr_video, pre_sr_output)
             print_status(sample_id, "generated", output_path=str(output_path))

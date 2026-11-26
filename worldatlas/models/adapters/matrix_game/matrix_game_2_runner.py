@@ -33,7 +33,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--actions_json", required=True, type=str)
     parser.add_argument("--image_path", required=True, type=str)
     parser.add_argument("--output_path", required=True, type=str)
-    parser.add_argument("--mode", default="universal", choices=sorted(_DEFAULT_CONFIG_BY_MODE), type=str)
+    parser.add_argument(
+        "--mode", default="universal", choices=sorted(_DEFAULT_CONFIG_BY_MODE), type=str
+    )
     parser.add_argument("--config_path", default=None, type=str)
     parser.add_argument("--checkpoint_filename", default=None, type=str)
     parser.add_argument("--num_output_frames", default=15, type=int)
@@ -153,9 +155,7 @@ def load_matrix_game_2(
     current_vae_decoder = VAEDecoderWrapper()
     vae_state_dict = torch.load(checkpoint_dir / "Wan2.1_VAE.pth", map_location="cpu")
     decoder_state_dict = {
-        key: value
-        for key, value in vae_state_dict.items()
-        if "decoder." in key or "conv2" in key
+        key: value for key, value in vae_state_dict.items() if "decoder." in key or "conv2" in key
     }
     current_vae_decoder.load_state_dict(decoder_state_dict)
     current_vae_decoder.to(device, torch.float16)
@@ -244,7 +244,9 @@ def generate_matrix_game_2(
     conditional_dict = {
         "cond_concat": cond_concat.to(device=device, dtype=weight_dtype),
         "visual_context": visual_context.to(device=device, dtype=weight_dtype),
-        "keyboard_cond": torch.tensor(keyboard_condition, device=device, dtype=weight_dtype).unsqueeze(0),
+        "keyboard_cond": torch.tensor(
+            keyboard_condition, device=device, dtype=weight_dtype
+        ).unsqueeze(0),
     }
     if mouse_condition is not None:
         conditional_dict["mouse_cond"] = torch.tensor(
@@ -277,15 +279,20 @@ def generate_matrix_game_2(
     # Save the actual inference inputs, including block rounding. Do not change
     # the already-executed program by rebuilding it with a new token duration.
     executed_actions = {
-        **action_spec, "variant": "matrix_game_2", "mode": args.mode,
-        "num_output_frames": num_output_frames, "total_frames": expected_frames,
+        **action_spec,
+        "variant": "matrix_game_2",
+        "mode": args.mode,
+        "num_output_frames": num_output_frames,
+        "total_frames": expected_frames,
         "keyboard_condition": keyboard_condition.tolist(),
         "saved_video_frames": int(frames.shape[0]),
     }
     if mouse_condition is not None:
         executed_actions["mouse_condition"] = mouse_condition.tolist()
     sidecar = output_path.with_name(f"{output_path.stem}_actions.json")
-    sidecar.write_text(json.dumps(executed_actions, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    sidecar.write_text(
+        json.dumps(executed_actions, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
@@ -293,7 +300,9 @@ def generate_matrix_game_2(
 def main() -> None:
     args = parse_args()
     launch_cwd = Path.cwd()
-    repo_root = prepare_matrix_game_2_repo((launch_cwd / Path(args.repo_root).expanduser()).resolve())
+    repo_root = prepare_matrix_game_2_repo(
+        (launch_cwd / Path(args.repo_root).expanduser()).resolve()
+    )
     checkpoint_dir = resolve_checkpoint_path(args.checkpoint_dir, kind="dir", required=True)
     if checkpoint_dir is None:
         raise ValueError("Matrix-Game-2 runner requires checkpoint_dir")

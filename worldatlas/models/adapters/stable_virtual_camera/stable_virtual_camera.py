@@ -7,7 +7,9 @@ from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 
 
 class StableVirtualCameraAdapter(ExternalBatchAdapter):
-    runner_module = "worldatlas.models.adapters.stable_virtual_camera.stable_virtual_camera_batch_runner"
+    runner_module = (
+        "worldatlas.models.adapters.stable_virtual_camera.stable_virtual_camera_batch_runner"
+    )
     label = "Stable Virtual Camera"
 
     def batch_checkpoint_load_policy(self) -> str:

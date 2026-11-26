@@ -1,4 +1,5 @@
 """Validate image-mask provenance and instance counts."""
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,9 @@ def mask_source_relative(meta: dict) -> str:
 
 
 def mask_files(directory: Path) -> list[Path]:
-    return sorted(p for p in directory.iterdir() if p.is_file() and p.suffix.lower() in MASK_EXTENSIONS)
+    return sorted(
+        p for p in directory.iterdir() if p.is_file() and p.suffix.lower() in MASK_EXTENSIONS
+    )
 
 
 def validate_mask_metadata(directory: Path, relative_path: str) -> dict:

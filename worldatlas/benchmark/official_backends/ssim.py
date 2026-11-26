@@ -39,7 +39,9 @@ class StructuralSimilarityIndexMeasureMetric(BaseMetric):
         constant_pair = bool(img1.max() == img1.min() and img2.max() == img2.min())
         if constant_pair:
             if rendered_image.dtype != np.uint8 or reference_image.dtype != np.uint8:
-                raise ValueError("Constant SSIM inputs require uint8 images with a known data range")
+                raise ValueError(
+                    "Constant SSIM inputs require uint8 images with a known data range"
+                )
             score = structural_similarity_index_measure(img1, img2, data_range=1.0).detach().item()
         else:
             score = self._metric(img1, img2).detach().item()

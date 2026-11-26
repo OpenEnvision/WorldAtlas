@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
 from pathlib import Path
+from typing import Any
 
 from worldatlas.benchmark.media import LoadedMedia
-from worldatlas.benchmark.met3r_runtime import compute_met3r_video_consistency, _metric_options
 from worldatlas.benchmark.met3r_protocol import PROTOCOL
+from worldatlas.benchmark.met3r_runtime import _metric_options, compute_met3r_video_consistency
 from worldatlas.benchmark.metrics.base import (
     Metric,
     apply_display_error_ref,
@@ -15,7 +15,6 @@ from worldatlas.benchmark.metrics.base import (
     resolve_metric_backend,
 )
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
-
 
 MET3R_BACKENDS = {"met3r"}
 
@@ -41,13 +40,13 @@ class Met3RConsistencyMetric(Metric):
         distance = str(runtime_payload.get("distance") or "cosine")
         merged = {**_default_normalization(distance), **dict(normalization or {})}
         paper = {
-            key: merged[key]
-            for key in ("lower", "upper", "higher_is_better")
-            if key in merged
+            key: merged[key] for key in ("lower", "upper", "higher_is_better") if key in merged
         }
         extra = set(merged) - {"lower", "upper", "higher_is_better", "error_ref", "error_from"}
         if paper != _default_normalization("cosine") or extra:
-            raise ValueError("MEt3R keeps the paper raw score and only the declared WorldAtlas 1-raw/2 display transform")
+            raise ValueError(
+                "MEt3R keeps the paper raw score and only the declared WorldAtlas 1-raw/2 display transform"
+            )
         if merged.get("error_ref") is not None and merged.get("error_from") != "raw":
             raise ValueError("MEt3R display error_ref must use error_from: raw")
         super().__init__("met3r_consistency", backend, merged)
@@ -92,7 +91,9 @@ class Met3RConsistencyMetric(Metric):
         details = self._details(prediction)
         try:
             if prediction.modality != "video":
-                raise ValueError("MEt3R sequence metric requires a generated video with at least two frames")
+                raise ValueError(
+                    "MEt3R sequence metric requires a generated video with at least two frames"
+                )
             result = compute_met3r_video_consistency(Path(prediction.path), runtime=self.runtime)
             raw = result["raw"]
             details.update(result["details"])

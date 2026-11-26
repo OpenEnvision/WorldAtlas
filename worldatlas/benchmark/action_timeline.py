@@ -32,7 +32,9 @@ def realize_matrix_game_2_actions(payload: dict[str, Any]) -> dict[str, Any]:
         if rows is None and field == "mouse_condition" and payload.get("mode") == "templerun":
             continue
         if not isinstance(rows, list) or len(rows) != declared_frames:
-            raise ValueError(f"Matrix-Game-2 {field} is incomplete; cannot reconstruct executed controls")
+            raise ValueError(
+                f"Matrix-Game-2 {field} is incomplete; cannot reconstruct executed controls"
+            )
         lengths[field] = len(rows)
         result[field] = list(rows) + [list(rows[-1]) for _ in range(executed_frames - len(rows))]
     result["total_frames"] = executed_frames

@@ -13,7 +13,8 @@ import sys
 import tempfile
 import time
 import traceback
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 import numpy as np
 
@@ -151,7 +152,9 @@ def _patch_diffusers_local_paths(repo_root: Path) -> None:
         "runwayml/stable-diffusion-inpainting": repo_root / "stablediffusion" / "SD1-5",
         "stablediffusion/SD1-5": repo_root / "stablediffusion" / "SD1-5",
         "./stablediffusion/SD1-5": repo_root / "stablediffusion" / "SD1-5",
-        "lllyasviel/control_v11p_sd15_inpaint": repo_root / "stablediffusion" / "control_v11p_sd15_inpaint",
+        "lllyasviel/control_v11p_sd15_inpaint": repo_root
+        / "stablediffusion"
+        / "control_v11p_sd15_inpaint",
     }
 
     def _wrap(original):
@@ -225,9 +228,7 @@ def _install_worldatlas_camera_path(
         translation_scale=translation_scale,
     )
     loaded = loadCameraPreset(lucid.traindata, presetdata=preset_data)
-    lucid.scene.preset_cameras["worldatlas_camera_path"] = loaded[
-        "worldatlas_camera_path"
-    ]
+    lucid.scene.preset_cameras["worldatlas_camera_path"] = loaded["worldatlas_camera_path"]
 
 
 def _copy_outputs(
@@ -369,7 +370,9 @@ def main() -> None:
 
     from luciddreamer import LucidDreamer
 
-    print(f"[luciddreamer-batch] loading LucidDreamer once for {len(requests)} requests", flush=True)
+    print(
+        f"[luciddreamer-batch] loading LucidDreamer once for {len(requests)} requests", flush=True
+    )
     lucid = LucidDreamer(for_gradio=False, save_dir=None)
     print("[luciddreamer-batch] LucidDreamer loaded", flush=True)
 

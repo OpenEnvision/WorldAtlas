@@ -8,16 +8,16 @@ from __future__ import annotations
 
 import json
 import math
-from pathlib import Path
 import random
+from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 import numpy as np
 
+from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.common.checkpoints import rehome_legacy_workspace_path
 from worldatlas.common.progress import log_progress
-from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.models.adapters.base import ModelAdapter, PreparedGenerationRequest, plan_rollout
 from worldatlas.models.adapters.common import (
     build_env,
@@ -246,9 +246,7 @@ def _normalized_camera_token(value: str) -> str:
 
 def _worldatlas_camera_token(sample: BenchmarkSample) -> tuple[str, str]:
     camera_path = [
-        _normalized_camera_token(token)
-        for token in sample.camera_path
-        if str(token).strip()
+        _normalized_camera_token(token) for token in sample.camera_path if str(token).strip()
     ]
     if camera_path:
         return camera_path[0], "camera_path"
@@ -267,9 +265,7 @@ def _worldatlas_camera_token(sample: BenchmarkSample) -> tuple[str, str]:
 
 def _worldatlas_camera_tokens(sample: BenchmarkSample) -> tuple[list[str], str]:
     camera_path = [
-        _normalized_camera_token(token)
-        for token in sample.camera_path
-        if str(token).strip()
+        _normalized_camera_token(token) for token in sample.camera_path if str(token).strip()
     ]
     if camera_path:
         return camera_path, "camera_path"
@@ -591,7 +587,9 @@ def _matrix_game_2_payload(
         total_frames=total_frames,
         mouse_enabled=bool(spec["mouse_enabled"]),
         mouse_step=float(spec["mouse_step"]),
-        default_frames_per_action=int(dict(config.get("action_plan", {})).get("frames_per_action", 12)),
+        default_frames_per_action=int(
+            dict(config.get("action_plan", {})).get("frames_per_action", 12)
+        ),
     )
     payload["mode"] = mode
     payload["num_output_frames"] = num_output_frames
@@ -608,7 +606,9 @@ def _combine_official_matrix_game_2_actions(
     rng: random.Random,
 ) -> dict[str, Any]:
     if total_frames % 4 != 1:
-        raise ValueError(f"Matrix-Game-2 official action frame count must be 4n+1, got {total_frames}")
+        raise ValueError(
+            f"Matrix-Game-2 official action frame count must be 4n+1, got {total_frames}"
+        )
 
     keyboard_condition = np.zeros((total_frames, keyboard_dim), dtype=np.float32)
     mouse_condition = np.zeros((total_frames, 2), dtype=np.float32) if mouse_enabled else None
@@ -668,7 +668,11 @@ def _matrix_game_2_official_bench_payload(
             double_actions * 5
             + camera_actions * 5
             + single_actions * 5
-            + [f"{action}_{camera}" for action in single_actions + double_actions for camera in camera_actions]
+            + [
+                f"{action}_{camera}"
+                for action in single_actions + double_actions
+                for camera in camera_actions
+            ]
         )
         keyboard_idx = {"forward": 0, "back": 1, "left": 2, "right": 3}
         camera_map = {
@@ -744,7 +748,15 @@ def _matrix_game_2_official_bench_payload(
         )
 
     if mode == "templerun":
-        actions_to_test = ["jump", "slide", "leftside", "rightside", "turnleft", "turnright", "nomove"]
+        actions_to_test = [
+            "jump",
+            "slide",
+            "leftside",
+            "rightside",
+            "turnleft",
+            "turnright",
+            "nomove",
+        ]
         keyboard_idx = {
             "nomove": 0,
             "jump": 1,
@@ -809,9 +821,17 @@ def _video_static_target_frames_and_fps(
     sample: BenchmarkSample,
     annotation_dir: Path | None,
 ) -> tuple[int, float, dict[str, Any]]:
-    quality = _read_json_dict(annotation_dir / "quality_report.json") if annotation_dir is not None else {}
+    quality = (
+        _read_json_dict(annotation_dir / "quality_report.json")
+        if annotation_dir is not None
+        else {}
+    )
     frame_count = quality.get("source_video_frame_count") or quality.get("frame_count")
-    if frame_count is None and annotation_dir is not None and (annotation_dir / "frame_indices.npy").is_file():
+    if (
+        frame_count is None
+        and annotation_dir is not None
+        and (annotation_dir / "frame_indices.npy").is_file()
+    ):
         frame_count = int(np.load(annotation_dir / "frame_indices.npy").shape[0])
     if frame_count is None and sample.duration_seconds and sample.fps:
         frame_count = int(round(float(sample.duration_seconds) * float(sample.fps)))
@@ -826,7 +846,9 @@ def _video_static_target_frames_and_fps(
     return max(int(frame_count), 1), fps, quality
 
 
-def _matrix_game3_iteration_frame_count(first_clip_frames: int, followup_frames: int, num_iterations: int) -> int:
+def _matrix_game3_iteration_frame_count(
+    first_clip_frames: int, followup_frames: int, num_iterations: int
+) -> int:
     return first_clip_frames + (max(num_iterations, 1) - 1) * followup_frames
 
 
@@ -992,7 +1014,9 @@ def _dominant_translation_token(local_delta: np.ndarray, *, deadzone: float) -> 
     return "right" if local_x > 0.0 else "left"
 
 
-def _dominant_rotation_vector(angle_delta: np.ndarray, *, deadzone: float, mouse_step: float) -> np.ndarray:
+def _dominant_rotation_vector(
+    angle_delta: np.ndarray, *, deadzone: float, mouse_step: float
+) -> np.ndarray:
     mouse = np.zeros(2, dtype=np.float32)
     delta_pitch = float(angle_delta[0])
     delta_yaw = float(angle_delta[1])
@@ -1077,9 +1101,13 @@ def _quantize_gt_camera_actions_coarse(
     pulse_on = max(int(config.get("gt_camera_coarse_pulse_on_frames", 2)), 1)
     pulse_on = min(pulse_on, pulse_period)
     labels: list[str] = []
-    for (start, end), local_delta, angle_delta in zip(bounds, segment_local_deltas, segment_angle_deltas):
+    for (start, end), local_delta, angle_delta in zip(
+        bounds, segment_local_deltas, segment_angle_deltas
+    ):
         keyboard_token = _dominant_translation_token(local_delta, deadzone=translation_deadzone)
-        mouse_row = _dominant_rotation_vector(angle_delta, deadzone=angle_deadzone, mouse_step=mouse_step)
+        mouse_row = _dominant_rotation_vector(
+            angle_delta, deadzone=angle_deadzone, mouse_step=mouse_step
+        )
         labels.append(_coarse_action_label(keyboard_token, mouse_row))
         for frame_index in range(start, end):
             if (frame_index - start) % pulse_period >= pulse_on:
@@ -1122,10 +1150,14 @@ def _matrix_game_3_video_static_gt_payload(
     sample: BenchmarkSample,
 ) -> dict[str, Any]:
     if suite != "video_static":
-        raise ValueError(f"VIPE GT camera action source is only valid for video_static, got {suite}")
+        raise ValueError(
+            f"VIPE GT camera action source is only valid for video_static, got {suite}"
+        )
     annotation_dir = _annotation_dir_for_sample(sample)
     if annotation_dir is None:
-        raise FileNotFoundError(f"video_static sample has no annotation directory: {sample.sample_id}")
+        raise FileNotFoundError(
+            f"video_static sample has no annotation directory: {sample.sample_id}"
+        )
 
     action_plan = dict(config.get("action_plan", {}))
     first_clip_frames = int(action_plan.get("first_clip_frames", 57))
@@ -1174,7 +1206,9 @@ def _matrix_game_3_video_static_gt_payload(
         "gt_video_frame_count": saved_frames,
         "gt_video_fps": output_fps,
         "gt_camera_quality_status": quality.get("status"),
-        "gt_camera_control_mode": str(config.get("gt_camera_control_mode", "coarse")).strip().lower(),
+        "gt_camera_control_mode": str(config.get("gt_camera_control_mode", "coarse"))
+        .strip()
+        .lower(),
         "prompt_control_note": (
             "video_static uses the VIPE/GT camera trajectory quantized into Matrix-Game-3 "
             "keyboard and mouse controls; output fps/frame count are matched to the GT video."
@@ -1189,7 +1223,11 @@ def _matrix_game_3_payload(
 ) -> dict[str, Any]:
     action_plan = dict(config.get("action_plan", {}))
     action_source = str(config.get("action_source", "worldatlas_plan")).strip().lower()
-    if sample is not None and sample.suite == "video_static" and action_source in _MATRIX_GAME3_GT_CAMERA_ACTION_SOURCES:
+    if (
+        sample is not None
+        and sample.suite == "video_static"
+        and action_source in _MATRIX_GAME3_GT_CAMERA_ACTION_SOURCES
+    ):
         return _matrix_game_3_video_static_gt_payload(config, suite, sample)
 
     camera_tokens: list[str] | None = None
@@ -1204,7 +1242,9 @@ def _matrix_game_3_payload(
         "worldatlas_camera_path",
     }:
         if sample is None:
-            raise ValueError("Matrix-Game-3 worldatlas_prompt action_source requires a BenchmarkSample")
+            raise ValueError(
+                "Matrix-Game-3 worldatlas_prompt action_source requires a BenchmarkSample"
+            )
         camera_tokens, matrix_actions, control_source = _worldatlas_matrix_game_actions(sample)
         actions = matrix_actions
         payload_config = None
@@ -1423,7 +1463,9 @@ def _matrix_game_1_command(
     resolution = generation.get("resolution")
     if resolution is not None:
         if not isinstance(resolution, (list, tuple)) or len(resolution) != 2:
-            raise ValueError("Matrix-Game-1 generation.resolution must be a 2-item list like [1280, 720]")
+            raise ValueError(
+                "Matrix-Game-1 generation.resolution must be a 2-item list like [1280, 720]"
+            )
         command.extend(["--resolution", str(int(resolution[0])), str(int(resolution[1]))])
     return command
 
@@ -1498,7 +1540,6 @@ class MatrixGameAdapter(ModelAdapter):
     """Generate interactive game-world videos via Matrix-Game runner modules."""
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return True
 
     def batch_checkpoint_load_policy(self) -> str:

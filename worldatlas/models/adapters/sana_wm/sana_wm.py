@@ -21,13 +21,16 @@ class SanaWMAdapter(ExternalBatchAdapter):
         recipe = generation.get("camera_control_recipe", "legacy")
         if recipe == "official_demo_v1":
             from worldatlas.models.adapters.sana_wm.camera import demo_camera_annotation
+
             if int(generation.get("fps", 16)) != 16:
                 raise ValueError("Sana official demo camera recipe requires 16 fps")
             annotation_path, pose_source, metadata = demo_camera_annotation(
-                request.sample, request.conditioning_image.expanduser().resolve(),
+                request.sample,
+                request.conditioning_image.expanduser().resolve(),
                 frame_count=int(generation.get("num_frames", 161)),
-                focal_scale=float(generation.get("synthetic_focal_scale", .6)),
-                repo_root=self.config.repo_root)
+                focal_scale=float(generation.get("synthetic_focal_scale", 0.6)),
+                repo_root=self.config.repo_root,
+            )
             payload["camera_control_recipe"] = metadata
         elif recipe == "legacy":
             annotation_path, pose_source = camera_annotation_for_conditioning_image(

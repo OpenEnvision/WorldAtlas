@@ -20,9 +20,8 @@ class MatrixGame35Adapter(ExternalBatchAdapter):
 
     def batch_spec_payload(self, request: PreparedGenerationRequest) -> dict[str, Any]:
         payload = super().batch_spec_payload(request)
-        is_dynamic = (
-            request.sample.generation_mode == "dynamic"
-            or request.sample.suite.endswith("_dynamic")
+        is_dynamic = request.sample.generation_mode == "dynamic" or request.sample.suite.endswith(
+            "_dynamic"
         )
         camera_path = ["fixed"] if is_dynamic else normalize_camera_path(request.sample.camera_path)
         payload.update(

@@ -9,7 +9,6 @@ from worldatlas.benchmark.metrics.base import Metric, resolve_metric_backend
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 from worldatlas.benchmark.trajan_backend import compute_trajan_average_jaccard
 
-
 TRAJAN_BACKENDS = {"trajan"}
 
 

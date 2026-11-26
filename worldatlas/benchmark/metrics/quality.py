@@ -20,8 +20,11 @@ from worldatlas.benchmark.quality_backends import (
 from worldatlas.benchmark.reference_runtime import compute_reference_perceptual_quality
 from worldatlas.benchmark.schemas import BenchmarkSample, MetricOutput
 from worldatlas.common.progress import log_exception
-from worldatlas.common.video_io import probe_video_frame_count, read_video_frames, read_video_frames_at
-
+from worldatlas.common.video_io import (
+    probe_video_frame_count,
+    read_video_frames,
+    read_video_frames_at,
+)
 
 QUALITY_BACKENDS = {"reference", "pyiqa"}
 IMAGE_QUALITY_BACKENDS = {"musiq"}
@@ -88,7 +91,9 @@ def _prediction_frames_for_hpsv3(
             return frames, "video_path_even"
         frames = read_video_frames(path)
         return _even_sample_frames(frames, sample_count), "video_path_even"
-    return _even_sample_frames(prediction.frames or prediction.anchor_frames, sample_count), "loaded_media_even"
+    return _even_sample_frames(
+        prediction.frames or prediction.anchor_frames, sample_count
+    ), "loaded_media_even"
 
 
 class PerceptualQualityMetric(Metric):

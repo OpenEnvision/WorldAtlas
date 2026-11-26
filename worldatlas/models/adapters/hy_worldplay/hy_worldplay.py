@@ -42,7 +42,6 @@ from worldatlas.models.adapters.lingbot_world.common import (
 )
 from worldatlas.models.config import ModelRuntimeConfig
 
-
 WORLDPLAY_DEFAULT_WIDTH = 832
 WORLDPLAY_DEFAULT_HEIGHT = 480
 WORLDPLAY_DEFAULT_VIDEO_LENGTH = 125
@@ -155,7 +154,9 @@ def resolve_video_length(generation: dict[str, Any]) -> int:
     return _validated_video_length(plan.total_frames)
 
 
-def _interpolate_pose_segment(start_pose: np.ndarray, end_pose: np.ndarray, *, frames: int) -> np.ndarray:
+def _interpolate_pose_segment(
+    start_pose: np.ndarray, end_pose: np.ndarray, *, frames: int
+) -> np.ndarray:
     pose_vectors = np.stack(
         [
             _matrix_to_pose_vector(start_pose.astype(np.float32)),
@@ -165,7 +166,9 @@ def _interpolate_pose_segment(start_pose: np.ndarray, end_pose: np.ndarray, *, f
     ).astype(np.float32)
     indices = np.asarray([0.0, 1.0], dtype=np.float32)
     interpolated = _resample_pose_vectors(pose_vectors, indices, frames)
-    return np.stack([_pose_vector_to_matrix(pose_row) for pose_row in interpolated], axis=0).astype(np.float32)
+    return np.stack([_pose_vector_to_matrix(pose_row) for pose_row in interpolated], axis=0).astype(
+        np.float32
+    )
 
 
 def _worldplay_camera_delta(token: str) -> np.ndarray:
@@ -173,22 +176,30 @@ def _worldplay_camera_delta(token: str) -> np.ndarray:
     if token == "pan_left":
         return _rigid_transform(
             rotation=_rotation_matrix_y(LINGBOT_ROTATION_DEGREES),
-            translation=np.asarray([-LINGBOT_LATERAL_STEP, 0.0, LINGBOT_FORWARD_STEP], dtype=np.float32),
+            translation=np.asarray(
+                [-LINGBOT_LATERAL_STEP, 0.0, LINGBOT_FORWARD_STEP], dtype=np.float32
+            ),
         )
     if token == "pan_right":
         return _rigid_transform(
             rotation=_rotation_matrix_y(-LINGBOT_ROTATION_DEGREES),
-            translation=np.asarray([LINGBOT_LATERAL_STEP, 0.0, LINGBOT_FORWARD_STEP], dtype=np.float32),
+            translation=np.asarray(
+                [LINGBOT_LATERAL_STEP, 0.0, LINGBOT_FORWARD_STEP], dtype=np.float32
+            ),
         )
     if token == "orbit_left":
         return _rigid_transform(
             rotation=_rotation_matrix_y(-LINGBOT_ROTATION_DEGREES),
-            translation=np.asarray([-LINGBOT_LATERAL_STEP, 0.0, -LINGBOT_FORWARD_STEP], dtype=np.float32),
+            translation=np.asarray(
+                [-LINGBOT_LATERAL_STEP, 0.0, -LINGBOT_FORWARD_STEP], dtype=np.float32
+            ),
         )
     if token == "orbit_right":
         return _rigid_transform(
             rotation=_rotation_matrix_y(LINGBOT_ROTATION_DEGREES),
-            translation=np.asarray([LINGBOT_LATERAL_STEP, 0.0, -LINGBOT_FORWARD_STEP], dtype=np.float32),
+            translation=np.asarray(
+                [LINGBOT_LATERAL_STEP, 0.0, -LINGBOT_FORWARD_STEP], dtype=np.float32
+            ),
         )
     return _camera_delta(token)
 
@@ -241,7 +252,9 @@ def _synthetic_intrinsics_sequence(
         [focal_length, focal_length, image_width / 2.0, image_height / 2.0],
         dtype=np.float32,
     )
-    return np.repeat(intrinsics[None, :], repeats=max(int(latent_count), 1), axis=0).astype(np.float32)
+    return np.repeat(intrinsics[None, :], repeats=max(int(latent_count), 1), axis=0).astype(
+        np.float32
+    )
 
 
 def _vector_intrinsics_to_matrix(values: np.ndarray) -> np.ndarray:
@@ -281,7 +294,9 @@ def _synthetic_pose_root(
     image_height: int,
 ) -> Path:
     camera_path = _camera_path_for_sample(sample) or ["fixed"]
-    focal_scale = float(config.generation.get("trajectory_focal_scale", WORLDPLAY_DEFAULT_FOCAL_SCALE))
+    focal_scale = float(
+        config.generation.get("trajectory_focal_scale", WORLDPLAY_DEFAULT_FOCAL_SCALE)
+    )
     cache_key_payload = {
         "sample_id": sample.sample_id,
         "relative_path": sample.relative_path,
@@ -416,17 +431,26 @@ class HYWorldPlayAdapter(ExternalBatchAdapter):
 
     def _build_command(self, spec_path: Path, generation_path: Path) -> list[str]:
         command = super()._build_command(spec_path, generation_path)
-        processes = int(self.config.generation.get('nproc_per_node', 1))
+        processes = int(self.config.generation.get("nproc_per_node", 1))
         if processes < 1:
-            raise ValueError('HY-WorldPlay nproc_per_node must be positive')
+            raise ValueError("HY-WorldPlay nproc_per_node must be positive")
         if processes > 1:
             # The generic batch launcher reserves the requested GPU group;
             # actually launch one rank per GPU so upstream sequence parallel
             # attention shards the history KV rather than using only GPU 0.
-            command = [command[0], '-m', 'torch.distributed.run', '--standalone',
-                       '--nnodes=1', f'--nproc_per_node={processes}',
-                       '--module', self.runner_module, *command[3:]]
+            command = [
+                command[0],
+                "-m",
+                "torch.distributed.run",
+                "--standalone",
+                "--nnodes=1",
+                f"--nproc_per_node={processes}",
+                "--module",
+                self.runner_module,
+                *command[3:],
+            ]
         return command
+
     label = "HY-WorldPlay"
 
     def batch_checkpoint_load_policy(self) -> str:
@@ -437,7 +461,9 @@ class HYWorldPlayAdapter(ExternalBatchAdapter):
         generation = _generation_for_suite(self.config.generation, request.sample.suite)
         resolution = str(generation.get("resolution", "480p")).strip()
         if resolution != "480p":
-            raise ValueError(f"HY-WorldPlay currently only supports resolution=480p, got {resolution!r}")
+            raise ValueError(
+                f"HY-WorldPlay currently only supports resolution=480p, got {resolution!r}"
+            )
 
         video_length = resolve_video_length(generation)
         latent_count = _latent_frame_count(video_length)
@@ -446,8 +472,12 @@ class HYWorldPlayAdapter(ExternalBatchAdapter):
             raise FileNotFoundError(f"conditioning image not found: {conditioning_image}")
 
         image_probe = probe_image(conditioning_image)
-        image_width = int(generation.get("width", image_probe.get("width", WORLDPLAY_DEFAULT_WIDTH)))
-        image_height = int(generation.get("height", image_probe.get("height", WORLDPLAY_DEFAULT_HEIGHT)))
+        image_width = int(
+            generation.get("width", image_probe.get("width", WORLDPLAY_DEFAULT_WIDTH))
+        )
+        image_height = int(
+            generation.get("height", image_probe.get("height", WORLDPLAY_DEFAULT_HEIGHT))
+        )
         pose_json_path, pose_source = _resolved_pose_json_path(
             self.config,
             request.sample,
@@ -460,7 +490,9 @@ class HYWorldPlayAdapter(ExternalBatchAdapter):
         prompt_suffix = str(generation.get("prompt_suffix", ""))
         prompt_text = f"{prompt_prefix}{request.prompt}{prompt_suffix}".strip()
         if not prompt_text:
-            prompt_text = str(request.sample.prompt_target or request.sample.prompt_current or "").strip()
+            prompt_text = str(
+                request.sample.prompt_target or request.sample.prompt_current or ""
+            ).strip()
         if not prompt_text:
             raise ValueError("HY-WorldPlay requires a non-empty prompt")
 

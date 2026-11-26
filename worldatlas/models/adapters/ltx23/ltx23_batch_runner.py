@@ -162,8 +162,12 @@ def _install_persistent_weight_cache(enabled: bool) -> None:
             type(_attr("model_loader")),
             (
                 getattr(fuse_rule, "aggregation_dtype", None) if fuse_rule is not None else None,
-                getattr(getattr(fuse_rule, "fuse_fn", None), "__module__", None) if fuse_rule is not None else None,
-                getattr(getattr(fuse_rule, "fuse_fn", None), "__qualname__", None) if fuse_rule is not None else None,
+                getattr(getattr(fuse_rule, "fuse_fn", None), "__module__", None)
+                if fuse_rule is not None
+                else None,
+                getattr(getattr(fuse_rule, "fuse_fn", None), "__qualname__", None)
+                if fuse_rule is not None
+                else None,
             ),
             dtype,
         )
@@ -181,11 +185,23 @@ def _install_persistent_weight_cache(enabled: bool) -> None:
             print_status(
                 "ltx23-weight-cache",
                 "loading",
-                model_path=",".join(_path_key(getattr(self, "model_path", getattr(self, "_model_path", "")))),
+                model_path=",".join(
+                    _path_key(getattr(self, "model_path", getattr(self, "_model_path", "")))
+                ),
                 configurator=getattr(
-                    getattr(self, "model_class_configurator", getattr(self, "_model_class_configurator", None)),
+                    getattr(
+                        self,
+                        "model_class_configurator",
+                        getattr(self, "_model_class_configurator", None),
+                    ),
                     "__name__",
-                    str(getattr(self, "model_class_configurator", getattr(self, "_model_class_configurator", None))),
+                    str(
+                        getattr(
+                            self,
+                            "model_class_configurator",
+                            getattr(self, "_model_class_configurator", None),
+                        )
+                    ),
                 ),
             )
             model = original_build(self, device=torch.device("cpu"), dtype=dtype, **kwargs)
@@ -231,6 +247,7 @@ def _install_persistent_streaming_cache(
 
     import atexit
     import torch
+
     try:
         from ltx_core.block_streaming.pool import WeightPool
         from ltx_core.block_streaming.provider import WeightsProvider
@@ -398,7 +415,9 @@ def _install_persistent_streaming_cache(
         target_device: torch.device,
         dtype: torch.dtype,
     ):
-        configurator_name = getattr(builder.model_class_configurator, "__name__", str(builder.model_class_configurator))
+        configurator_name = getattr(
+            builder.model_class_configurator, "__name__", str(builder.model_class_configurator)
+        )
         persistent_gpu = enabled and keep_gpu and configurator_name == "LTXModelConfigurator"
         persistent_cpu = enabled and not persistent_gpu
         cpu_slots_count = blocks_module.DISK_CPU_SLOTS if offload_mode == OffloadMode.DISK else None
@@ -522,7 +541,9 @@ def _seed_for_row(generation: dict[str, Any], row_index: int) -> int:
 def _prompt_context_to_device(context: Any, device: Any) -> Any:
     return context._replace(
         video_encoding=context.video_encoding.to(device),
-        audio_encoding=context.audio_encoding.to(device) if context.audio_encoding is not None else None,
+        audio_encoding=context.audio_encoding.to(device)
+        if context.audio_encoding is not None
+        else None,
         attention_mask=context.attention_mask.to(device),
     )
 
@@ -530,7 +551,9 @@ def _prompt_context_to_device(context: Any, device: Any) -> Any:
 def _prompt_context_to_cpu(context: Any) -> Any:
     return context._replace(
         video_encoding=context.video_encoding.detach().to("cpu"),
-        audio_encoding=context.audio_encoding.detach().to("cpu") if context.audio_encoding is not None else None,
+        audio_encoding=context.audio_encoding.detach().to("cpu")
+        if context.audio_encoding is not None
+        else None,
         attention_mask=context.attention_mask.detach().to("cpu"),
     )
 
@@ -586,7 +609,9 @@ def _parse_lora_item(item: Any, *, base_dir: Path) -> Any:
             float(item.get("strength", 1.0)),
         )
     if isinstance(item, (list, tuple)) and item:
-        return _ltx_lora(_resolve_path(str(item[0]), base_dir=base_dir), float(item[1] if len(item) > 1 else 1.0))
+        return _ltx_lora(
+            _resolve_path(str(item[0]), base_dir=base_dir), float(item[1] if len(item) > 1 else 1.0)
+        )
     raise ValueError(f"invalid LTX-2.3 LoRA spec: {item!r}")
 
 
@@ -612,10 +637,17 @@ def _guider_params(prefix: str, generation: dict[str, Any], default_params: Any)
     return MultiModalGuiderParams(
         cfg_scale=float(generation.get(f"{prefix}_cfg_guidance_scale", default_params.cfg_scale)),
         stg_scale=float(generation.get(f"{prefix}_stg_guidance_scale", default_params.stg_scale)),
-        rescale_scale=float(generation.get(f"{prefix}_rescale_scale", default_params.rescale_scale)),
-        modality_scale=float(generation.get(f"{prefix}_modality_guidance_scale", default_params.modality_scale)),
+        rescale_scale=float(
+            generation.get(f"{prefix}_rescale_scale", default_params.rescale_scale)
+        ),
+        modality_scale=float(
+            generation.get(f"{prefix}_modality_guidance_scale", default_params.modality_scale)
+        ),
         skip_step=int(generation.get(f"{prefix}_skip_step", default_params.skip_step)),
-        stg_blocks=[int(value) for value in generation.get(f"{prefix}_stg_blocks", default_params.stg_blocks)],
+        stg_blocks=[
+            int(value)
+            for value in generation.get(f"{prefix}_stg_blocks", default_params.stg_blocks)
+        ],
     )
 
 
@@ -775,7 +807,9 @@ def _load_pipeline(generation: dict[str, Any], runtime: dict[str, Any]) -> Any:
 
     pipeline_name = str(generation.get("pipeline", "distilled")).lower()
     offload_mode = OffloadMode(str(generation.get("offload", "none")))
-    quantization = _parse_quantization(generation.get("quantization"), checkpoint_path=runtime["distilled_checkpoint_path"])
+    quantization = _parse_quantization(
+        generation.get("quantization"), checkpoint_path=runtime["distilled_checkpoint_path"]
+    )
 
     if pipeline_name == "distilled":
         from ltx_pipelines.distilled import DistilledPipeline
@@ -796,7 +830,9 @@ def _load_pipeline(generation: dict[str, Any], runtime: dict[str, Any]) -> Any:
     checkpoint_path = runtime["checkpoint_path"]
     if not Path(checkpoint_path).exists():
         raise FileNotFoundError(f"LTX-2.3 checkpoint not found: {checkpoint_path}")
-    quantization = _parse_quantization(generation.get("quantization"), checkpoint_path=checkpoint_path)
+    quantization = _parse_quantization(
+        generation.get("quantization"), checkpoint_path=checkpoint_path
+    )
     distilled_lora = _parse_loras(
         generation.get(
             "distilled_lora",
@@ -825,8 +861,12 @@ def _load_pipeline(generation: dict[str, Any], runtime: dict[str, Any]) -> Any:
         return TI2VidTwoStagesHQPipeline(
             checkpoint_path=checkpoint_path,
             distilled_lora=distilled_lora,
-            distilled_lora_strength_stage_1=float(generation.get("distilled_lora_strength_stage_1", 0.25)),
-            distilled_lora_strength_stage_2=float(generation.get("distilled_lora_strength_stage_2", 0.5)),
+            distilled_lora_strength_stage_1=float(
+                generation.get("distilled_lora_strength_stage_1", 0.25)
+            ),
+            distilled_lora_strength_stage_2=float(
+                generation.get("distilled_lora_strength_stage_2", 0.5)
+            ),
             spatial_upsampler_path=runtime["spatial_upsampler_path"],
             gemma_root=runtime["gemma_root"],
             loras=tuple(loras),
@@ -897,7 +937,9 @@ def _generate_one(
             video, audio, resolved_frames, resolved_tiling = pipeline(
                 **common_kwargs,
                 negative_prompt=str(generation.get("negative_prompt", "")),
-                num_inference_steps=int(generation.get("num_inference_steps", params.num_inference_steps)),
+                num_inference_steps=int(
+                    generation.get("num_inference_steps", params.num_inference_steps)
+                ),
                 video_guider_params=_guider_params("video", generation, params.video_guider_params),
                 audio_guider_params=_guider_params("audio", generation, params.audio_guider_params),
                 max_batch_size=int(generation.get("max_batch_size", 1)),

@@ -1,11 +1,12 @@
 """Stable image IDs and explicit, content-pinned legacy prediction bindings."""
+
 from __future__ import annotations
 
 import hashlib
+import re
 from contextlib import contextmanager
 from contextvars import ContextVar
 from pathlib import Path
-import re
 from typing import Any
 
 from worldatlas.benchmark.taxonomy import build_sample_id
@@ -57,12 +58,15 @@ def prediction_relative_path(binding: dict[str, Any]) -> Path:
     return path
 
 
-def image_sample_id(asset_level: str, style: str | None, fine_class: str | None,
-                    source_path: str) -> str:
+def image_sample_id(
+    asset_level: str, style: str | None, fine_class: str | None, source_path: str
+) -> str:
     """2.jpg and 002.png mean image 2, never the second sorted entry."""
     stem = Path(source_path).stem
     if asset_level not in IMAGE_LEVELS or not re.fullmatch(r"[0-9]+", stem):
-        raise ValueError(f"{SOURCE_FILENAME_POLICY} requires a numeric image filename: {source_path}")
+        raise ValueError(
+            f"{SOURCE_FILENAME_POLICY} requires a numeric image filename: {source_path}"
+        )
     return build_sample_id(asset_level, style, fine_class, int(stem))
 
 

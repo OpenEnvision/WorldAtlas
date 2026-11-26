@@ -70,7 +70,10 @@ def _checkpoint_layout(checkpoint_dir: Path) -> dict[str, Path]:
     missing: list[str] = []
     if not (gen3c_dir / "model.pt").is_file():
         missing.append("Gen3C-Cosmos-7B/model.pt")
-    if not all((tokenizer_dir / name).exists() for name in ("encoder.jit", "decoder.jit", "mean_std.pt", "image_mean_std.pt")):
+    if not all(
+        (tokenizer_dir / name).exists()
+        for name in ("encoder.jit", "decoder.jit", "mean_std.pt", "image_mean_std.pt")
+    ):
         missing.append(
             "Cosmos-Tokenize1-CV8x8x8-720p/{encoder.jit,decoder.jit,mean_std.pt,image_mean_std.pt}"
         )
@@ -127,7 +130,9 @@ def _build_env(
 
 
 def _require_repo_layout(repo_root: Path) -> Path:
-    script_path = repo_root / "cosmos_predict1" / "diffusion" / "inference" / "gen3c_single_image.py"
+    script_path = (
+        repo_root / "cosmos_predict1" / "diffusion" / "inference" / "gen3c_single_image.py"
+    )
     if not script_path.exists():
         raise FileNotFoundError(f"GEN3C entrypoint not found: {script_path}")
     return script_path.resolve()
@@ -177,8 +182,7 @@ def generate_gen3c_camera_path(
         if str(token).strip()
     ] or ["fixed"]
     unsupported = [
-        token for token in normalized_path
-        if token not in SUPPORTED_SYNTHETIC_CAMERA_TOKENS
+        token for token in normalized_path if token not in SUPPORTED_SYNTHETIC_CAMERA_TOKENS
     ]
     if unsupported:
         raise ValueError(f"unsupported GEN3C camera token(s): {unsupported!r}")
@@ -188,8 +192,7 @@ def generate_gen3c_camera_path(
     initial_w2c_tensor = torch.as_tensor(initial_w2c)
     if initial_w2c_tensor.shape != (4, 4):
         raise ValueError(
-            "initial_w2c must have shape (4, 4), got "
-            f"{tuple(initial_w2c_tensor.shape)}"
+            f"initial_w2c must have shape (4, 4), got {tuple(initial_w2c_tensor.shape)}"
         )
     if not initial_w2c_tensor.is_floating_point():
         initial_w2c_tensor = initial_w2c_tensor.to(dtype=torch.float32)
@@ -199,18 +202,10 @@ def generate_gen3c_camera_path(
     # step; all other translations scale by the same factor.
     translation_scale = float(movement_distance) * float(center_depth)
     canonical_runtime = {
-        "synthetic_camera_forward_step": (
-            SYNTHETIC_CAMERA_FORWARD_STEP * translation_scale
-        ),
-        "synthetic_camera_lateral_step": (
-            SYNTHETIC_CAMERA_LATERAL_STEP * translation_scale
-        ),
-        "synthetic_camera_vertical_step": (
-            SYNTHETIC_CAMERA_VERTICAL_STEP * translation_scale
-        ),
-        "synthetic_camera_orbit_radius": (
-            SYNTHETIC_CAMERA_ORBIT_RADIUS * translation_scale
-        ),
+        "synthetic_camera_forward_step": (SYNTHETIC_CAMERA_FORWARD_STEP * translation_scale),
+        "synthetic_camera_lateral_step": (SYNTHETIC_CAMERA_LATERAL_STEP * translation_scale),
+        "synthetic_camera_vertical_step": (SYNTHETIC_CAMERA_VERTICAL_STEP * translation_scale),
+        "synthetic_camera_orbit_radius": (SYNTHETIC_CAMERA_ORBIT_RADIUS * translation_scale),
     }
     relative_c2w_numpy = synthetic_camera_matrices(
         normalized_path,
@@ -235,8 +230,7 @@ def generate_gen3c_camera_path(
     if intrinsics_tensor.ndim == 2:
         if intrinsics_tensor.shape != (3, 3):
             raise ValueError(
-                "initial_intrinsics must have shape (3, 3), got "
-                f"{tuple(intrinsics_tensor.shape)}"
+                f"initial_intrinsics must have shape (3, 3), got {tuple(intrinsics_tensor.shape)}"
             )
         generated_intrinsics = intrinsics_tensor.unsqueeze(0).repeat(total_frames, 1, 1)
     elif intrinsics_tensor.ndim == 3 and intrinsics_tensor.shape[-2:] == (3, 3):
@@ -322,9 +316,7 @@ def dispatch_gen3c_camera_trajectory(
             device=device,
             **camera_gen_kwargs,
         )
-    camera_path = json.loads(
-        trajectory_text.removeprefix(WORLDATLAS_GEN3C_TRAJECTORY_PREFIX)
-    )
+    camera_path = json.loads(trajectory_text.removeprefix(WORLDATLAS_GEN3C_TRAJECTORY_PREFIX))
     if not isinstance(camera_path, list):
         raise ValueError("encoded WorldAtlas GEN3C trajectory must be a list")
     return generate_gen3c_camera_path(
@@ -349,8 +341,7 @@ def _patched_entrypoint(
         return script_path
     source = script_path.read_text(encoding="utf-8")
     upstream_import = (
-        "from cosmos_predict1.diffusion.inference.camera_utils import "
-        "generate_camera_trajectory"
+        "from cosmos_predict1.diffusion.inference.camera_utils import generate_camera_trajectory"
     )
     replacement = (
         "from worldatlas.models.adapters.gen3c.gen3c_runner import "

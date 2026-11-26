@@ -70,9 +70,7 @@ def _item_value(item: dict[str, Any], args: argparse.Namespace, key: str) -> Any
 
 def _staged_output_path(output_path: Path) -> Path:
     """Keep partial encodes hidden until a complete video can replace the target."""
-    return output_path.with_name(
-        f".{output_path.stem}.{os.getpid()}.tmp{output_path.suffix}"
-    )
+    return output_path.with_name(f".{output_path.stem}.{os.getpid()}.tmp{output_path.suffix}")
 
 
 def _run_one_item(
@@ -214,7 +212,9 @@ def _run_one_item(
         if args.save_buffer:
             all_rendered_warps.append(rendered_warp_images[:, 1:].clone().cpu())
 
-        pred_image_for_depth_bcthw_minus1_1 = pred_image_for_depth_chw_0_1.unsqueeze(0).unsqueeze(2) * 2 - 1
+        pred_image_for_depth_bcthw_minus1_1 = (
+            pred_image_for_depth_chw_0_1.unsqueeze(0).unsqueeze(2) * 2 - 1
+        )
         generated_output = pipeline.generate(
             prompt=current_prompt,
             image_path=pred_image_for_depth_bcthw_minus1_1,

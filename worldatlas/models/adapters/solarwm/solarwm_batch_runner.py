@@ -97,7 +97,11 @@ def resolve_ffmpeg(ffmpeg_bin: str) -> Path:
         PROJECT_ROOT.parent / "conda/envs/worldatlas/bin/ffmpeg",
     )
     executable = next(
-        (path.absolute() for path in candidates if path and path.is_file() and os.access(path, os.X_OK)),
+        (
+            path.absolute()
+            for path in candidates
+            if path and path.is_file() and os.access(path, os.X_OK)
+        ),
         None,
     )
     if executable is None:
@@ -115,9 +119,15 @@ def build_solarwm_environment(generation: dict[str, Any]) -> dict[str, str]:
     env["PATH"] = str(executable.parent) + os.pathsep + env.get("PATH", os.defpath)
     found = shutil.which("ffmpeg", path=env["PATH"])
     if found is None or not Path(found).samefile(executable):
-        raise RuntimeError(f"SolarWM requires ffmpeg on child PATH; configured executable: {executable}")
+        raise RuntimeError(
+            f"SolarWM requires ffmpeg on child PATH; configured executable: {executable}"
+        )
     result = subprocess.run(
-        [found, "-version"], env=env, capture_output=True, text=True, check=False,
+        [found, "-version"],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if result.returncode:
         raise RuntimeError("SolarWM ffmpeg runtime check failed:\n" + result.stderr + result.stdout)
@@ -273,7 +283,9 @@ def build_input_bundle(
 
     index_path = input_root / "test-index.jsonl"
     index_path.write_text(
-        "".join(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n" for row in index_rows),
+        "".join(
+            json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n" for row in index_rows
+        ),
         encoding="utf-8",
     )
     return index_path, published_outputs
@@ -341,23 +353,33 @@ def build_solarwm_command(
 
 
 def validate_solarwm_command(
-    command: list[str], repo_root: Path, *, env: dict[str, str] | None = None,
+    command: list[str],
+    repo_root: Path,
+    *,
+    env: dict[str, str] | None = None,
 ) -> None:
     """Run the upstream schema/backend checks before rendering bridge videos."""
     infer_index = command.index("infer")
     result = subprocess.run(
-        [sys.executable, "-m", "solarwm", "config", "resolve", *command[infer_index + 1:]],
-        cwd=str(repo_root), env=env, capture_output=True, text=True, check=False,
+        [sys.executable, "-m", "solarwm", "config", "resolve", *command[infer_index + 1 :]],
+        cwd=str(repo_root),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if result.returncode:
         raise RuntimeError(
             "SolarWM config validation failed before input bridge preparation:\n"
-            + result.stderr + result.stdout
+            + result.stderr
+            + result.stdout
         )
 
 
 def validate_publication_filesystem(
-    root: Path, repo_root: Path, env: dict[str, str],
+    root: Path,
+    repo_root: Path,
+    env: dict[str, str],
 ) -> None:
     """Exercise the actual upstream commit primitives before loading a model."""
     probe = """
@@ -382,19 +404,26 @@ with tempfile.TemporaryDirectory(prefix='.publication-probe-', dir=sys.argv[1]) 
 """
     result = subprocess.run(
         [sys.executable, "-c", probe, str(root)],
-        cwd=str(repo_root), env=env, capture_output=True, text=True, check=False,
+        cwd=str(repo_root),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if result.returncode:
         raise RuntimeError(
             f"SolarWM publication filesystem check failed at {root}; "
             "set WORLDATLAS_SOLARWM_SCRATCH_ROOT to a node-local Linux filesystem:\n"
-            + result.stderr + result.stdout
+            + result.stderr
+            + result.stdout
         )
 
 
 @contextmanager
 def local_publication_workspace(
-    publication_root: Path, repo_root: Path, env: dict[str, str],
+    publication_root: Path,
+    repo_root: Path,
+    env: dict[str, str],
 ):
     """Keep upstream's strict create-only transactions off shared/FUSE storage.
 

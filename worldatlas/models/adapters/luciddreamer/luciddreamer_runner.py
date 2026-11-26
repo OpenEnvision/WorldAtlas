@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -142,7 +141,9 @@ def main() -> None:
         if not generated_video.exists():
             raise FileNotFoundError(f"LucidDreamer output video was not written: {generated_video}")
         if not generated_ply.exists():
-            raise FileNotFoundError(f"LucidDreamer Gaussian output was not written: {generated_ply}")
+            raise FileNotFoundError(
+                f"LucidDreamer Gaussian output was not written: {generated_ply}"
+            )
 
         output_path.unlink(missing_ok=True)
         shutil.copy2(generated_video, output_path)

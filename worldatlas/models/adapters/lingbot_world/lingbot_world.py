@@ -7,8 +7,8 @@ from typing import Any
 from worldatlas.models.adapters.lingbot_world.common import (
     LINGBOT_DEFAULT_FRAME_NUM,
     LingBotWorldBaseAdapter,
-    _LingBotPersistentRuntime,
     _is_fast_entrypoint,
+    _LingBotPersistentRuntime,
     resolve_frame_num,
 )
 
@@ -75,7 +75,9 @@ class LingBotWorldAdapter(LingBotWorldBaseAdapter):
         kwargs["allow_act2cam"] = bool(allow_act2cam)
         kwargs["action_string"] = action_string
         kwargs["sample_solver"] = str(runtime.generation.get("sample_solver", "unipc"))
-        kwargs["sampling_steps"] = int(runtime.generation.get("sample_steps", runtime.cfg.sample_steps))
+        kwargs["sampling_steps"] = int(
+            runtime.generation.get("sample_steps", runtime.cfg.sample_steps)
+        )
         kwargs["guide_scale"] = guide_scale
         return kwargs
 

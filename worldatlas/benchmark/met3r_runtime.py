@@ -2,26 +2,31 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from functools import lru_cache
 import importlib
 import importlib.util
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import sys
 import uuid
-from typing import Any, Iterator, Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from functools import lru_cache
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 from PIL import Image
 
 from worldatlas.benchmark.met3r_protocol import (
-    PROTOCOL, RESIZE_POLICY, UPSTREAM_COMMIT, native_video_pair_batches, paper_input_shape, verify_upstream,
+    PROTOCOL,
+    RESIZE_POLICY,
+    UPSTREAM_COMMIT,
+    native_video_pair_batches,
+    paper_input_shape,
+    verify_upstream,
 )
-
 from worldatlas.common.checkpoints import (
     apply_checkpoint_env,
     checkpoint_path,
@@ -51,7 +56,6 @@ MET3R_BACKBONE_REPOS = {
 
 
 def _project_root() -> Path:
-    """Project root -> Path."""
     return Path(__file__).resolve().parents[2]
 
 
@@ -62,7 +66,6 @@ def _runtime_cache_dir(name: str) -> Path:
 
 
 def resolve_met3r_root() -> Path:
-    """Resolve met3r root -> Path."""
     return (_project_root() / "thirdparty" / "met3r").resolve()
 
 
@@ -84,7 +87,6 @@ def resolve_met3r_runtime_python(runtime: dict[str, Any] | None = None) -> str |
 
 
 def inspect_met3r_layout() -> dict[str, Any]:
-    """Inspect met3r layout -> dict[str, Any]."""
     root = resolve_met3r_root()
     package_dir = root / "met3r"
     init_path = package_dir / "__init__.py"
@@ -128,7 +130,6 @@ def _coerce_runtime_bool(value: Any, default: bool = False) -> bool:
 
 
 def _default_device() -> str:
-    """Default device -> str."""
     try:
         import torch
     except ModuleNotFoundError:
@@ -146,15 +147,30 @@ def _resolve_img_size(value: Any, default: int | None = 256) -> int | None:
 
 def _metric_options(runtime: dict[str, Any] | None) -> dict[str, Any]:
     payload = dict(runtime or {})
-    fixed = dict(protocol=PROTOCOL, backbone="dust3r", feature_backbone="dino16",
-                 upsampler="featup", distance="cosine", use_norm=True, freeze=True,
-                 direction="symmetric", frame_source="native_consecutive", img_size=None)
-    unknown = set(payload) - set(fixed) - {"device", "batch_size", "feature_backbone_weights", "python_bin", "env", "keep_ipc"}
+    fixed = dict(
+        protocol=PROTOCOL,
+        backbone="dust3r",
+        feature_backbone="dino16",
+        upsampler="featup",
+        distance="cosine",
+        use_norm=True,
+        freeze=True,
+        direction="symmetric",
+        frame_source="native_consecutive",
+        img_size=None,
+    )
+    unknown = (
+        set(payload)
+        - set(fixed)
+        - {"device", "batch_size", "feature_backbone_weights", "python_bin", "env", "keep_ipc"}
+    )
     if unknown:
         raise ValueError(f"Unknown MEt3R paper runtime options: {sorted(unknown)}")
     for key, expected in fixed.items():
         if key in payload and payload[key] != expected:
-            raise ValueError(f"MEt3R paper protocol requires {key}={expected!r}; legacy/alternative settings cannot use this metric")
+            raise ValueError(
+                f"MEt3R paper protocol requires {key}={expected!r}; legacy/alternative settings cannot use this metric"
+            )
     if int(payload.get("batch_size", 1)) < 1:
         raise ValueError("MEt3R batch_size must be positive")
     return {
@@ -377,7 +393,11 @@ def strip_dolphinfs_ld_preload(value: str) -> tuple[str, list[str]]:
 
 def _is_cv2_library_dir(path: str) -> bool:
     lowered = path.replace("\\", "/").lower()
-    return "/cv2/" in f"/{lowered}/" or lowered.rstrip("/").endswith("/cv2") or "/site-packages/cv2" in lowered
+    return (
+        "/cv2/" in f"/{lowered}/"
+        or lowered.rstrip("/").endswith("/cv2")
+        or "/site-packages/cv2" in lowered
+    )
 
 
 def featup_runtime_library_dirs(python_executable: str | None = None) -> list[str]:
@@ -636,7 +656,11 @@ def stage_featup_native_extensions(*, apply_sys_path: bool = True) -> dict[str, 
     sources = resolve_featup_native_extension_files()
     dest_root: Path | None = None
     if os.environ.get("WORLDATLAS_SKIP_LOCAL_CHECKPOINT_COPY") == "1":
-        log_progress("met3r_model_load", status="featup_native_skip", reason="WORLDATLAS_SKIP_LOCAL_CHECKPOINT_COPY")
+        log_progress(
+            "met3r_model_load",
+            status="featup_native_skip",
+            reason="WORLDATLAS_SKIP_LOCAL_CHECKPOINT_COPY",
+        )
         dest_root = Path(next(iter(sources.values()))).resolve().parent
     elif all(is_already_materialized(path, FEATUP_EXT_KIND) for path in sources.values()):
         reuse = Path(next(iter(sources.values()))).resolve().parent
@@ -771,7 +795,9 @@ def _frame_pairs(
     if not len(reference_frames) or not len(prediction_frames):
         raise ValueError("MEt3R requires at least one reference/prediction frame pair")
     if len(reference_frames) != len(prediction_frames):
-        raise ValueError("MEt3R explicit pair lists differ; refusing broadcast or silent truncation")
+        raise ValueError(
+            "MEt3R explicit pair lists differ; refusing broadcast or silent truncation"
+        )
     return list(zip(reference_frames, prediction_frames))
 
 
@@ -865,7 +891,9 @@ def _maybe_run_in_subprocess(
 
     if not response_path.exists():
         logs = " | ".join(
-            part for part in ((completed.stderr or "").strip(), (completed.stdout or "").strip()) if part
+            part
+            for part in ((completed.stderr or "").strip(), (completed.stdout or "").strip())
+            if part
         )
         raise RuntimeError(f"MEt3R runtime subprocess did not write a response: {logs}")
 
@@ -904,7 +932,6 @@ def _clear_met3r_modules() -> None:
 
 @contextmanager
 def _met3r_torch_hub_context() -> Iterator[None]:
-    """Met3r torch hub context -> Iterator[None]."""
     import torch
 
     original_load = torch.hub.load
@@ -918,18 +945,20 @@ def _met3r_torch_hub_context() -> Iterator[None]:
             kwargs.setdefault("source", "local")
             return original_load(str(repo_path), *args, **kwargs)
         if raw_repo in {"facebookresearch/dino:main", "facebookresearch/dino"}:
-            cached = checkpoint_path("torch", "hub", "facebookresearch_dino_main", kind="dir", required=True)
+            cached = checkpoint_path(
+                "torch", "hub", "facebookresearch_dino_main", kind="dir", required=True
+            )
             kwargs["source"] = "local"
             return original_load(str(cached), *args, **kwargs)
-        raise FileNotFoundError(f"Unprepared remote torch-hub dependency in paper MEt3R: {raw_repo}")
+        raise FileNotFoundError(
+            f"Unprepared remote torch-hub dependency in paper MEt3R: {raw_repo}"
+        )
 
     torch.hub.load = patched_load
     try:
         yield
     finally:
         torch.hub.load = original_load
-
-
 
 
 @lru_cache(maxsize=4)
@@ -951,10 +980,14 @@ def _load_met3r_model(
         raise RuntimeError(str(layout["error"]))
     verify_upstream(Path(root))
     if importlib.util.find_spec("featup") is None:
-        raise RuntimeError("MEt3R paper protocol requires the official FeatUp package; no bilinear fallback is allowed")
+        raise RuntimeError(
+            "MEt3R paper protocol requires the official FeatUp package; no bilinear fallback is allowed"
+        )
     featup_root = Path(feature_backbone_weights)
     if not (featup_root.is_dir() and (featup_root / "hubconf.py").is_file()):
-        raise FileNotFoundError("MEt3R requires a prepared local official FeatUp hub checkout and weights; remote fallback is disabled")
+        raise FileNotFoundError(
+            "MEt3R requires a prepared local official FeatUp hub checkout and weights; remote fallback is disabled"
+        )
     _ensure_backbone_weights_available(backbone)
     _ensure_featup_weights_available()
 
@@ -1041,11 +1074,15 @@ def _pair_batch_to_tensor(
     batch: list[Any] = []
     for reference_frame, prediction_frame in pairs:
         if reference_frame.shape != prediction_frame.shape:
-            raise ValueError("MEt3R pair dimensions differ; do not stretch unrelated views to match")
+            raise ValueError(
+                "MEt3R pair dimensions differ; do not stretch unrelated views to match"
+            )
         reference_tensor = torch.from_numpy(_to_uint8(reference_frame)).permute(2, 0, 1).float()
         prediction_tensor = torch.from_numpy(_to_uint8(prediction_frame)).permute(2, 0, 1).float()
         if img_size is not None:
-            raise ValueError("MEt3R paper video adapter uses aspect-preserving input and dynamic rasterization")
+            raise ValueError(
+                "MEt3R paper video adapter uses aspect-preserving input and dynamic rasterization"
+            )
         target_size = paper_input_shape(*prediction_tensor.shape[-2:])
         reference_tensor = resize_image(reference_tensor, target_size)
         prediction_tensor = resize_image(prediction_tensor, target_size)
@@ -1100,21 +1137,34 @@ def _score_pair_batches(batches, options: dict[str, Any]) -> dict[str, Any]:
             directions = []
             for oriented in (batch, batch.flip(1)):
                 outputs = metric(
-                    images=oriented, return_overlap_mask=True,
-                    return_score_map=False, return_projections=False,
+                    images=oriented,
+                    return_overlap_mask=True,
+                    return_score_map=False,
+                    return_projections=False,
                 )
                 if not isinstance(outputs, tuple) or len(outputs) < 2:
                     raise RuntimeError("MEt3R did not return the requested overlap mask")
                 scores, masks = outputs[:2]
-                if tuple(scores.shape) != (len(batch_pairs),) or masks.ndim != 3 or masks.shape[0] != len(batch_pairs):
-                    raise RuntimeError("MEt3R returned incomplete/mismatched score and overlap-mask batch sizes")
+                if (
+                    tuple(scores.shape) != (len(batch_pairs),)
+                    or masks.ndim != 3
+                    or masks.shape[0] != len(batch_pairs)
+                ):
+                    raise RuntimeError(
+                        "MEt3R returned incomplete/mismatched score and overlap-mask batch sizes"
+                    )
                 # Validate every pixel, not just its mean. Never repair NaN/Inf,
                 # and never replace upstream's finite zero-overlap score.
                 if not bool(torch.isfinite(masks).all()) or bool(((masks < 0) | (masks > 1)).any()):
                     raise ValueError("MEt3R returned invalid overlap mask")
                 if not bool(torch.isfinite(scores).all()):
                     raise ValueError("MEt3R produced a non-finite score")
-                directions.append((_tensor_to_float_list(scores), _tensor_to_float_list(masks.float().flatten(1).mean(1))))
+                directions.append(
+                    (
+                        _tensor_to_float_list(scores),
+                        _tensor_to_float_list(masks.float().flatten(1).mean(1)),
+                    )
+                )
             for offset in range(len(batch_pairs)):
                 scores = [direction[0][offset] for direction in directions]
                 overlaps = [direction[1][offset] for direction in directions]
@@ -1180,10 +1230,14 @@ def compute_met3r_consistency(
     if delegated is not None:
         return delegated
     size = options["batch_size"]
-    return _score_pair_batches((pairs[start:start + size] for start in range(0, len(pairs), size)), options)
+    return _score_pair_batches(
+        (pairs[start : start + size] for start in range(0, len(pairs), size)), options
+    )
 
 
-def compute_met3r_video_consistency(path: Path, *, runtime: dict[str, Any] | None = None) -> dict[str, Any]:
+def compute_met3r_video_consistency(
+    path: Path, *, runtime: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Score the supplied generated video, never the source image or anchors."""
     options = _metric_options(runtime)
     delegated = _maybe_run_in_subprocess((), (), runtime=runtime, video_path=Path(path))
@@ -1209,12 +1263,8 @@ def compute_met3r_consistency_from_paths(
     reference_frames: list[np.ndarray] = []
     prediction_frames: list[np.ndarray] = []
     for pair in pairs:
-        reference_frames.append(
-            np.asarray(Image.open(pair["reference_path"]).convert("RGB"))
-        )
-        prediction_frames.append(
-            np.asarray(Image.open(pair["prediction_path"]).convert("RGB"))
-        )
+        reference_frames.append(np.asarray(Image.open(pair["reference_path"]).convert("RGB")))
+        prediction_frames.append(np.asarray(Image.open(pair["prediction_path"]).convert("RGB")))
     return compute_met3r_consistency(
         reference_frames,
         prediction_frames,

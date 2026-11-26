@@ -6,7 +6,6 @@ heavier evaluation/build dependencies such as pandas.
 
 from importlib import import_module
 
-
 _EXPORTS = {
     "BenchmarkAggregationConfig": ("worldatlas.benchmark.config", "BenchmarkAggregationConfig"),
     "BenchmarkConfig": ("worldatlas.benchmark.config", "BenchmarkConfig"),

@@ -14,7 +14,6 @@ import numpy as np
 from worldatlas.benchmark.metric_errors import MetricLoadError
 from worldatlas.common.checkpoints import checkpoint_path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_TAPNET_REPO_CANDIDATES = (PROJECT_ROOT / "thirdparty" / "tapnet",)
 AJ_THRESHOLDS = (1, 2, 4, 8, 16)
@@ -64,8 +63,7 @@ def _resolve_checkpoint(runtime: dict[str, Any], key: str, filename: str) -> Pat
     )
     if not path.is_file():
         raise MetricLoadError(
-            f"TRAJAN checkpoint missing: {path}. Run "
-            "scripts/download_metric_checkpoints.sh --all."
+            f"TRAJAN checkpoint missing: {path}. Run scripts/download_metric_checkpoints.sh --all."
         )
     return path
 
@@ -172,9 +170,7 @@ def _load_runtime(runtime: dict[str, Any]) -> dict[str, Any]:
             },
         )
         autoencoder_params = _recover_tree(_load_npz(autoencoder_checkpoint))
-        autoencoder = track_autoencoder.TrackAutoEncoder(
-            decoder_scan_chunk_size=decoder_chunk_size
-        )
+        autoencoder = track_autoencoder.TrackAutoEncoder(decoder_scan_chunk_size=decoder_chunk_size)
 
         @jax.jit
         def track_chunk(video: Any, feature_grids: Any, query_points: Any) -> tuple[Any, Any]:
@@ -241,7 +237,7 @@ def _decode_video(path: Path, *, max_frames: int, analysis_size: int) -> np.ndar
 
 
 def _sample_seed(base_seed: int, sample_id: str) -> int:
-    digest = hashlib.sha256(f"{base_seed}:{sample_id}".encode("utf-8")).digest()
+    digest = hashlib.sha256(f"{base_seed}:{sample_id}".encode()).digest()
     return int.from_bytes(digest[:8], "little")
 
 
@@ -295,9 +291,7 @@ def _prepare_autoencoder_inputs(
     analysis_size: int,
 ) -> tuple[dict[str, np.ndarray], np.ndarray, np.ndarray, np.ndarray]:
     frame_count = min(tracks.shape[1], episode_length)
-    normalized_tracks = (tracks[:, :frame_count].astype(np.float32) + 0.5) / float(
-        analysis_size
-    )
+    normalized_tracks = (tracks[:, :frame_count].astype(np.float32) + 0.5) / float(analysis_size)
     visible = visible[:, :frame_count]
 
     tracks_tq = np.transpose(normalized_tracks, (1, 0, 2))
@@ -371,8 +365,7 @@ def compute_average_jaccard(
         true_positives = np.sum(correct & pred_visible & evaluation_points)
         ground_truth_positives = np.sum(gt_visible & evaluation_points)
         false_positives = np.sum(
-            ((~gt_visible & pred_visible) | (~within & pred_visible))
-            & evaluation_points
+            ((~gt_visible & pred_visible) | (~within & pred_visible)) & evaluation_points
         )
         denominator = int(ground_truth_positives + false_positives)
         per_threshold[str(threshold)] = (

@@ -22,7 +22,5 @@ def official_vipe_depth_model_public_attrs() -> tuple[str, ...]:
 
     skip = {"register"}
     return tuple(
-        name
-        for name in dir(DepthEstimationModel)
-        if not name.startswith("_") and name not in skip
+        name for name in dir(DepthEstimationModel) if not name.startswith("_") and name not in skip
     )

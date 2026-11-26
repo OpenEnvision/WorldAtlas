@@ -15,7 +15,6 @@ from worldatlas.benchmark.annotations import (
 from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.benchmark.taxonomy import is_camera_path_suite
 
-
 SYNTHETIC_CAMERA_ROTATION_DEGREES = 30.0
 SYNTHETIC_CAMERA_TILT_DEGREES = 20.0
 SYNTHETIC_CAMERA_ROLL_DEGREES = 15.0
@@ -129,13 +128,27 @@ def _rigid_transform(rotation: np.ndarray | None = None) -> np.ndarray:
 
 
 def _camera_delta(token: str, runtime: dict[str, Any]) -> np.ndarray:
-    rotation_degrees = float(runtime.get("synthetic_camera_rotation_degrees", SYNTHETIC_CAMERA_ROTATION_DEGREES))
-    tilt_degrees = float(runtime.get("synthetic_camera_tilt_degrees", SYNTHETIC_CAMERA_TILT_DEGREES))
-    roll_degrees = float(runtime.get("synthetic_camera_roll_degrees", SYNTHETIC_CAMERA_ROLL_DEGREES))
-    orbit_radius = float(runtime.get("synthetic_camera_orbit_radius", SYNTHETIC_CAMERA_ORBIT_RADIUS))
-    forward_step = float(runtime.get("synthetic_camera_forward_step", SYNTHETIC_CAMERA_FORWARD_STEP))
-    lateral_step = float(runtime.get("synthetic_camera_lateral_step", SYNTHETIC_CAMERA_LATERAL_STEP))
-    vertical_step = float(runtime.get("synthetic_camera_vertical_step", SYNTHETIC_CAMERA_VERTICAL_STEP))
+    rotation_degrees = float(
+        runtime.get("synthetic_camera_rotation_degrees", SYNTHETIC_CAMERA_ROTATION_DEGREES)
+    )
+    tilt_degrees = float(
+        runtime.get("synthetic_camera_tilt_degrees", SYNTHETIC_CAMERA_TILT_DEGREES)
+    )
+    roll_degrees = float(
+        runtime.get("synthetic_camera_roll_degrees", SYNTHETIC_CAMERA_ROLL_DEGREES)
+    )
+    orbit_radius = float(
+        runtime.get("synthetic_camera_orbit_radius", SYNTHETIC_CAMERA_ORBIT_RADIUS)
+    )
+    forward_step = float(
+        runtime.get("synthetic_camera_forward_step", SYNTHETIC_CAMERA_FORWARD_STEP)
+    )
+    lateral_step = float(
+        runtime.get("synthetic_camera_lateral_step", SYNTHETIC_CAMERA_LATERAL_STEP)
+    )
+    vertical_step = float(
+        runtime.get("synthetic_camera_vertical_step", SYNTHETIC_CAMERA_VERTICAL_STEP)
+    )
 
     if token == "fixed":
         return np.eye(4, dtype=np.float32)
@@ -201,7 +214,9 @@ def segment_frame_bounds(segment_count: int, target_frames: int) -> tuple[int, .
     return tuple(bounds)
 
 
-def _interpolate_pose_segment(start_pose: np.ndarray, end_pose: np.ndarray, *, frames: int) -> np.ndarray:
+def _interpolate_pose_segment(
+    start_pose: np.ndarray, end_pose: np.ndarray, *, frames: int
+) -> np.ndarray:
     pose_vectors = np.stack(
         [
             _matrix_to_pose_vector(start_pose.astype(np.float32)),
@@ -214,7 +229,9 @@ def _interpolate_pose_segment(start_pose: np.ndarray, end_pose: np.ndarray, *, f
         np.asarray([0.0, 1.0], dtype=np.float32),
         frames,
     )
-    return np.stack([_pose_vector_to_matrix(row) for row in interpolated], axis=0).astype(np.float32)
+    return np.stack([_pose_vector_to_matrix(row) for row in interpolated], axis=0).astype(
+        np.float32
+    )
 
 
 def synthetic_camera_matrices(

@@ -1,4 +1,3 @@
-from typing import List
 import math
 import torch
 import numpy as np
@@ -23,8 +22,9 @@ BASE_TRACK_STRIDE = 4
 TRACK_FRAME_BUDGET = 30
 
 
-def tracking_stride(frame_count: int, *, base: int = BASE_TRACK_STRIDE,
-                    budget: int = TRACK_FRAME_BUDGET) -> int:
+def tracking_stride(
+    frame_count: int, *, base: int = BASE_TRACK_STRIDE, budget: int = TRACK_FRAME_BUDGET
+) -> int:
     """Keep the ~30-frame budget that stride 4 already applies to 121-frame clips.
 
     Echo/Evoke 241-frame videos would otherwise track 61 frames. DROID's
@@ -108,9 +108,13 @@ def _bounded_neighborhood_edges(
         raise RuntimeError("DROID-SLAM needs at least two retained keyframes for reprojection")
     edge_pairs = max(1, budget // 2)
     if len(undirected_pairs) > edge_pairs:
-        indices = torch.linspace(0, len(undirected_pairs) - 1, steps=edge_pairs).round().long().tolist()
+        indices = (
+            torch.linspace(0, len(undirected_pairs) - 1, steps=edge_pairs).round().long().tolist()
+        )
         undirected_pairs = [undirected_pairs[index] for index in indices]
-    pairs = [edge for source, target in undirected_pairs for edge in ((source, target), (target, source))]
+    pairs = [
+        edge for source, target in undirected_pairs for edge in ((source, target), (target, source))
+    ]
     edges = torch.as_tensor(pairs, dtype=torch.long, device=device)
     return edges[:, 0], edges[:, 1]
 
@@ -207,15 +211,14 @@ class ReprojectionErrorMetric(BaseMetric):
 
     def _compute_scores(
         self,
-        rendered_images: List[str],
+        rendered_images: list[str],
     ) -> float:
-
         # At most one keyframe per tracked image, plus the frontend's next
         # pose slot. Avoid allocating 512 full-resolution depth/feature slots
         # for clips that only track about 30 frames. Long Echo/Evoke clips
         # keep that same budget; 81/121-frame published jobs stay stride 4.
         self._args.stride = tracking_stride(len(rendered_images))
-        tracked_frames = len(rendered_images[::self._args.stride])
+        tracked_frames = len(rendered_images[:: self._args.stride])
         self._args.buffer = max(self._args.warmup, tracked_frames) + 1
         try:
             with without_shared_cuda_memory():

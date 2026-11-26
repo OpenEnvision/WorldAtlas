@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 import importlib
 import sys
-from pathlib import Path
 import time
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 import cv2
@@ -122,7 +122,9 @@ def _transnet_model(runtime: dict[str, Any]) -> tuple[Any, Path, Path]:
     return model, repo_root, weights_dir
 
 
-def _predict_prepared_frames_tensorflow(video_frames: np.ndarray, runtime: dict[str, Any]) -> dict[str, Any]:
+def _predict_prepared_frames_tensorflow(
+    video_frames: np.ndarray, runtime: dict[str, Any]
+) -> dict[str, Any]:
     model, repo_root, weights_dir = _transnet_model(runtime)
     single_frame_predictions, _all_frame_predictions = model.predict_frames(video_frames)
     probabilities = np.asarray(single_frame_predictions, dtype=np.float32).reshape(-1)
@@ -159,10 +161,20 @@ def _resolve_transnet_pytorch_weights(runtime: dict[str, Any]) -> Path | None:
         return weights.resolve()
 
     candidates = (
-        checkpoint_path("TransNetV2", "transnetv2-pytorch-weights.pth", kind="file", required=False),
+        checkpoint_path(
+            "TransNetV2", "transnetv2-pytorch-weights.pth", kind="file", required=False
+        ),
         project_root().parent / "ckpt" / "TransNetV2" / "transnetv2-pytorch-weights.pth",
-        project_root() / "thirdparty" / "TransNetV2" / "inference-pytorch" / "transnetv2-pytorch-weights.pth",
-        project_root() / "third_party" / "TransNetV2" / "inference-pytorch" / "transnetv2-pytorch-weights.pth",
+        project_root()
+        / "thirdparty"
+        / "TransNetV2"
+        / "inference-pytorch"
+        / "transnetv2-pytorch-weights.pth",
+        project_root()
+        / "third_party"
+        / "TransNetV2"
+        / "inference-pytorch"
+        / "transnetv2-pytorch-weights.pth",
     )
     for candidate in candidates:
         if candidate.is_file():
@@ -219,7 +231,9 @@ def _transnet_pytorch_model(runtime: dict[str, Any]) -> tuple[Any, Path, Path, s
     if bool(runtime.get("cache_instance", True)):
         model = _cached_transnet_pytorch_model(transnet_class, str(weights_file), device)
     else:
-        model = _cached_transnet_pytorch_model.__wrapped__(transnet_class, str(weights_file), device)
+        model = _cached_transnet_pytorch_model.__wrapped__(
+            transnet_class, str(weights_file), device
+        )
     return model, repo_root, weights_file, device
 
 
@@ -239,7 +253,9 @@ def _transnet_input_windows(video_frames: np.ndarray):
         yield padded_inputs[pointer : pointer + 100]
 
 
-def _predict_prepared_frames_pytorch(video_frames: np.ndarray, runtime: dict[str, Any]) -> dict[str, Any]:
+def _predict_prepared_frames_pytorch(
+    video_frames: np.ndarray, runtime: dict[str, Any]
+) -> dict[str, Any]:
     import torch
 
     model, repo_root, weights_file, device = _transnet_pytorch_model(runtime)
@@ -355,7 +371,12 @@ def _decode_transnet_video_frames(
 
     if not frames:
         raise RuntimeError(f"video contains no decodable frames for TransNetV2: {path}")
-    return np.stack(frames, axis=0).astype(np.uint8, copy=False), native_frame_count, start_index, end_index
+    return (
+        np.stack(frames, axis=0).astype(np.uint8, copy=False),
+        native_frame_count,
+        start_index,
+        end_index,
+    )
 
 
 def predict_transnet_single_frame_probabilities(

@@ -9,8 +9,8 @@ symmetry without ever backtracking.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
@@ -20,7 +20,6 @@ from worldatlas.benchmark.synthetic_camera import (
     segment_frame_bounds,
     synthetic_camera_matrices,
 )
-
 
 TOKEN_INVERSES: dict[str, str] = {
     "fixed": "fixed",

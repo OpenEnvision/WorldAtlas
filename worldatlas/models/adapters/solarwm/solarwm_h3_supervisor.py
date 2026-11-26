@@ -4,18 +4,26 @@ from __future__ import annotations
 
 import math
 import os
-from pathlib import Path
 import queue
 import signal
 import subprocess
 import threading
 import time
-
+from pathlib import Path
 
 PROGRESS_PREFIXES = (
-    "H3_STAGE ", "PREPARE_READY ", "DEMO_PREPARED ", "PREPARED ",
-    "MODEL_READY ", "CHUNK ", "ROLLOUT_STAGED ", "ROLLOUT_REUSED ",
-    "ROLLOUT_PHASE_DONE ", "DECODER_READY ", "DECODE_PROGRESS ", "RESULT ",
+    "H3_STAGE ",
+    "PREPARE_READY ",
+    "DEMO_PREPARED ",
+    "PREPARED ",
+    "MODEL_READY ",
+    "CHUNK ",
+    "ROLLOUT_STAGED ",
+    "ROLLOUT_REUSED ",
+    "ROLLOUT_PHASE_DONE ",
+    "DECODER_READY ",
+    "DECODE_PROGRESS ",
+    "RESULT ",
 )
 
 
@@ -37,15 +45,21 @@ def stop_process_group(process):
         process.wait(timeout=10)
 
 
-def run_supervised(command, *, cwd, env, publish, diagnostics: Path,
-                   stall_timeout_seconds=1800):
+def run_supervised(command, *, cwd, env, publish, diagnostics: Path, stall_timeout_seconds=1800):
     timeout = float(stall_timeout_seconds)
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("SolarWM-H3 stall_timeout_seconds must be positive and finite")
     lines = queue.SimpleQueue()
-    process = subprocess.Popen(command, cwd=cwd, env=env, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, text=True, bufsize=1,
-                               start_new_session=True)
+    process = subprocess.Popen(
+        command,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+        start_new_session=True,
+    )
 
     def read_output():
         try:

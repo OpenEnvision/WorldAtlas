@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +11,9 @@ from worldatlas.benchmark.schemas import BenchmarkSample
 
 
 @lru_cache(maxsize=128)
-def _load_generation_record_file(path_text: str, content_stamp: tuple | None = None) -> tuple[dict[str, Any], ...]:
+def _load_generation_record_file(
+    path_text: str, content_stamp: tuple | None = None
+) -> tuple[dict[str, Any], ...]:
     """Parse JSONL generation records from a cached file path."""
     path = Path(path_text)
     records: list[dict[str, Any]] = []
@@ -32,8 +34,12 @@ def _load_generation_record_file(path_text: str, content_stamp: tuple | None = N
 def _record_files_in_directory(directory: str, mtime_ns: int) -> tuple[Path, ...]:
     """Discover sidecars afresh; directory timestamps are not content evidence."""
     del mtime_ns  # Additions may share a timestamp on network filesystems.
-    return tuple(sorted(Path(directory).glob("generation_records*.jsonl"),
-                        key=lambda path: (".archive." in path.name, path.name)))
+    return tuple(
+        sorted(
+            Path(directory).glob("generation_records*.jsonl"),
+            key=lambda path: (".archive." in path.name, path.name),
+        )
+    )
 
 
 def _candidate_record_files(prediction_path: Path) -> list[Path]:
@@ -66,7 +72,9 @@ def _resolve_record_path(value: Any, *, base_dir: Path) -> Path | None:
 
 
 @lru_cache(maxsize=128)
-def _generation_record_index(path_text: str, content_stamp: tuple | None = None) -> tuple[dict, dict]:
+def _generation_record_index(
+    path_text: str, content_stamp: tuple | None = None
+) -> tuple[dict, dict]:
     """Index the cached record snapshot once, avoiding repeated filesystem resolves.
 
     Path matches use the first record; sample fallbacks use the last eligible
@@ -88,12 +96,17 @@ def _generation_record_index(path_text: str, content_stamp: tuple | None = None)
     return by_path, by_sample
 
 
-def _find_generation_record(sample: BenchmarkSample, prediction_path: Path) -> dict[str, Any] | None:
+def _find_generation_record(
+    sample: BenchmarkSample, prediction_path: Path
+) -> dict[str, Any] | None:
     """Match a prediction video to its generation timing/action record."""
+    from worldatlas.benchmark.sample_identity import file_sha256, prediction_relative_path
+
     if getattr(sample, "sample_id_policy", None):
         # A legacy same-name/sample-ID record is not provenance for migrated
         # pixels. Only use a record explicitly pinned by the verified binding.
         from worldatlas.benchmark.integrity import digest_json
+
         binding = sample.prediction_binding or {}
         record = binding.get("generation_record")
         if not isinstance(record, dict):
@@ -104,7 +117,6 @@ def _find_generation_record(sample: BenchmarkSample, prediction_path: Path) -> d
         if not binding.get("predictions_root") or not binding.get("path"):
             return record
         # Action sidecars travel with the prediction directory.
-        from worldatlas.benchmark.sample_identity import prediction_relative_path
         relative_video = prediction_relative_path(binding)
         root = prediction_path.resolve().parents[len(relative_video.parts) - 1]
         old_root = Path(binding["predictions_root"])
@@ -118,18 +130,24 @@ def _find_generation_record(sample: BenchmarkSample, prediction_path: Path) -> d
     fallback_by_sample: dict[str, Any] | None = None
     for records_file in _candidate_record_files(prediction_path):
         # Keep the lexical parent for relative paths, including symlinked JSONL.
-        from worldatlas.benchmark.sample_identity import file_sha256
-        by_path, by_sample = _generation_record_index(str(records_file.absolute()),
-                                                      (file_sha256(records_file),))
+        by_path, by_sample = _generation_record_index(
+            str(records_file.absolute()), (file_sha256(records_file),)
+        )
         if resolved_prediction in by_path:
             return dict(by_path[resolved_prediction])
-        candidates = [by_sample[key] for key in ((sample.sample_id, None), (sample.sample_id, sample.suite)) if key in by_sample]
+        candidates = [
+            by_sample[key]
+            for key in ((sample.sample_id, None), (sample.sample_id, sample.suite))
+            if key in by_sample
+        ]
         if candidates:
             fallback_by_sample = dict(max(candidates, key=lambda item: item[0])[1])
     return fallback_by_sample
 
 
-def _load_action_payload(record: dict[str, Any] | None, prediction_path: Path) -> dict[str, Any] | None:
+def _load_action_payload(
+    record: dict[str, Any] | None, prediction_path: Path
+) -> dict[str, Any] | None:
     """Load inline or sidecar action JSON referenced by a generation record."""
     if not record:
         return None

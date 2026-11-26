@@ -28,7 +28,6 @@ class ApiModelAdapter(ModelAdapter):
 
     @abstractmethod
     def build_provider(self) -> ApiProvider:
-        """Build provider -> ApiProvider."""
         raise NotImplementedError
 
     @abstractmethod
@@ -43,7 +42,6 @@ class ApiModelAdapter(ModelAdapter):
         raise NotImplementedError
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return True
 
     def generate_batch(

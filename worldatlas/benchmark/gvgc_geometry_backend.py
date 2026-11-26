@@ -7,7 +7,6 @@ from typing import Any
 import cv2
 import numpy as np
 
-
 DEFAULT_BACKEND = "opencv_epipolar"
 
 
@@ -66,8 +65,12 @@ def _detect_and_match(
         "keypoints_left": len(keypoints_left),
         "keypoints_right": len(keypoints_right),
         "matches": matches,
-        "points_left": np.asarray([keypoints_left[item.queryIdx].pt for item in matches], dtype=np.float32),
-        "points_right": np.asarray([keypoints_right[item.trainIdx].pt for item in matches], dtype=np.float32),
+        "points_left": np.asarray(
+            [keypoints_left[item.queryIdx].pt for item in matches], dtype=np.float32
+        ),
+        "points_right": np.asarray(
+            [keypoints_right[item.trainIdx].pt for item in matches], dtype=np.float32
+        ),
     }
 
 
@@ -192,11 +195,12 @@ def _detect_and_track_lk(
 
 
 def _ransac_method() -> int:
-    """Ransac method -> int."""
     return int(getattr(cv2, "USAC_MAGSAC", cv2.FM_RANSAC))
 
 
-def _sampson_errors(points_left: np.ndarray, points_right: np.ndarray, fundamental: np.ndarray) -> np.ndarray:
+def _sampson_errors(
+    points_left: np.ndarray, points_right: np.ndarray, fundamental: np.ndarray
+) -> np.ndarray:
     ones = np.ones((points_left.shape[0], 1), dtype=np.float64)
     left_h = np.concatenate([points_left.astype(np.float64), ones], axis=1)
     right_h = np.concatenate([points_right.astype(np.float64), ones], axis=1)
@@ -217,7 +221,9 @@ def _frame_pairs(frame_count: int, *, pair_stride: int, max_pairs: int) -> list[
     return pairs
 
 
-def compute_gvgc_geometry(frames: list[np.ndarray], runtime: dict[str, Any] | None = None) -> dict[str, Any]:
+def compute_gvgc_geometry(
+    frames: list[np.ndarray], runtime: dict[str, Any] | None = None
+) -> dict[str, Any]:
     runtime = dict(runtime or {})
     opencv_num_threads = max(int(runtime.get("opencv_num_threads", 1)), 1)
     opencv_rng_seed = int(runtime.get("opencv_rng_seed", 17))
@@ -263,7 +269,9 @@ def compute_gvgc_geometry(frames: list[np.ndarray], runtime: dict[str, Any] | No
     coverage_values: list[float] = []
     failed_pairs = 0
 
-    for left_index, right_index in _frame_pairs(len(gray_frames), pair_stride=pair_stride, max_pairs=max_pairs):
+    for left_index, right_index in _frame_pairs(
+        len(gray_frames), pair_stride=pair_stride, max_pairs=max_pairs
+    ):
         if detector_name == "shi_tomasi_lk":
             match_payload = _detect_and_track_lk(
                 gray_frames[left_index],
@@ -391,7 +399,9 @@ def compute_gvgc_geometry(frames: list[np.ndarray], runtime: dict[str, Any] | No
                 "forward_backward_max_error": tracking_forward_backward_max_error,
             }
         if fallback_enabled:
-            fallback_detector = str(runtime.get("fallback_feature_detector", detector_method)).lower()
+            fallback_detector = str(
+                runtime.get("fallback_feature_detector", detector_method)
+            ).lower()
             fallback_ratio = float(runtime.get("fallback_ratio_test", max(ratio, 0.85)))
             fallback_min_matches = int(runtime.get("fallback_min_matches", 8))
             fallback_changes_settings = (

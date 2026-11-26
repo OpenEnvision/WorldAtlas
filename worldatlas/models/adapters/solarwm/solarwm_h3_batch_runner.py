@@ -14,11 +14,17 @@ from PIL import Image
 
 from worldatlas.benchmark.annotations import load_camera_matrices
 from worldatlas.models.adapters.batch_runner_common import (
-    copy_output, load_batch_spec, load_json, print_status,
+    copy_output,
+    load_batch_spec,
+    load_json,
+    print_status,
 )
 from worldatlas.models.adapters.solarwm.solarwm_batch_runner import (
-    _override, _resolve_child,
-    build_solarwm_environment, parse_args, resolve_runtime_paths,
+    _override,
+    _resolve_child,
+    build_solarwm_environment,
+    parse_args,
+    resolve_runtime_paths,
     validate_solarwm_command,
 )
 from worldatlas.models.adapters.solarwm.solarwm_h3_supervisor import run_supervised
@@ -48,7 +54,9 @@ def build_input_bundle(rows, input_root: Path, generation: dict) -> tuple[Path, 
         if poses is None or poses.shape != (frames, 4, 4) or not np.isfinite(poses).all():
             raise ValueError(f"Invalid c2w trajectory for {sample_id}")
         np.testing.assert_allclose(
-            poses[:, 3], np.broadcast_to([0, 0, 0, 1], (frames, 4)), atol=1e-5,
+            poses[:, 3],
+            np.broadcast_to([0, 0, 0, 1], (frames, 4)),
+            atol=1e-5,
         )
         prompt = str(row.get("prompt", "")).strip()
         if not prompt:
@@ -57,16 +65,27 @@ def build_input_bundle(rows, input_root: Path, generation: dict) -> tuple[Path, 
         # condition and rollout keys stable across retries of the same sample.
         key = f"sample-{hashlib.sha256(sample_id.encode()).hexdigest()[:24]}"
         image_name, camera_name, prompt_name = (
-            f"{key}.image.png", f"{key}.camera.npy", f"{key}.prompt.txt",
+            f"{key}.image.png",
+            f"{key}.camera.npy",
+            f"{key}.prompt.txt",
         )
         with Image.open(Path(row["conditioning_image"]).resolve()) as source:
             source.convert("RGB").save(source_root / image_name)
         np.save(source_root / camera_name, poses.astype(np.float64), allow_pickle=False)
         (source_root / prompt_name).write_text(prompt, encoding="utf-8")
         item = dict(
-            sample_id=sample_id, key=key, dataset="worldatlas", input_kind="demo",
-            num_frames=frames, fps=fps, width=1344, height=768, caption=prompt,
-            image=image_name, camera=camera_name, prompt=prompt_name,
+            sample_id=sample_id,
+            key=key,
+            dataset="worldatlas",
+            input_kind="demo",
+            num_frames=frames,
+            fps=fps,
+            width=1344,
+            height=768,
+            caption=prompt,
+            image=image_name,
+            camera=camera_name,
+            prompt=prompt_name,
             image_sha256=hashlib.sha256((source_root / image_name).read_bytes()).hexdigest(),
             camera_sha256=hashlib.sha256((source_root / camera_name).read_bytes()).hexdigest(),
             prompt_sha256=hashlib.sha256((source_root / prompt_name).read_bytes()).hexdigest(),
@@ -80,14 +99,24 @@ def build_input_bundle(rows, input_root: Path, generation: dict) -> tuple[Path, 
     return path, outputs
 
 
-def build_command(*, config_path, base_model, stage2_checkpoint, silence, input_root,
-                  output_root, generation) -> list[str]:
+def build_command(
+    *, config_path, base_model, stage2_checkpoint, silence, input_root, output_root, generation
+) -> list[str]:
     if int(generation.get("nproc_per_node", 8)) != 8:
         raise ValueError("Official SolarWM-H3 source-length inference requires single-node SP8")
-    command = [sys.executable, "-m", "torch.distributed.run", "--standalone",
-               "--nnodes=1", "--nproc-per-node=8", "-m",
-               "worldatlas.models.adapters.solarwm.solarwm_h3_worker", "infer",
-               "--config", str(config_path)]
+    command = [
+        sys.executable,
+        "-m",
+        "torch.distributed.run",
+        "--standalone",
+        "--nnodes=1",
+        "--nproc-per-node=8",
+        "-m",
+        "worldatlas.models.adapters.solarwm.solarwm_h3_worker",
+        "infer",
+        "--config",
+        str(config_path),
+    ]
     overrides = {
         "model.checkpoint_path": str(base_model),
         "checkpoint.resume_from": str(stage2_checkpoint),
@@ -141,9 +170,11 @@ class CompletedPublisher:
             if not manifest.is_file():
                 return
             result = json.loads(manifest.read_text())
-            if (result.get("source_row") != planned
-                    or result.get("step") != self.expected_step
-                    or result.get("weights_source") != "ema"):
+            if (
+                result.get("source_row") != planned
+                or result.get("step") != self.expected_step
+                or result.get("weights_source") != "ema"
+            ):
                 raise RuntimeError(f"SolarWM-H3 result identity mismatch: {manifest}")
             digest = hashlib.sha256()
             with video.open("rb") as handle:
@@ -152,10 +183,14 @@ class CompletedPublisher:
             if digest.hexdigest() != result.get("output_sha256"):
                 raise RuntimeError(f"SolarWM-H3 output digest mismatch: {video}")
             copy_output(video, Path(row["output_path"]))
-            print_status(row["sample_id"], "generated", output_path=row["output_path"],
-                         pose_source=row.get("pose_source"),
-                         source_frame_count=row["source_frame_count"],
-                         solarwm_run=str(self.output_root))
+            print_status(
+                row["sample_id"],
+                "generated",
+                output_path=row["output_path"],
+                pose_source=row.get("pose_source"),
+                source_frame_count=row["source_frame_count"],
+                solarwm_run=str(self.output_root),
+            )
             self.count += 1
 
 
@@ -166,8 +201,11 @@ def main() -> int:
     rows = load_batch_spec(Path(args.batch_spec_path).resolve())
     generation = load_json(Path(args.generation_config_path).resolve())
     config, base, stage2 = resolve_runtime_paths(repo, checkpoint, generation)
-    silence = _resolve_child(checkpoint, generation.get("silence_latents_path"),
-                             "support/h3_silence_153_158_170.safetensors")
+    silence = _resolve_child(
+        checkpoint,
+        generation.get("silence_latents_path"),
+        "support/h3_silence_153_158_170.safetensors",
+    )
     if not silence.is_file():
         raise FileNotFoundError(f"Missing H3 silence support artifact: {silence}")
     if not (stage2 / "COMPLETE.json").is_file() or not (stage2 / "ema.pt").is_file():
@@ -178,7 +216,9 @@ def main() -> int:
     input_root, output_root = root / "input", root / "output"
     env = build_solarwm_environment(generation)
     world_root = Path(__file__).resolve().parents[4]
-    env["PYTHONPATH"] = os.pathsep.join((str(world_root), str(repo / "src"), env.get("PYTHONPATH", "")))
+    env["PYTHONPATH"] = os.pathsep.join(
+        (str(world_root), str(repo / "src"), env.get("PYTHONPATH", ""))
+    )
     diagnostics = root / "diagnostics"
     diagnostics.mkdir(parents=True, exist_ok=True)
     env["WORLDATLAS_H3_DIAGNOSTICS_DIR"] = str(diagnostics)
@@ -189,23 +229,40 @@ def main() -> int:
     env.setdefault("TORCH_NCCL_TRACE_BUFFER_SIZE", "2000")
     env.setdefault("TORCH_NCCL_DUMP_ON_TIMEOUT", "1")
     env.setdefault("TORCH_NCCL_DEBUG_INFO_TEMP_FILE", str(diagnostics / "nccl_trace_rank_"))
-    command = build_command(config_path=config, base_model=base, stage2_checkpoint=stage2,
-                            silence=silence, input_root=input_root, output_root=output_root,
-                            generation=generation)
+    command = build_command(
+        config_path=config,
+        base_model=base,
+        stage2_checkpoint=stage2,
+        silence=silence,
+        input_root=input_root,
+        output_root=output_root,
+        generation=generation,
+    )
     validate_solarwm_command(command, repo, env=env)
     import torch
 
     if torch.cuda.device_count() != 8:
         raise RuntimeError("SolarWM-H3 needs exactly 8 visible GPUs for its official SP8 route")
     plan_path, outputs = build_input_bundle(rows, input_root, generation)
-    publish = CompletedPublisher(rows, json.loads(plan_path.read_text()), output_root, outputs,
-                                 int(generation.get("expected_step", 3900)))
+    publish = CompletedPublisher(
+        rows,
+        json.loads(plan_path.read_text()),
+        output_root,
+        outputs,
+        int(generation.get("expected_step", 3900)),
+    )
     print(f"[h3-runtime] diagnostics={diagnostics}", flush=True)
     # Keep the official prepare-all -> generate-all lifecycle in one SP8
     # worker group: each rank loads the transformer and EMA only once.
     print(f"[h3-runtime] phase=full_suite samples={len(outputs)}", flush=True)
-    run_supervised(command, cwd=repo, env=env, publish=publish, diagnostics=diagnostics,
-                   stall_timeout_seconds=generation.get("stall_timeout_seconds", 1800))
+    run_supervised(
+        command,
+        cwd=repo,
+        env=env,
+        publish=publish,
+        diagnostics=diagnostics,
+        stall_timeout_seconds=generation.get("stall_timeout_seconds", 1800),
+    )
     verify_outputs(output_root, outputs)
     publish()
     return 0

@@ -3,12 +3,13 @@
 This module intentionally depends only on the standard library. Publication
 must not import GPU runtimes or infer a raw mean by inverting a scored mean.
 """
+
 from __future__ import annotations
 
-from collections import defaultdict
 import hashlib
 import json
 import math
+from collections import defaultdict
 from pathlib import Path
 
 REVISION = "per_sample_scored_mean_v1"
@@ -21,8 +22,9 @@ def finite(value):
 
 
 def digest(value):
-    return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False,
-                                     allow_nan=False).encode()).hexdigest()
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()
+    ).hexdigest()
 
 
 def read(path):
@@ -51,7 +53,10 @@ def score_observation(metric, output, policy):
     if kind == "camera":
         # Native intended-camera raw is a dictionary of trajectory diagnostics;
         # its actual per-video direction score is recorded separately.
-        if details.get("native_camera_target_policy") == "native_intended" or "native_intent_accuracy" in details:
+        if (
+            details.get("native_camera_target_policy") == "native_intended"
+            or "native_intent_accuracy" in details
+        ):
             value = details.get("native_intent_accuracy")
             if not finite(value):
                 raise ValueError("Native camera report lacks its direction-confidence measurement")
@@ -59,13 +64,14 @@ def score_observation(metric, output, policy):
         if not isinstance(raw, dict):
             raise ValueError("Camera report lacks declared raw components")
         components = [raw[name] for name in spec["direct_pose_components"]]
-        return math.sqrt(linear(components[0], 0, spec["rotation_upper"], False)
-                         * linear(components[1], 0, spec["translation_upper"], False))
+        return math.sqrt(
+            linear(components[0], 0, spec["rotation_upper"], False)
+            * linear(components[1], 0, spec["translation_upper"], False)
+        )
     if kind == "components":
         if not isinstance(raw, dict):
             raise ValueError(f"{metric}: expected raw component dictionary")
-        values = [linear(raw[name], lo, hi, higher)
-                  for name, lo, hi, higher in spec["components"]]
+        values = [linear(raw[name], lo, hi, higher) for name, lo, hi, higher in spec["components"]]
         return math.fsum(values) / len(values)
     if kind == "zscore":
         if not finite(raw):
@@ -119,11 +125,15 @@ def aggregate_report(path, suite, metrics, policy):
             for metric in distribution:
                 value = data.get(metric) or {}
                 if finite(value.get("raw")):
-                    result[metric] = {"raw_mean": value["raw"],
+                    result[metric] = {
+                        "raw_mean": value["raw"],
                         "scored_mean": score_observation(metric, value, policy),
-                        "aggregation": "suite_distribution_once", "numeric_count": 1,
-                        "source_file": str(file), "source_sha256": sha,
-                        "report_normalized_mean": value.get("normalized")}
+                        "aggregation": "suite_distribution_once",
+                        "numeric_count": 1,
+                        "source_file": str(file),
+                        "source_sha256": sha,
+                        "report_normalized_mean": value.get("normalized"),
+                    }
     metrics -= distribution
     if not metrics:
         return result
@@ -135,11 +145,19 @@ def aggregate_report(path, suite, metrics, policy):
         values = [r["task_score"] for r in rows if finite(r.get("task_score"))]
         if values:
             mean = math.fsum(values) / len(values)
-            result["memory_scene_f1"] = {"raw_mean": mean, "scored_mean": math.fsum(
-                score_observation("memory_scene_f1", {"raw": v}, policy) for v in values) / len(values),
-                "numeric_count": len(values), "expected_count": len(rows),
-                "aggregation": "fixed_gate_task_mean", "report_normalized_mean": mean,
-                "source_file": str(path), "source_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+            result["memory_scene_f1"] = {
+                "raw_mean": mean,
+                "scored_mean": math.fsum(
+                    score_observation("memory_scene_f1", {"raw": v}, policy) for v in values
+                )
+                / len(values),
+                "numeric_count": len(values),
+                "expected_count": len(rows),
+                "aggregation": "fixed_gate_task_mean",
+                "report_normalized_mean": mean,
+                "source_file": str(path),
+                "source_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
         return result
     file = path if path.name.endswith(".jsonl") else path / "per_sample_scores.jsonl"
     if not file.is_file():
@@ -166,16 +184,29 @@ def aggregate_report(path, suite, metrics, policy):
                 if metric == "physical_fps_error" and not output:
                     # Older Pulse reports keep the absolute-error components in
                     # the percentage/CV payload instead of duplicating the metric.
-                    pulse = next(((row.get("metrics") or {}).get(k) for k in
-                                  ("physical_fps_pct_error", "physical_fps_intra_video_cv")
-                                  if (row.get("metrics") or {}).get(k)), {})
+                    pulse = next(
+                        (
+                            (row.get("metrics") or {}).get(k)
+                            for k in ("physical_fps_pct_error", "physical_fps_intra_video_cv")
+                            if (row.get("metrics") or {}).get(k)
+                        ),
+                        {},
+                    )
                     d = pulse.get("details") or {}
                     if finite(d.get("avg_phyfps")) and finite(d.get("meta_fps")):
                         output = {"raw": abs(d["avg_phyfps"] - d["meta_fps"]), "details": d}
-                observed_gate_failure = (metric == "memory_return_gate"
-                    and output.get("raw") == 0 and output.get("normalized") == 0
-                    and (output.get("details") or {}).get("measurement_status") == "observed_pose_track")
-                if not output or (output.get("error") and not observed_gate_failure) or output.get("raw") is None:
+                observed_gate_failure = (
+                    metric == "memory_return_gate"
+                    and output.get("raw") == 0
+                    and output.get("normalized") == 0
+                    and (output.get("details") or {}).get("measurement_status")
+                    == "observed_pose_track"
+                )
+                if (
+                    not output
+                    or (output.get("error") and not observed_gate_failure)
+                    or output.get("raw") is None
+                ):
                     excluded[metric] += 1
                     continue
                 sid = row.get("sample_id")
@@ -187,20 +218,37 @@ def aggregate_report(path, suite, metrics, policy):
                 raws[metric].append(output["raw"])
                 if finite(output.get("normalized")):
                     normalized[metric].append(output["normalized"])
-                key = json.dumps([row.get("style"), row.get("environment"), row.get("scene"),
-                                  row.get("motion_category")], ensure_ascii=False)
+                key = json.dumps(
+                    [
+                        row.get("style"),
+                        row.get("environment"),
+                        row.get("scene"),
+                        row.get("motion_category"),
+                    ],
+                    ensure_ascii=False,
+                )
                 strata[metric][key].append(value)
     for metric, scores in values.items():
-        result[metric] = {"raw_mean": raw_mean(raws[metric]),
+        result[metric] = {
+            "raw_mean": raw_mean(raws[metric]),
             "scored_mean": math.fsum(scores) / len(scores),
-            "aggregation": "per_sample_then_mean", "numeric_count": len(scores),
-            "expected_count": count, "excluded_count": excluded[metric],
+            "aggregation": "per_sample_then_mean",
+            "numeric_count": len(scores),
+            "expected_count": count,
+            "excluded_count": excluded[metric],
             "sample_ids_sha256": digest(sorted(ids[metric])),
-            "report_normalized_mean": (math.fsum(normalized[metric]) / len(normalized[metric])
-                                       if len(normalized[metric]) == len(scores) else None),
-            "strata": {k: {"count": len(v), "scored_mean": math.fsum(v) / len(v)}
-                       for k, v in sorted(strata[metric].items())},
-            "source_file": str(file), "source_sha256": sha.hexdigest()}
+            "report_normalized_mean": (
+                math.fsum(normalized[metric]) / len(normalized[metric])
+                if len(normalized[metric]) == len(scores)
+                else None
+            ),
+            "strata": {
+                k: {"count": len(v), "scored_mean": math.fsum(v) / len(v)}
+                for k, v in sorted(strata[metric].items())
+            },
+            "source_file": str(file),
+            "source_sha256": sha.hexdigest(),
+        }
     return result
 
 
@@ -235,9 +283,12 @@ def prepare_publication(payload, root=ROOT):
                 source = row.get("metric_sources", {}).get(metric) or {}
                 old = details.get(metric) or {}
                 binding = digest(source)
-                if (old.get("revision") == REVISION and old.get("policy_sha256") == policy_sha
-                        and old.get("source_binding") == binding
-                        and value in (old.get("scored_mean"), old.get("input_score"))):
+                if (
+                    old.get("revision") == REVISION
+                    and old.get("policy_sha256") == policy_sha
+                    and old.get("source_binding") == binding
+                    and value in (old.get("scored_mean"), old.get("input_score"))
+                ):
                     if not finite(old.get("scored_mean")) or not 0 <= old["scored_mean"] <= 1:
                         raise ValueError(f"Invalid cached score: {suite}/{key}/{metric}")
                     file = Path(old["source_file"])
@@ -249,7 +300,9 @@ def prepare_publication(payload, root=ROOT):
                                 sha.update(chunk)
                             verified_sources[file] = sha.hexdigest()
                     if verified_sources[file] != old.get("source_sha256"):
-                        raise ValueError(f"Published source changed; publish an explicitly updated report source: {file}")
+                        raise ValueError(
+                            f"Published source changed; publish an explicitly updated report source: {file}"
+                        )
                     row["scores"][metric] = old["scored_mean"]
                     continue
                 report = resolve_report(root, source)
@@ -257,8 +310,12 @@ def prepare_publication(payload, root=ROOT):
                     report = resolve_report(root, row.get("memory_protocol") or {})
                 if report is None:
                     raise ValueError(f"Unprovenanced score update: {suite}/{key}/{metric}")
-                pending[(report, "memory_loop" if suite in {"long_sequence", "long_sequence_30s"} else suite)].append(
-                    (row, metric, value, binding))
+                pending[
+                    (
+                        report,
+                        "memory_loop" if suite in {"long_sequence", "long_sequence_30s"} else suite,
+                    )
+                ].append((row, metric, value, binding))
     for (report, suite), cells in pending.items():
         stats = aggregate_report(report, suite, [m for _, m, _, _ in cells], policy)
         for row, metric, value, binding in cells:
@@ -266,6 +323,11 @@ def prepare_publication(payload, root=ROOT):
                 raise ValueError(f"Missing raw measurements: {report}/{suite}/{metric}")
             stat = stats[metric]
             row["scores"][metric] = stat["scored_mean"]
-            row["score_details"][metric] = {**stat, "revision": REVISION,
-                "policy_sha256": policy_sha, "source_binding": binding, "input_score": value}
+            row["score_details"][metric] = {
+                **stat,
+                "revision": REVISION,
+                "policy_sha256": policy_sha,
+                "source_binding": binding,
+                "input_score": value,
+            }
     return payload
