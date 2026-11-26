@@ -13,7 +13,7 @@ TOP_LEVEL_DIMENSIONS: tuple[str, ...] = (
 DIMENSION_LABELS: dict[str, str] = {
     "long_sequence": "Long Sequence / Memory",
     "action_control": "Action Control",
-    "consistency_3d_4d": "3D/4D Consistency",
+    "consistency_3d_4d": "Spatiotemporal Consistency",
     "physics": "Physics",
     "quality": "Quality",
 }
@@ -63,7 +63,7 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "keystroke_traj_score": "action_control",
     "keystroke_natet": "action_control",
     "keystroke_nater": "action_control",
-    # 3D/4D consistency
+    # Spatiotemporal consistency
     "met3r_consistency": "consistency_3d_4d",
     "reprojection_error": "consistency_3d_4d",
     "epipolar_error": "consistency_3d_4d",
@@ -73,15 +73,16 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "reconstruction_consistency": "consistency_3d_4d",
     "geometric_consistency": "consistency_3d_4d",
     "photometric_consistency": "consistency_3d_4d",
+    "motion_smoothness": "consistency_3d_4d",
+    "trajan": "consistency_3d_4d",
+    "background_consistency": "consistency_3d_4d",
     # Physics
     "physical_fps_error": "physics",
     "physical_fps_pct_error": "physics",
     "physical_fps_intra_video_cv": "physics",
     "fvmd": "physics",
-    "trajan": "physics",
     "jedi": "quality",
     "motion_magnitude": "physics",
-    "motion_smoothness": "physics",
     "long_sequence_dynamic_degree": "physics",
     # Quality
     "style_consistency": "quality",
@@ -95,7 +96,6 @@ METRIC_DIMENSIONS: dict[str, str] = {
     "sharpness_retention": "quality",
     "sharpness_vector_retention": "quality",
     "temporal_flickering": "quality",
-    "background_consistency": "quality",
     "segment_continuity": "quality",
     "long_sequence_aesthetic_quality": "quality",
     "long_sequence_imaging_quality": "quality",
