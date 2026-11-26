@@ -58,6 +58,8 @@ THIRD_PARTY_NOTICES.md
 # Documentation and website sources stay local, outside the public repository.
 /docs/
 /site/
+/paper/
+/supplementary.pdf
 /worldatlas/docs/
 /package.json
 /.github/workflows/cloudflare.yml

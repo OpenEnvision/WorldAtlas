@@ -616,8 +616,7 @@ benchmark:
       - 0.75
       higher_is_better: true
     motion_smoothness:
-      # Recalibrate the MSE bounds on v2_float32_mse reports before publishing
-      # corrected normalized scores; the retained values predate that fix.
+      # Component order: MSE, SSIM, LPIPS.
       empirical_min:
       - 0.0
       - 0.9224
@@ -632,9 +631,9 @@ benchmark:
       - false
       reducer: arithmetic_mean
     camera_error:
-      # Revalidate these direct-GT bounds on sim3_v1 reports. The default
-      # native_intended ignores the component bounds. Reports retain error_ref
-      # for compatibility; leaderboard publication averages native_intent_accuracy.
+      # Direct pose-GT bounds for [rotation (deg), translation]. The default
+      # native_intended policy does not use these component bounds. Reports keep
+      # error_ref for compatibility; the leaderboard averages native_intent_accuracy.
       empirical_min:
       - 0.0
       - 0.0
