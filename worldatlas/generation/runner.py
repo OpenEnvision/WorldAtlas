@@ -6,6 +6,8 @@ import hashlib
 import json
 import os
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -187,6 +189,30 @@ def _nonempty_file(path: Path) -> bool:
     return path.is_file() and path.stat().st_size > 0
 
 
+@contextmanager
+def _hide_previous_outputs(paths: list[Path]) -> Iterator[None]:
+    """Move earlier outputs aside while they are regenerated.
+
+    Some runners skip outputs that already exist, and batch success is judged by the
+    file being present, so a video left in place would be recorded as this run's
+    result. Outputs that were not rewritten are restored afterwards.
+    """
+    hidden: list[tuple[Path, Path]] = []
+    try:
+        for path in paths:
+            if path.exists():
+                parked = path.with_name(f".{path.name}.previous")
+                path.replace(parked)
+                hidden.append((path, parked))
+        yield
+    finally:
+        for path, parked in hidden:
+            if _nonempty_file(path):
+                parked.unlink(missing_ok=True)
+            else:
+                parked.replace(path)
+
+
 def _status_counts(records: list[dict[str, Any]]) -> dict[str, int]:
     counts = {"generated": 0, "skipped_existing": 0, "failed": 0, "pending": 0}
     for record in records:
@@ -270,6 +296,11 @@ def generate_predictions(
     shard_index: int = 0,
     fail_fast: bool = False,
 ) -> dict[str, Any]:
+    from worldatlas.benchmark.sample_identity import (
+        resolve_bound_prediction,
+        validate_source_identity,
+    )
+
     adapter = build_model_adapter(model_config)
     output_dir = output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -326,11 +357,6 @@ def generate_predictions(
         prediction_path = output_dir / f"{sample.prediction_stem}{model_config.output_ext}"
         source_hash = None
         if sample.sample_id_policy:
-            from worldatlas.benchmark.sample_identity import (
-                resolve_bound_prediction,
-                validate_source_identity,
-            )
-
             source_hash = validate_source_identity(sample)
             if prediction_path.exists() and not overwrite:
                 bound_path = resolve_bound_prediction(sample, output_dir)
@@ -411,9 +437,12 @@ def generate_predictions(
                         index=f"{sample_index}/{selected_total}",
                     )
                     generation_started_at = time.perf_counter()
-                    with ProgressHeartbeat(
-                        sample_id=sample.sample_id,
-                        index=f"{sample_index}/{selected_total}",
+                    with (
+                        ProgressHeartbeat(
+                            sample_id=sample.sample_id,
+                            index=f"{sample_index}/{selected_total}",
+                        ),
+                        _hide_previous_outputs([prediction_path]),
                     ):
                         payload = adapter.generate(
                             sample=sample,
@@ -421,6 +450,10 @@ def generate_predictions(
                             output_path=prediction_path,
                             prompt=prompt,
                         )
+                        if not _nonempty_file(prediction_path):
+                            raise RuntimeError(
+                                f"generation did not write output: {prediction_path}"
+                            )
                     payload.setdefault(
                         "generation_wall_time_seconds",
                         round(time.perf_counter() - generation_started_at, 6),
@@ -504,7 +537,10 @@ def generate_predictions(
             checkpoint_policy=checkpoint_load_policy,
         )
         batch_started_at = time.perf_counter()
-        with ProgressHeartbeat(samples=len(pending_requests), model=model_config.name):
+        with (
+            ProgressHeartbeat(samples=len(pending_requests), model=model_config.name),
+            _hide_previous_outputs([request.output_path for request in pending_requests]),
+        ):
             _apply_batch_generation_results(
                 adapter=adapter,
                 pending_requests=pending_requests,

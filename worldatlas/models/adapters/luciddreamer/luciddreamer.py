@@ -77,7 +77,6 @@ class LucidDreamerAdapter(ModelAdapter):
     """Generate 3D-consistent videos via the LucidDreamer upstream repo."""
 
     def supports_batch_generation(self) -> bool:
-        """Supports batch generation -> bool."""
         return True
 
     def batch_checkpoint_load_policy(self) -> str:
@@ -95,9 +94,7 @@ class LucidDreamerAdapter(ModelAdapter):
             raise ValueError("LucidDreamer adapter requires repo_root")
 
         project_root = worldatlas_project_root()
-        runner_path = (
-            project_root / "worldatlas" / "models" / "adapters" / "luciddreamer_batch_runner.py"
-        )
+        runner_path = Path(__file__).with_name("luciddreamer_batch_runner.py")
         if not runner_path.exists():
             raise FileNotFoundError(f"LucidDreamer batch runner not found: {runner_path}")
 

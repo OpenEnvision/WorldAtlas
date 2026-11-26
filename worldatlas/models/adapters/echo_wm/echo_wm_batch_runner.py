@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -189,6 +190,24 @@ def split_action_windows(
     return windows
 
 
+def prepare_window_root(output_path: Path, request: dict[str, Any]) -> Path:
+    """Return the per-sample window directory, resumable only for the same request.
+
+    Windows left by an interrupted sample are reused when the row and generation
+    settings match; windows rendered from any other request are discarded.
+    """
+    window_root = output_path.parent / "_echo_windows" / output_path.stem
+    request_text = json.dumps(request, sort_keys=True, ensure_ascii=False)
+    request_path = window_root / "request.json"
+    if window_root.exists() and (
+        not request_path.is_file() or request_path.read_text(encoding="utf-8") != request_text
+    ):
+        shutil.rmtree(window_root)
+    window_root.mkdir(parents=True, exist_ok=True)
+    request_path.write_text(request_text, encoding="utf-8")
+    return window_root
+
+
 def _extract_last_frame(ffmpeg_bin: str, video: Path, output: Path, frame_index: int) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
@@ -351,8 +370,7 @@ def main() -> int:
             if len(action_windows) > 1 and with_audio:
                 raise ValueError("Echo windowed memory rollout requires no_audio=true")
 
-            window_root = output_path.parent / "_echo_windows" / output_path.stem
-            window_root.mkdir(parents=True, exist_ok=True)
+            window_root = prepare_window_root(output_path, {"row": row, "generation": generation})
             chunks: list[Path] = []
             conditioning_path = image_path
             for window_index, (window_action, window_frames) in enumerate(action_windows):
@@ -457,4 +475,9 @@ if __name__ == "__main__":
     raise SystemExit(main())
 
 
-__all__ = ["install_checkpoint_registry", "resolve_runtime_paths", "split_action_windows"]
+__all__ = [
+    "install_checkpoint_registry",
+    "prepare_window_root",
+    "resolve_runtime_paths",
+    "split_action_windows",
+]
