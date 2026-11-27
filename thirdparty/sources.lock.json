@@ -271,17 +271,17 @@
       "revision": "17373d6625fe09355a7b2379749489ba63680f03",
       "provenance": "gitlink"
     },
-    "WorldFoundry": {
-      "path": "thirdparty/WorldFoundry",
-      "url": "https://github.com/OpenEnvision/WorldFoundry",
-      "revision": "83cf8eb20561c2200558231f6ae7c21e35d16b5e",
-      "provenance": "local_checkout"
-    },
     "YUME": {
       "path": "thirdparty/YUME",
       "url": "https://github.com/stdstu12/YUME.git",
       "revision": "111c3fab7fb020d1e261a68be6ec78a3fecc8d5b",
       "provenance": "local_checkout"
+    },
+    "cosmos-framework": {
+      "path": "thirdparty/cosmos-framework",
+      "url": "https://github.com/NVIDIA/cosmos-framework.git",
+      "revision": "a3fb34690e157972a9d04244c11b16022c9d6479",
+      "provenance": "upstream_snapshot_not_inference_validated"
     },
     "flash-attention": {
       "path": "thirdparty/flash-attention",
@@ -324,6 +324,12 @@
       "url": "https://github.com/haoyi-duan/sam2.git",
       "revision": "da85b4376f9100cecdad8ea4aaa8f63d2deaafee",
       "provenance": "gitlink"
+    },
+    "sglang": {
+      "path": "thirdparty/sglang",
+      "url": "https://github.com/sgl-project/sglang.git",
+      "revision": "d13cf59d83a8adec02847ecc087ca78d2a9d9371",
+      "provenance": "upstream_snapshot_not_inference_validated"
     },
     "stable-virtual-camera": {
       "path": "thirdparty/stable-virtual-camera",

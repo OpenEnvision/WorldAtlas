@@ -1,13 +1,5 @@
-# MiniMax H3 joint audio-video model, driven through the sibling WorldFoundry
-# port (worldfoundry.pipelines.minimax.pipeline_minimax_h3.NativeMiniMaxH3Pipeline).
-#
-# WorldAtlas drives H3 out of process, like the other heavy video models, so the
-# bespoke DiT / video VAE / audio VAE / Qwen3-VL encoder load once per benchmark
-# shard.  The subprocess interpreter must be able to import BOTH `worldatlas`
-# (batch-runner helpers) and `worldfoundry` (the pipeline).  Use the dedicated
-# MiniMax-H3 SGLang env (torch 2.11+cu126); PYTHONPATH supplies WorldAtlas and
-# WorldFoundry.  `repo_root` is the WorldFoundry checkout.  SGLang source is
-# staged via the env's .pth bootstrap and SGLANG_ROOT.
+# MiniMax H3 joint audio-video model via the official SGLang diffusion runtime
+# (https://github.com/MiniMax-AI/MiniMax-H3, https://github.com/sgl-project/sglang).
 model:
   name: minimax-h3
   family: minimax_h3
@@ -18,11 +10,9 @@ model:
   control_signals: [text, image]
   roles: [candidate]
   python_bin: python
-  repo_root: thirdparty/WorldFoundry
+  repo_root: thirdparty/sglang
   checkpoint_dir: ckpt/minimax-h3
-  # entrypoint is unused (the adapter invokes the batch-runner module directly),
-  # but backend_type=local_repo requires a value.
-  entrypoint: worldfoundry/pipelines/minimax/pipeline_minimax_h3.py
+  entrypoint: python/sglang/multimodal_gen/runtime/entrypoints/cli/generate.py
   output_ext: .mp4
   supported_suites:
     - image_static
@@ -31,10 +21,14 @@ model:
   reference_mode: first_frame
   generation:
     require_persistent_batch: true
-    # WorldAtlas suite -> H3 task is resolved in the runner:
+    # WorldAtlas suite -> MiniMax H3 task is resolved in the runner:
     #   image_static / image_dynamic -> fl2va (first-frame-to-video)
+    #   video_static / video_dynamic -> ref2va (reference-to-video)
     # Set `task` here to force one native task for every sample (t2va/fl2va/ref2va).
     # task: t2va
+    num_gpus: 4
+    ulysses_degree: 4
+    performance_mode: speed
     short_edge: 768
     aspect_ratio: "16:9"
     duration_seconds: 5.0
@@ -44,8 +38,10 @@ model:
     continue_on_error: true
   metadata:
     upstream_model_id: MiniMaxAI/MiniMax-H3
-    ported_in: worldfoundry
-    pipeline_target: worldfoundry.pipelines.minimax.pipeline_minimax_h3:NativeMiniMaxH3Pipeline
+    upstream_repo: https://github.com/MiniMax-AI/MiniMax-H3
+    inference_framework: sglang
+    inference_repo: https://github.com/sgl-project/sglang.git
+    pipeline_target: sglang.multimodal_gen:DiffGenerator
     tasks: [t2va, fl2va, ref2va]
     joint_audio_video: true
     audio_sample_rate: 32000

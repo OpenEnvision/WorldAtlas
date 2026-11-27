@@ -1,7 +1,7 @@
-"""Cosmos3-Nano adapter using the pinned WorldFoundry pipeline.
+"""Cosmos3 adapter using the official NVIDIA cosmos-framework repository.
 
-WorldAtlas runs the pipeline in a dedicated model environment and keeps one
-loaded checkpoint per shard. The environment must import both projects.
+WorldAtlas runs ``cosmos_framework.scripts.inference`` inside the dedicated
+Cosmos3 environment and loads one checkpoint per shard across the full batch.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 
 
 class Cosmos3Adapter(ExternalBatchAdapter):
-    """Generate videos with WorldFoundry's native Cosmos3 pipeline."""
+    """Generate videos with NVIDIA's official cosmos-framework inference CLI."""
 
     runner_module = "worldatlas.models.adapters.cosmos3.cosmos3_batch_runner"
     label = "Cosmos3"

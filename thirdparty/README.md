@@ -50,12 +50,13 @@ Only dependencies of retained leaderboard integrations are listed below.
 | `Wan2.2` | [Wan-Video/Wan2.2](https://github.com/Wan-Video/Wan2.2.git) | [wan22/](../config/models/wan22/) |
 | `Warp-as-History` | [yyfz/Warp-as-History](https://github.com/yyfz/Warp-as-History.git) | [warp_as_history/](../config/models/warp_as_history/) |
 | `WorldCrafter` | [TencentARC/WorldCrafter](https://github.com/TencentARC/WorldCrafter.git) | [worldcrafter/](../config/models/worldcrafter/) |
-| `WorldFoundry` | [OpenEnvision/WorldFoundry](https://github.com/OpenEnvision/WorldFoundry) | [cosmos3/](../config/models/cosmos3/), [minimax_h3/](../config/models/minimax_h3/) |
 | `YUME` | [stdstu12/YUME](https://github.com/stdstu12/YUME.git) | [yume/](../config/models/yume/) |
+| `cosmos-framework` | [NVIDIA/cosmos-framework](https://github.com/NVIDIA/cosmos-framework.git) | [cosmos3/](../config/models/cosmos3/) |
 | `lingbot-video` | [Robbyant/lingbot-video](https://github.com/Robbyant/lingbot-video.git) | [lingbot_video/](../config/models/lingbot_video/) |
 | `lingbot-world` | [Robbyant/lingbot-world](https://github.com/Robbyant/lingbot-world.git) | [lingbot_world/](../config/models/lingbot_world/) |
 | `lingbot-world-v2` | [Robbyant/lingbot-world-v2](https://github.com/Robbyant/lingbot-world-v2.git) | [lingbot_world/](../config/models/lingbot_world/) |
 | `ltx2.3` | [Lightricks/LTX-2](https://github.com/Lightricks/LTX-2.git) | [ltx23/](../config/models/ltx23/) |
+| `sglang` | [sgl-project/sglang](https://github.com/sgl-project/sglang.git) | [minimax_h3/](../config/models/minimax_h3/) |
 | `stable-virtual-camera` | [Stability-AI/stable-virtual-camera](https://github.com/Stability-AI/stable-virtual-camera.git) | [stable_virtual_camera/](../config/models/stable_virtual_camera/) |
 | `zing-world-model` | [seedleap/zing-world-model](https://github.com/seedleap/zing-world-model.git) | [zing_world/](../config/models/zing_world/) |
 
