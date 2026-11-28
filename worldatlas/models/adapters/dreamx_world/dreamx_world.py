@@ -8,7 +8,7 @@ from worldatlas.models.adapters.external_batch import ExternalBatchAdapter
 from worldatlas.models.adapters.lingbot_world.common import _camera_path_for_sample
 
 DREAMX_ACTION_BY_CAMERA_TOKEN = {
-    "fixed": "w",
+    "fixed": "",
     "push_in": "w",
     "pull_out": "s",
     "move_left": "a",
@@ -19,6 +19,7 @@ DREAMX_ACTION_BY_CAMERA_TOKEN = {
     "orbit_right": "wl",
 }
 DREAMX_ACTION_SPEED_BY_ACTION = {
+    "": 4,
     "w": 4,
     "s": 4,
     "a": 4,
@@ -59,7 +60,7 @@ def _dreamx_actions_for_request(
     explicit_speeds = _suite_override(generation, "action_speed_list", request.sample.suite)
     if explicit_actions:
         actions = [
-            str(item).strip().lower() for item in _as_list(explicit_actions) if str(item).strip()
+            str(item).strip().lower() for item in _as_list(explicit_actions) if item is not None
         ]
         speeds = [int(item) for item in _as_list(explicit_speeds)]
         if not speeds:
@@ -71,7 +72,7 @@ def _dreamx_actions_for_request(
     configured_map = (
         generation.get("action_map") if isinstance(generation.get("action_map"), dict) else {}
     )
-    camera_path = _camera_path_for_sample(request.sample) or ["push_in"]
+    camera_path = _camera_path_for_sample(request.sample) or ["fixed"]
     # Truncating a closed itinerary would drop the legs that bring the camera home,
     # and the return gate would read that as a model which forgot the scene. Memory
     # samples therefore keep every token; set max_action_segments to 0 to opt out
@@ -83,13 +84,10 @@ def _dreamx_actions_for_request(
     speeds: list[int] = []
     for camera_token in camera_path[: max(max_segments, 1)]:
         token = str(camera_token).strip().lower()
-        action = (
-            str(configured_map.get(token, DREAMX_ACTION_BY_CAMERA_TOKEN.get(token, "w")))
-            .strip()
-            .lower()
-        )
-        if not action:
+        raw_action = configured_map.get(token, DREAMX_ACTION_BY_CAMERA_TOKEN.get(token, ""))
+        if raw_action is None:
             continue
+        action = str(raw_action).strip().lower()
         actions.append(action)
         speeds.append(
             int(
@@ -102,7 +100,7 @@ def _dreamx_actions_for_request(
             )
         )
     if not actions:
-        actions = [str(generation.get("default_action", "w"))]
+        actions = [str(generation.get("default_action", "")).strip().lower()]
         speeds = [int(generation.get("action_speed", 4))]
     return actions, speeds
 

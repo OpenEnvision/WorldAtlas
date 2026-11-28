@@ -7,10 +7,12 @@ is derived from ``camera_path`` tokens or explicit movement config fields.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from worldatlas.benchmark.annotations import CAMERA_MOTION_PROMPTS
 from worldatlas.benchmark.schemas import BenchmarkSample
 from worldatlas.models.adapters.base import ModelAdapter, PreparedGenerationRequest
 from worldatlas.models.adapters.common import (
@@ -140,6 +142,21 @@ def _action_payload_for_sample(
     }
 
 
+_WORLDATLAS_CAMERA_CLAUSE_RE = re.compile(
+    r"(?:^|(?<=\s))Camera\s+(?:"
+    + "|".join(
+        re.escape(label) for label in sorted(CAMERA_MOTION_PROMPTS.values(), key=len, reverse=True)
+    )
+    + r")\.\s*",
+    flags=re.IGNORECASE,
+)
+
+
+def _strip_worldatlas_camera_clauses(prompt: str) -> str:
+    cleaned = " ".join(_WORLDATLAS_CAMERA_CLAUSE_RE.sub("", prompt).split())
+    return cleaned or prompt.strip()
+
+
 def _aligned_prompt_for_sample(
     generation: dict[str, Any],
     sample: BenchmarkSample,
@@ -154,7 +171,8 @@ def _aligned_prompt_for_sample(
     action_text = " ".join(text_actions)
     speed_cue = str(generation.get("worldatlas_action_speed_cue", "") or "").strip()
     prefix = f"{action_text} {speed_cue}".strip()
-    return f"{prefix} {prompt}".strip(), action_payload
+    body = _strip_worldatlas_camera_clauses(prompt)
+    return f"{prefix} {body}".strip(), action_payload
 
 
 class YumeAdapter(ModelAdapter):

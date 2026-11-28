@@ -8,6 +8,7 @@ import os
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -283,6 +284,50 @@ def _validate_record_outputs(records: list[dict[str, Any]]) -> None:
                 )
 
 
+def _load_prior_prediction_bindings(
+    output_dir: Path,
+    *,
+    shard_index: int,
+    num_shards: int,
+) -> dict[str, dict[str, Any]]:
+    """Load verified bindings published by earlier runs in ``output_dir``."""
+    shard_suffix = f".shard{shard_index}" if num_shards > 1 else ""
+    candidates: list[Path] = []
+    for path in (
+        output_dir / f"evaluation_manifest{shard_suffix}.jsonl",
+        output_dir / "evaluation_manifest.jsonl",
+        *sorted(output_dir.glob("evaluation_manifest.shard*.jsonl")),
+    ):
+        if path.is_file() and path not in candidates:
+            candidates.append(path)
+
+    bindings: dict[str, dict[str, Any]] = {}
+    for manifest_path in candidates:
+        try:
+            lines = manifest_path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                payload = json.loads(line)
+            except ValueError:
+                continue
+            if not isinstance(payload, dict):
+                continue
+            sample_id = payload.get("sample_id")
+            binding = payload.get("prediction_binding")
+            if (
+                isinstance(sample_id, str)
+                and sample_id not in bindings
+                and isinstance(binding, dict)
+                and binding.get("evidence")
+            ):
+                bindings[sample_id] = binding
+    return bindings
+
+
 @cache_file_digests()
 def generate_predictions(
     *,
@@ -349,6 +394,15 @@ def generate_predictions(
         batch=use_batch_generation,
     )
 
+    prior_bindings = (
+        _load_prior_prediction_bindings(output_dir, shard_index=shard_index, num_shards=num_shards)
+        if not overwrite
+        and any(
+            sample.sample_id_policy and not sample.prediction_binding for sample in selected_samples
+        )
+        else {}
+    )
+
     for sample_index, sample in enumerate(selected_samples, start=1):
         if sample.source_name == "worldatlas_formal_image" and not sample.sample_id_policy:
             raise ValueError(
@@ -359,11 +413,18 @@ def generate_predictions(
         if sample.sample_id_policy:
             source_hash = validate_source_identity(sample)
             if prediction_path.exists() and not overwrite:
+                if not sample.prediction_binding and sample.sample_id in prior_bindings:
+                    sample = replace(
+                        sample,
+                        source_sha256=source_hash,
+                        prediction_binding=dict(prior_bindings[sample.sample_id]),
+                    )
                 bound_path = resolve_bound_prediction(sample, output_dir)
                 if bound_path.resolve() != prediction_path.resolve():
                     raise ValueError(
                         f"Existing output is not the verified bound video: {prediction_path}"
                     )
+                selected_samples[sample_index - 1] = sample
         prompt = adapter.prompt_for(sample)
         record = {
             "sample_id": sample.sample_id,

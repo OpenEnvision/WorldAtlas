@@ -13,7 +13,7 @@ model:
   checkpoint_dir: ckpt/SolarWM-H3
   entrypoint: "-m solarwm infer"
   output_ext: .mp4
-  supported_suites: [image_static, image_dynamic, memory_loop]
+  supported_suites: [image_static, image_dynamic]
   prompt_mode: prompt_target
   reference_mode: first_frame
   generation:

@@ -339,13 +339,13 @@ def main() -> int:
         source = Path(row["conditioning_image"]).expanduser().resolve()
         suffix = source.suffix or ".png"
         staged_image = _stage_image(source, input_dir / f"{row['prediction_stem']}{suffix}")
-        action_seq = [
-            str(item).strip().lower()
-            for item in row.get("dreamx_action_seq", ["w"])
-            if str(item).strip()
-        ]
-        if not action_seq:
-            action_seq = ["w"]
+        raw_action_seq = row.get("dreamx_action_seq")
+        if raw_action_seq is None:
+            action_seq = [""]
+        else:
+            action_seq = [str(item).strip().lower() for item in raw_action_seq if item is not None]
+            if not action_seq:
+                action_seq = [""]
         speed_list = [int(item) for item in row.get("dreamx_action_speed_list", [])]
         if not speed_list:
             speed_list = [int(generation.get("action_speed", 4))] * len(action_seq)
