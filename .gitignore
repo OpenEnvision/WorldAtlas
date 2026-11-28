@@ -101,6 +101,7 @@ scripts/*
 !scripts/checkout_dependencies.py
 !scripts/download_metric_checkpoints.sh
 !scripts/run_eval_shards.py
+!scripts/run_megasam_video.py
 
 # Model weights and generated assets
 checkpoints/

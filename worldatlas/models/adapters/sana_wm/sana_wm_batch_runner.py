@@ -231,21 +231,22 @@ def main() -> int:
             windows = plan_sana_wm_windows(num_frames, chunk_frames=chunk_num_frames)
             image = Image.open(str(row["conditioning_image"])).convert("RGB")
             condition_image = image.convert("RGB")
+            _, orig_src_size, orig_resized_size, orig_crop_offset = sana_wm.resize_and_center_crop(
+                image
+            )
             intr_src = sana_wm.load_intrinsics(annotation_path / "intrinsics.npy", num_frames)
+            intr_cropped = sana_wm.transform_intrinsics_for_crop(
+                np.asarray(intr_src, dtype=np.float32),
+                orig_src_size,
+                orig_resized_size,
+                orig_crop_offset,
+            )
             chunk_videos: list[np.ndarray] = []
             chunk_c2w: list[np.ndarray] = []
             for window_index, (start, length) in enumerate(windows):
                 c2w = c2w_full[start : start + length]
-                intr_window = np.asarray(intr_src[start : start + length], dtype=np.float32)
-                cropped, src_size, resized_size, crop_offset = sana_wm.resize_and_center_crop(
-                    condition_image
-                )
-                intrinsics_vec4 = sana_wm.transform_intrinsics_for_crop(
-                    intr_window,
-                    src_size,
-                    resized_size,
-                    crop_offset,
-                )
+                cropped, _, _, _ = sana_wm.resize_and_center_crop(condition_image)
+                intrinsics_vec4 = intr_cropped[start : start + length]
                 params = sana_wm.GenerationParams(
                     num_frames=length,
                     fps=fps,

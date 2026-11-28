@@ -202,15 +202,15 @@ def _flashworld_cli_command(
         "--ckpt",
         str(checkpoint_path),
     ]
-    for flag_name in (
-        "offload_t5",
-        "offload_vae",
-        "offload_transformer_during_vae",
-        "export_ply",
-        "export_spz",
+    for flag_name, cli_flag in (
+        ("offload_t5", "--offload_t5"),
+        ("offload_vae", "--offload_vae"),
+        ("offload_transformer_during_vae", "--offload_transformer_during_vae"),
+        ("export_ply", "--ply"),
+        ("export_spz", "--spz"),
     ):
         if generation.get(flag_name, False):
-            command.append(f"--{flag_name}")
+            command.append(cli_flag)
     return command
 
 

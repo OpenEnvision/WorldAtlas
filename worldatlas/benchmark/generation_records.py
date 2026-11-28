@@ -140,7 +140,7 @@ def _find_generation_record(
             for key in ((sample.sample_id, None), (sample.sample_id, sample.suite))
             if key in by_sample
         ]
-        if candidates:
+        if fallback_by_sample is None and candidates:
             fallback_by_sample = dict(max(candidates, key=lambda item: item[0])[1])
     return fallback_by_sample
 

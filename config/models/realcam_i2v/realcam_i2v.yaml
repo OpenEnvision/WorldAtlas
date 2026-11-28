@@ -44,7 +44,6 @@ model:
       missing limbs, unnatural posture, blurry, cropped, extra limbs, bad
       anatomy, deformed, glitchy motion, artifacts.
   env:
-    WORLDATLAS_CHECKPOINT_ROOT: ckpt
     TOKENIZERS_PARALLELISM: "false"
     # torchcodec loads libtorchcodec7.so which needs conda ffmpeg 7 (libavutil.so.59).
   metadata:

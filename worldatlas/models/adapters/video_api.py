@@ -65,7 +65,7 @@ class VideoApiAdapter(ApiModelAdapter):
             "image" in self.config.control_signals
             and self.config.reference_mode != "none"
             and conditioning_image.exists()
-            and sample.modality == "video"
+            and sample.modality in {"image", "video"}
         ):
             return "i2v"
         return "t2v"
@@ -97,6 +97,7 @@ class VideoApiAdapter(ApiModelAdapter):
                 route = submit_route.get("t2v") or submit_route.get("text2video")
             if route:
                 return str(route)
+            raise ValueError(f"api.submit_route has no route for task_type={task_type!r}")
         if submit_route:
             return str(submit_route)
         raise ValueError("api.submit_route is required for video API adapters")

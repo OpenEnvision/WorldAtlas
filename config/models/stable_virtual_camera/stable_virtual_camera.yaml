@@ -19,7 +19,6 @@ model:
   reference_mode: reference_image
   generation:
     require_persistent_batch: true
-    checkpoint_root: ckpt
     model_version: 1.1
     weight_name: modelv1.1.safetensors
     task: img2trajvid_s-prob

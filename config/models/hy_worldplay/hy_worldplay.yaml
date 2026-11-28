@@ -30,7 +30,7 @@ model:
     nproc_per_node: 1
     gpu_index: 0
     resolution: 480p
-    aspect_ratio: 16:9
+    aspect_ratio: "16:9"
     video_length: 125
     width: 832
     height: 480

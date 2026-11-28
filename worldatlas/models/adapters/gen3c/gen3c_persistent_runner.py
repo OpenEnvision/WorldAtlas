@@ -258,7 +258,7 @@ def _run_one_item(
 
 def main() -> None:
     args = parse_args()
-    torch.enable_grad(False)
+    torch.set_grad_enabled(False)
 
     from moge.model.v1 import MoGeModel
 

@@ -427,6 +427,7 @@ def export_vipe_sidecar(
     # Streaming the frames out in position order keeps the file byte-identical
     # while writing sequentially, and the mask fits in memory, so the temporary
     # ``_depth_valid_mask.npy`` round-trip is gone too.
+    output_dir.mkdir(parents=True, exist_ok=True)
     stale_mask = output_dir / "_depth_valid_mask.npy"
     if stale_mask.exists():
         stale_mask.unlink()

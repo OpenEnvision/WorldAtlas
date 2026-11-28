@@ -1180,7 +1180,8 @@ def launch(args: argparse.Namespace) -> int:
             env.setdefault("TF_NUM_INTEROP_THREADS", "1")
             env.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
             env.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
-        env["WORLDATLAS_CHECKPOINT_ROOT"] = str(project_root / "ckpt")
+        if not env.get("WORLDATLAS_CHECKPOINT_ROOT", "").strip():
+            env["WORLDATLAS_CHECKPOINT_ROOT"] = str(project_root / "ckpt")
         pythonpath = [str(project_root)]
         if env.get("PYTHONPATH"):
             pythonpath.append(env["PYTHONPATH"])
@@ -1257,6 +1258,16 @@ def launch(args: argparse.Namespace) -> int:
         tee_thread.start()
         return (shard_index, gpu_id, proc, log_file, log_path, tee_thread)
 
+    def _stop_warmup_proc(proc: subprocess.Popen[str]) -> None:
+        if proc.poll() is not None:
+            return
+        proc.terminate()
+        try:
+            proc.wait(timeout=10.0)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=10.0)
+
     def wait_met3r_warmup(handle) -> str:
         _shard_index, _gpu_id, proc, _log_file, log_path, _tee_thread = handle
         started = time.time()
@@ -1272,11 +1283,11 @@ def launch(args: argparse.Namespace) -> int:
             if met3r_warmup_ready_text(text):
                 return "ready"
             if met3r_warmup_load_failed_text(text):
-                if proc.poll() is None:
-                    proc.terminate()
+                _stop_warmup_proc(proc)
                 return "load_failed"
             now = time.time()
             if now >= deadline:
+                _stop_warmup_proc(proc)
                 return "timeout"
             if now >= next_note:
                 log_progress(

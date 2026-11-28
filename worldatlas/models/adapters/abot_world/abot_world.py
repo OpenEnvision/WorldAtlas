@@ -176,20 +176,28 @@ def _build_control_payload(
     requested_blocks = max(int(generation.get("blocks", 5)), 1)
     block_count = max(requested_blocks, len(normalized_actions))
     frames_per_action = max(math.ceil(block_count / len(normalized_actions)), 1)
-    block_actions: list[dict[str, bool]] = []
-    for action in normalized_actions:
-        block_actions.extend([dict(action) for _ in range(frames_per_action)])
-    block_actions = block_actions[:block_count]
-    while len(block_actions) < block_count:
-        block_actions.append(dict(block_actions[-1]))
-    if sample.suite == "memory_loop" and generation.get("memory_reference_blocks") is not None:
+    if sample.suite == "memory_loop":
         from worldatlas.benchmark.memory_duration import sample_action_timeline
 
-        reference_generation = dict(generation)
-        reference_generation["blocks"] = reference_generation.pop("memory_reference_blocks")
-        reference = _build_control_payload(sample, reference_generation)
-        block_actions = sample_action_timeline(reference["block_actions"], requested_blocks)
-        block_count = requested_blocks
+        if generation.get("memory_reference_blocks") is not None:
+            reference_generation = dict(generation)
+            reference_generation["blocks"] = reference_generation.pop("memory_reference_blocks")
+            reference = _build_control_payload(sample, reference_generation)
+            block_actions = [
+                dict(action)
+                for action in sample_action_timeline(reference["block_actions"], requested_blocks)
+            ]
+            block_count = requested_blocks
+        else:
+            block_actions = [
+                dict(action) for action in sample_action_timeline(normalized_actions, block_count)
+            ]
+    else:
+        base_blocks, remainder = divmod(block_count, len(normalized_actions))
+        block_actions = []
+        for index, action in enumerate(normalized_actions):
+            repeat = base_blocks + (1 if index < remainder else 0)
+            block_actions.extend([dict(action) for _ in range(repeat)])
 
     return {
         "action_source": action_source,

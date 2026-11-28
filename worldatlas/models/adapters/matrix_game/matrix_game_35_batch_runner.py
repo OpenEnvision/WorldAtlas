@@ -333,7 +333,7 @@ def _run_row(
                 anchor_image = temp_dir / f"{run_name}_anchor.png"
                 image.save(anchor_image)
         command = [
-            os.fspath(Path(sys.executable).resolve()),
+            sys.executable,
             os.fspath(repo_root / "infer.py"),
             "--person",
             person,

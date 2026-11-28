@@ -10,6 +10,12 @@ import traceback
 from typing import Any
 from uuid import uuid4
 
+from worldatlas.common.checkpoints import (
+    CHECKPOINT_CACHE_ROOT_ENV,
+    CHECKPOINT_ROOT_ENV,
+    apply_checkpoint_env,
+    checkpoint_root,
+)
 from worldatlas.models.adapters.batch_runner_common import (
     add_common_batch_args,
     copy_output,
@@ -71,12 +77,17 @@ def _as_list(value: Any, *, cast) -> Any:
 
 
 def _shared_checkpoint_root(checkpoint_dir: Path | None, generation: dict[str, Any]) -> Path | None:
+    if os.environ.get(CHECKPOINT_ROOT_ENV, "").strip():
+        return checkpoint_root(create=False)
     raw_root = generation.get("checkpoint_root")
     if raw_root:
-        return Path(str(raw_root)).expanduser().resolve()
+        raw_text = str(raw_root).strip()
+        if raw_text in {"ckpt", "ckpt/"}:
+            return checkpoint_root(create=False)
+        return Path(raw_text).expanduser().resolve()
     if checkpoint_dir is not None:
         return checkpoint_dir.parent.resolve()
-    return None
+    return checkpoint_root(create=False)
 
 
 def _configure_runtime_env(
@@ -85,10 +96,16 @@ def _configure_runtime_env(
     generation: dict[str, Any],
 ) -> Path | None:
     ckpt_root = _shared_checkpoint_root(checkpoint_dir, generation)
-    if ckpt_root is not None:
+    if (
+        os.environ.get(CHECKPOINT_CACHE_ROOT_ENV, "").strip()
+        or os.environ.get(CHECKPOINT_ROOT_ENV, "").strip()
+    ):
+        os.environ.update(apply_checkpoint_env(os.environ, create=True))
+    elif ckpt_root is not None:
         hf_home = ckpt_root / "huggingface"
         os.environ["HF_HOME"] = str(hf_home)
         os.environ["HF_HUB_CACHE"] = str(hf_home / "hub")
+        os.environ["HUGGINGFACE_HUB_CACHE"] = str(hf_home / "hub")
         os.environ["TRANSFORMERS_CACHE"] = str(ckpt_root / "transformers")
         os.environ["TORCH_HOME"] = str(ckpt_root / "torch")
         for path in (hf_home, hf_home / "hub", ckpt_root / "transformers", ckpt_root / "torch"):

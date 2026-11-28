@@ -16,9 +16,14 @@ from typing import Any
 import cv2
 import numpy as np
 
-from worldatlas.common.checkpoints import apply_checkpoint_env, hf_local_dir, resolve_project_path
+from worldatlas.common.checkpoints import (
+    apply_checkpoint_env,
+    hf_local_dir,
+    resolve_checkpoint_path,
+    resolve_project_path,
+)
 
-DEFAULT_RECONSTRUCTION_MODEL = "depth-anything/DA3-GIANT-1.1"
+DEFAULT_RECONSTRUCTION_MODEL = "depth-anything/DA3-GIANT"
 DEFAULT_RECONSTRUCTION_BACKEND = "da3_reprojection"
 DEFAULT_MAX_PTS_PER_FRAME = 5000
 DEFAULT_RECONSTRUCTION_FPS = 3.0
@@ -136,7 +141,10 @@ def _resolve_model_name(model_name: str) -> str:
     token = str(model_name).strip()
     if not token:
         return token
-    if token.startswith(("ckpt/", "./", "../", "/", "~")):
+    if token == "ckpt" or token.startswith("ckpt/"):
+        resolved = resolve_checkpoint_path(token)
+        return str(resolved if resolved is not None else Path(token).expanduser())
+    if token.startswith(("./", "../", "/", "~")):
         resolved = resolve_project_path(token)
         return str(resolved if resolved is not None else Path(token).expanduser())
     if "/" in token:
@@ -153,7 +161,7 @@ def _import_context(root: Path) -> Iterator[None]:
     try:
         yield
     finally:
-        while root_str in sys.path:
+        if root_str in sys.path:
             sys.path.remove(root_str)
 
 

@@ -313,6 +313,23 @@
       "revision": "9ec55f9f22798a3198d9c923856824821bc3317e",
       "provenance": "upstream_snapshot_not_inference_validated"
     },
+    "mega-sam": {
+      "path": "thirdparty/mega-sam",
+      "url": "https://github.com/mega-sam/mega-sam.git",
+      "revision": "a27b4e633c5cc0828a62ed943ef9f6505705fd3f",
+      "provenance": "local_checkout",
+      "patches": [
+        {
+          "file": "thirdparty/patches/mega-sam.patch",
+          "sha256": "432410f284aa16193ef895083d44d37d775d3bf55e2d6fdd4d97d8ce5fb7cc4f"
+        },
+        {
+          "file": "thirdparty/patches/mega-sam-base.patch",
+          "sha256": "e74e1ed7a7ad6cc4d4f7cf22aafdc3aa0b15572a5b4df5bc0767a99b48a4048f",
+          "subdir": "base"
+        }
+      ]
+    },
     "met3r": {
       "path": "thirdparty/met3r",
       "url": "https://github.com/mohammadasim98/met3r.git",

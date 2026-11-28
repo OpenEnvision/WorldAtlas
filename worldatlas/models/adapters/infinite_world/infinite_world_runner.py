@@ -421,10 +421,34 @@ def _run_generation_requests(
     import torch
 
     batch_size = max(int(args.batch_size), 1)
+    continue_on_error = bool(args.requests_json)
     results: list[dict[str, Any]] = []
+
+    def append_failure(items: list[dict[str, Any]], exc: Exception) -> None:
+        error_text = f"{type(exc).__name__}: {exc}"
+        for item in items:
+            request = item["request"]
+            sample_id = str(request.get("sample_id", ""))
+            results.append(
+                {
+                    "status": "failed",
+                    "sample_id": sample_id,
+                    "prediction_path": str(request.get("output_path", "")),
+                    "prompt": str(request.get("prompt", "")),
+                    "error": error_text,
+                }
+            )
+            print_status(sample_id, "failed", error=error_text, label="Infinite-World")
+
     grouped_requests: dict[tuple[int, int], list[dict[str, Any]]] = {}
     for request in requests:
-        key = _request_bucket_key(request, bucket_config=bucket_config)
+        try:
+            key = _request_bucket_key(request, bucket_config=bucket_config)
+        except Exception as exc:
+            if not continue_on_error:
+                raise
+            append_failure([{"request": request}], exc)
+            continue
         grouped_requests.setdefault(key, []).append(request)
 
     def append_success(items: list[dict[str, Any]]) -> None:
@@ -455,21 +479,31 @@ def _run_generation_requests(
             )
             print_status(sample_id, "generated", label="Infinite-World")
 
-    done = 0
+    done = len(results)
     total = len(requests)
     for grouped in grouped_requests.values():
         for start in range(0, len(grouped), batch_size):
-            group = [
-                _prepare_request(request, bucket_config=bucket_config)
-                for request in grouped[start : start + batch_size]
-            ]
-            for offset, item in enumerate(group):
+            batch_requests = grouped[start : start + batch_size]
+            group: list[dict[str, Any]] = []
+            for offset, request in enumerate(batch_requests):
+                sample_id = str(request.get("sample_id", done + offset + 1))
                 begin_sample(
-                    str(item["request"].get("sample_id", done + offset + 1)),
+                    sample_id,
                     index=done + offset + 1,
                     total=total,
                     label="Infinite-World",
                 )
+                try:
+                    group.append(_prepare_request(request, bucket_config=bucket_config))
+                except Exception as exc:
+                    if not continue_on_error:
+                        print_status(sample_id, "failed", error=str(exc), label="Infinite-World")
+                        raise
+                    append_failure([{"request": request}], exc)
+                    done += 1
+
+            if not group:
+                continue
 
             try:
                 _generate_prepared_batch(
@@ -486,31 +520,52 @@ def _run_generation_requests(
                 )
                 append_success(group)
                 done += len(group)
-            except RuntimeError as exc:
-                if len(group) == 1 or "out of memory" not in str(exc).lower():
-                    for item in group:
-                        print_status(
-                            str(item["request"].get("sample_id", "")),
-                            "failed",
-                            error=str(exc),
-                            label="Infinite-World",
-                        )
-                    raise
-                torch.cuda.empty_cache()
+            except Exception as exc:
+                is_oom = isinstance(exc, RuntimeError) and "out of memory" in str(exc).lower()
+                if len(group) == 1 or not is_oom:
+                    if not continue_on_error:
+                        for item in group:
+                            print_status(
+                                str(item["request"].get("sample_id", "")),
+                                "failed",
+                                error=str(exc),
+                                label="Infinite-World",
+                            )
+                        raise
+                    append_failure(group, exc)
+                    if torch.cuda.is_available():
+                        torch.cuda.empty_cache()
+                    done += len(group)
+                    continue
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
                 for item in group:
-                    _generate_prepared_batch(
-                        [item],
-                        args=args,
-                        device=device,
-                        vae=vae,
-                        text_encoder=text_encoder,
-                        scheduler=scheduler,
-                        dit=dit,
-                        validation_num_frames=validation_num_frames,
-                        guidance_scale=guidance_scale,
-                        negative_prompt=negative_prompt,
-                    )
-                    append_success([item])
+                    try:
+                        _generate_prepared_batch(
+                            [item],
+                            args=args,
+                            device=device,
+                            vae=vae,
+                            text_encoder=text_encoder,
+                            scheduler=scheduler,
+                            dit=dit,
+                            validation_num_frames=validation_num_frames,
+                            guidance_scale=guidance_scale,
+                            negative_prompt=negative_prompt,
+                        )
+                        append_success([item])
+                    except Exception as item_exc:
+                        if not continue_on_error:
+                            print_status(
+                                str(item["request"].get("sample_id", "")),
+                                "failed",
+                                error=str(item_exc),
+                                label="Infinite-World",
+                            )
+                            raise
+                        append_failure([item], item_exc)
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
                     done += 1
 
     return results

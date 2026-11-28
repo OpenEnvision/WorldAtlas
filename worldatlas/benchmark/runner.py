@@ -810,23 +810,22 @@ def run_benchmark(
                 metrics[metric.name] = output
             metric_statuses = [_metric_status(output) for output in metrics.values()]
             sample_status = _sample_status(metric_statuses)
-            status_counts[sample_status] += 1
-            sample_scores.append(
-                SampleScore(
-                    sample_id=sample.sample_id,
-                    suite=sample.suite,
-                    metrics=metrics,
-                    path=sample.path,
-                    prediction_path=str(prediction_path),
-                    input_fingerprint=input_fingerprint,
-                    style=sample.style,
-                    environment=sample.environment,
-                    scene=sample.scene,
-                    motion_category=sample.motion_category,
-                )
+            sample_score = SampleScore(
+                sample_id=sample.sample_id,
+                suite=sample.suite,
+                metrics=metrics,
+                path=sample.path,
+                prediction_path=str(prediction_path),
+                input_fingerprint=input_fingerprint,
+                style=sample.style,
+                environment=sample.environment,
+                scene=sample.scene,
+                motion_category=sample.motion_category,
             )
-            if checkpoint_path is not None and not sample_score_failed(sample_scores[-1].to_dict()):
-                append_sample_checkpoint(checkpoint_path, sample_scores[-1].to_dict())
+            if checkpoint_path is not None and not sample_score_failed(sample_score.to_dict()):
+                append_sample_checkpoint(checkpoint_path, sample_score.to_dict())
+            status_counts[sample_status] += 1
+            sample_scores.append(sample_score)
             elapsed_s = time.perf_counter() - job_started_at
             done = status_counts["ok"] + status_counts["skip"] + status_counts["fail"]
             log_progress(

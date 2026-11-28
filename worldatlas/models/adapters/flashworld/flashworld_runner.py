@@ -530,15 +530,15 @@ def main() -> None:
             str(args.video_fps),
         ]
         command.extend(["--ckpt", str(checkpoint_path)])
-        for flag_name in (
-            "offload_t5",
-            "offload_vae",
-            "offload_transformer_during_vae",
-            "export_ply",
-            "export_spz",
+        for flag_name, cli_flag in (
+            ("offload_t5", "--offload_t5"),
+            ("offload_vae", "--offload_vae"),
+            ("offload_transformer_during_vae", "--offload_transformer_during_vae"),
+            ("export_ply", "--ply"),
+            ("export_spz", "--spz"),
         ):
             if getattr(args, flag_name):
-                command.append(f"--{flag_name}")
+                command.append(cli_flag)
 
         env = flashworld_runtime_env(apply_checkpoint_env())
         env[FLASHWORLD_WAN_DIFFUSERS_ENV] = str(

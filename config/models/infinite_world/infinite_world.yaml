@@ -54,7 +54,6 @@ model:
           - camera_left
       frames_per_action: 16
   env:
-    WORLDATLAS_CHECKPOINT_ROOT: ckpt
     HF_HOME: ckpt/huggingface
     HUGGINGFACE_HUB_CACHE: ckpt/huggingface/hub
     TORCH_HOME: ckpt/torch

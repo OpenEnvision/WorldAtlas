@@ -236,6 +236,7 @@ MEMORY_TRACK_MODELS: dict[str, MemoryModelSpec] = {
             # 1 + 23 * 80 = 1841 frames = 61.4 s at 30 fps, then trimmed to 60 s.
             "num_chunks": 23,
             "target_duration_sec": 60,
+            "memory_action_duration_seconds": 60,
             "action_source": "camera_path",
         },
         notes=(

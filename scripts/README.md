@@ -8,6 +8,7 @@ Small helpers around the `worldatlas` CLI. Most workflows use the CLI directly; 
 | [`checkout_dependencies.py`](checkout_dependencies.py) | Fetch pinned source revisions and apply recorded runtime patches |
 | [`download_metric_checkpoints.sh`](download_metric_checkpoints.sh) | Download benchmark metric weights into `ckpt/` |
 | [`run_eval_shards.py`](run_eval_shards.py) | Multi-GPU sharded `worldatlas evaluate` |
+| [`run_megasam_video.py`](run_megasam_video.py) | Three-stage MegaSAM camera tracking wrapper invoked by `camera_error` |
 
 ```bash
 python scripts/check_installation.py

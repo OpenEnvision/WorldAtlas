@@ -5,7 +5,7 @@ recursive-include requirements *.txt
 include scripts/README.md
 include scripts/check_installation.py scripts/checkout_dependencies.py
 include scripts/download_metric_checkpoints.sh
-include scripts/run_eval_shards.py
+include scripts/run_eval_shards.py scripts/run_megasam_video.py
 include thirdparty/README.md thirdparty/sources.lock.json
 recursive-include thirdparty/patches *.patch *.md
 recursive-include thirdparty/patches/licenses *

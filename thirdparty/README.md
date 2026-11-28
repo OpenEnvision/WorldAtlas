@@ -81,6 +81,7 @@ These sources support evaluation or are shared by the retained adapters.
 | `VFIMamba` | [MCG-NJU/VFIMamba](https://github.com/MCG-NJU/VFIMamba.git) |
 | `Video-Depth-Anything` | [DepthAnything/Video-Depth-Anything](https://github.com/DepthAnything/Video-Depth-Anything.git) |
 | `flash-attention` | [Dao-AILab/flash-attention](https://github.com/Dao-AILab/flash-attention.git) |
+| `mega-sam` | [mega-sam/mega-sam](https://github.com/mega-sam/mega-sam.git) |
 | `met3r` | [mohammadasim98/met3r](https://github.com/mohammadasim98/met3r.git) |
 | `sam2` | [haoyi-duan/sam2](https://github.com/haoyi-duan/sam2.git) |
 | `tapnet` | [google-deepmind/tapnet](https://github.com/google-deepmind/tapnet) |

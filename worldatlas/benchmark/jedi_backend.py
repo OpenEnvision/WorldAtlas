@@ -384,13 +384,15 @@ def _extract_jedi_side(
         devices=",".join(str(device) for device in device_ids[: len(partitions)]),
         shards=len(partitions),
     )
+    shard_spec = spec.describe()
+    shard_spec["min_clip_count"] = 1
     payloads = []
     for index, part in enumerate(partitions):
         payloads.append(
             {
                 "device": _cuda_visible_for_local_index(device_ids[index]),
                 "entries": [(str(path), identifier) for path, identifier in part],
-                "spec": spec.describe(),
+                "spec": dict(shard_spec),
                 "runtime": {key: value for key, value in runtime.items() if key != "device_ids"},
                 "label": label,
                 "feature_npy": str(work_dir / f"{label}_shard{index}.npy"),
@@ -412,6 +414,11 @@ def _extract_jedi_side(
         candidate_video_count=len(entries),
         source_fps=[value for item in finished for value in item.get("source_fps_observed") or []],
     )
+    if report.clip_count < spec.min_clip_count:
+        raise ValueError(
+            f"{label} side produced {report.clip_count} clips, fewer than min_clip_count="
+            f"{spec.min_clip_count}"
+        )
     return features, report, "sharded_per_video"
 
 

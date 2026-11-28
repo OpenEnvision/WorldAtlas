@@ -213,7 +213,10 @@ def _action_sidecar_paths(prediction_path: Path) -> list[Path]:
 def _generation_record_index(root_raw: str) -> dict[str, dict[str, Any]]:
     root = Path(root_raw)
     index: dict[str, dict[str, Any]] = {}
-    for path in sorted(root.glob("generation_records*.jsonl")):
+    for path in sorted(
+        root.glob("generation_records*.jsonl"),
+        key=lambda item: (".archive." in item.name, item.name),
+    ):
         try:
             handle = path.open("r", encoding="utf-8")
         except OSError:
@@ -227,6 +230,8 @@ def _generation_record_index(root_raw: str) -> dict[str, dict[str, Any]]:
                 except json.JSONDecodeError:
                     continue
                 if not isinstance(payload, dict):
+                    continue
+                if payload.get("status") in {"skipped_existing", "failed", "pending"}:
                     continue
                 sample_id = str(payload.get("sample_id") or "").strip()
                 if sample_id:
@@ -242,6 +247,10 @@ def _action_payload_for_prediction(
     prediction_path: Path,
 ) -> tuple[dict[str, Any] | None, str | None]:
     from worldatlas.benchmark.camera_video_identity import POLICY as CAMERA_POLICY, validate_intent
+    from worldatlas.benchmark.generation_records import (
+        _find_generation_record,
+        _load_action_payload,
+    )
 
     if sample.sample_id_policy == CAMERA_POLICY:
         validate_intent(sample)
@@ -253,8 +262,10 @@ def _action_payload_for_prediction(
             if payload is not None:
                 return payload, str(path)
 
-    records = _generation_record_index(str(_prediction_root(prediction_path)))
-    record = records.get(sample.sample_id) or records.get(prediction_path.stem)
+    record = _find_generation_record(sample, prediction_path)
+    if record is None and not getattr(sample, "sample_id_policy", None):
+        records = _generation_record_index(str(_prediction_root(prediction_path)))
+        record = records.get(sample.sample_id) or records.get(prediction_path.stem)
     if record is None:
         return None, None
 
@@ -264,6 +275,13 @@ def _action_payload_for_prediction(
         for key, value in record.items():
             payload.setdefault(key, value)
         return payload, "generation_records.action_alignment"
+    action_payload = _load_action_payload(record, prediction_path)
+    if isinstance(action_payload, dict):
+        payload = dict(action_payload)
+        for key, value in record.items():
+            payload.setdefault(key, value)
+        source = str(record.get("action_spec_path") or "generation_records.action_payload")
+        return payload, source
     return record, "generation_records"
 
 
@@ -449,8 +467,18 @@ def _camera_token_intent(token: str, *, source: str = "camera_path") -> NativeMo
 def _action_components(action: str) -> set[str]:
     normalized = _sanitize_token(action)
     replacements = {
+        "camera_up_left": "camera_up+camera_l",
+        "camera_up_right": "camera_up+camera_r",
+        "camera_down_left": "camera_down+camera_l",
+        "camera_down_right": "camera_down+camera_r",
         "camera_left": "camera_l",
         "camera_right": "camera_r",
+        "turn_left": "camera_l",
+        "turn_right": "camera_r",
+        "look_up": "camera_up",
+        "look_down": "camera_down",
+        "turn_up": "camera_up",
+        "turn_down": "camera_down",
         "left_rot": "camera_l",
         "right_rot": "camera_r",
         "up_rot": "camera_up",

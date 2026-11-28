@@ -40,7 +40,6 @@ model:
     increment_seed: true
     continue_on_error: true
   env:
-    WORLDATLAS_CHECKPOINT_ROOT: ckpt/
     HF_HUB_OFFLINE: '1'
     TRANSFORMERS_OFFLINE: '1'
   metadata:

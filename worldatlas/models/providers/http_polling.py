@@ -45,7 +45,13 @@ def _extract_path(payload: Any, path: str | None) -> Any:
         if not token:
             continue
         if isinstance(current, list):
-            current = current[int(token)]
+            try:
+                index = int(token)
+            except ValueError:
+                return None
+            if index < -len(current) or index >= len(current):
+                return None
+            current = current[index]
             continue
         if not isinstance(current, Mapping):
             return None

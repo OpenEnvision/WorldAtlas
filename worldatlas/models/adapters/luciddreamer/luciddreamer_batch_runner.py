@@ -19,6 +19,7 @@ from typing import Any
 import numpy as np
 
 from worldatlas.benchmark.synthetic_camera import synthetic_camera_matrices
+from worldatlas.common.checkpoints import resolve_checkpoint_path, resolve_project_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -140,7 +141,36 @@ def _prepare_repo(repo_root: Path) -> None:
         sys.path.insert(0, repo_text)
 
 
-def _patch_diffusers_local_paths(repo_root: Path) -> None:
+def _resolve_local_inpaint_model(model_name: str | None) -> Path | None:
+    token = _optional_text(model_name)
+    if token is None:
+        return None
+    candidate = resolve_checkpoint_path(token, kind="dir", required=False)
+    if candidate is None or not candidate.is_dir():
+        candidate = resolve_project_path(token)
+    if candidate is None or not candidate.is_dir():
+        return None
+    model_index = candidate / "model_index.json"
+    if not model_index.is_file():
+        return None
+    try:
+        payload = json.loads(model_index.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if payload.get("_class_name") == "StableDiffusionInpaintPipeline":
+        return candidate.resolve()
+    return None
+
+
+def _has_fp16_variant(model_dir: Path) -> bool:
+    return (model_dir / "unet" / "diffusion_pytorch_model.fp16.safetensors").is_file()
+
+
+def _patch_diffusers_local_paths(
+    repo_root: Path,
+    *,
+    default_inpaint_dir: Path | None = None,
+) -> None:
     from diffusers import (
         ControlNetModel,
         StableDiffusionControlNetInpaintPipeline,
@@ -148,10 +178,15 @@ def _patch_diffusers_local_paths(repo_root: Path) -> None:
         StableDiffusionPipeline,
     )
 
+    sd_inpaint_dir = (
+        default_inpaint_dir
+        if default_inpaint_dir is not None and default_inpaint_dir.exists()
+        else repo_root / "stablediffusion" / "SD1-5"
+    )
     aliases = {
-        "runwayml/stable-diffusion-inpainting": repo_root / "stablediffusion" / "SD1-5",
-        "stablediffusion/SD1-5": repo_root / "stablediffusion" / "SD1-5",
-        "./stablediffusion/SD1-5": repo_root / "stablediffusion" / "SD1-5",
+        "runwayml/stable-diffusion-inpainting": sd_inpaint_dir,
+        "stablediffusion/SD1-5": sd_inpaint_dir,
+        "./stablediffusion/SD1-5": sd_inpaint_dir,
         "lllyasviel/control_v11p_sd15_inpaint": repo_root
         / "stablediffusion"
         / "control_v11p_sd15_inpaint",
@@ -165,7 +200,10 @@ def _patch_diffusers_local_paths(repo_root: Path) -> None:
                 pretrained_model_name_or_path = str(local_path)
                 kwargs.pop("revision", None)
                 kwargs.setdefault("use_safetensors", True)
-                kwargs.setdefault("variant", "fp16")
+                if _has_fp16_variant(local_path):
+                    kwargs.setdefault("variant", "fp16")
+                else:
+                    kwargs.pop("variant", None)
             return original(pretrained_model_name_or_path, *args, **kwargs)
 
         return classmethod(_from_pretrained)
@@ -298,6 +336,29 @@ def _generate_one(lucid: Any, item: dict[str, Any]) -> dict[str, Any]:
     diff_steps = int(item.get("diff_steps", 50))
     input_size = int(item.get("input_size", 512))
     model_name = _optional_text(item.get("model_name"))
+    local_inpaint_dir = _resolve_local_inpaint_model(model_name)
+    effective_model_name = model_name
+    if local_inpaint_dir is not None:
+        loaded_inpaint_dir = getattr(lucid, "_worldatlas_inpaint_dir", None)
+        if loaded_inpaint_dir != local_inpaint_dir:
+            import torch
+            from diffusers import StableDiffusionInpaintPipeline
+
+            load_kwargs: dict[str, Any] = {
+                "torch_dtype": torch.float16,
+                "use_safetensors": True,
+            }
+            if _has_fp16_variant(local_inpaint_dir):
+                load_kwargs["variant"] = "fp16"
+            lucid.controlnet = None
+            lucid.lama = None
+            lucid.rgb_model = StableDiffusionInpaintPipeline.from_pretrained(
+                str(local_inpaint_dir),
+                **load_kwargs,
+            ).to("cuda")
+            lucid.current_model = lucid.default_model
+            lucid._worldatlas_inpaint_dir = local_inpaint_dir
+        effective_model_name = None
     min_seconds = float(item.get("min_seconds", 5.0))
     camera_path_frames = int(item.get("camera_path_frames", 300))
     camera_path_translation_scale = float(item.get("camera_path_translation_scale", 1.0))
@@ -318,7 +379,7 @@ def _generate_one(lucid: Any, item: dict[str, Any]) -> dict[str, Any]:
             campath_gen,
             seed,
             diff_steps,
-            model_name=model_name,
+            model_name=effective_model_name,
         )
         if campath_render_source == "worldatlas_camera_path":
             _install_worldatlas_camera_path(
@@ -366,7 +427,15 @@ def main() -> None:
 
     _prepare_repo(repo_root)
     requests = _load_requests(requests_path)
-    _patch_diffusers_local_paths(repo_root)
+    default_inpaint_dir = next(
+        (
+            resolved
+            for item in requests
+            if (resolved := _resolve_local_inpaint_model(item.get("model_name"))) is not None
+        ),
+        None,
+    )
+    _patch_diffusers_local_paths(repo_root, default_inpaint_dir=default_inpaint_dir)
 
     from luciddreamer import LucidDreamer
 
@@ -374,6 +443,8 @@ def main() -> None:
         f"[luciddreamer-batch] loading LucidDreamer once for {len(requests)} requests", flush=True
     )
     lucid = LucidDreamer(for_gradio=False, save_dir=None)
+    if default_inpaint_dir is not None:
+        lucid._worldatlas_inpaint_dir = default_inpaint_dir
     print("[luciddreamer-batch] LucidDreamer loaded", flush=True)
 
     with results_path.open("w", encoding="utf-8") as results_file:

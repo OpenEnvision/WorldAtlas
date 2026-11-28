@@ -13,6 +13,7 @@ from the project root; repeating the command recognizes an already applied patch
 | Matrix-Game-3.5 | Preserve the generated output duration |
 | SolarWM-H3 | Stage and verify rollout latents before the decode phase |
 | FVMD-frechet-video-motion-distance | Support current Matplotlib colormap APIs |
+| mega-sam | Add `--device` selection for UniDepth and Hopper (`sm_90`) NVCC targets for `base` |
 
 Upstream license and notice files remain in the fetched checkout. These patches
 do not include internal regression tests or generated model outputs. Applying a

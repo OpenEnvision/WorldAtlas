@@ -357,6 +357,7 @@ def _build_fixed_length_action_payload(
     mouse_step: float,
     default_frames_per_action: int,
     pulse_period_frames: dict[str, int] | None = None,
+    segment_frame_counts: list[int] | None = None,
 ) -> dict[str, Any]:
     action_plan = dict(config.get("action_plan", {}))
     actions = _action_plan(config, suite)
@@ -370,11 +371,18 @@ def _build_fixed_length_action_payload(
 
     keyboard_rows: list[np.ndarray] = []
     mouse_rows: list[np.ndarray] = []
-    for action in actions:
+    for index, action in enumerate(actions):
+        segment_frames = (
+            segment_frame_counts[index]
+            if segment_frame_counts is not None and index < len(segment_frame_counts)
+            else frames_per_action
+        )
+        if segment_frames <= 0:
+            continue
         tokens = _expand_action_tokens(action, known_tokens)
         segment_keyboard, segment_mouse = _segment_rows(
             tokens=tokens,
-            frames=frames_per_action,
+            frames=segment_frames,
             keyboard_idx=keyboard_idx,
             mouse_enabled=mouse_enabled,
             camera_map=camera_map,
@@ -474,9 +482,15 @@ def _matrix_game_2_worldatlas_prompt_payload(
     if sample is None:
         raise ValueError("Matrix-Game-2 worldatlas_prompt action_source requires a BenchmarkSample")
 
+    from worldatlas.benchmark.memory_duration import sample_action_timeline
+
     camera_tokens, matrix_actions, control_source = _worldatlas_matrix_game_actions(sample)
     prompt_config = dict(config)
     frames_per_action = max(math.ceil(total_frames / max(len(matrix_actions), 1)), 1)
+    timeline = sample_action_timeline(list(range(len(matrix_actions))), total_frames)
+    segment_frame_counts = [0] * len(matrix_actions)
+    for action_index in timeline:
+        segment_frame_counts[action_index] += 1
     prompt_config["action_plan"] = {
         "default": matrix_actions,
         "by_suite": {suite: matrix_actions},
@@ -491,6 +505,7 @@ def _matrix_game_2_worldatlas_prompt_payload(
         mouse_enabled=bool(spec["mouse_enabled"]),
         mouse_step=float(spec["mouse_step"]),
         default_frames_per_action=total_frames,
+        segment_frame_counts=segment_frame_counts,
     )
     payload.update(
         {

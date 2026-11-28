@@ -44,7 +44,6 @@ model:
     continue_on_error: true
     run_refiner: false
   env:
-    WORLDATLAS_CHECKPOINT_ROOT: ckpt
     DIFFUSERS_ATTN_BACKEND: _native_flash
     LINGBOT_QWEN_ATTN_IMPLEMENTATION: sdpa
   metadata:

@@ -68,17 +68,23 @@ def prepare(root: Path, name: str, source: dict, *, check_only: bool) -> None:
             raise ValueError(f"{name}: patch must be inside the release tree")
         if hashlib.sha256(patch_path.read_bytes()).hexdigest() != patch["sha256"]:
             raise ValueError(f"{name}: patch checksum mismatch: {patch_path.name}")
+        target_dir = destination
+        subdir = patch.get("subdir")
+        if subdir:
+            target_dir = (destination / subdir).resolve()
+            if not target_dir.is_relative_to(destination.resolve()):
+                raise ValueError(f"{name}: patch subdir must be inside checkout: {subdir}")
         if (
             git(
-                destination, "apply", "--reverse", "--check", str(patch_path), check=False
+                target_dir, "apply", "--reverse", "--check", str(patch_path), check=False
             ).returncode
             == 0
         ):
             continue
         if check_only:
             raise RuntimeError(f"{name}: runtime patch is missing: {patch_path.name}")
-        git(destination, "apply", "--check", str(patch_path))
-        git(destination, "apply", str(patch_path))
+        git(target_dir, "apply", "--check", str(patch_path))
+        git(target_dir, "apply", str(patch_path))
     print(f"{name}: {revision} (source and patches ready)", flush=True)
 
 

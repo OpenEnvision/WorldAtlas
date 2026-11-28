@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from worldatlas.benchmark.long_sequence_assets import inspect_long_sequence_layout
+from worldatlas.benchmark.metric_errors import MetricLoadError
+from worldatlas.benchmark.runtime_health import CudaContextError
 from worldatlas.common.checkpoints import apply_checkpoint_env, filter_checkpoint_env_overrides
 from worldatlas.common.progress import run_progress_subprocess
 
@@ -189,8 +191,14 @@ def _run_local_long_sequence(
     runtime: dict[str, Any] | None,
 ) -> dict[str, Any]:
     layout = inspect_long_sequence_layout()
-    if not layout["ready"]:
-        raise FileNotFoundError(str(layout["error"]))
+    requested_metrics = set(metric_names)
+    missing_assets: list[str] = []
+    if "long_sequence_motion_smoothness" in requested_metrics and not layout["amt_ready"]:
+        missing_assets.append(f"AMT sources missing under {layout['amt_root']}")
+    if "long_sequence_dynamic_degree" in requested_metrics and not layout["raft_ready"]:
+        missing_assets.append(f"RAFT sources missing under {layout['raft_root']}")
+    if missing_assets:
+        raise FileNotFoundError("; ".join(missing_assets))
 
     source_path = Path(video_path).expanduser().resolve()
     if not source_path.exists():
@@ -229,6 +237,9 @@ def _run_local_long_sequence(
             static_filter_flag=False,
             num_of_samples_per_prompt=1,
             musiq_model_path=(runtime or {}).get("musiq_model_path"),
+            amt_checkpoint_path=(runtime or {}).get("amt_checkpoint_path"),
+            amt_config_path=(runtime or {}).get("amt_config_path"),
+            raft_model_path=(runtime or {}).get("raft_model_path"),
         )
         metrics: dict[str, float | None] = {}
         metric_details: dict[str, dict[str, Any]] = {}
@@ -313,13 +324,17 @@ def _maybe_run_in_subprocess(
         request_path.unlink(missing_ok=True)
         response_path.unlink(missing_ok=True)
     if not bool(response.get("ok")):
+        error_type = str(response.get("error_type") or "")
         error = str(response.get("error") or "Long-sequence runtime subprocess failed")
         traceback_text = str(response.get("traceback") or "").strip()
         stderr = str(response.get("stderr") or "").strip()
         stdout = str(response.get("stdout") or "").strip()
-        raise RuntimeError(
-            " | ".join(part for part in (error, traceback_text, stderr, stdout) if part)
-        )
+        details = " | ".join(part for part in (error, traceback_text, stderr, stdout) if part)
+        if error_type == "MetricLoadError":
+            raise MetricLoadError(details)
+        if error_type == "CudaContextError":
+            raise CudaContextError(details)
+        raise RuntimeError(details)
     return dict(response["result"])
 
 

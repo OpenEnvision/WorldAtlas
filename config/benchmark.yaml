@@ -336,7 +336,7 @@ benchmark:
       frame_source: native_consecutive
       img_size: null  # Rasterization follows the aspect-preserving input dimensions.
     reconstruction_consistency:
-      model_name: depth-anything/DA3-GIANT-1.1
+      model_name: depth-anything/DA3-GIANT
       repo_root: thirdparty/Depth-Anything-3/src
       frame_source: wbench_fps
       fps: 3.0

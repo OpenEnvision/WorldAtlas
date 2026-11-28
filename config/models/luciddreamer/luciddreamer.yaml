@@ -34,5 +34,3 @@ model:
     prompt_prefix: ""
     prompt_suffix: ""
     keep_work_dir: false
-  env:
-    WORLDATLAS_CHECKPOINT_ROOT: ckpt

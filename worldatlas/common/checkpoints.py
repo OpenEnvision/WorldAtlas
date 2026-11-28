@@ -178,7 +178,13 @@ def resolve_checkpoint_path(
     required: bool = False,
 ) -> Path | None:
     """Resolve a path and require it to stay under an approved ckpt root."""
-    path = resolve_project_path(value)
+    if value is None:
+        return None
+    raw = Path(value).expanduser()
+    if not raw.is_absolute() and raw.parts and raw.parts[0] == "ckpt":
+        path = Path(os.path.abspath(str(checkpoint_root(create=False).joinpath(*raw.parts[1:]))))
+    else:
+        path = resolve_project_path(raw)
     if path is None:
         return None
     path_resolved = path.resolve(strict=False)

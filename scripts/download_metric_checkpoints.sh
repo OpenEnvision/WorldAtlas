@@ -10,6 +10,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CKPT="${WORLDATLAS_CHECKPOINT_ROOT:-$ROOT/ckpt}"
 export CKPT
+export HF_HOME="$CKPT/huggingface"
+export HUGGINGFACE_HUB_CACHE="$CKPT/huggingface/hub"
+export TRANSFORMERS_CACHE="$CKPT/huggingface/hub"
+export TORCH_HOME="$CKPT/torch"
 DOWNLOAD_HF_CACHE=0
 DOWNLOAD_ALL=0
 
@@ -34,12 +38,12 @@ for arg in "$@"; do
   esac
 done
 
-mkdir -p "$CKPT"/{Video-Depth-Anything,amt_model,raft_model/models,Pulse-of-Motion,musiq,official_metrics/models,HPSv3,JEDi,TRAJAN,TransNetV2,huggingface/hub,torch/hub/checkpoints}
+mkdir -p "$CKPT"/{Video-Depth-Anything-Small,amt_model,raft_model/models,Pulse-of-Motion,musiq,official_metrics/models,HPSv3,JEDi,TRAJAN,TransNetV2,huggingface/hub,torch/hub/checkpoints,torch/hub/clip}
 
 echo "[1/6] Core bundled-metric weights (depth / flow / long-sequence / pulse / MUSIQ)..."
 
-wget -q -O "$CKPT/Video-Depth-Anything/metric_video_depth_anything_vits.pth" \
-  https://huggingface.co/depth-anything/Metric-Video-Depth-Anything-Small/resolve/main/metric_video_depth_anything_vits.pth
+wget -q -O "$CKPT/Video-Depth-Anything-Small/video_depth_anything_vits.pth" \
+  https://huggingface.co/depth-anything/Video-Depth-Anything-Small/resolve/main/video_depth_anything_vits.pth
 
 wget -q -O "$CKPT/amt_model/amt-s.pth" \
   https://huggingface.co/lalala125/AMT/resolve/main/amt-s.pth
@@ -68,7 +72,7 @@ PY
 wget -q -O "$CKPT/musiq/musiq_spaq_ckpt-358bb6af.pth" \
   https://github.com/chaofengc/IQA-PyTorch/releases/download/v0.1-weights/musiq_spaq_ckpt-358bb6af.pth
 
-echo "[2/6] Official metric runtime weights (DROID / GroundingDINO / SAM / SEA-RAFT / VFIMamba)..."
+echo "[2/6] Official metric runtime weights (DROID / MegaSAM / GroundingDINO / SAM / SEA-RAFT / VFIMamba / LPIPS / CLIP)..."
 
 wget -q -O "$CKPT/official_metrics/groundingdino_swint_ogc.pth" \
   https://github.com/IDEA-Research/GroundingDINO/releases/download/v0.1.0-alpha/groundingdino_swint_ogc.pth
@@ -104,13 +108,23 @@ print(tartan_src)
 print(vfimamba_src)
 PY
 
+wget -q -O "$CKPT/official_metrics/alexnet-owt-7be5be79.pth" \
+  https://download.pytorch.org/models/alexnet-owt-7be5be79.pth
+
 wget -q -O "$CKPT/official_metrics/sac+logos+ava1-l14-linearMSE.pth" \
   https://github.com/christophschuhmann/improved-aesthetic-predictor/raw/main/sac%2Blogos%2Bava1-l14-linearMSE.pth
 
+wget -q -O "$CKPT/torch/hub/clip/ViT-L-14.pt" \
+  https://openaipublic.azureedge.net/clip/models/b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836/ViT-L-14.pt
+
+python "$ROOT/scripts/checkout_dependencies.py" mega-sam
+mkdir -p "$ROOT/thirdparty/mega-sam/Depth-Anything/checkpoints"
+wget -q -O "$ROOT/thirdparty/mega-sam/Depth-Anything/checkpoints/depth_anything_vitl14.pth" \
+  https://huggingface.co/spaces/LiheYoung/Depth-Anything/resolve/main/checkpoints/depth_anything_vitl14.pth
+
 if command -v huggingface-cli >/dev/null 2>&1; then
-  export HF_HOME="$CKPT/huggingface"
-  export HUGGINGFACE_HUB_CACHE="$CKPT/huggingface/hub"
   huggingface-cli download google-bert/bert-base-uncased --local-dir "$CKPT/official_metrics/bert-base-uncased"
+  huggingface-cli download lpiccinelli/unidepth-v2-vitl14 --revision 1d0d3c52f60b5164629d279bb9a7546458e6dcc4
 else
   python - <<PY
 from huggingface_hub import snapshot_download
@@ -118,6 +132,10 @@ import os
 snapshot_download(
     repo_id="google-bert/bert-base-uncased",
     local_dir=os.path.join(os.environ["CKPT"], "official_metrics", "bert-base-uncased"),
+)
+snapshot_download(
+    repo_id="lpiccinelli/unidepth-v2-vitl14",
+    revision="1d0d3c52f60b5164629d279bb9a7546458e6dcc4",
 )
 PY
 fi
@@ -150,8 +168,6 @@ PY
   fi
 
   if command -v huggingface-cli >/dev/null 2>&1; then
-    export HF_HOME="$CKPT/huggingface"
-    export HUGGINGFACE_HUB_CACHE="$CKPT/huggingface/hub"
     huggingface-cli download Qwen/Qwen2-VL-7B-Instruct --local-dir "$CKPT/Qwen2-VL-7B-Instruct"
   else
     python - <<PY
@@ -165,17 +181,8 @@ PY
   fi
 
   echo "[4/6] FVMD, JEDi, and TRAJAN official metric runtimes..."
-  if [[ ! -d "$ROOT/thirdparty/FVMD-frechet-video-motion-distance/fvmd" ]]; then
-    git clone --depth 1 \
-      https://github.com/DSL-Lab/FVMD-frechet-video-motion-distance \
-      "$ROOT/thirdparty/FVMD-frechet-video-motion-distance"
-  fi
-  if [[ ! -d "$ROOT/thirdparty/JEDi/videojedi" ]]; then
-    git clone --depth 1 https://github.com/oooolga/JEDi "$ROOT/thirdparty/JEDi"
-  fi
-  if [[ ! -d "$ROOT/thirdparty/tapnet/tapnet/trajan" ]]; then
-    git clone --depth 1 https://github.com/google-deepmind/tapnet "$ROOT/thirdparty/tapnet"
-  fi
+  python "$ROOT/scripts/checkout_dependencies.py" \
+    FVMD-frechet-video-motion-distance JEDi tapnet
 
   wget -q -O "$CKPT/torch/hub/checkpoints/pips2_weights.pth" \
     https://github.com/ljh0v0/FVMD-frechet-video-motion-distance/releases/download/pips2_weights/pips2_weights.pth
@@ -213,17 +220,14 @@ fi
 
 if [[ "$DOWNLOAD_HF_CACHE" == "1" ]]; then
   echo "[6/6] Hugging Face / Torch caches..."
-  export HF_HOME="$CKPT/huggingface"
-  export HUGGINGFACE_HUB_CACHE="$CKPT/huggingface/hub"
-  export TRANSFORMERS_CACHE="$CKPT/huggingface/hub"
-  export TORCH_HOME="$CKPT/torch"
 
   if command -v huggingface-cli >/dev/null 2>&1; then
     huggingface-cli download openai/clip-vit-base-patch16
+    huggingface-cli download openai/clip-vit-base-patch32 --local-dir "$CKPT/openai--clip-vit-base-patch32"
     huggingface-cli download facebook/dinov2-base
     huggingface-cli download depth-anything/Depth-Anything-V2-Small-hf
     huggingface-cli download depth-anything/DA3-GIANT --local-dir "$CKPT/DA3-GIANT"
-    huggingface-cli download naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric
+    huggingface-cli download naver/DUSt3R_ViTLarge_BaseDecoder_512_dpt
   else
     python - <<PY
 from huggingface_hub import snapshot_download
@@ -234,15 +238,30 @@ for repo in (
     "openai/clip-vit-base-patch16",
     "facebook/dinov2-base",
     "depth-anything/Depth-Anything-V2-Small-hf",
-    "naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric",
+    "naver/DUSt3R_ViTLarge_BaseDecoder_512_dpt",
 ):
     snapshot_download(repo_id=repo)
+snapshot_download(
+    repo_id="openai/clip-vit-base-patch32",
+    local_dir=f"{root}/openai--clip-vit-base-patch32",
+)
 snapshot_download(
     repo_id="depth-anything/DA3-GIANT",
     local_dir=f"{root}/DA3-GIANT",
 )
 PY
   fi
+
+  if [[ ! -d "$CKPT/mhamilton723--FeatUp/featup" ]]; then
+    mkdir -p "$CKPT/mhamilton723--FeatUp"
+    git -C "$CKPT/mhamilton723--FeatUp" init -q
+    git -C "$CKPT/mhamilton723--FeatUp" remote add origin https://github.com/mhamilton723/FeatUp.git
+    git -C "$CKPT/mhamilton723--FeatUp" fetch --depth 1 origin 6b5a6c0e91f75e69194807128dcbc39c3084a30d
+    git -C "$CKPT/mhamilton723--FeatUp" checkout --detach FETCH_HEAD
+  fi
+
+  wget -q -O "$CKPT/torch/hub/checkpoints/dino16_jbu_stack_cocostuff.ckpt" \
+    https://marhamilresearch4.blob.core.windows.net/feature-upsampling-public/pretrained/dino16_jbu_stack_cocostuff.ckpt
 
   python - <<PY
 import os

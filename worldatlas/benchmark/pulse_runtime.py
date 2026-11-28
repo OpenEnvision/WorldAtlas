@@ -17,6 +17,8 @@ from typing import Any
 import cv2
 import numpy as np
 
+from worldatlas.benchmark.metric_errors import MetricLoadError
+from worldatlas.benchmark.runtime_health import CudaContextError
 from worldatlas.common.checkpoints import (
     apply_checkpoint_env,
     checkpoint_path,
@@ -242,13 +244,17 @@ def _maybe_run_in_subprocess(
     request_path.unlink(missing_ok=True)
     response_path.unlink(missing_ok=True)
     if not bool(response.get("ok")):
+        error_type = str(response.get("error_type") or "")
         error = str(response.get("error") or "pulse runtime subprocess failed")
         traceback_text = str(response.get("traceback") or "").strip()
         stdout = str(response.get("stdout") or "").strip()
         stderr = str(response.get("stderr") or "").strip()
-        raise RuntimeError(
-            " | ".join(part for part in (error, traceback_text, stderr, stdout) if part)
-        )
+        details = " | ".join(part for part in (error, traceback_text, stderr, stdout) if part)
+        if error_type == "MetricLoadError":
+            raise MetricLoadError(details)
+        if error_type == "CudaContextError":
+            raise CudaContextError(details)
+        raise RuntimeError(details)
     return dict(response["result"])
 
 

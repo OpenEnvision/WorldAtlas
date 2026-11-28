@@ -275,7 +275,30 @@ def materialize_local_tree(src: Path, *, kind: str, dest_name: str | None = None
                 or _tree_content_digest(src) != source_digest
             ):
                 raise OSError("Checkpoint tree changed or was corrupted during local copy")
-            os.replace(temporary, dest)
+            stale: Path | None = None
+            if dest.exists() or dest.is_symlink():
+                stale = dest.with_name(f".{dest.name}.{os.getpid()}.stale")
+                if stale.exists() or stale.is_symlink():
+                    if stale.is_dir() and not stale.is_symlink():
+                        shutil.rmtree(stale)
+                    else:
+                        stale.unlink()
+                os.replace(dest, stale)
+            try:
+                os.replace(temporary, dest)
+            except Exception:
+                if (
+                    stale is not None
+                    and (stale.exists() or stale.is_symlink())
+                    and not dest.exists()
+                ):
+                    os.replace(stale, dest)
+                raise
+            if stale is not None and (stale.exists() or stale.is_symlink()):
+                if stale.is_dir() and not stale.is_symlink():
+                    shutil.rmtree(stale, ignore_errors=True)
+                else:
+                    stale.unlink(missing_ok=True)
         except Exception:
             if temporary.exists():
                 shutil.rmtree(temporary, ignore_errors=True)
@@ -363,15 +386,27 @@ def depth_anything_checkpoint_path(mega_root: Path | None = None) -> Path:
     return root / "Depth-Anything" / "checkpoints" / "depth_anything_vitl14.pth"
 
 
-def required_megasam_paths() -> list[tuple[str, Path]]:
-    root = megasam_root()
-    hf_home = source_hf_home()
+def _resolve_megasam_hf_source(hf_home: Path | None = None) -> Path:
+    if hf_home is not None and _usable_file(unidepth_weight_path(hf_home)):
+        return hf_home
     localized_hf = os.environ.get("WORLDATLAS_MEGASAM_HF_HOME", "").strip()
-    unidepth = (
-        unidepth_weight_path(Path(localized_hf)) if localized_hf else unidepth_weight_path(hf_home)
-    )
-    if not _usable_file(unidepth):
-        unidepth = unidepth_weight_path(hf_home)
+    if localized_hf:
+        candidate = Path(localized_hf)
+        if _usable_file(unidepth_weight_path(candidate)):
+            return candidate
+    if hf_home is not None and _usable_file(unidepth_weight_path(source_hf_home())):
+        return source_hf_home()
+    return hf_home if hf_home is not None else source_hf_home()
+
+
+def required_megasam_paths(
+    *,
+    mega_root: Path | None = None,
+    hf_home: Path | None = None,
+) -> list[tuple[str, Path]]:
+    root = mega_root or megasam_root()
+    resolved_hf = _resolve_megasam_hf_source(hf_home)
+    unidepth = unidepth_weight_path(resolved_hf)
     return [
         ("thirdparty/mega-sam", root),
         ("megasam_final.pth", megasam_checkpoint_path(root)),
@@ -380,9 +415,13 @@ def required_megasam_paths() -> list[tuple[str, Path]]:
     ]
 
 
-def missing_megasam_paths() -> list[str]:
+def missing_megasam_paths(
+    *,
+    mega_root: Path | None = None,
+    hf_home: Path | None = None,
+) -> list[str]:
     missing: list[str] = []
-    for label, path in required_megasam_paths():
+    for label, path in required_megasam_paths(mega_root=mega_root, hf_home=hf_home):
         if path.is_dir():
             continue
         if _usable_file(path):
@@ -502,18 +541,23 @@ def prepare_sea_raft_checkpoint() -> dict[str, str]:
     return {"WORLDATLAS_SEA_RAFT_CHECKPOINT": str(dest)}
 
 
-def prepare_megasam_checkpoints() -> dict[str, str]:
-    missing = missing_megasam_paths()
+def prepare_megasam_checkpoints(
+    *,
+    mega_root: Path | None = None,
+    hf_home: Path | None = None,
+) -> dict[str, str]:
+    missing = missing_megasam_paths(mega_root=mega_root, hf_home=hf_home)
     if missing:
         raise MetricLoadError(
             "camera_error MegaSAM runtime is incomplete:\n  - "
             + "\n  - ".join(missing)
             + "\nRefusing to start so this job does not silently write per-sample N/A."
         )
-    root = megasam_root()
+    root = mega_root or megasam_root()
+    hf_source = _resolve_megasam_hf_source(hf_home)
     megasam_ckpt = materialize_local_file(megasam_checkpoint_path(root), kind=MEGASAM_KIND)
     depth_ckpt = materialize_local_file(depth_anything_checkpoint_path(root), kind=MEGASAM_KIND)
-    hub_src = unidepth_hub_dir(source_hf_home())
+    hub_src = unidepth_hub_dir(hf_source)
     hub_dest = materialize_local_tree(
         hub_src,
         kind=MEGASAM_KIND,
@@ -524,7 +568,7 @@ def prepare_megasam_checkpoints() -> dict[str, str]:
     if not _usable_file(weight):
         raise MetricLoadError(
             "UniDepth snapshot copy is unreadable after local materialize: "
-            f"{weight} (source={unidepth_weight_path(source_hf_home())})"
+            f"{weight} (source={unidepth_weight_path(hf_source)})"
         )
     return {
         "WORLDATLAS_MEGASAM_CHECKPOINT": str(megasam_ckpt),

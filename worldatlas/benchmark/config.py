@@ -9,7 +9,7 @@ from typing import Any
 
 import yaml
 
-from worldatlas.common.checkpoints import resolve_project_path
+from worldatlas.common.checkpoints import resolve_checkpoint_path, resolve_project_path
 from worldatlas.models.config import ModelRuntimeConfig
 
 
@@ -104,7 +104,10 @@ def _resolve_runtime_value(value: Any) -> Any:
         return {str(key): _resolve_runtime_value(item) for key, item in value.items()}
     if isinstance(value, list):
         return [_resolve_runtime_value(item) for item in value]
-    if isinstance(value, str) and value.startswith(("ckpt/", "./", "../", "/", "~")):
+    if isinstance(value, str) and (value == "ckpt" or value.startswith("ckpt/")):
+        resolved = resolve_checkpoint_path(value)
+        return str(resolved) if resolved is not None else value
+    if isinstance(value, str) and value.startswith(("./", "../", "/", "~")):
         resolved = resolve_project_path(value)
         return str(resolved) if resolved is not None else value
     return value

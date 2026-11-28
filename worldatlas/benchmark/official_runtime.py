@@ -32,6 +32,7 @@ from worldatlas.benchmark.local_checkpoints import (
     prepare_megasam_checkpoints,
 )
 from worldatlas.benchmark.metric_errors import MetricLoadError
+from worldatlas.benchmark.runtime_health import CudaContextError
 from worldatlas.common.checkpoints import (
     apply_checkpoint_env,
     checkpoint_env,
@@ -248,13 +249,16 @@ def metric_runtime_context() -> Iterator[MetricSourceLayout]:
         if path is not None
     ]
     inserted_paths.extend(_lietorch_build_paths(layout.lietorch_root))
+    unique_paths = list(dict.fromkeys(str(path) for path in inserted_paths))
     library_paths = [path for path in (_torch_library_path(),) if path is not None]
     previous_ld_library_path = os.environ.get("LD_LIBRARY_PATH")
+    pushed_paths: list[str] = []
     try:
         os.environ.update(env_updates)
         _prepend_env_path(os.environ, "LD_LIBRARY_PATH", library_paths)
-        for path in reversed(inserted_paths):
-            sys.path.insert(0, str(path))
+        for path_str in reversed(unique_paths):
+            sys.path.insert(0, path_str)
+            pushed_paths.append(path_str)
         os.chdir(PROJECT_ROOT)
         yield layout
     finally:
@@ -268,9 +272,8 @@ def metric_runtime_context() -> Iterator[MetricSourceLayout]:
             os.environ.pop("LD_LIBRARY_PATH", None)
         else:
             os.environ["LD_LIBRARY_PATH"] = previous_ld_library_path
-        for path in inserted_paths:
-            path_str = str(path)
-            while path_str in sys.path:
+        for path_str in pushed_paths:
+            if path_str in sys.path:
                 sys.path.remove(path_str)
 
 
@@ -392,6 +395,7 @@ def _maybe_run_metric_in_subprocess(
 
     response = json.loads(response_path.read_text(encoding="utf-8"))
     if not bool(response.get("ok")):
+        error_type = str(response.get("error_type") or "")
         error = str(
             response.get("error") or f"official runtime subprocess failed for {metric_name}"
         )
@@ -399,6 +403,10 @@ def _maybe_run_metric_in_subprocess(
         stderr = str(response.get("stderr") or "").strip()
         stdout = str(response.get("stdout") or "").strip()
         details = " | ".join(part for part in (error, traceback_text, stderr, stdout) if part)
+        if error_type == "MetricLoadError":
+            raise MetricLoadError(details)
+        if error_type == "CudaContextError":
+            raise CudaContextError(details)
         raise RuntimeError(details)
 
     if not _coerce_runtime_bool((runtime or {}).get("keep_ipc"), default=False):
@@ -499,11 +507,11 @@ def _configure_motion_accuracy_runtime(
     grounding_dino_device = _resolve_runtime_device(runtime.get("grounding_dino_device"))
     offload_video_to_cpu = _coerce_runtime_bool(
         runtime.get("sam2_offload_video_to_cpu"),
-        default=False,
+        default=True,
     )
     offload_state_to_cpu = _coerce_runtime_bool(
         runtime.get("sam2_offload_state_to_cpu"),
-        default=False,
+        default=True,
     )
 
     predictor = getattr(metric, "_predictor", None)
@@ -512,25 +520,24 @@ def _configure_motion_accuracy_runtime(
             predictor = predictor.to(sam2_device)
             metric._predictor = predictor
         details["sam2_device"] = str(predictor.device)
-        if offload_video_to_cpu or offload_state_to_cpu:
-            desired_offload = (offload_video_to_cpu, offload_state_to_cpu)
-            original_init_state = getattr(
-                predictor,
-                "_worldatlas_original_init_state",
-                predictor.init_state,
-            )
+        desired_offload = (offload_video_to_cpu, offload_state_to_cpu)
+        original_init_state = getattr(
+            predictor,
+            "_worldatlas_original_init_state",
+            predictor.init_state,
+        )
 
-            if getattr(predictor, "_worldatlas_offload_settings", None) != desired_offload:
+        if getattr(predictor, "_worldatlas_offload_settings", None) != desired_offload:
 
-                def wrapped_init_state(*args: Any, **kwargs: Any) -> Any:
-                    kwargs.setdefault("offload_video_to_cpu", offload_video_to_cpu)
-                    kwargs.setdefault("offload_state_to_cpu", offload_state_to_cpu)
-                    kwargs.setdefault("async_loading_frames", False)
-                    return original_init_state(*args, **kwargs)
+            def wrapped_init_state(*args: Any, **kwargs: Any) -> Any:
+                kwargs["offload_video_to_cpu"] = offload_video_to_cpu
+                kwargs["offload_state_to_cpu"] = offload_state_to_cpu
+                kwargs.setdefault("async_loading_frames", False)
+                return original_init_state(*args, **kwargs)
 
-                metric._predictor.init_state = wrapped_init_state
-                metric._predictor._worldatlas_original_init_state = original_init_state
-                metric._predictor._worldatlas_offload_settings = desired_offload
+            metric._predictor.init_state = wrapped_init_state
+            metric._predictor._worldatlas_original_init_state = original_init_state
+            metric._predictor._worldatlas_offload_settings = desired_offload
         details["sam2_offload_video_to_cpu"] = offload_video_to_cpu
         details["sam2_offload_state_to_cpu"] = offload_state_to_cpu
 
@@ -797,7 +804,7 @@ def _run_megasam_tracking(
     )
     already_localized = bool(os.environ.get("WORLDATLAS_MEGASAM_CHECKPOINT"))
     try:
-        local_assets = prepare_megasam_checkpoints()
+        local_assets = prepare_megasam_checkpoints(mega_root=mega_root, hf_home=hf_home)
     except MetricLoadError:
         raise
     except Exception as exc:
@@ -1639,7 +1646,7 @@ def compute_optical_flow_aepe(
     # correlation tensor larger than an 80 GiB GPU.
     frame_max_side = _aepe_frame_max_side(runtime)
     frame_paths = materialize_frame_paths(prediction_path, max_side=frame_max_side)
-    cache_instance = _coerce_runtime_bool((runtime or {}).get("cache_instance"), default=True)
+    cache_instance = _coerce_runtime_bool((runtime or {}).get("cache_instance"), default=False)
     batch_size = _aepe_batch_size(runtime)
     with metric_runtime_context():
         metric = _run_metric_instance("optical_flow_aepe", runtime=runtime)
@@ -1689,7 +1696,7 @@ def compute_motion_magnitude(
     frame_paths = materialize_frame_paths(prediction_path, max_side=frame_max_side)
     eval_width, eval_height = _first_frame_resolution(frame_paths)
     flow_pixel_scale = (source_width / eval_width, source_height / eval_height)
-    cache_instance = _coerce_runtime_bool((runtime or {}).get("cache_instance"), default=True)
+    cache_instance = _coerce_runtime_bool((runtime or {}).get("cache_instance"), default=False)
     with metric_runtime_context():
         metric = _run_metric_instance("motion_magnitude", runtime=runtime)
         try:
@@ -1738,7 +1745,7 @@ def compute_motion_smoothness(
     # several workers share a GPU. Match AEPE: default 1920, Hope/env override.
     frame_max_side = _motion_sm_frame_max_side(runtime)
     frame_paths = materialize_frame_paths(prediction_path, max_side=frame_max_side)
-    cache_instance = _coerce_runtime_bool((runtime or {}).get("cache_instance"), default=True)
+    cache_instance = _coerce_runtime_bool((runtime or {}).get("cache_instance"), default=False)
     with metric_runtime_context():
         metric = _run_metric_instance("motion_smoothness", runtime=runtime)
         try:

@@ -123,9 +123,10 @@ class CameraErrorMetric(BaseMetric):
                         self.droid = Droid(self._args)
                     self.droid.track(t, image, intrinsics=intrinsics)
 
-            traj_est, _ = self.droid.terminate(
+            terminated = self.droid.terminate(
                 image_stream(rendered_images, self._args.stride, self._args.calib)
             )
+            traj_est = terminated[0] if isinstance(terminated, tuple) else terminated
             cameras_pred = SE3(torch.as_tensor(traj_est)).matrix()
 
             to_blender = torch.diag(torch.tensor([-1.0, 1.0, 1.0, 1.0], device=cameras_pred.device))

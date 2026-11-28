@@ -23,6 +23,7 @@ from worldatlas.benchmark.annotations import (
     load_intrinsics_sequence,
 )
 from worldatlas.benchmark.schemas import BenchmarkSample
+from worldatlas.benchmark.synthetic_camera import synthetic_camera_matrices
 from worldatlas.common.annotation_index import split_annotation_reference
 from worldatlas.common.checkpoints import (
     project_root as worldatlas_project_root,
@@ -294,6 +295,7 @@ def _synthetic_pose_root(
     image_height: int,
 ) -> Path:
     camera_path = _camera_path_for_sample(sample) or ["fixed"]
+    pose_mode = "closed_loop" if sample.suite == "memory_loop" else "worldplay_delta"
     focal_scale = float(
         config.generation.get("trajectory_focal_scale", WORLDPLAY_DEFAULT_FOCAL_SCALE)
     )
@@ -302,6 +304,7 @@ def _synthetic_pose_root(
         "relative_path": sample.relative_path,
         "annotation_path": sample.annotation_path,
         "camera_path": camera_path,
+        "pose_mode": pose_mode,
         "latent_count": int(latent_count),
         "image_width": int(image_width),
         "image_height": int(image_height),
@@ -323,7 +326,13 @@ def _synthetic_pose_root(
             pass
 
     annotation_root.mkdir(parents=True, exist_ok=True)
-    poses = _synthetic_image_poses(camera_path, latent_count=latent_count)
+    if pose_mode == "closed_loop":
+        poses = synthetic_camera_matrices(
+            camera_path,
+            target_frames=max(int(latent_count), 1),
+        ).matrices
+    else:
+        poses = _synthetic_image_poses(camera_path, latent_count=latent_count)
     intrinsics = _synthetic_intrinsics_sequence(
         latent_count,
         image_width=image_width,

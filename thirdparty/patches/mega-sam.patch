@@ -1,0 +1,52 @@
+diff --git a/UniDepth/scripts/demo_mega-sam.py b/UniDepth/scripts/demo_mega-sam.py
+index 47f50bb..6299aa0 100644
+--- a/UniDepth/scripts/demo_mega-sam.py
++++ b/UniDepth/scripts/demo_mega-sam.py
+@@ -13,6 +13,14 @@ from unidepth.utils import colorize, image_grid
+ 
+ LONG_DIM = 640
+ 
++def resolve_device(device: str) -> torch.device:
++  device = (device or "auto").strip().lower()
++  if device == "auto":
++    device = "cuda" if torch.cuda.is_available() else "cpu"
++  if device.startswith("cuda") and not torch.cuda.is_available():
++    raise RuntimeError(f"requested UniDepth device {device!r}, but CUDA is not available")
++  return torch.device(device)
++
+ def demo(model, args):
+   outdir = args.outdir  # "./outputs"
+   # os.makedirs(outdir, exist_ok=True)
+@@ -27,7 +35,8 @@ def demo(model, args):
+ 
+   fovs = []
+   for img_path in tqdm.tqdm(img_path_list):
+-    rgb = np.array(Image.open(img_path))[..., :3]
++    with Image.open(img_path) as image:
++      rgb = np.array(image.convert("RGB"))
+     if rgb.shape[1] > rgb.shape[0]:
+       final_w, final_h = LONG_DIM, int(
+           round(LONG_DIM * rgb.shape[0] / rgb.shape[1])
+@@ -68,6 +77,12 @@ if __name__ == "__main__":
+   parser.add_argument("--img-path", type=str)
+   parser.add_argument("--outdir", type=str, default="./vis_depth")
+   parser.add_argument("--scene-name", type=str)
++  parser.add_argument(
++      "--device",
++      type=str,
++      default=os.environ.get("WORLDATLAS_MEGASAM_UNIDEPTH_DEVICE", "auto"),
++      help="UniDepth torch device, e.g. auto, cuda, cuda:0, or cpu.",
++  )
+ 
+   args = parser.parse_args()
+ 
+@@ -75,6 +90,7 @@ if __name__ == "__main__":
+   # model = UniDepthV1.from_pretrained("lpiccinelli/unidepth-v1-vitl14")
+   # model = UniDepthV2.from_pretrained("lpiccinelli/unidepth-v2-vitl14")
+   model = UniDepthV2.from_pretrained("lpiccinelli/unidepth-v2-vitl14", revision="1d0d3c52f60b5164629d279bb9a7546458e6dcc4")
+-  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+-  model = model.to(device)
++  device = resolve_device(args.device)
++  print("UniDepth device:", device)
++  model = model.to(device).eval()
+   demo(model, args)

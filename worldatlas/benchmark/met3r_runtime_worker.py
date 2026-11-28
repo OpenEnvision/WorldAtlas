@@ -62,6 +62,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         response = {
             "ok": False,
+            "error_type": type(exc).__name__,
             "error": f"{type(exc).__name__}: {exc}",
             "traceback": traceback.format_exc(),
             "stdout": "",

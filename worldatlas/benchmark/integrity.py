@@ -75,13 +75,31 @@ def sample_input_content(sample, prediction_path: Path | None, *, content_reader
             )
             if action_path is not None:
                 paths.add(action_path)
-        for name in (
-            prediction_path.stem,
-            prediction_path.stem + "_ann",
-            prediction_path.stem + "_vipe_ann",
+        from worldatlas.benchmark.sidecars import prediction_sidecar_candidates
+
+        for sidecar in prediction_sidecar_candidates(
+            prediction_path,
+            (
+                "annotations_vipe/{stem}_vipe_ann",
+                "{stem}",
+                "{stem}_ann",
+                "{stem}_vipe_ann",
+            ),
         ):
-            sidecar = prediction_path.parent / name
             if sidecar.is_dir():
+                paths.add(sidecar)
+        for sidecar in prediction_sidecar_candidates(
+            prediction_path,
+            (
+                "{stem}_poses_c2w.npy",
+                "{stem}_poses.npy",
+                "{stem}_actions.json",
+                "actions/{stem}_actions.json",
+                "_actions/{stem}_actions.json",
+                "{stem}.actions.json",
+            ),
+        ):
+            if sidecar.is_file():
                 paths.add(sidecar)
     reader = path_content if content_reader is None else content_reader
     return {str(p): reader(p) for p in sorted(paths)}
